@@ -9,6 +9,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
+  SidebarRail,
 } from "@/components/ui/sidebar"
 import { 
   LayoutDashboardIcon as LayoutDashboard, 
@@ -130,7 +131,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }
-
