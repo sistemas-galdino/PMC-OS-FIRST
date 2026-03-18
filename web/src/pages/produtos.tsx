@@ -3,18 +3,19 @@ import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { 
-  Package, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  TrendingUp, 
-  ShoppingCart, 
-  Banknote,
-  Search
-} from "lucide-react"
+import {
+  PackageIcon as Package,
+  PlusIcon as Plus,
+  Trash2Icon as Trash2,
+  Edit3Icon as Edit3,
+  TrendingUpIcon as TrendingUp,
+  ShoppingCartIcon as ShoppingCart,
+  BanknoteIcon as Banknote,
+  SearchIcon as Search
+} from "@/components/ui/icons"
 import { Input } from "@/components/ui/input"
 import type { Session } from "@supabase/supabase-js"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface Product {
   id: string
@@ -39,7 +40,7 @@ export default function ProdutosPage({ session }: { session: Session }) {
       if (data && !error) {
         setProducts(data)
       } else {
-        // Dummy data for Sprint 3 demo if table is empty
+        // Dummy data for Sprint 3 demo
         setProducts([
           { id: '1', nome: 'Curso CALLAN em grupo ONLINE', preco: 290, tipo: 'Recorrente', vendas_mes: 500 },
           { id: '2', nome: 'Curso CALLAN em grupo PRESENCIAL', preco: 330, tipo: 'Recorrente', vendas_mes: 500 },
@@ -63,129 +64,142 @@ export default function ProdutosPage({ session }: { session: Session }) {
   const avgTicket = products.length ? (products.reduce((acc, p) => acc + p.preco, 0) / products.length) : 0
   const totalSales = products.reduce((acc, p) => acc + p.vendas_mes, 0)
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const item = {
+    hidden: { y: 20, opacity: 0 },
+    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+  }
+
   if (loading) {
-    return <div className="animate-pulse space-y-8">
-      <div className="h-20 w-1/3 bg-card border-2 border-foreground" />
-      <div className="grid gap-6 md:grid-cols-4">
-        {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-card border-2 border-foreground" />)}
-      </div>
+    return <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {[1, 2, 3, 4].map(i => <Card key={i} className="h-40 animate-pulse bg-card/40" />)}
     </div>
   }
 
   return (
-    <div className="space-y-8 pb-10">
-      <div className="flex flex-col gap-4 border-b-4 border-foreground pb-6 md:flex-row md:items-end md:justify-between">
+    <div className="space-y-10 pb-10">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+        className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
+      >
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-black tracking-tighter uppercase">Produtos</h1>
-          <p className="text-muted-foreground font-bold uppercase tracking-widest text-sm">Catálogo de produtos e serviços do seu negócio.</p>
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Catálogo de Produtos</h1>
+          <p className="text-muted-foreground font-medium text-sm">Gestão de ofertas e performance de vendas mensais.</p>
         </div>
-        <Button className="h-12 gap-2 bg-primary text-foreground border-2 border-foreground shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+        <Button className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10">
           <Plus className="size-5" />
-          <span className="font-black uppercase tracking-widest text-xs">Adicionar Produto</span>
+          <span className="font-bold uppercase tracking-wider text-[11px]">Novo Produto</span>
         </Button>
-      </div>
+      </motion.div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b-2 border-foreground mb-4">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-foreground">Produtos</CardTitle>
-            <div className="bg-primary p-2 border-2 border-foreground">
-              <Package className="size-4 text-primary-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-black tracking-tighter">{products.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b-2 border-foreground mb-4">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-foreground">Receita Mensal</CardTitle>
-            <div className="bg-primary p-2 border-2 border-foreground">
-              <TrendingUp className="size-4 text-primary-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black tracking-tighter">R$ {(totalRevenue / 1000).toFixed(1)}k</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b-2 border-foreground mb-4">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-foreground">Ticket Médio</CardTitle>
-            <div className="bg-primary p-2 border-2 border-foreground">
-              <Banknote className="size-4 text-primary-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black tracking-tighter">R$ {avgTicket.toFixed(0)}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b-2 border-foreground mb-4">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-foreground">Vendas/Mês</CardTitle>
-            <div className="bg-primary p-2 border-2 border-foreground">
-              <ShoppingCart className="size-4 text-primary-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-black tracking-tighter">{totalSales}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
+      >
+        {[
+          { title: "Total Produtos", value: products.length, icon: Package },
+          { title: "Receita Prevista", value: `R$ ${(totalRevenue / 1000).toFixed(1)}k`, icon: TrendingUp },
+          { title: "Ticket Médio", value: `R$ ${avgTicket.toFixed(0)}`, icon: Banknote },
+          { title: "Vendas Totais", value: totalSales, icon: ShoppingCart },
+        ].map((stat, i) => (
+          <motion.div key={i} variants={item}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{stat.title}</CardTitle>
+                <div className="bg-primary/10 p-2.5 rounded-xl">
+                  <stat.icon className="size-4 text-primary" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold tracking-tight">{stat.value}</div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
 
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-3 size-5 text-foreground" />
+        <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar produtos..."
-          className="pl-10 h-12 rounded-none border-2 border-foreground shadow-brutal-sm focus-visible:shadow-none focus-visible:translate-y-[2px] focus-visible:translate-x-[2px] transition-all bg-card font-bold uppercase"
+          placeholder="Buscar no catálogo..."
+          className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+      >
         {filteredProducts.map((product) => (
-          <Card key={product.id} className="bg-card group overflow-hidden border-2 border-foreground shadow-brutal hover:shadow-[6px_6px_0px_0px_var(--color-foreground)] transition-all">
-            <CardHeader className="border-b-2 border-foreground bg-muted/10">
-              <div className="flex justify-between items-start">
-                <Badge variant="outline" className={`rounded-none border-2 font-black text-[9px] uppercase tracking-widest ${product.tipo === 'Recorrente' ? 'bg-primary border-foreground' : 'bg-background border-foreground'}`}>
-                  {product.tipo}
-                </Badge>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="size-8 border-2 border-transparent hover:border-foreground hover:bg-background">
-                    <Edit3 className="size-3" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="size-8 border-2 border-transparent hover:border-destructive hover:bg-destructive hover:text-white">
-                    <Trash2 className="size-3" />
-                  </Button>
+          <motion.div key={product.id} variants={item}>
+            <Card className="group overflow-hidden hover:border-primary/30 transition-all duration-300">
+              <CardHeader className="bg-muted/10 pb-6 border-b border-border/50">
+                <div className="flex justify-between items-start">
+                  <Badge 
+                    variant="outline" 
+                    className={`rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                      product.tipo === 'Recorrente' 
+                        ? 'bg-primary/10 border-primary/20 text-primary' 
+                        : 'bg-muted/20 border-border text-muted-foreground'
+                    }`}
+                  >
+                    {product.tipo}
+                  </Badge>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="size-8 rounded-lg hover:bg-muted/50">
+                      <Edit3 className="size-3.5 text-muted-foreground" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="size-8 rounded-lg hover:bg-destructive/10 hover:text-destructive">
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <CardTitle className="mt-4 text-xl font-black leading-tight uppercase tracking-tight min-h-[3rem] line-clamp-2">
-                {product.nome}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Ticket Médio</p>
-                  <p className="text-2xl font-black tracking-tighter">R$ {product.preco}</p>
+                <CardTitle className="mt-5 text-xl font-bold tracking-tight text-foreground line-clamp-2 min-h-[3.5rem]">
+                  {product.nome}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-8">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Valor Unit.</p>
+                    <p className="text-2xl font-bold tracking-tight text-foreground">R$ {product.preco}</p>
+                  </div>
+                  <div className="space-y-1.5 border-l border-border/50 pl-6">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Faturamento</p>
+                    <p className="text-2xl font-bold tracking-tight text-primary">R$ {(product.preco * product.vendas_mes / 1000).toFixed(1)}k</p>
+                  </div>
                 </div>
-                <div className="space-y-1 border-l-2 border-foreground/10 pl-4">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Receita Mensal</p>
-                  <p className="text-2xl font-black tracking-tighter text-primary">R$ {(product.preco * product.vendas_mes / 1000).toFixed(1)}k</p>
+                
+                <div className="mt-8 p-4 rounded-xl bg-muted/20 border border-border/50 flex justify-between items-center group-hover:bg-primary/5 group-hover:border-primary/20 transition-all">
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Volume Mensal</p>
+                    <span className="text-sm font-bold text-foreground">{product.vendas_mes} Vendas</span>
+                  </div>
+                  <div className="bg-primary/10 p-2 rounded-lg">
+                    <TrendingUp className="size-4 text-primary" />
+                  </div>
                 </div>
-              </div>
-              
-              <div className="mt-6 p-3 bg-muted/20 border-2 border-foreground/10 flex justify-between items-center">
-                <span className="text-[11px] font-black uppercase tracking-widest">{product.vendas_mes} vendas/mês</span>
-                <TrendingUp className="size-4 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </div>
   )
 }
+

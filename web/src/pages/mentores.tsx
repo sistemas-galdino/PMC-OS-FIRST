@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Calendar, Search, Filter } from "lucide-react"
+import {
+  CalendarIcon as Calendar,
+  SearchIcon as Search,
+  FilterIcon as Filter,
+  MessageSquareIcon as MessageSquare
+} from "@/components/ui/icons"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface Meeting {
   id_unico: string
@@ -55,103 +61,133 @@ export default function MentoresPage() {
     return mentorMatch || clientMatch
   })
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const item = {
+    hidden: { y: 20, opacity: 0 },
+    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+  }
+
   if (loading) {
-    return <div className="space-y-8 animate-pulse">
-      {[1, 2].map(i => (
-        <div key={i} className="space-y-4">
-          <div className="h-8 w-48 bg-card rounded" />
-          <div className="grid gap-4 md:grid-cols-3">
-            {[1, 2, 3].map(j => <Card key={j} className="h-32 bg-card/50" />)}
-          </div>
-        </div>
-      ))}
+    return <div className="space-y-10 animate-pulse">
+      <div className="h-12 w-1/4 bg-card/40 rounded-xl" />
+      <div className="grid gap-6 md:grid-cols-3">
+        {[1, 2, 3].map(i => <div key={i} className="h-48 bg-card/40 rounded-2xl" />)}
+      </div>
     </div>
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 border-b-4 border-foreground pb-6 md:flex-row md:items-end md:justify-between">
+    <div className="space-y-10 pb-10">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+        className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
+      >
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-black tracking-tighter uppercase">Mentores</h1>
-          <p className="text-muted-foreground font-bold uppercase tracking-widest text-sm">{Object.values(meetings).flat().length} reuniões registradas.</p>
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Time de Mentores</h1>
+          <p className="text-muted-foreground font-medium text-sm">Histórico de sessões estratégicas e acompanhamento.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4">
           <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-3 size-5 text-foreground" />
+            <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar..."
-              className="pl-10 h-12 rounded-none border-2 border-foreground shadow-brutal-sm focus-visible:shadow-none focus-visible:translate-y-[2px] focus-visible:translate-x-[2px] transition-all bg-card font-bold uppercase"
+              placeholder="Buscar mentor ou empresa..."
+              className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <Select defaultValue="all">
-            <SelectTrigger className="w-full sm:w-48 h-12 rounded-none border-2 border-foreground shadow-brutal-sm focus:shadow-none focus:translate-y-[2px] focus:translate-x-[2px] transition-all bg-card font-bold uppercase">
-              <Filter className="mr-2 size-4 text-foreground" />
+            <SelectTrigger className="w-full sm:w-44 h-12 bg-muted/10 border-border rounded-xl">
+              <Filter className="mr-2 size-4 text-primary/60" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent className="rounded-none border-2 border-foreground shadow-brutal">
-              <SelectItem value="all" className="font-bold uppercase focus:bg-primary focus:text-foreground rounded-none cursor-pointer">Todos os Status</SelectItem>
-              <SelectItem value="yes" className="font-bold uppercase focus:bg-primary focus:text-foreground rounded-none cursor-pointer">Compareceu</SelectItem>
-              <SelectItem value="no" className="font-bold uppercase focus:bg-primary focus:text-foreground rounded-none cursor-pointer">Não Compareceu</SelectItem>
+            <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
+              <SelectItem value="all" className="rounded-lg font-medium">Todos</SelectItem>
+              <SelectItem value="yes" className="rounded-lg font-medium">Realizadas</SelectItem>
+              <SelectItem value="no" className="rounded-lg font-medium">Faltas</SelectItem>
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </motion.div>
 
-      <ScrollArea className="h-[calc(100vh-14rem)] pr-4">
-        <div className="space-y-12 pb-10">
+      <ScrollArea className="h-[calc(100vh-16rem)] pr-6 -mr-6">
+        <motion.div 
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="space-y-16 pb-10"
+        >
           {filteredMentors.map(([mentor, mentorMeetings]) => (
-            <div key={mentor} className="space-y-6">
-              <div className="flex items-center gap-4 border-l-8 border-primary pl-4 bg-muted/20 p-4 border-y-2 border-r-2 border-foreground">
-                <Avatar className="size-14 border-2 border-foreground rounded-none shadow-brutal-sm">
-                  <AvatarFallback className="bg-primary text-foreground font-black text-xl rounded-none">
-                    {mentor.substring(0, 2).toUpperCase()}
+            <div key={mentor} className="space-y-8">
+              <motion.div variants={item} className="flex items-center gap-5 bg-muted/10 p-6 rounded-2xl border border-border/50 backdrop-blur-sm">
+                <Avatar className="size-16 border-2 border-primary/20 p-1 bg-background">
+                  <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl uppercase">
+                    {mentor.substring(0, 2)}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <h2 className="text-2xl font-black uppercase tracking-tighter">{mentor}</h2>
-                  <Badge variant="outline" className="rounded-none border-2 border-foreground bg-background text-foreground mt-1 px-2 py-0 font-bold">
-                    {mentorMeetings.length} Atendimentos
-                  </Badge>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-bold tracking-tight text-foreground">{mentor}</h2>
+                  <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary font-bold text-[10px] tracking-wider uppercase px-2.5">
+                      {mentorMeetings.length} Sessões
+                    </Badge>
+                    <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
+                      <MessageSquare className="size-3" /> Mentor Especialista
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
 
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {mentorMeetings.map((meeting) => (
-                  <Card key={meeting.id_unico} className="bg-card">
-                    <CardContent className="p-5 space-y-4">
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="space-y-1 flex-1">
-                          <h3 className="font-black text-lg uppercase tracking-tight leading-tight line-clamp-2">{meeting.pessoa}</h3>
-                          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">{meeting.empresa}</p>
+                  <motion.div key={meeting.id_unico} variants={item}>
+                    <Card className="hover:border-primary/30 transition-all duration-300">
+                      <CardContent className="p-6 space-y-5">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="space-y-1.5 flex-1">
+                            <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">{meeting.pessoa}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{meeting.empresa}</p>
+                          </div>
+                          <Badge 
+                            variant="outline"
+                            className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
+                              meeting.cliente_compareceu === false 
+                                ? "bg-destructive/10 border-destructive/20 text-destructive" 
+                                : "bg-primary/10 border-primary/20 text-primary"
+                            }`}
+                          >
+                            {meeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
+                          </Badge>
                         </div>
-                        <Badge 
-                          variant="outline"
-                          className={`uppercase font-black text-[9px] px-2 py-1 border-2 rounded-none shrink-0 ${
-                            meeting.cliente_compareceu === false 
-                              ? "bg-destructive border-foreground text-destructive-foreground" 
-                              : "bg-primary border-foreground text-foreground"
-                          }`}
-                        >
-                          {meeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex flex-col gap-2 text-[11px] font-bold text-foreground border-t-2 border-foreground pt-4">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="size-4" />
-                          <span className="uppercase tracking-widest">{new Date(meeting.data_reuniao).toLocaleDateString('pt-BR')}</span>
+                        
+                        <div className="flex items-center justify-between border-t border-border/50 pt-4">
+                          <div className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
+                            <Calendar className="size-3.5 text-primary/60" />
+                            <span className="uppercase tracking-widest">{new Date(meeting.data_reuniao).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                          <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5">
+                            Ver Resumo
+                          </Button>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 ))}
               </div>
             </div>
           ))}
-        </div>
+        </motion.div>
       </ScrollArea>
     </div>
   )
 }
+

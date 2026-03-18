@@ -3,23 +3,24 @@ import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { 
-  Megaphone, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  TrendingUp, 
-  Users, 
-  DollarSign,
-  Search,
-  Globe,
-  Instagram,
-  Mail,
-  Linkedin,
-  ArrowUpRight
-} from "lucide-react"
+import {
+  MegaphoneIcon as Megaphone,
+  PlusIcon as Plus,
+  Trash2Icon as Trash2,
+  Edit3Icon as Edit3,
+  TrendingUpIcon as TrendingUp,
+  UsersIcon as Users,
+  DollarSignIcon as DollarSign,
+  SearchIcon as Search,
+  GlobeIcon as Globe,
+  InstagramIcon as Instagram,
+  MailIcon as Mail,
+  LinkedinIcon as Linkedin,
+  ArrowUpRightIcon as ArrowUpRight
+} from "@/components/ui/icons"
 import { Input } from "@/components/ui/input"
 import type { Session } from "@supabase/supabase-js"
+import { motion } from "framer-motion"
 
 interface Channel {
   id: string
@@ -75,180 +76,195 @@ export default function CanaisPage({ session }: { session: Session }) {
     const n = name.toLowerCase()
     if (n.includes('instagram')) return Instagram
     if (n.includes('google')) return Globe
-    if (n.includes('whatsapp')) return MessageCircleIcon // Handled by fallback below
+    if (n.includes('whatsapp')) return MessageCircleIcon
     if (n.includes('linkedin')) return Linkedin
     if (n.includes('email')) return Mail
     return Megaphone
   }
 
-  // Simple MessageCircle fallback since lucide-react might vary
   function MessageCircleIcon({ className }: any) {
     return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
   }
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const item = {
+    hidden: { y: 20, opacity: 0 },
+    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+  }
+
   if (loading) {
-    return <div className="animate-pulse space-y-8">
-      <div className="h-20 w-1/3 bg-card border-2 border-foreground" />
-      <div className="grid gap-6 md:grid-cols-4">
-        {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-card border-2 border-foreground" />)}
-      </div>
+    return <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {[1, 2, 3, 4].map(i => <Card key={i} className="h-40 animate-pulse bg-card/40" />)}
     </div>
   }
 
   return (
-    <div className="space-y-8 pb-10">
-      <div className="flex flex-col gap-4 border-b-4 border-foreground pb-6 md:flex-row md:items-end md:justify-between">
+    <div className="space-y-10 pb-10">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+        className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
+      >
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-black tracking-tighter uppercase">Canais de Aquisição</h1>
-          <p className="text-muted-foreground font-bold uppercase tracking-widest text-sm">Fontes de tráfego e investimento do seu negócio.</p>
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Canais de Aquisição</h1>
+          <p className="text-muted-foreground font-medium text-sm">Fontes de tráfego e investimento estratégico do seu negócio.</p>
         </div>
-        <Button className="h-12 gap-2 bg-primary text-foreground border-2 border-foreground shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+        <Button className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10">
           <Plus className="size-5" />
-          <span className="font-black uppercase tracking-widest text-xs">Adicionar Canal</span>
+          <span className="font-bold uppercase tracking-wider text-[11px]">Adicionar Canal</span>
         </Button>
-      </div>
+      </motion.div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b-2 border-foreground mb-4">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-foreground">Canais Ativos</CardTitle>
-            <div className="bg-primary p-2 border-2 border-foreground">
-              <Megaphone className="size-4 text-primary-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-black tracking-tighter">{channels.length}</div>
-          </CardContent>
-        </Card>
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
+      >
+        {[
+          { title: "Canais Ativos", value: channels.length, icon: Megaphone },
+          { title: "Investimento/Mês", value: `R$ ${(totalInvestimento / 1000).toFixed(1)}k`, icon: DollarSign },
+          { title: "Canais Pagos", value: canaisPagos, icon: TrendingUp },
+          { title: "Canais Orgânicos", value: canaisOrganicos, icon: Users },
+        ].map((stat, i) => (
+          <motion.div key={i} variants={item}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{stat.title}</CardTitle>
+                <div className="bg-primary/10 p-2.5 rounded-xl">
+                  <stat.icon className="size-4 text-primary" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold tracking-tight">{stat.value}</div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
 
-        <Card className="bg-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b-2 border-foreground mb-4">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-foreground">Investimento/Mês</CardTitle>
-            <div className="bg-primary p-2 border-2 border-foreground">
-              <DollarSign className="size-4 text-primary-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black tracking-tighter">R$ {(totalInvestimento / 1000).toFixed(1)}k</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b-2 border-foreground mb-4">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-foreground">Canais Pagos</CardTitle>
-            <div className="bg-primary p-2 border-2 border-foreground">
-              <TrendingUp className="size-4 text-primary-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-black tracking-tighter">{canaisPagos}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b-2 border-foreground mb-4">
-            <CardTitle className="text-[11px] font-black uppercase tracking-widest text-foreground">Canais Orgânicos</CardTitle>
-            <div className="bg-primary p-2 border-2 border-foreground">
-              <Users className="size-4 text-primary-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-black tracking-tighter">{canaisOrganicos}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-2">
-        {/* Canais Pagos */}
+      <div className="grid gap-10 lg:grid-cols-2">
         <div className="space-y-6">
-          <div className="flex items-center gap-3 border-l-8 border-foreground pl-4">
-            <h2 className="text-2xl font-black uppercase tracking-tighter">Canais Pagos</h2>
-            <Badge variant="outline" className="rounded-none border-2 border-foreground bg-primary text-foreground font-black px-2 py-0">
-              Investimento Total: R$ {totalInvestimento}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="flex items-center gap-4 border-l-4 border-primary pl-6"
+          >
+            <h2 className="text-2xl font-bold tracking-tight">Canais Pagos</h2>
+            <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">
+              R$ {totalInvestimento.toLocaleString('pt-BR')} investidos
             </Badge>
-          </div>
+          </motion.div>
           
-          <div className="space-y-4">
+          <motion.div 
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="space-y-4"
+          >
             {filteredCanais.filter(c => c.tipo === 'Pago').map(channel => {
               const Icon = getIcon(channel.nome)
               return (
-                <Card key={channel.id} className="bg-card border-2 border-foreground shadow-brutal-sm hover:shadow-brutal transition-all group">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-muted p-3 border-2 border-foreground shadow-brutal-sm group-hover:bg-primary transition-colors">
-                        <Icon className="size-5" />
+                <motion.div key={channel.id} variants={item}>
+                  <Card className="group hover:border-primary/30 transition-all duration-300">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-5">
+                        <div className="bg-muted/30 p-3.5 rounded-xl group-hover:bg-primary/10 transition-colors">
+                          <Icon className="size-5 text-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-foreground">{channel.nome}</h3>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Tráfego Pago</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-black uppercase text-sm tracking-tight">{channel.nome}</h3>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Pago</p>
+                      <div className="flex items-center gap-8">
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Custo/Mês</p>
+                          <p className="font-bold text-lg text-foreground">R$ {channel.investimento.toLocaleString('pt-BR')}</p>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-muted/50">
+                            <Edit3 className="size-4 text-muted-foreground" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-destructive/10 hover:text-destructive">
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-8">
-                      <div className="text-right">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Investimento</p>
-                        <p className="font-black text-lg">R$ {channel.investimento}<span className="text-[10px] text-muted-foreground">/mês</span></p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" className="size-8 border-2 border-transparent hover:border-foreground hover:bg-background">
-                          <Edit3 className="size-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="size-8 border-2 border-transparent hover:border-destructive hover:bg-destructive hover:text-white">
-                          <Trash2 className="size-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               )
             })}
-          </div>
+          </motion.div>
         </div>
 
-        {/* Canais Orgânicos */}
         <div className="space-y-6">
-          <div className="flex items-center gap-3 border-l-8 border-primary pl-4">
-            <h2 className="text-2xl font-black uppercase tracking-tighter">Canais Orgânicos</h2>
-            <Badge variant="outline" className="rounded-none border-2 border-foreground bg-background text-foreground font-black px-2 py-0">
-              Gratuito (Tempo e Esforço)
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="flex items-center gap-4 border-l-4 border-muted pl-6"
+          >
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">Canais Orgânicos</h2>
+            <Badge variant="outline" className="bg-muted/10 border-border text-muted-foreground">
+              Foco em Conteúdo & Relacionamento
             </Badge>
-          </div>
+          </motion.div>
 
-          <div className="space-y-4">
+          <motion.div 
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="space-y-4"
+          >
             {filteredCanais.filter(c => c.tipo === 'Orgânico').map(channel => {
               const Icon = getIcon(channel.nome)
               return (
-                <Card key={channel.id} className="bg-card border-2 border-foreground shadow-brutal-sm hover:shadow-brutal transition-all group">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-muted p-3 border-2 border-foreground shadow-brutal-sm group-hover:bg-primary transition-colors">
-                        <Icon className="size-5" />
+                <motion.div key={channel.id} variants={item}>
+                  <Card className="group hover:border-primary/30 transition-all duration-300">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-5">
+                        <div className="bg-muted/30 p-3.5 rounded-xl group-hover:bg-primary/10 transition-colors">
+                          <Icon className="size-5 text-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-foreground">{channel.nome}</h3>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Tráfego Orgânico</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-black uppercase text-sm tracking-tight">{channel.nome}</h3>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Orgânico</p>
+                      <div className="flex items-center gap-8">
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Status</p>
+                          <Badge variant="ghost" className="bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-widest px-2 py-0.5">Gratuito</Badge>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-muted/50">
+                            <Edit3 className="size-4 text-muted-foreground" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-destructive/10 hover:text-destructive">
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-8">
-                      <div className="text-right">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Status</p>
-                        <p className="font-black text-lg text-primary uppercase text-[12px]">Gratuito</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" className="size-8 border-2 border-transparent hover:border-foreground hover:bg-background">
-                          <Edit3 className="size-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="size-8 border-2 border-transparent hover:border-destructive hover:bg-destructive hover:text-white">
-                          <Trash2 className="size-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               )
             })}
-          </div>
+          </motion.div>
         </div>
       </div>
     </div>
   )
 }
+

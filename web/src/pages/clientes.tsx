@@ -10,14 +10,14 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { 
-  Search, 
-  MoreHorizontal, 
-  Phone,
-  MapPin,
-  Briefcase,
-  UserCheck
-} from "lucide-react"
+import {
+  SearchIcon as Search,
+  MoreHorizontalIcon as MoreHorizontal,
+  PhoneIcon as Phone,
+  MapPinIcon as MapPin,
+  BriefcaseIcon as Briefcase,
+  UserCheckIcon as UserCheck
+} from "@/components/ui/icons"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { motion } from "framer-motion"
 
 interface Client {
   id_entrada: number
@@ -74,36 +75,44 @@ export default function ClientesPage() {
   const uniqueScs = Array.from(new Set(clients.map(c => c.sc).filter(Boolean)))
 
   if (loading) {
-    return <div className="space-y-4 animate-pulse">
-      <div className="h-10 w-full bg-card rounded" />
-      {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-16 w-full bg-card/50 rounded" />)}
+    return <div className="space-y-6 animate-pulse">
+      <div className="h-12 w-1/4 bg-card/40 rounded-xl" />
+      <div className="h-[500px] w-full bg-card/40 rounded-2xl" />
     </div>
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-2 border-b-4 border-foreground pb-6">
-        <h1 className="text-4xl lg:text-5xl font-black tracking-tighter uppercase">Gestão de Clientes</h1>
-        <p className="text-muted-foreground font-bold uppercase tracking-widest text-sm">Lista completa de empresários no programa.</p>
-      </div>
+    <div className="space-y-10 pb-10">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+        className="flex flex-col gap-3 border-l-4 border-primary pl-8 py-2"
+      >
+        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Gestão de Clientes</h1>
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">PMC CRM</Badge>
+          <p className="text-muted-foreground font-medium text-sm">Base estratégica de empresários do programa.</p>
+        </div>
+      </motion.div>
 
-      <div className="flex flex-col md:flex-row md:items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-center gap-8 bg-muted/10 p-6 rounded-2xl border border-border/50">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-3 size-5 text-foreground" />
+          <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por cliente ou empresa..."
-            className="pl-10 h-12 rounded-none border-2 border-foreground shadow-[2px_2px_0px_0px_var(--color-foreground)] focus-visible:shadow-none focus-visible:translate-y-[2px] focus-visible:translate-x-[2px] transition-all bg-card font-bold uppercase"
+            className="pl-11 h-12 bg-background border-border focus-visible:border-primary/50 shadow-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-black text-foreground uppercase tracking-widest">Filtrar por CS:</span>
+        <div className="flex flex-col gap-3">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Filtrar por Responsável (CS):</span>
           <div className="flex flex-wrap gap-2">
             <Button 
               variant={scFilter === 'all' ? 'default' : 'outline'} 
               size="sm" 
-              className={`h-9 text-[11px] uppercase ${scFilter !== 'all' ? 'shadow-brutal-sm' : ''}`}
+              className="h-9 px-4 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all duration-300"
               onClick={() => setScFilter('all')}
             >
               Todos
@@ -113,7 +122,7 @@ export default function ClientesPage() {
                 key={sc}
                 variant={scFilter === sc ? 'default' : 'outline'} 
                 size="sm" 
-                className={`h-9 text-[11px] uppercase ${scFilter !== sc ? 'shadow-brutal-sm' : ''}`}
+                className="h-9 px-4 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all duration-300"
                 onClick={() => setScFilter(sc)}
               >
                 {sc}
@@ -123,25 +132,30 @@ export default function ClientesPage() {
         </div>
       </div>
 
-      <div className="border-2 border-foreground bg-card shadow-[4px_4px_0px_0px_var(--color-foreground)] rounded-none">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.6 }}
+        className="border border-border bg-card/50 backdrop-blur-md rounded-2xl overflow-hidden shadow-xl"
+      >
         <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow className="border-b-2 border-foreground hover:bg-transparent">
-              <TableHead className="text-foreground font-black uppercase tracking-widest text-[11px] py-4">Cliente / Empresa</TableHead>
-              <TableHead className="text-foreground font-black uppercase tracking-widest text-[11px] py-4">Status</TableHead>
-              <TableHead className="text-foreground font-black uppercase tracking-widest text-[11px] py-4">Localização</TableHead>
-              <TableHead className="text-foreground font-black uppercase tracking-widest text-[11px] py-4">CS Responsável</TableHead>
-              <TableHead className="text-foreground font-black uppercase tracking-widest text-[11px] py-4 text-right">Ações</TableHead>
+          <TableHeader className="bg-muted/30">
+            <TableRow className="border-b border-border/50 hover:bg-transparent">
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-6">Cliente / Empresa</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">Status Atual</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">Localização</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">CS Responsável</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 text-right px-6">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredClients.map((client) => (
-              <TableRow key={client.id_entrada} className="hover:bg-primary/5 border-b border-foreground/20 transition-colors group">
-                <TableCell className="py-4">
+            {filteredClients.map((client, index) => (
+              <TableRow key={client.id_entrada} className="hover:bg-primary/5 border-b border-border/30 transition-colors group">
+                <TableCell className="py-5 px-6">
                   <div className="flex flex-col gap-1">
-                    <span className="font-bold text-sm tracking-tight uppercase">{client.nome_cliente_formatado}</span>
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase font-bold">
-                      <Briefcase className="size-3" />
+                    <span className="font-bold text-sm text-foreground tracking-tight">{client.nome_cliente_formatado}</span>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium">
+                      <Briefcase className="size-3 text-primary/60" />
                       {client.nome_empresa_formatado}
                     </div>
                   </div>
@@ -149,47 +163,47 @@ export default function ClientesPage() {
                 <TableCell>
                   <Badge 
                     variant="outline" 
-                    className={`rounded-none border-2 px-2 py-1 text-[10px] font-black uppercase ${
+                    className={`rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                       client.status_atual?.toLowerCase().includes('ativo') 
-                        ? 'border-primary text-foreground bg-primary' 
-                        : 'border-foreground text-foreground bg-muted'
+                        ? 'border-primary/30 text-primary bg-primary/10' 
+                        : 'border-border text-muted-foreground bg-muted/20'
                     }`}
                   >
                     {client.status_atual || 'N/A'}
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1.5 text-[11px] text-foreground uppercase font-bold">
-                    <MapPin className="size-3" />
+                  <div className="flex items-center gap-2 text-[12px] text-foreground font-medium">
+                    <MapPin className="size-3.5 text-primary/60" />
                     {client.estado_uf || 'N/A'}
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="size-8 rounded-none border-2 border-foreground bg-primary flex items-center justify-center text-[12px] font-black text-foreground shadow-brutal-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="size-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[11px] font-bold text-primary">
                       {client.sc?.substring(0, 1) || '?'}
                     </div>
-                    <span className="text-[11px] font-bold uppercase tracking-wider">{client.sc || 'Não Atribuído'}</span>
+                    <span className="text-[12px] font-semibold text-foreground">{client.sc || 'Não Atribuído'}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right px-6">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="size-9 p-0 border-2 border-foreground shadow-brutal-sm rounded-none">
+                      <Button variant="ghost" className="size-9 p-0 rounded-lg hover:bg-muted">
                         <MoreHorizontal className="size-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-card border-2 border-foreground shadow-brutal rounded-none p-2 space-y-1">
-                      <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-2 pb-2 border-b-2 border-foreground mb-2">Ações Rápidas</DropdownMenuLabel>
-                      <DropdownMenuItem className="text-[11px] font-bold uppercase cursor-pointer focus:bg-primary focus:text-foreground">
-                        <UserCheck className="mr-2 size-4" /> Ver Detalhes
+                    <DropdownMenuContent align="end" className="w-56 bg-card/95 backdrop-blur-xl border-border rounded-xl p-2 shadow-2xl">
+                      <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-2">Operações</DropdownMenuLabel>
+                      <DropdownMenuItem className="rounded-lg text-xs font-semibold py-2 cursor-pointer focus:bg-primary/10 focus:text-primary">
+                        <UserCheck className="mr-2 size-4" /> Ver Perfil Completo
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-[11px] font-bold uppercase cursor-pointer focus:bg-primary focus:text-foreground">
-                        <Phone className="mr-2 size-4" /> Contato WhatsApp
+                      <DropdownMenuItem className="rounded-lg text-xs font-semibold py-2 cursor-pointer focus:bg-primary/10 focus:text-primary">
+                        <Phone className="mr-2 size-4" /> Abrir WhatsApp
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-foreground/20" />
-                      <DropdownMenuItem className="text-[11px] font-bold uppercase text-destructive cursor-pointer focus:bg-destructive focus:text-destructive-foreground">
-                        Registrar Cancelamento
+                      <DropdownMenuSeparator className="bg-border/50" />
+                      <DropdownMenuItem className="rounded-lg text-xs font-semibold py-2 text-destructive cursor-pointer focus:bg-destructive/10 focus:text-destructive">
+                        Registrar Churn
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -198,7 +212,8 @@ export default function ClientesPage() {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </motion.div>
     </div>
   )
 }
+

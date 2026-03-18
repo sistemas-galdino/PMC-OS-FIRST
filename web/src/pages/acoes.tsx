@@ -3,19 +3,18 @@ import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { 
-  CheckSquare, 
-  Square, 
-  Calendar, 
-  ArrowRight,
-  Filter,
-  Search,
-  CheckCircle2,
-  Clock,
-  AlertCircle
-} from "lucide-react"
+import {
+  CheckSquareIcon as CheckSquare,
+  SquareIcon as Square,
+  CalendarIcon as Calendar,
+  SearchIcon as Search,
+  CheckCircle2Icon as CheckCircle2,
+  ClockIcon as Clock,
+  AlertCircleIcon as AlertCircle
+} from "@/components/ui/icons"
 import { Input } from "@/components/ui/input"
 import type { Session } from "@supabase/supabase-js"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface Action {
   text: string
@@ -31,12 +30,11 @@ export default function AcoesPage({ session }: { session: Session }) {
 
   useEffect(() => {
     async function fetchActions() {
-      // Get client ID
       const { data: clientEntry } = await supabase
         .from('entrada_clientes')
         .select('id_cliente')
         .eq('id_cliente', session.user.id)
-        .single()
+        .maybeSingle()
 
       if (clientEntry) {
         const { data: meetings } = await supabase
@@ -58,8 +56,7 @@ export default function AcoesPage({ session }: { session: Session }) {
         setActions(flatActions)
       }
       
-      if (actions.length === 0) {
-        // Dummy data for Sprint 3 demo if no real meetings yet
+      if (!loading && actions.length === 0) {
         setActions([
           { text: "Confirmar meta de faturamento de R$ 3,6 milhões para 2026", done: false, meeting_date: "2026-03-10", mentor: "Rafael Galdino" },
           { text: "Separar fontes de receita e definir metas por produto", done: false, meeting_date: "2026-03-10", mentor: "Rafael Galdino" },
@@ -82,90 +79,126 @@ export default function AcoesPage({ session }: { session: Session }) {
   const pending = actions.filter(a => !a.done).length
   const completed = actions.filter(a => a.done).length
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const item = {
+    hidden: { y: 20, opacity: 0 },
+    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+  }
+
   if (loading) {
-    return <div className="animate-pulse space-y-8">
-      <div className="h-20 w-1/3 bg-card border-2 border-foreground" />
-      <div className="space-y-4">
-        {[1, 2, 3, 4].map(i => <div key={i} className="h-20 w-full bg-card border-2 border-foreground" />)}
-      </div>
+    return <div className="grid gap-6">
+      {[1, 2, 3, 4].map(i => <Card key={i} className="h-24 animate-pulse bg-card/40" />)}
     </div>
   }
 
   return (
-    <div className="space-y-8 pb-10">
-      <div className="flex flex-col gap-4 border-b-4 border-foreground pb-6 md:flex-row md:items-end md:justify-between">
+    <div className="space-y-10 pb-10">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+        className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
+      >
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-black tracking-tighter uppercase">Plano de Ação</h1>
-          <p className="text-muted-foreground font-bold uppercase tracking-widest text-sm">Tarefas e direcionamentos gerados em suas mentorias.</p>
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Plano de Ação</h1>
+          <p className="text-muted-foreground font-medium text-sm">Tarefas e direcionamentos estratégicos das suas mentorias.</p>
         </div>
         <div className="flex gap-4">
-          <div className="bg-primary px-4 py-2 border-2 border-foreground shadow-brutal-sm flex items-center gap-2">
+          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary px-4 py-2 rounded-xl flex items-center gap-2">
             <Clock className="size-4" />
-            <span className="font-black uppercase text-xs">{pending} Pendentes</span>
-          </div>
-          <div className="bg-background px-4 py-2 border-2 border-foreground shadow-brutal-sm flex items-center gap-2">
+            <span className="font-bold uppercase text-[10px] tracking-wider">{pending} Pendentes</span>
+          </Badge>
+          <Badge variant="outline" className="bg-muted/10 border-border text-muted-foreground px-4 py-2 rounded-xl flex items-center gap-2">
             <CheckCircle2 className="size-4" />
-            <span className="font-black uppercase text-xs">{completed} Concluídas</span>
-          </div>
+            <span className="font-bold uppercase text-[10px] tracking-wider">{completed} Concluídas</span>
+          </Badge>
         </div>
-      </div>
+      </motion.div>
 
       <div className="flex flex-col md:flex-row md:items-center gap-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-3 size-5 text-foreground" />
+          <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
           <Input
             placeholder="Buscar tarefas ou mentores..."
-            className="pl-10 h-12 rounded-none border-2 border-foreground shadow-brutal-sm focus-visible:shadow-none focus-visible:translate-y-[2px] focus-visible:translate-x-[2px] transition-all bg-card font-bold uppercase"
+            className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="space-y-4">
-        {filteredActions.length === 0 ? (
-          <div className="border-4 border-dashed border-foreground p-12 text-center bg-muted/10">
-            <AlertCircle className="size-12 mx-auto text-muted-foreground mb-4" />
-            <p className="font-black uppercase tracking-widest text-muted-foreground">Nenhuma ação encontrada</p>
-          </div>
-        ) : (
-          filteredActions.map((action, index) => (
-            <Card key={index} className={`bg-card transition-all rounded-none ${action.done ? 'opacity-60 bg-muted/20' : 'hover:translate-x-2'}`}>
-              <CardContent className="p-0 flex flex-col md:flex-row md:items-center">
-                <div className={`p-6 flex-1 flex items-start gap-4 ${action.done ? '' : ''}`}>
-                  <div className="mt-1">
-                    {action.done ? (
-                      <CheckSquare className="size-6 text-primary" />
-                    ) : (
-                      <Square className="size-6 text-foreground/20" />
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <p className={`text-lg font-bold uppercase leading-tight tracking-tight ${action.done ? 'line-through text-muted-foreground' : ''}`}>
-                      {action.text}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="size-3" />
-                        {new Date(action.meeting_date).toLocaleDateString('pt-BR')}
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="space-y-4"
+      >
+        <AnimatePresence mode="popLayout">
+          {filteredActions.length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="rounded-2xl border-2 border-dashed border-border p-16 text-center bg-muted/5"
+            >
+              <AlertCircle className="size-12 mx-auto text-muted-foreground/30 mb-4" />
+              <p className="font-bold text-muted-foreground uppercase tracking-widest text-sm">Nenhuma ação encontrada</p>
+            </motion.div>
+          ) : (
+            filteredActions.map((action, index) => (
+              <motion.div key={index} variants={item} layout>
+                <Card className={`group hover:border-primary/30 transition-all duration-300 ${action.done ? 'opacity-60 bg-muted/5' : ''}`}>
+                  <CardContent className="p-0 flex flex-col md:flex-row md:items-center">
+                    <div className="p-6 flex-1 flex items-start gap-5">
+                      <div className="mt-1">
+                        {action.done ? (
+                          <div className="bg-primary/10 rounded-full p-1.5">
+                            <CheckSquare className="size-5 text-primary" />
+                          </div>
+                        ) : (
+                          <div className="rounded-full p-1.5">
+                            <Square className="size-5 text-muted-foreground/30 group-hover:text-primary/50 transition-colors" />
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="size-1.5 bg-primary" />
-                        Mentor: {action.mentor}
+                      <div className="space-y-2">
+                        <p className={`text-lg font-bold tracking-tight text-foreground leading-snug ${action.done ? 'line-through text-muted-foreground/60' : ''}`}>
+                          {action.text}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="size-3.5 text-primary/60" />
+                            {new Date(action.meeting_date).toLocaleDateString('pt-BR')}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="size-1.5 rounded-full bg-primary/40" />
+                            Mentor: <span className="text-foreground">{action.mentor}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-                <div className="border-t-2 md:border-t-0 md:border-l-2 border-foreground p-4 bg-muted/10 md:w-48 flex items-center justify-center">
-                  <Button variant={action.done ? "outline" : "default"} className="w-full h-10 text-[10px]">
-                    {action.done ? "Reabrir" : "Concluir"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+                    <div className="md:border-l border-border/50 p-6 md:w-56 flex items-center justify-center bg-muted/5">
+                      <Button 
+                        variant={action.done ? "ghost" : "outline"} 
+                        className={`w-full h-11 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all duration-300 ${!action.done ? 'hover:bg-primary/10 hover:text-primary hover:border-primary/30' : ''}`}
+                      >
+                        {action.done ? "Reabrir Tarefa" : "Concluir Agora"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
   )
 }
+
