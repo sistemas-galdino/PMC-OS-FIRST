@@ -37,8 +37,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(218,252,103,0.05)_0%,transparent_50%)]" />
+    <div className="flex min-h-screen items-center justify-center bg-transparent relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(218,252,103,0.03)_0%,transparent_70%)]" />
       
       <motion.div
         initial={{ opacity: 0, y: 20 }}

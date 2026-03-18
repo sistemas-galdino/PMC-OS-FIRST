@@ -58,8 +58,8 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
   const items = isAdmin ? adminItems : clientItems
 
   return (
-    <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border bg-sidebar text-sidebar-foreground">
-      <SidebarHeader className="p-6 border-b border-border bg-sidebar/50 backdrop-blur-sm">
+    <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border bg-sidebar/40 text-sidebar-foreground backdrop-blur-xl">
+      <SidebarHeader className="p-6 border-b border-border bg-sidebar/20 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}
@@ -117,7 +117,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-border bg-sidebar/50">
+      <SidebarFooter className="p-4 border-t border-border bg-sidebar/20">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton 

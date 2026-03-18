@@ -11,6 +11,7 @@ import CanaisPage from "@/pages/canais"
 import AcoesPage from "@/pages/acoes"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
+import { BackgroundShader } from "@/components/ui/background-shader"
 
 // Error Boundary to catch any component crashes
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: any }> {
@@ -30,14 +31,18 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-background text-destructive p-8 text-center border-4 border-destructive shadow-brutal">
-          <h1 className="text-4xl font-black uppercase mb-4">CRITICAL ERROR</h1>
-          <pre className="bg-muted p-4 border-2 border-foreground text-foreground text-xs overflow-auto max-w-full text-left mb-6">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-10 text-center">
+          <div className="size-20 bg-destructive/10 rounded-2xl flex items-center justify-center mb-8 border border-destructive/20">
+            <h1 className="text-4xl font-bold text-destructive">!</h1>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight mb-4">CRITICAL ERROR</h1>
+          <p className="text-muted-foreground mb-8 max-w-md mx-auto font-medium">Ocorreu um erro inesperado no sistema. Os detalhes técnicos foram registrados para nossa equipe.</p>
+          <pre className="bg-muted/30 p-6 rounded-2xl border border-border text-muted-foreground text-xs overflow-auto max-w-2xl text-left mb-10 w-full">
             {this.state.error?.toString()}
           </pre>
           <button 
             onClick={() => { localStorage.clear(); window.location.reload(); }}
-            className="bg-primary text-foreground px-6 py-3 font-black uppercase border-2 border-foreground shadow-brutal-sm"
+            className="bg-primary text-primary-foreground px-8 py-3.5 rounded-xl font-bold uppercase text-[11px] tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-transform"
           >
             Resetar e Tentar Novamente
           </button>
@@ -100,9 +105,15 @@ function App() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-primary">
-        <div className="animate-pulse font-black tracking-widest text-3xl uppercase border-4 border-primary p-8 shadow-brutal">
-          PMC OS
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-6">
+          <div className="size-16 relative">
+            <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+            <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+          <div className="font-bold tracking-[0.4em] text-sm text-foreground uppercase animate-pulse">
+            PMC OS
+          </div>
         </div>
       </div>
     )
@@ -110,6 +121,7 @@ function App() {
 
   return (
     <ErrorBoundary>
+      <BackgroundShader />
       <BrowserRouter>
         <Routes>
           <Route 
