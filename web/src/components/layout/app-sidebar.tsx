@@ -11,22 +11,23 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import { 
-  LayoutDashboard, 
-  Users, 
-  Calendar, 
-  Clock, 
-  Settings, 
-  MessageSquare,
-  LogOut,
-  ChevronRight,
-  TrendingUp,
-  Package,
-  Megaphone,
-  CheckSquare,
-  Compass
-} from "lucide-react"
+  LayoutDashboardIcon as LayoutDashboard, 
+  UsersIcon as Users, 
+  CalendarIcon as Calendar, 
+  ClockIcon as Clock, 
+  SettingsIcon as Settings, 
+  MessageSquareIcon as MessageSquare,
+  LogOutIcon as LogOut,
+  ChevronRightIcon as ChevronRight,
+  TrendingUpIcon as TrendingUp,
+  PackageIcon as Package,
+  MegaphoneIcon as Megaphone,
+  CheckSquareIcon as CheckSquare,
+  CompassIcon as Compass
+} from "@/components/ui/icons"
 import { supabase } from "@/lib/supabase"
 import { useLocation, useNavigate } from "react-router-dom"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface AppSidebarProps {
   isAdmin?: boolean
@@ -57,57 +58,73 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
   const items = isAdmin ? adminItems : clientItems
 
   return (
-    <Sidebar variant="sidebar" collapsible="icon" className="border-r-2 border-foreground bg-card text-card-foreground">
-      <SidebarHeader className="p-4 border-b-2 border-foreground">
+    <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border bg-sidebar text-sidebar-foreground">
+      <SidebarHeader className="p-6 border-b border-border bg-sidebar/50 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center bg-primary text-primary-foreground border-2 border-foreground shadow-brutal-sm">
-            <TrendingUp className="size-6" />
-          </div>
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+          >
+            <TrendingUp className="size-5" />
+          </motion.div>
           <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-            <span className="font-bold tracking-tight text-lg uppercase">PMC OS</span>
-            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Black Eagle</span>
+            <span className="font-bold tracking-tight text-lg text-foreground">PMC OS</span>
+            <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-[0.2em]">Black Eagle</span>
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="px-2">
         <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-bold uppercase text-foreground/50 tracking-widest mt-4">
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold uppercase text-muted-foreground tracking-widest mt-6 px-4">
             {isAdmin ? "Visão Geral" : "Gestão"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="mt-2 space-y-1">
-              {items.map((item) => (
+            <SidebarMenu className="mt-4 space-y-1">
+              {items.map((item, index) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    tooltip={item.title}
-                    isActive={location.pathname === item.url}
-                    onClick={() => navigate(item.url)}
-                    className={`rounded-none border-2 transition-all font-bold uppercase text-[12px] h-10 ${
-                      location.pathname === item.url 
-                        ? "border-foreground bg-primary text-primary-foreground shadow-[2px_2px_0px_0px_var(--color-foreground)] translate-y-[-1px] translate-x-[-1px]" 
-                        : "border-transparent hover:border-foreground hover:bg-card hover:shadow-[2px_2px_0px_0px_var(--color-foreground)] hover:translate-y-[-1px] hover:translate-x-[-1px]"
-                    }`}
+                  <motion.div
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
                   >
-                    <item.icon className="size-4" />
-                    <span>{item.title}</span>
-                    {location.pathname === item.url && (
-                      <ChevronRight className="ml-auto size-4" />
-                    )}
-                  </SidebarMenuButton>
+                    <SidebarMenuButton 
+                      tooltip={item.title}
+                      isActive={location.pathname === item.url}
+                      onClick={() => navigate(item.url)}
+                      className={`rounded-lg transition-all duration-300 font-medium h-11 px-4 ${
+                        location.pathname === item.url 
+                          ? "bg-primary/10 text-primary hover:bg-primary/20" 
+                          : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      }`}
+                    >
+                      <item.icon className={`size-5 transition-transform duration-300 ${location.pathname === item.url ? "scale-110" : "group-hover:scale-110"}`} />
+                      <span className="ml-2">{item.title}</span>
+                      {location.pathname === item.url && (
+                        <motion.div
+                          layoutId="activeTab"
+                          className="ml-auto"
+                        >
+                          <ChevronRight className="size-4" />
+                        </motion.div>
+                      )}
+                    </SidebarMenuButton>
+                  </motion.div>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t-2 border-foreground">
+      <SidebarFooter className="p-4 border-t border-border bg-sidebar/50">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton 
               onClick={() => supabase.auth.signOut()}
-              className="rounded-none border-2 border-transparent hover:border-destructive hover:bg-destructive hover:text-destructive-foreground hover:shadow-[2px_2px_0px_0px_var(--color-destructive)] transition-all font-bold uppercase h-10"
+              className="rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all duration-300 font-medium h-11 px-4"
             >
-              <LogOut className="size-4" />
+              <LogOut className="size-5" />
               <span>Sair</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -116,3 +133,4 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     </Sidebar>
   )
 }
+
