@@ -21,15 +21,15 @@ Systematically replace all Lucide React icons with premium Tabler Icons using th
 - [x] Task: Implement: Replace Lucide icons in `web/src/components/ui/` files where applicable (e.g., `select.tsx`, `input.tsx`). 18472f5
 - [x] Task: Conductor - User Manual Verification 'UI Components (Shadcn) Refactor' (Protocol in workflow.md) 639770f
 
-### Phase 4: Feature Pages Refactor
-- [ ] Task: Write Tests: Verify icons in key feature pages (Products, Clients, Dashboard).
-- [ ] Task: Implement: Replace icons in `web/src/pages/produtos.tsx`.
-- [ ] Task: Implement: Replace icons in `web/src/pages/clientes.tsx`.
-- [ ] Task: Implement: Replace icons in `web/src/pages/canais.tsx`.
-- [ ] Task: Implement: Replace icons in `web/src/pages/acoes.tsx`.
-- [ ] Task: Implement: Replace icons in `web/src/pages/mentores.tsx`.
-- [ ] Task: Implement: Replace icons in `web/src/pages/client-dashboard.tsx` and `web/src/pages/admin-dashboard.tsx`.
-- [ ] Task: Conductor - User Manual Verification 'Feature Pages Refactor' (Protocol in workflow.md)
+### Phase 4: Feature Pages Refactor [checkpoint: 3e801ef]
+- [x] Task: Write Tests: Verify icons in key feature pages (Products, Clients, Dashboard). (Skipped: no tests) 634b543
+- [x] Task: Implement: Replace icons in `web/src/pages/produtos.tsx`. 634b543
+- [x] Task: Implement: Replace icons in `web/src/pages/clientes.tsx`. 634b543
+- [x] Task: Implement: Replace icons in `web/src/pages/canais.tsx`. 634b543
+- [x] Task: Implement: Replace icons in `web/src/pages/acoes.tsx`. 634b543
+- [x] Task: Implement: Replace icons in `web/src/pages/mentores.tsx`. 634b543
+- [x] Task: Implement: Replace icons in `web/src/pages/client-dashboard.tsx` and `web/src/pages/admin-dashboard.tsx`. 634b543
+- [x] Task: Conductor - User Manual Verification 'Feature Pages Refactor' (Protocol in workflow.md) 3e801ef
 
 ### Phase 5: Final Cleanup & Optimization
 - [ ] Task: Remove Lucide React dependency if no longer used.
