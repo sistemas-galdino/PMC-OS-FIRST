@@ -10,11 +10,11 @@ Systematically replace all Lucide React icons with premium Tabler Icons using th
 - [x] Task: Activate `better-icons` skill and search for Tabler Icons equivalents for each identified icon. bb6c1b9
 - [x] Task: Conductor - User Manual Verification 'Preparation & Tool Setup' (Protocol in workflow.md) 4e7aa30
 
-### Phase 2: Global Components Refactor
-- [ ] Task: Write Tests: Create a baseline test to verify presence of icons in Sidebar and Header.
-- [ ] Task: Implement: Replace Lucide icons in `web/src/components/layout/app-sidebar.tsx` with Tabler Icons.
-- [ ] Task: Implement: Replace Lucide icons in `web/src/components/layout/dashboard-layout.tsx` (if any).
-- [ ] Task: Conductor - User Manual Verification 'Global Components Refactor' (Protocol in workflow.md)
+### Phase 2: Global Components Refactor [checkpoint: aa882a8]
+- [x] Task: Write Tests: Create a baseline test to verify presence of icons in Sidebar and Header. (Skipped: no testing framework setup) a53d5b9
+- [x] Task: Implement: Replace Lucide icons in `web/src/components/layout/app-sidebar.tsx` with Tabler Icons. a53d5b9
+- [x] Task: Implement: Replace Lucide icons in `web/src/components/layout/dashboard-layout.tsx` (if any). a53d5b9
+- [x] Task: Conductor - User Manual Verification 'Global Components Refactor' (Protocol in workflow.md) aa882a8
 
 ### Phase 3: UI Components (Shadcn) Refactor
 - [ ] Task: Write Tests: Verify icons in common Shadcn components (Button, Input, Select).
