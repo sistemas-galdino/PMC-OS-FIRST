@@ -11,6 +11,19 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { motion, AnimatePresence } from "framer-motion"
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from "recharts"
 
 function CountUp({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = useState(0)
@@ -43,16 +56,26 @@ export default function AdminDashboard() {
     pendentes: 0,
     nps: 0,
   })
+  const [geoData, setGeoData] = useState<any[]>([])
+  const [nicheData, setNicheData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchStats() {
       try {
+        // Fetch Operational Data
         const { data: clients, error: clientsError } = await supabase
           .from('entrada_clientes')
-          .select('status_atual')
+          .select('status_atual, nicho')
         
         if (clientsError) throw clientsError
+
+        // Fetch Geographical Data from Form
+        const { data: geoRaw, error: geoError } = await supabase
+          .from('clientes_formulario')
+          .select('estado')
+
+        if (geoError) throw geoError
 
         const { data: reviews, error: reviewsError } = await supabase
           .from('reunioes_mentoria')
@@ -62,6 +85,7 @@ export default function AdminDashboard() {
         if (reviewsError) throw reviewsError
 
         if (clients) {
+          // Calculate Stats
           const total = clients.length
           const ativos = clients.filter(c => c.status_atual?.toLowerCase().includes('ativo')).length
           const pendentes = clients.filter(c => c.status_atual?.toLowerCase().includes('onboarding')).length
@@ -75,6 +99,54 @@ export default function AdminDashboard() {
             pendentes,
             nps: Number(npsAvg.toFixed(1)),
           })
+
+          // Process Niche Data
+          const niches: Record<string, number> = {}
+          clients.forEach(c => {
+            if (c.nicho) {
+              niches[c.nicho] = (niches[c.nicho] || 0) + 1
+            }
+          })
+          const nicheFormatted = Object.entries(niches)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5)
+          setNicheData(nicheFormatted)
+        }
+
+        if (geoRaw) {
+          // State Mapping to Abbreviations
+          const stateMap: Record<string, string> = {
+            'São Paulo': 'SP',
+            'Santa Catarina': 'SC',
+            'Mato Grosso do Sul': 'MS',
+            'Mato Grosso': 'MT',
+            'Rio grande do Sul': 'RS',
+            'Rio Grande do Sul': 'RS',
+            'Distrito Federal': 'DF',
+            'Brasília': 'DF',
+            'Minas Gerais': 'MG',
+            'Paraná': 'PR',
+            'Rio de Janeiro': 'RJ',
+            'Ceará': 'CE',
+            'Bahia': 'BA',
+            'Rondônia': 'RO',
+            'Tocantins': 'TO'
+          }
+
+          // Process Geo Data
+          const states: Record<string, number> = {}
+          geoRaw.forEach(c => {
+            if (c.estado) {
+              const abbrev = stateMap[c.estado] || c.estado
+              states[abbrev] = (states[abbrev] || 0) + 1
+            }
+          })
+          const geoFormatted = Object.entries(states)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 10)
+          setGeoData(geoFormatted)
         }
       } catch (err) {
         console.error("Admin stats fetch error:", err)
@@ -113,6 +185,8 @@ export default function AdminDashboard() {
     hidden: { y: 20, opacity: 0 },
     show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
   }
+
+  const CHART_COLORS = ['#DAFC67', '#A3E635', '#4ADE80', '#22C55E', '#16A34A']
 
   return (
     <div className="space-y-10">
@@ -173,16 +247,36 @@ export default function AdminDashboard() {
             <CardHeader className="border-b border-border/50">
               <CardTitle className="text-base font-semibold">Clientes por Estado</CardTitle>
             </CardHeader>
-            <CardContent className="flex items-center justify-center h-[350px]">
-               <div className="flex flex-col items-center gap-4 text-center">
-                 <div className="size-16 rounded-full bg-primary/5 border border-primary/20 flex items-center justify-center animate-pulse">
-                   <TrendingUp className="size-6 text-primary/40" />
-                 </div>
-                 <div className="space-y-1">
-                   <span className="font-bold text-foreground text-sm">Análise Geográfica</span>
-                   <p className="text-xs text-muted-foreground max-w-[200px]">Os dados geográficos serão renderizados em gráficos neon em breve.</p>
-                 </div>
-               </div>
+            <CardContent className="h-[350px] pt-6">
+               <ResponsiveContainer width="100%" height="100%">
+                 <BarChart data={geoData}>
+                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                   <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600 }}
+                    dy={10}
+                   />
+                   <YAxis hide />
+                   <Tooltip 
+                    cursor={{ fill: 'rgba(218,252,103,0.05)' }}
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(0,0,0,0.8)', 
+                      border: '1px solid rgba(218,252,103,0.2)',
+                      borderRadius: '12px',
+                      fontSize: '12px'
+                    }}
+                   />
+                   <Bar 
+                    dataKey="value" 
+                    fill="#DAFC67" 
+                    radius={[6, 6, 0, 0]} 
+                    barSize={40}
+                    animationDuration={1500}
+                   />
+                 </BarChart>
+               </ResponsiveContainer>
             </CardContent>
           </Card>
         </motion.div>
@@ -191,16 +285,39 @@ export default function AdminDashboard() {
             <CardHeader className="border-b border-border/50">
               <CardTitle className="text-base font-semibold">Distribuição por Nicho</CardTitle>
             </CardHeader>
-            <CardContent className="flex items-center justify-center h-[350px]">
-               <div className="flex flex-col items-center gap-4 text-center">
-                 <div className="size-16 rounded-full bg-primary/5 border border-primary/20 flex items-center justify-center animate-pulse">
-                   <Users className="size-6 text-primary/40" />
-                 </div>
-                 <div className="space-y-1">
-                   <span className="font-bold text-foreground text-sm">Segmentação de Mercado</span>
-                   <p className="text-xs text-muted-foreground max-w-[200px]">Visualização estratégica de nichos de mercado em desenvolvimento.</p>
-                 </div>
-               </div>
+            <CardContent className="h-[350px] pt-6">
+               <ResponsiveContainer width="100%" height="100%">
+                 <PieChart>
+                   <Pie
+                    data={nicheData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    animationDuration={1500}
+                   >
+                     {nicheData.map((entry, index) => (
+                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                     ))}
+                   </Pie>
+                   <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(0,0,0,0.8)', 
+                      border: '1px solid rgba(218,252,103,0.2)',
+                      borderRadius: '12px',
+                      fontSize: '12px'
+                    }}
+                   />
+                   <Legend 
+                    verticalAlign="bottom" 
+                    align="center"
+                    iconType="circle"
+                    formatter={(value) => <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{value}</span>}
+                   />
+                 </PieChart>
+               </ResponsiveContainer>
             </CardContent>
           </Card>
         </motion.div>
