@@ -18,12 +18,11 @@ import { motion } from "framer-motion"
 interface Meeting {
   id_unico: string
   mentor: string
-  pessoa: string
-  empresa: string
+  nome_cliente_formatado: string
+  nome_empresa_formatado: string
   data_reuniao: string
   mes: number
   cliente_compareceu: boolean | null
-  nome_empresa_formatado?: string
 }
 
 export default function MentoresPage() {
@@ -56,8 +55,8 @@ export default function MentoresPage() {
   const filteredMentors = Object.entries(meetings).filter(([mentor, mentorMeetings]) => {
     const mentorMatch = mentor.toLowerCase().includes(searchTerm.toLowerCase())
     const clientMatch = mentorMeetings.some(m => 
-      m.pessoa?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      m.empresa?.toLowerCase().includes(searchTerm.toLowerCase())
+      m.nome_cliente_formatado?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      m.nome_empresa_formatado?.toLowerCase().includes(searchTerm.toLowerCase())
     )
     return mentorMatch || clientMatch
   })
@@ -155,8 +154,8 @@ export default function MentoresPage() {
                       <CardContent className="p-6 space-y-5">
                         <div className="flex justify-between items-start gap-4">
                           <div className="space-y-1.5 flex-1">
-                            <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">{meeting.pessoa}</h3>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{meeting.empresa}</p>
+                            <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">{meeting.nome_cliente_formatado}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{meeting.nome_empresa_formatado}</p>
                           </div>
                           <Badge 
                             variant="outline"
