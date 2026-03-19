@@ -37,7 +37,7 @@ Utilizaremos o projeto `hqczwextifessaztyyyk` no Supabase.
 
 ### Tabelas Existentes (Base):
 *   `clientes_formulario`: Dados brutos de entrada.
-*   `entrada_clientes`: Operação estruturada.
+*   `clientes_entrada_new`: Operação estruturada.
 *   `reunioes_mentoria`: Histórico de encontros e ações.
 *   `mentores`: Cadastro da equipe de mentoria.
 

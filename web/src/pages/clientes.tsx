@@ -49,7 +49,7 @@ export default function ClientesPage() {
   useEffect(() => {
     async function fetchClients() {
       const { data, error } = await supabase
-        .from('entrada_clientes')
+        .from('clientes_entrada_new')
         .select('*')
         .order('nome_cliente_formatado', { ascending: true })
       
@@ -149,7 +149,7 @@ export default function ClientesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredClients.map((client, index) => (
+            {filteredClients.map((client) => (
               <TableRow key={client.id_entrada} className="hover:bg-primary/5 border-b border-border/30 transition-colors group">
                 <TableCell className="py-5 px-6">
                   <div className="flex flex-col gap-1">

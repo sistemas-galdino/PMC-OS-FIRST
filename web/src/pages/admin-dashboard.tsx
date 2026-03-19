@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { 
   BarChart, 
   Bar, 
@@ -65,7 +65,7 @@ export default function AdminDashboard() {
       try {
         // Fetch Operational Data
         const { data: clients, error: clientsError } = await supabase
-          .from('entrada_clientes')
+          .from('clientes_entrada_new')
           .select('status_atual, nicho')
         
         if (clientsError) throw clientsError
@@ -183,7 +183,7 @@ export default function AdminDashboard() {
 
   const item = {
     hidden: { y: 20, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" as any } }
   }
 
   const CHART_COLORS = ['#DAFC67', '#A3E635', '#4ADE80', '#22C55E', '#16A34A']
@@ -298,7 +298,7 @@ export default function AdminDashboard() {
                     dataKey="value"
                     animationDuration={1500}
                    >
-                     {nicheData.map((entry, index) => (
+                     {nicheData.map((_, index) => (
                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                      ))}
                    </Pie>

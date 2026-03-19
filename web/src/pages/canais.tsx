@@ -11,14 +11,11 @@ import {
   TrendingUpIcon as TrendingUp,
   UsersIcon as Users,
   DollarSignIcon as DollarSign,
-  SearchIcon as Search,
   GlobeIcon as Globe,
   InstagramIcon as Instagram,
   MailIcon as Mail,
-  LinkedinIcon as Linkedin,
-  ArrowUpRightIcon as ArrowUpRight
+  LinkedinIcon as Linkedin
 } from "@/components/ui/icons"
-import { Input } from "@/components/ui/input"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 
@@ -30,10 +27,10 @@ interface Channel {
   leads_mes: number
 }
 
-export default function CanaisPage({ session }: { session: Session }) {
+export default function CanaisPage({ session: _session }: { session: Session }) {
   const [channels, setCanais] = useState<Channel[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm] = useState("")
 
   useEffect(() => {
     async function fetchCanais() {
@@ -68,7 +65,6 @@ export default function CanaisPage({ session }: { session: Session }) {
   )
 
   const totalInvestimento = channels.reduce((acc, c) => acc + c.investimento, 0)
-  const totalLeads = channels.reduce((acc, c) => acc + c.leads_mes, 0)
   const canaisPagos = channels.filter(c => c.tipo === 'Pago').length
   const canaisOrganicos = channels.filter(c => c.tipo === 'Orgânico').length
 
@@ -96,7 +92,7 @@ export default function CanaisPage({ session }: { session: Session }) {
 
   const item = {
     hidden: { y: 20, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" as any } }
   }
 
   if (loading) {

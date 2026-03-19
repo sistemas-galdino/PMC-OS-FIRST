@@ -14,8 +14,7 @@ import {
   SearchIcon as Search
 } from "@/components/ui/icons"
 import { Input } from "@/components/ui/input"
-import type { Session } from "@supabase/supabase-js"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 
 interface Product {
   id: string
@@ -25,7 +24,7 @@ interface Product {
   vendas_mes: number
 }
 
-export default function ProdutosPage({ session }: { session: Session }) {
+export default function ProdutosPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -74,7 +73,7 @@ export default function ProdutosPage({ session }: { session: Session }) {
 
   const item = {
     hidden: { y: 20, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" as any } }
   }
 
   if (loading) {

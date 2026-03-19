@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/icons"
 import { supabase } from "@/lib/supabase"
 import { useLocation, useNavigate } from "react-router-dom"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 
 interface AppSidebarProps {
   isAdmin?: boolean

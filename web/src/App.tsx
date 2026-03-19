@@ -1,4 +1,5 @@
-import { useEffect, useState, Component, ReactNode } from "react"
+import { useEffect, useState, Component } from "react"
+import type { ReactNode } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import LoginPage from "@/pages/login"
@@ -136,7 +137,7 @@ function App() {
                   <Route path="/" element={isAdmin ? <AdminDashboard /> : <ClientDashboard session={session} />} />
                   <Route path="/mentores" element={<MentoresPage />} />
                   <Route path="/clientes" element={<ClientesPage />} />
-                  <Route path="/produtos" element={<ProdutosPage session={session} />} />
+                  <Route path="/produtos" element={<ProdutosPage />} />
                   <Route path="/canais" element={<CanaisPage session={session} />} />
                   <Route path="/acoes" element={<AcoesPage session={session} />} />
                   <Route path="*" element={<Navigate to="/" replace />} />

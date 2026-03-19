@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import {
-  ShieldCheckIcon as ShieldCheck,
   TrendingUpIcon as TrendingUp
 } from "@/components/ui/icons"
 import { motion } from "framer-motion"

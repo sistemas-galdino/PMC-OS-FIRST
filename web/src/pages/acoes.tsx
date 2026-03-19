@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -31,7 +31,7 @@ export default function AcoesPage({ session }: { session: Session }) {
   useEffect(() => {
     async function fetchActions() {
       const { data: clientEntry } = await supabase
-        .from('entrada_clientes')
+        .from('clientes_entrada_new')
         .select('id_cliente')
         .eq('id_cliente', session.user.id)
         .maybeSingle()
@@ -89,7 +89,7 @@ export default function AcoesPage({ session }: { session: Session }) {
 
   const item = {
     hidden: { y: 20, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" as any } }
   }
 
   if (loading) {

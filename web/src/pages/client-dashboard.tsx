@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/icons"
 import { PieChart, Pie, Cell, ResponsiveContainer, Label } from "recharts"
 import type { Session } from "@supabase/supabase-js"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 
 interface ClientDashboardProps {
   session: Session
@@ -60,7 +60,7 @@ export default function ClientDashboard({ session }: ClientDashboardProps) {
     async function fetchClientData() {
       try {
         const { data: clientEntry, error: clientError } = await supabase
-          .from('entrada_clientes')
+          .from('clientes_entrada_new')
           .select('id_cliente, nome_empresa_formatado')
           .eq('id_cliente', session.user.id)
           .maybeSingle()
@@ -136,7 +136,7 @@ export default function ClientDashboard({ session }: ClientDashboardProps) {
 
   const item = {
     hidden: { y: 20, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } }
+    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" as any } }
   }
 
   if (loading) {

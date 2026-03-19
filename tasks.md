@@ -9,7 +9,7 @@
 
 ## Sprint 2: PMC OS — Painel Interno
 - [x] **Task 2.1:** Implementação do Layout Principal (Sidebar Dark + Área de Conteúdo).
-- [x] **Task 2.2:** Dashboard Principal: Cards de métricas (consumindo `entrada_clientes`).
+- [x] **Task 2.2:** Dashboard Principal: Cards de métricas (consumindo `clientes_entrada_new`).
 - [x] **Task 2.3:** Tela de Mentores: Grid de "Clientes Atendidos" com status de comparecimento (referência `reunia-mentores.png`).
 - [x] **Task 2.4:** Filtros Operacionais: Busca por cliente, empresa, estado e CS responsável.
 
