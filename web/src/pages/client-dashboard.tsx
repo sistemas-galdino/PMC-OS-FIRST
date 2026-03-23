@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Sheet,
   SheetContent,
@@ -71,8 +72,6 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
   const [loading, setLoading] = useState(true)
   const [showMetasSheet, setShowMetasSheet] = useState(false)
   const [savingMetas, setSavingMetas] = useState(false)
-  const [showNivelSheet, setShowNivelSheet] = useState(false)
-  const [savingNivel, setSavingNivel] = useState(false)
   const [formNivel, setFormNivel] = useState<string | null>(null)
   const [formMetas, setFormMetas] = useState({
     faturamento_anual_objetivo: 0,
@@ -352,15 +351,6 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                           </>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1 text-[10px] font-bold text-muted-foreground hover:text-foreground mb-4"
-                        onClick={() => setShowNivelSheet(true)}
-                      >
-                        <Edit3 className="size-3" />
-                        Editar Nível
-                      </Button>
                     </>
                   )
                 })()}
@@ -446,50 +436,6 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
         </motion.div>
       </motion.div>
 
-      <Sheet open={showNivelSheet} onOpenChange={setShowNivelSheet}>
-        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-background border-l border-border">
-          <SheetHeader className="p-6 border-b border-border">
-            <SheetTitle className="text-lg font-bold text-foreground">Nível Multiplicador</SheetTitle>
-          </SheetHeader>
-          <div className="flex-1 overflow-y-auto">
-            {MULTIPLICADOR_LEVELS.map((level) => (
-              <button
-                key={level}
-                onClick={() => setFormNivel(level)}
-                className={`w-full text-left px-6 py-4 text-sm font-medium border-b border-border/50 transition-colors
-                  ${formNivel === level
-                    ? 'bg-primary/10 text-primary font-bold'
-                    : 'text-foreground hover:bg-muted/40'
-                  }`}
-              >
-                Multiplicador {level}
-              </button>
-            ))}
-          </div>
-          <SheetFooter className="p-6 border-t border-border">
-            <Button
-              disabled={savingNivel}
-              className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs"
-              onClick={async () => {
-                if (!resolvedClientId) return
-                setSavingNivel(true)
-                const { error } = await supabase
-                  .from('clientes_entrada_new')
-                  .update({ nivel_multiplicador: formNivel })
-                  .eq('id_cliente', resolvedClientId)
-                setSavingNivel(false)
-                if (!error) {
-                  setData((prev: any) => ({ ...prev, nivel_multiplicador: formNivel }))
-                  setShowNivelSheet(false)
-                }
-              }}
-            >
-              {savingNivel ? 'Salvando...' : 'Salvar Nível'}
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
-
       <Sheet open={showMetasSheet} onOpenChange={setShowMetasSheet}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-background border-l border-border">
           <SheetHeader className="p-6 border-b border-border">
@@ -532,6 +478,19 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                 onChange={(e) => setFormMetas(prev => ({ ...prev, colaboradores_total: Number(e.target.value) }))}
               />
             </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nível Multiplicador</Label>
+              <Select value={formNivel ?? ''} onValueChange={(v) => setFormNivel(v)}>
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder="Selecione o nível" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MULTIPLICADOR_LEVELS.map((level) => (
+                    <SelectItem key={level} value={level}>Multiplicador {level}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <SheetFooter className="p-6 border-t border-border">
             <Button
@@ -543,6 +502,12 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                 const { error } = await supabase
                   .from('cliente_metas')
                   .upsert({ id_cliente: resolvedClientId, ...formMetas }, { onConflict: 'id_cliente' })
+                if (!error) {
+                  await supabase
+                    .from('clientes_entrada_new')
+                    .update({ nivel_multiplicador: formNivel })
+                    .eq('id_cliente', resolvedClientId)
+                }
                 setSavingMetas(false)
                 if (!error) {
                   setData((prev: any) => ({
@@ -551,6 +516,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                     receita_mensal: formMetas.faturamento_mensal_objetivo,
                     meta_2026: formMetas.meta_2026,
                     colaboradores: formMetas.colaboradores_total,
+                    nivel_multiplicador: formNivel,
                   }))
                   setShowMetasSheet(false)
                 }
