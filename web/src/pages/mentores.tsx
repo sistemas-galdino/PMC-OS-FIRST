@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import {
   CalendarIcon as Calendar,
   SearchIcon as Search,
@@ -25,6 +26,11 @@ interface Meeting {
   cliente_compareceu: boolean | null
   semana: number | null
   ano: number | null
+  resumo: string | null
+  acoes_cliente: string | string[] | null
+  acoes_mentor: string | string[] | null
+  nps: number | null
+  transcricao: string | null
 }
 
 export default function MentoresPage() {
@@ -36,6 +42,7 @@ export default function MentoresPage() {
   const [semanaFilter, setSemanaFilter] = useState("all")
   const [anoFilter, setAnoFilter] = useState("all")
   const [dateRange, setDateRange] = useState({ from: "", to: "" })
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null)
 
   useEffect(() => {
     async function fetchMeetings() {
@@ -261,7 +268,7 @@ export default function MentoresPage() {
                             <Calendar className="size-3.5 text-primary/60" />
                             <span className="uppercase tracking-widest">{new Date(meeting.data_reuniao).toLocaleDateString('pt-BR')}</span>
                           </div>
-                          <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5">
+                          <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5" onClick={() => setSelectedMeeting(meeting)}>
                             Ver Resumo
                           </Button>
                         </div>
@@ -274,6 +281,95 @@ export default function MentoresPage() {
           ))}
         </motion.div>
       </ScrollArea>
+
+      <Sheet open={!!selectedMeeting} onOpenChange={(open) => !open && setSelectedMeeting(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          {selectedMeeting && (
+            <>
+              <SheetHeader className="space-y-3 pb-6 border-b border-border/50">
+                <div className="flex items-center justify-between gap-3">
+                  <SheetTitle className="text-xl font-bold">{selectedMeeting.nome_cliente_formatado}</SheetTitle>
+                  <Badge
+                    variant="outline"
+                    className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
+                      selectedMeeting.cliente_compareceu === false
+                        ? "bg-destructive/10 border-destructive/20 text-destructive"
+                        : "bg-primary/10 border-primary/20 text-primary"
+                    }`}
+                  >
+                    {selectedMeeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
+                  </Badge>
+                </div>
+                <SheetDescription className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                  {selectedMeeting.nome_empresa_formatado}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="space-y-6 pt-6">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="size-4 text-primary/60" />
+                    <span>{new Date(selectedMeeting.data_reuniao).toLocaleDateString('pt-BR')}</span>
+                  </div>
+                  <span className="font-medium text-foreground">{selectedMeeting.mentor}</span>
+                </div>
+
+                {selectedMeeting.nps != null && (
+                  <div className="flex items-center justify-between bg-muted/10 rounded-xl p-4 border border-border/50">
+                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">NPS</span>
+                    <span className="text-2xl font-bold text-primary">{selectedMeeting.nps}</span>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Resumo</h4>
+                  {selectedMeeting.resumo ? (
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.resumo}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">Sem resumo disponível</p>
+                  )}
+                </div>
+
+                {selectedMeeting.acoes_cliente && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ações do Cliente</h4>
+                    {Array.isArray(selectedMeeting.acoes_cliente) ? (
+                      <ul className="space-y-1.5">
+                        {selectedMeeting.acoes_cliente.map((acao, i) => (
+                          <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                            <span className="text-primary mt-0.5">•</span>
+                            <span>{acao}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.acoes_cliente}</p>
+                    )}
+                  </div>
+                )}
+
+                {selectedMeeting.acoes_mentor && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ações do Mentor</h4>
+                    {Array.isArray(selectedMeeting.acoes_mentor) ? (
+                      <ul className="space-y-1.5">
+                        {selectedMeeting.acoes_mentor.map((acao, i) => (
+                          <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                            <span className="text-primary mt-0.5">•</span>
+                            <span>{acao}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.acoes_mentor}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
