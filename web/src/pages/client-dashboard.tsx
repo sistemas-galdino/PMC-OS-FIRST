@@ -24,7 +24,7 @@ import {
   MessageCircleIcon as MessageCircle,
   Edit3Icon as Edit3,
 } from "@/components/ui/icons"
-import { PieChart, Pie, Cell, ResponsiveContainer, Label } from "recharts"
+import { PieChart, Pie, Cell, ResponsiveContainer, Label as RechartsLabel } from "recharts"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 
@@ -303,7 +303,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                     >
                       <Cell fill="var(--color-primary)" className="drop-shadow-[0_0_8px_rgba(218,252,103,0.4)]" />
                       <Cell fill="var(--color-muted)" opacity={0.3} />
-                      <Label
+                      <RechartsLabel
                         content={({ viewBox }) => {
                           if (viewBox && "cx" in viewBox && "cy" in viewBox) {
                             return (
