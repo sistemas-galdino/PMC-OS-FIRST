@@ -24,7 +24,7 @@ import {
   PackageIcon as Package,
   MegaphoneIcon as Megaphone,
   CheckSquareIcon as CheckSquare,
-  CompassIcon as Compass
+  CompassIcon as Compass,
 } from "@/components/ui/icons"
 import { supabase } from "@/lib/supabase"
 import { useLocation, useNavigate } from "react-router-dom"

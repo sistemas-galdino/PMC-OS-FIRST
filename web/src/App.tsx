@@ -10,6 +10,7 @@ import ClientesPage from "@/pages/clientes"
 import ProdutosPage from "@/pages/produtos"
 import CanaisPage from "@/pages/canais"
 import AcoesPage from "@/pages/acoes"
+import OnboardingPage from "@/pages/onboarding"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { BackgroundShader } from "@/components/ui/background-shader"
@@ -140,6 +141,7 @@ function App() {
                   <Route path="/produtos" element={<ProdutosPage />} />
                   <Route path="/canais" element={<CanaisPage session={session} />} />
                   <Route path="/acoes" element={<AcoesPage session={session} />} />
+                  <Route path="/onboarding" element={<OnboardingPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </DashboardLayout>
