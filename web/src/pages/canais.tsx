@@ -27,7 +27,7 @@ interface Channel {
   leads_mes: number
 }
 
-export default function CanaisPage({ session: _session }: { session: Session }) {
+export default function CanaisPage({ session: _session, clientId: _clientId }: { session?: Session, clientId?: string }) {
   const [channels, setCanais] = useState<Channel[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm] = useState("")

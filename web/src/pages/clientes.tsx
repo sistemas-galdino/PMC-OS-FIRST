@@ -42,6 +42,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 
 type NivelEngajamento =
@@ -55,6 +56,7 @@ type NivelEngajamento =
 
 interface Client {
   id_entrada: number
+  id_cliente: string
   codigo_cliente: number | null
   nome_cliente_formatado: string
   nome_empresa_formatado: string
@@ -128,6 +130,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 export default function ClientesPage() {
+  const navigate = useNavigate()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -342,7 +345,10 @@ export default function ClientesPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 bg-card/95 backdrop-blur-xl border-border rounded-xl p-2 shadow-2xl">
                       <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-2">Operações</DropdownMenuLabel>
-                      <DropdownMenuItem className="rounded-lg text-xs font-semibold py-2 cursor-pointer focus:bg-primary/10 focus:text-primary">
+                      <DropdownMenuItem
+                        className="rounded-lg text-xs font-semibold py-2 cursor-pointer focus:bg-primary/10 focus:text-primary"
+                        onClick={() => navigate('/cliente/' + client.id_cliente)}
+                      >
                         <UserCheck className="mr-2 size-4" /> Ver Perfil Completo
                       </DropdownMenuItem>
                       <DropdownMenuItem className="rounded-lg text-xs font-semibold py-2 cursor-pointer focus:bg-primary/10 focus:text-primary">

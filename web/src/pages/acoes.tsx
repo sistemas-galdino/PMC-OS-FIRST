@@ -23,17 +23,19 @@ interface Action {
   mentor: string
 }
 
-export default function AcoesPage({ session }: { session: Session }) {
+export default function AcoesPage({ session, clientId }: { session?: Session, clientId?: string }) {
+  const resolvedClientId = clientId || session?.user?.id
   const [actions, setActions] = useState<Action[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
 
   useEffect(() => {
+    if (!resolvedClientId) return
     async function fetchActions() {
       const { data: clientEntry } = await supabase
         .from('clientes_entrada_new')
         .select('id_cliente')
-        .eq('id_cliente', session.user.id)
+        .eq('id_cliente', resolvedClientId)
         .maybeSingle()
 
       if (clientEntry) {
@@ -69,7 +71,7 @@ export default function AcoesPage({ session }: { session: Session }) {
     }
 
     fetchActions()
-  }, [session.user.id])
+  }, [resolvedClientId])
 
   const filteredActions = actions.filter(a => 
     a.text.toLowerCase().includes(searchTerm.toLowerCase()) ||

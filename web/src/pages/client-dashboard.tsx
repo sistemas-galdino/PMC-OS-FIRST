@@ -19,7 +19,8 @@ import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 
 interface ClientDashboardProps {
-  session: Session
+  session?: Session
+  clientId?: string
 }
 
 function CountUp({ value, prefix = "", suffix = "" }: { value: number, prefix?: string, suffix?: string }) {
@@ -46,7 +47,8 @@ function CountUp({ value, prefix = "", suffix = "" }: { value: number, prefix?: 
   return <span>{prefix}{displayValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{suffix}</span>
 }
 
-export default function ClientDashboard({ session }: ClientDashboardProps) {
+export default function ClientDashboard({ session, clientId }: ClientDashboardProps) {
+  const resolvedClientId = clientId || session?.user?.id
   const [data, setData] = useState<any>({
     faturamento_anual: 0,
     meta_2026: 0,
@@ -57,12 +59,13 @@ export default function ClientDashboard({ session }: ClientDashboardProps) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!resolvedClientId) return
     async function fetchClientData() {
       try {
         const { data: clientEntry, error: clientError } = await supabase
           .from('clientes_entrada_new')
           .select('id_cliente, nome_empresa_formatado')
-          .eq('id_cliente', session.user.id)
+          .eq('id_cliente', resolvedClientId)
           .maybeSingle()
 
         if (clientError) throw clientError
@@ -118,7 +121,7 @@ export default function ClientDashboard({ session }: ClientDashboardProps) {
     }
 
     fetchClientData()
-  }, [session.user.id])
+  }, [resolvedClientId])
 
   const progress = Math.round((data.faturamento_anual / data.meta_2026) * 100) || 0
   const chartData = [
