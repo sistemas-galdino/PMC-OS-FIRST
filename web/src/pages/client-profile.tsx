@@ -52,7 +52,7 @@ export default function ClientProfilePage() {
       </div>
 
       {activeTab === "dashboard" && <ClientDashboard clientId={id} />}
-      {activeTab === "produtos" && <ProdutosPage />}
+      {activeTab === "produtos" && <ProdutosPage clientId={id} />}
       {activeTab === "canais" && <CanaisPage clientId={id} />}
       {activeTab === "acoes" && <AcoesPage clientId={id} />}
     </div>

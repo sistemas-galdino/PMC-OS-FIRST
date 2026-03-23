@@ -139,7 +139,7 @@ function App() {
                   <Route path="/" element={isAdmin ? <AdminDashboard /> : <ClientDashboard session={session} />} />
                   <Route path="/mentores" element={<MentoresPage />} />
                   <Route path="/clientes" element={<ClientesPage />} />
-                  <Route path="/produtos" element={<ProdutosPage />} />
+                  <Route path="/produtos" element={<ProdutosPage session={session} />} />
                   <Route path="/canais" element={<CanaisPage session={session} />} />
                   <Route path="/acoes" element={<AcoesPage session={session} />} />
                   <Route path="/cliente/:id" element={<ClientProfilePage />} />

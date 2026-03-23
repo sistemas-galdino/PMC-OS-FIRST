@@ -3,6 +3,15 @@ import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet"
 import {
   TrendingUpIcon as TrendingUp,
   UsersIcon as Users,
@@ -12,7 +21,8 @@ import {
   ExternalLinkIcon as ExternalLink,
   BookOpenIcon as BookOpen,
   CalendarIcon as Calendar,
-  MessageCircleIcon as MessageCircle
+  MessageCircleIcon as MessageCircle,
+  Edit3Icon as Edit3,
 } from "@/components/ui/icons"
 import { PieChart, Pie, Cell, ResponsiveContainer, Label } from "recharts"
 import type { Session } from "@supabase/supabase-js"
@@ -57,6 +67,14 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
     acoes: []
   })
   const [loading, setLoading] = useState(true)
+  const [showMetasSheet, setShowMetasSheet] = useState(false)
+  const [savingMetas, setSavingMetas] = useState(false)
+  const [formMetas, setFormMetas] = useState({
+    faturamento_anual_objetivo: 0,
+    faturamento_mensal_objetivo: 0,
+    meta_2026: 0,
+    colaboradores_total: 0,
+  })
 
   useEffect(() => {
     if (!resolvedClientId) return
@@ -86,12 +104,18 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
 
           const flatActions = meetings?.flatMap(m => Array.isArray(m.acoes_cliente) ? m.acoes_cliente : []) || []
 
+          const resolvedMetas = {
+            faturamento_anual_objetivo: goals?.faturamento_anual_objetivo || 3400000,
+            faturamento_mensal_objetivo: goals?.faturamento_mensal_objetivo || 281000,
+            meta_2026: goals?.meta_2026 || 3600000,
+            colaboradores_total: goals?.colaboradores_total || 60,
+          }
           setData({
             empresa: clientEntry.nome_empresa_formatado,
-            faturamento_anual: goals?.faturamento_anual_objetivo || 3400000,
-            meta_2026: goals?.meta_2026 || 3600000,
-            receita_mensal: goals?.faturamento_mensal_objetivo || 281000,
-            colaboradores: goals?.colaboradores_total || 60,
+            faturamento_anual: resolvedMetas.faturamento_anual_objetivo,
+            meta_2026: resolvedMetas.meta_2026,
+            receita_mensal: resolvedMetas.faturamento_mensal_objetivo,
+            colaboradores: resolvedMetas.colaboradores_total,
             acoes: flatActions.length > 0 ? flatActions : [
               { text: "Confirmar meta de faturamento de R$ 3,6 milhões para 2026", done: false },
               { text: "Separar fontes de receita e definir metas por produto", done: false },
@@ -99,6 +123,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
               { text: "Avaliar estratégias para redução de churn", done: false },
             ]
           })
+          setFormMetas(resolvedMetas)
         } else {
           setData((prev: any) => ({
             ...prev,
@@ -160,6 +185,15 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
         <div className="flex items-center gap-3">
           <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">PORTAL DO CLIENTE</Badge>
           <p className="text-muted-foreground font-medium text-sm">Dashboard Estratégico — PMC 2026</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 rounded-lg text-xs font-bold text-muted-foreground hover:text-foreground"
+            onClick={() => setShowMetasSheet(true)}
+          >
+            <Edit3 className="size-3.5" />
+            Editar Metas
+          </Button>
         </div>
       </motion.div>
 
@@ -380,6 +414,78 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
           </Card>
         </motion.div>
       </motion.div>
+
+      <Sheet open={showMetasSheet} onOpenChange={setShowMetasSheet}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-background border-l border-border">
+          <SheetHeader className="p-6 border-b border-border">
+            <SheetTitle className="text-lg font-bold text-foreground">Editar Metas</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Faturamento Anual (R$)</Label>
+              <Input
+                type="number"
+                className="h-11 rounded-xl"
+                value={formMetas.faturamento_anual_objetivo}
+                onChange={(e) => setFormMetas(prev => ({ ...prev, faturamento_anual_objetivo: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Receita Mensal (R$)</Label>
+              <Input
+                type="number"
+                className="h-11 rounded-xl"
+                value={formMetas.faturamento_mensal_objetivo}
+                onChange={(e) => setFormMetas(prev => ({ ...prev, faturamento_mensal_objetivo: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Meta 2026 (R$)</Label>
+              <Input
+                type="number"
+                className="h-11 rounded-xl"
+                value={formMetas.meta_2026}
+                onChange={(e) => setFormMetas(prev => ({ ...prev, meta_2026: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Colaboradores</Label>
+              <Input
+                type="number"
+                className="h-11 rounded-xl"
+                value={formMetas.colaboradores_total}
+                onChange={(e) => setFormMetas(prev => ({ ...prev, colaboradores_total: Number(e.target.value) }))}
+              />
+            </div>
+          </div>
+          <SheetFooter className="p-6 border-t border-border">
+            <Button
+              disabled={savingMetas}
+              className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs"
+              onClick={async () => {
+                if (!resolvedClientId) return
+                setSavingMetas(true)
+                const { error } = await supabase
+                  .from('cliente_metas')
+                  .upsert({ id_cliente: resolvedClientId, ...formMetas }, { onConflict: 'id_cliente' })
+                setSavingMetas(false)
+                if (!error) {
+                  setData((prev: any) => ({
+                    ...prev,
+                    faturamento_anual: formMetas.faturamento_anual_objetivo,
+                    receita_mensal: formMetas.faturamento_mensal_objetivo,
+                    meta_2026: formMetas.meta_2026,
+                    colaboradores: formMetas.colaboradores_total,
+                  }))
+                  setShowMetasSheet(false)
+                }
+              }}
+            >
+              {savingMetas ? 'Salvando...' : 'Salvar Metas'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

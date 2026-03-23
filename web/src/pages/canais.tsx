@@ -3,6 +3,22 @@ import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   MegaphoneIcon as Megaphone,
   PlusIcon as Plus,
@@ -27,40 +43,83 @@ interface Channel {
   leads_mes: number
 }
 
-export default function CanaisPage({ session: _session, clientId: _clientId }: { session?: Session, clientId?: string }) {
+export default function CanaisPage({ session, clientId }: { session?: Session, clientId?: string }) {
+  const resolvedClientId = clientId || session?.user?.id
   const [channels, setCanais] = useState<Channel[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm] = useState("")
+  const [showSheet, setShowSheet] = useState(false)
+  const [editingCanal, setEditingCanal] = useState<Channel | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ nome: '', tipo: 'Pago' as 'Pago' | 'Orgânico', investimento: 0, leads_mes: 0 })
 
   useEffect(() => {
+    if (!resolvedClientId) {
+      setLoading(false)
+      return
+    }
     async function fetchCanais() {
       const { data, error } = await supabase
         .from('cliente_canais')
         .select('*')
+        .eq('id_cliente', resolvedClientId)
         .order('nome', { ascending: true })
-      
+
       if (data && !error) {
         setCanais(data)
-      } else {
-        // Dummy data for Sprint 3 demo
-        setCanais([
-          { id: '1', nome: 'Tráfego Pago', tipo: 'Pago', investimento: 2000, leads_mes: 150 },
-          { id: '2', nome: 'Google Ads', tipo: 'Pago', investimento: 500, leads_mes: 45 },
-          { id: '3', nome: 'Eventos', tipo: 'Pago', investimento: 1000, leads_mes: 20 },
-          { id: '4', nome: 'Indicação', tipo: 'Orgânico', investimento: 0, leads_mes: 30 },
-          { id: '5', nome: 'WhatsApp', tipo: 'Orgânico', investimento: 0, leads_mes: 80 },
-          { id: '6', nome: 'Instagram', tipo: 'Orgânico', investimento: 0, leads_mes: 120 },
-          { id: '7', nome: 'LinkedIn', tipo: 'Orgânico', investimento: 0, leads_mes: 15 },
-          { id: '8', nome: 'Parcerias', tipo: 'Orgânico', investimento: 0, leads_mes: 10 },
-        ])
       }
       setLoading(false)
     }
 
     fetchCanais()
-  }, [])
+  }, [resolvedClientId])
 
-  const filteredCanais = channels.filter(c => 
+  function openNew() {
+    setEditingCanal(null)
+    setForm({ nome: '', tipo: 'Pago', investimento: 0, leads_mes: 0 })
+    setShowSheet(true)
+  }
+
+  function openEdit(canal: Channel) {
+    setEditingCanal(canal)
+    setForm({ nome: canal.nome, tipo: canal.tipo, investimento: canal.investimento, leads_mes: canal.leads_mes })
+    setShowSheet(true)
+  }
+
+  async function handleDelete(canal: Channel) {
+    await supabase.from('cliente_canais').delete().eq('id', canal.id)
+    setCanais(prev => prev.filter(c => c.id !== canal.id))
+  }
+
+  async function handleSave() {
+    if (!resolvedClientId) return
+    setSaving(true)
+    if (editingCanal) {
+      const { data, error } = await supabase
+        .from('cliente_canais')
+        .update(form)
+        .eq('id', editingCanal.id)
+        .select()
+        .single()
+      if (!error && data) {
+        setCanais(prev => prev.map(c => c.id === editingCanal.id ? data : c))
+        setShowSheet(false)
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('cliente_canais')
+        .insert([{ id_cliente: resolvedClientId, ...form }])
+        .select()
+        .single()
+      if (!error && data) {
+        setCanais(prev => [...prev, data])
+        setShowSheet(false)
+      }
+    }
+    setSaving(false)
+  }
+
+  const filteredCanais = channels.filter(c =>
     c.nome.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -103,7 +162,7 @@ export default function CanaisPage({ session: _session, clientId: _clientId }: {
 
   return (
     <div className="space-y-10 pb-10">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6 }}
@@ -113,13 +172,13 @@ export default function CanaisPage({ session: _session, clientId: _clientId }: {
           <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Canais de Aquisição</h1>
           <p className="text-muted-foreground font-medium text-sm">Fontes de tráfego e investimento estratégico do seu negócio.</p>
         </div>
-        <Button className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10">
+        <Button className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10" onClick={openNew}>
           <Plus className="size-5" />
           <span className="font-bold uppercase tracking-wider text-[11px]">Adicionar Canal</span>
         </Button>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         variants={container}
         initial="hidden"
         animate="show"
@@ -149,7 +208,7 @@ export default function CanaisPage({ session: _session, clientId: _clientId }: {
 
       <div className="grid gap-10 lg:grid-cols-2">
         <div className="space-y-6">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
@@ -160,8 +219,8 @@ export default function CanaisPage({ session: _session, clientId: _clientId }: {
               R$ {totalInvestimento.toLocaleString('pt-BR')} investidos
             </Badge>
           </motion.div>
-          
-          <motion.div 
+
+          <motion.div
             variants={container}
             initial="hidden"
             animate="show"
@@ -188,10 +247,10 @@ export default function CanaisPage({ session: _session, clientId: _clientId }: {
                           <p className="font-bold text-lg text-foreground">R$ {channel.investimento.toLocaleString('pt-BR')}</p>
                         </div>
                         <div className="flex gap-1.5">
-                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-muted/50">
+                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-muted/50" onClick={() => openEdit(channel)}>
                             <Edit3 className="size-4 text-muted-foreground" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-destructive/10 hover:text-destructive">
+                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(channel)}>
                             <Trash2 className="size-4" />
                           </Button>
                         </div>
@@ -205,7 +264,7 @@ export default function CanaisPage({ session: _session, clientId: _clientId }: {
         </div>
 
         <div className="space-y-6">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
@@ -217,7 +276,7 @@ export default function CanaisPage({ session: _session, clientId: _clientId }: {
             </Badge>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             variants={container}
             initial="hidden"
             animate="show"
@@ -244,10 +303,10 @@ export default function CanaisPage({ session: _session, clientId: _clientId }: {
                           <Badge variant="ghost" className="bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-widest px-2 py-0.5">Gratuito</Badge>
                         </div>
                         <div className="flex gap-1.5">
-                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-muted/50">
+                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-muted/50" onClick={() => openEdit(channel)}>
                             <Edit3 className="size-4 text-muted-foreground" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-destructive/10 hover:text-destructive">
+                          <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(channel)}>
                             <Trash2 className="size-4" />
                           </Button>
                         </div>
@@ -260,7 +319,65 @@ export default function CanaisPage({ session: _session, clientId: _clientId }: {
           </motion.div>
         </div>
       </div>
+
+      <Sheet open={showSheet} onOpenChange={(open) => { if (!open) setShowSheet(false) }}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-background border-l border-border">
+          <SheetHeader className="p-6 border-b border-border">
+            <SheetTitle className="text-lg font-bold text-foreground">
+              {editingCanal ? 'Editar Canal' : 'Novo Canal'}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nome</Label>
+              <Input
+                className="h-11 rounded-xl"
+                value={form.nome}
+                onChange={(e) => setForm(prev => ({ ...prev, nome: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tipo</Label>
+              <Select value={form.tipo} onValueChange={(v) => setForm(prev => ({ ...prev, tipo: v as 'Pago' | 'Orgânico' }))}>
+                <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                  <SelectValue placeholder="Selecionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pago">Pago</SelectItem>
+                  <SelectItem value="Orgânico">Orgânico</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Investimento/Mês (R$)</Label>
+              <Input
+                type="number"
+                className="h-11 rounded-xl"
+                value={form.investimento}
+                onChange={(e) => setForm(prev => ({ ...prev, investimento: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Leads/Mês</Label>
+              <Input
+                type="number"
+                className="h-11 rounded-xl"
+                value={form.leads_mes}
+                onChange={(e) => setForm(prev => ({ ...prev, leads_mes: Number(e.target.value) }))}
+              />
+            </div>
+          </div>
+          <SheetFooter className="p-6 border-t border-border">
+            <Button
+              disabled={saving}
+              className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs"
+              onClick={handleSave}
+            >
+              {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
-

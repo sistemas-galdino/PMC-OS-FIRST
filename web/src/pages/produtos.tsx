@@ -3,6 +3,22 @@ import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   PackageIcon as Package,
   PlusIcon as Plus,
@@ -13,7 +29,7 @@ import {
   BanknoteIcon as Banknote,
   SearchIcon as Search
 } from "@/components/ui/icons"
-import { Input } from "@/components/ui/input"
+import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 
 interface Product {
@@ -24,38 +40,88 @@ interface Product {
   vendas_mes: number
 }
 
-export default function ProdutosPage() {
+interface ProdutosPageProps {
+  session?: Session
+  clientId?: string
+}
+
+export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
+  const resolvedClientId = clientId || session?.user?.id
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [showSheet, setShowSheet] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ nome: '', preco: 0, tipo: 'Recorrente' as 'Recorrente' | 'Avulso', vendas_mes: 0 })
 
   useEffect(() => {
+    if (!resolvedClientId) {
+      setLoading(false)
+      return
+    }
     async function fetchProducts() {
       const { data, error } = await supabase
         .from('cliente_produtos')
         .select('*')
+        .eq('id_cliente', resolvedClientId)
         .order('nome', { ascending: true })
-      
+
       if (data && !error) {
         setProducts(data)
-      } else {
-        // Dummy data for Sprint 3 demo
-        setProducts([
-          { id: '1', nome: 'Curso CALLAN em grupo ONLINE', preco: 290, tipo: 'Recorrente', vendas_mes: 500 },
-          { id: '2', nome: 'Curso CALLAN em grupo PRESENCIAL', preco: 330, tipo: 'Recorrente', vendas_mes: 500 },
-          { id: '3', nome: 'Curso de idioma VIP', preco: 650, tipo: 'Recorrente', vendas_mes: 0 },
-          { id: '4', nome: 'Curso de Conversação', preco: 230, tipo: 'Recorrente', vendas_mes: 0 },
-          { id: '5', nome: 'MBA Kids & Teens', preco: 200, tipo: 'Recorrente', vendas_mes: 30 },
-          { id: '6', nome: 'Material didático', preco: 170, tipo: 'Avulso', vendas_mes: 205 },
-        ])
       }
       setLoading(false)
     }
 
     fetchProducts()
-  }, [])
+  }, [resolvedClientId])
 
-  const filteredProducts = products.filter(p => 
+  function openNew() {
+    setEditingProduct(null)
+    setForm({ nome: '', preco: 0, tipo: 'Recorrente', vendas_mes: 0 })
+    setShowSheet(true)
+  }
+
+  function openEdit(product: Product) {
+    setEditingProduct(product)
+    setForm({ nome: product.nome, preco: product.preco, tipo: product.tipo, vendas_mes: product.vendas_mes })
+    setShowSheet(true)
+  }
+
+  async function handleDelete(product: Product) {
+    await supabase.from('cliente_produtos').delete().eq('id', product.id)
+    setProducts(prev => prev.filter(p => p.id !== product.id))
+  }
+
+  async function handleSave() {
+    if (!resolvedClientId) return
+    setSaving(true)
+    if (editingProduct) {
+      const { data, error } = await supabase
+        .from('cliente_produtos')
+        .update(form)
+        .eq('id', editingProduct.id)
+        .select()
+        .single()
+      if (!error && data) {
+        setProducts(prev => prev.map(p => p.id === editingProduct.id ? data : p))
+        setShowSheet(false)
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('cliente_produtos')
+        .insert([{ id_cliente: resolvedClientId, ...form }])
+        .select()
+        .single()
+      if (!error && data) {
+        setProducts(prev => [...prev, data])
+        setShowSheet(false)
+      }
+    }
+    setSaving(false)
+  }
+
+  const filteredProducts = products.filter(p =>
     p.nome.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -84,7 +150,7 @@ export default function ProdutosPage() {
 
   return (
     <div className="space-y-10 pb-10">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6 }}
@@ -94,13 +160,13 @@ export default function ProdutosPage() {
           <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Catálogo de Produtos</h1>
           <p className="text-muted-foreground font-medium text-sm">Gestão de ofertas e performance de vendas mensais.</p>
         </div>
-        <Button className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10">
+        <Button className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10" onClick={openNew}>
           <Plus className="size-5" />
           <span className="font-bold uppercase tracking-wider text-[11px]">Novo Produto</span>
         </Button>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         variants={container}
         initial="hidden"
         animate="show"
@@ -138,7 +204,7 @@ export default function ProdutosPage() {
         />
       </div>
 
-      <motion.div 
+      <motion.div
         variants={container}
         initial="hidden"
         animate="show"
@@ -149,21 +215,21 @@ export default function ProdutosPage() {
             <Card className="group overflow-hidden hover:border-primary/30 transition-all duration-300">
               <CardHeader className="bg-muted/10 pb-6 border-b border-border/50">
                 <div className="flex justify-between items-start">
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant="outline"
                     className={`rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                      product.tipo === 'Recorrente' 
-                        ? 'bg-primary/10 border-primary/20 text-primary' 
+                      product.tipo === 'Recorrente'
+                        ? 'bg-primary/10 border-primary/20 text-primary'
                         : 'bg-muted/20 border-border text-muted-foreground'
                     }`}
                   >
                     {product.tipo}
                   </Badge>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="size-8 rounded-lg hover:bg-muted/50">
+                    <Button variant="ghost" size="icon" className="size-8 rounded-lg hover:bg-muted/50" onClick={() => openEdit(product)}>
                       <Edit3 className="size-3.5 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="size-8 rounded-lg hover:bg-destructive/10 hover:text-destructive">
+                    <Button variant="ghost" size="icon" className="size-8 rounded-lg hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(product)}>
                       <Trash2 className="size-3.5" />
                     </Button>
                   </div>
@@ -183,7 +249,7 @@ export default function ProdutosPage() {
                     <p className="text-2xl font-bold tracking-tight text-primary">R$ {(product.preco * product.vendas_mes / 1000).toFixed(1)}k</p>
                   </div>
                 </div>
-                
+
                 <div className="mt-8 p-4 rounded-xl bg-muted/20 border border-border/50 flex justify-between items-center group-hover:bg-primary/5 group-hover:border-primary/20 transition-all">
                   <div className="space-y-0.5">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Volume Mensal</p>
@@ -198,7 +264,65 @@ export default function ProdutosPage() {
           </motion.div>
         ))}
       </motion.div>
+
+      <Sheet open={showSheet} onOpenChange={(open) => { if (!open) setShowSheet(false) }}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-background border-l border-border">
+          <SheetHeader className="p-6 border-b border-border">
+            <SheetTitle className="text-lg font-bold text-foreground">
+              {editingProduct ? 'Editar Produto' : 'Novo Produto'}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nome</Label>
+              <Input
+                className="h-11 rounded-xl"
+                value={form.nome}
+                onChange={(e) => setForm(prev => ({ ...prev, nome: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Preço (R$)</Label>
+              <Input
+                type="number"
+                className="h-11 rounded-xl"
+                value={form.preco}
+                onChange={(e) => setForm(prev => ({ ...prev, preco: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tipo</Label>
+              <Select value={form.tipo} onValueChange={(v) => setForm(prev => ({ ...prev, tipo: v as 'Recorrente' | 'Avulso' }))}>
+                <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                  <SelectValue placeholder="Selecionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Recorrente">Recorrente</SelectItem>
+                  <SelectItem value="Avulso">Avulso</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Vendas/Mês</Label>
+              <Input
+                type="number"
+                className="h-11 rounded-xl"
+                value={form.vendas_mes}
+                onChange={(e) => setForm(prev => ({ ...prev, vendas_mes: Number(e.target.value) }))}
+              />
+            </div>
+          </div>
+          <SheetFooter className="p-6 border-t border-border">
+            <Button
+              disabled={saving}
+              className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs"
+              onClick={handleSave}
+            >
+              {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
-
