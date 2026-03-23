@@ -28,6 +28,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Label as RechartsLabel } from
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 
+const MULTIPLICADOR_LEVELS = ['30K', '70K', '100K', '300K', '500K', '1MM', '5MM', '10MM', '30MM', '100MM']
+
 interface ClientDashboardProps {
   session?: Session
   clientId?: string
@@ -69,6 +71,9 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
   const [loading, setLoading] = useState(true)
   const [showMetasSheet, setShowMetasSheet] = useState(false)
   const [savingMetas, setSavingMetas] = useState(false)
+  const [showNivelSheet, setShowNivelSheet] = useState(false)
+  const [savingNivel, setSavingNivel] = useState(false)
+  const [formNivel, setFormNivel] = useState<string | null>(null)
   const [formMetas, setFormMetas] = useState({
     faturamento_anual_objetivo: 0,
     faturamento_mensal_objetivo: 0,
@@ -82,7 +87,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
       try {
         const { data: clientEntry, error: clientError } = await supabase
           .from('clientes_entrada_new')
-          .select('id_cliente, nome_empresa_formatado')
+          .select('id_cliente, nome_empresa_formatado, nivel_multiplicador')
           .eq('id_cliente', resolvedClientId)
           .maybeSingle()
 
@@ -117,8 +122,10 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
             receita_mensal: resolvedMetas.faturamento_mensal_objetivo,
             colaboradores: resolvedMetas.colaboradores_total,
             acoes: flatActions,
+            nivel_multiplicador: clientEntry.nivel_multiplicador ?? null,
           })
           setFormMetas(resolvedMetas)
+          setFormNivel(clientEntry.nivel_multiplicador ?? null)
         } else {
           setData((prev: any) => ({
             ...prev,
@@ -319,15 +326,44 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                 </ResponsiveContainer>
               </div>
               <div className="text-center mt-10">
-                <div className="flex items-center justify-center gap-2 mb-6">
-                  <Badge className="rounded-lg bg-primary/10 text-primary border-primary/20 px-3 py-1 text-[10px] font-bold">
-                    Multiplicador 30K
-                  </Badge>
-                  <div className="h-px w-6 bg-border" />
-                  <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-3 py-1 text-[10px] font-bold">
-                    Multiplicador 70K
-                  </Badge>
-                </div>
+                {(() => {
+                  const currentIndex = MULTIPLICADOR_LEVELS.indexOf(data.nivel_multiplicador)
+                  const nextLevel = currentIndex >= 0 && currentIndex < MULTIPLICADOR_LEVELS.length - 1
+                    ? MULTIPLICADOR_LEVELS[currentIndex + 1]
+                    : null
+                  return (
+                    <>
+                      <div className="flex items-center justify-center gap-2 mb-4">
+                        {data.nivel_multiplicador ? (
+                          <Badge className="rounded-lg bg-primary/10 text-primary border-primary/20 px-3 py-1 text-[10px] font-bold">
+                            Multiplicador {data.nivel_multiplicador}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="rounded-lg border-dashed border-border text-muted-foreground px-3 py-1 text-[10px] font-bold">
+                            Nível não definido
+                          </Badge>
+                        )}
+                        {nextLevel && (
+                          <>
+                            <div className="h-px w-6 bg-border" />
+                            <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-3 py-1 text-[10px] font-bold">
+                              Multiplicador {nextLevel}
+                            </Badge>
+                          </>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-[10px] font-bold text-muted-foreground hover:text-foreground mb-4"
+                        onClick={() => setShowNivelSheet(true)}
+                      >
+                        <Edit3 className="size-3" />
+                        Editar Nível
+                      </Button>
+                    </>
+                  )
+                })()}
                 <p className="text-[11px] font-medium text-muted-foreground leading-relaxed">
                   Faltam <span className="text-foreground font-bold">R$ {((data.meta_2026 - data.faturamento_anual)/1000).toLocaleString('pt-BR')} mil</span> para<br/>atingir o próximo nível de escala.
                 </p>
@@ -409,6 +445,50 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
           </Card>
         </motion.div>
       </motion.div>
+
+      <Sheet open={showNivelSheet} onOpenChange={setShowNivelSheet}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-background border-l border-border">
+          <SheetHeader className="p-6 border-b border-border">
+            <SheetTitle className="text-lg font-bold text-foreground">Nível Multiplicador</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto">
+            {MULTIPLICADOR_LEVELS.map((level) => (
+              <button
+                key={level}
+                onClick={() => setFormNivel(level)}
+                className={`w-full text-left px-6 py-4 text-sm font-medium border-b border-border/50 transition-colors
+                  ${formNivel === level
+                    ? 'bg-primary/10 text-primary font-bold'
+                    : 'text-foreground hover:bg-muted/40'
+                  }`}
+              >
+                Multiplicador {level}
+              </button>
+            ))}
+          </div>
+          <SheetFooter className="p-6 border-t border-border">
+            <Button
+              disabled={savingNivel}
+              className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs"
+              onClick={async () => {
+                if (!resolvedClientId) return
+                setSavingNivel(true)
+                const { error } = await supabase
+                  .from('clientes_entrada_new')
+                  .update({ nivel_multiplicador: formNivel })
+                  .eq('id_cliente', resolvedClientId)
+                setSavingNivel(false)
+                if (!error) {
+                  setData((prev: any) => ({ ...prev, nivel_multiplicador: formNivel }))
+                  setShowNivelSheet(false)
+                }
+              }}
+            >
+              {savingNivel ? 'Salvando...' : 'Salvar Nível'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={showMetasSheet} onOpenChange={setShowMetasSheet}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-background border-l border-border">
