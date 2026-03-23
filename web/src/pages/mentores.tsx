@@ -323,9 +323,34 @@ export default function MentoresPage() {
 
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Resumo</h4>
-                  {selectedMeeting.resumo ? (
-                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.resumo}</p>
-                  ) : (
+                  {selectedMeeting.resumo ? (() => {
+                    try {
+                      const parsed = JSON.parse(selectedMeeting.resumo)
+                      if (parsed && typeof parsed === 'object' && parsed.titulo && Array.isArray(parsed.topicos)) {
+                        return (
+                          <div className="space-y-3">
+                            <p className="text-sm font-semibold text-foreground">{parsed.titulo}</p>
+                            {parsed.topicos.map((topico: { tema: string; pontos: string[] }, i: number) => (
+                              <div key={i} className="space-y-1">
+                                <p className="text-sm font-medium text-foreground/80">{topico.tema}</p>
+                                <ul className="space-y-0.5 pl-1">
+                                  {topico.pontos.map((ponto: string, j: number) => (
+                                    <li key={j} className="text-sm text-foreground flex items-start gap-2">
+                                      <span className="text-primary mt-0.5">•</span>
+                                      <span>{ponto}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      }
+                      return <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.resumo}</p>
+                    } catch {
+                      return <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.resumo}</p>
+                    }
+                  })() : (
                     <p className="text-sm text-muted-foreground italic">Sem resumo disponível</p>
                   )}
                 </div>
