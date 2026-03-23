@@ -23,12 +23,19 @@ interface Meeting {
   data_reuniao: string
   mes: number
   cliente_compareceu: boolean | null
+  semana: number | null
+  ano: number | null
 }
 
 export default function MentoresPage() {
   const [meetings, setMeetings] = useState<Record<string, Meeting[]>>({})
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [mentorFilter, setMentorFilter] = useState("all")
+  const [semanaFilter, setSemanaFilter] = useState("all")
+  const [anoFilter, setAnoFilter] = useState("all")
+  const [dateRange, setDateRange] = useState({ from: "", to: "" })
 
   useEffect(() => {
     async function fetchMeetings() {
@@ -52,14 +59,46 @@ export default function MentoresPage() {
     fetchMeetings()
   }, [])
 
-  const filteredMentors = Object.entries(meetings).filter(([mentor, mentorMeetings]) => {
-    const mentorMatch = mentor.toLowerCase().includes(searchTerm.toLowerCase())
-    const clientMatch = mentorMeetings.some(m => 
-      m.nome_cliente_formatado?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const allMeetings = Object.values(meetings).flat()
+  const uniqueMentors = [...new Set(allMeetings.map(m => m.mentor))].filter(Boolean).sort()
+  const uniqueYears = [...new Set(allMeetings.map(m => m.ano))].filter(Boolean).sort() as number[]
+  const uniqueWeeks = [...new Set(
+    allMeetings
+      .filter(m => anoFilter === "all" || String(m.ano) === anoFilter)
+      .map(m => m.semana)
+  )].filter(Boolean).sort((a, b) => (a as number) - (b as number)) as number[]
+
+  const filteredMeetings = allMeetings.filter(m => {
+    const matchesSearch = searchTerm === "" ||
+      m.mentor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.nome_cliente_formatado?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.nome_empresa_formatado?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    return mentorMatch || clientMatch
+
+    const matchesStatus = statusFilter === "all" ||
+      (statusFilter === "yes" && m.cliente_compareceu !== false) ||
+      (statusFilter === "no" && m.cliente_compareceu === false)
+
+    const matchesMentor = mentorFilter === "all" || m.mentor === mentorFilter
+
+    const matchesAno = anoFilter === "all" || String(m.ano) === anoFilter
+
+    const matchesSemana = semanaFilter === "all" || String(m.semana) === semanaFilter
+
+    const matchesDate =
+      (!dateRange.from || m.data_reuniao >= dateRange.from) &&
+      (!dateRange.to || m.data_reuniao <= dateRange.to)
+
+    return matchesSearch && matchesStatus && matchesMentor && matchesAno && matchesSemana && matchesDate
   })
+
+  const filteredMentors = Object.entries(
+    filteredMeetings.reduce((acc: Record<string, Meeting[]>, meeting) => {
+      const mentor = meeting.mentor || "Sem Mentor"
+      if (!acc[mentor]) acc[mentor] = []
+      acc[mentor].push(meeting)
+      return acc
+    }, {})
+  )
 
   const container = {
     hidden: { opacity: 0 },
@@ -95,8 +134,8 @@ export default function MentoresPage() {
           <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Time de Mentores</h1>
           <p className="text-muted-foreground font-medium text-sm">Histórico de sessões estratégicas e acompanhamento.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4">
-          <div className="relative w-full sm:w-64">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="relative w-full sm:w-56">
             <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
             <Input
               placeholder="Buscar mentor ou empresa..."
@@ -105,8 +144,8 @@ export default function MentoresPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select defaultValue="all">
-            <SelectTrigger className="w-full sm:w-44 h-12 bg-muted/10 border-border rounded-xl">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-40 h-12 bg-muted/10 border-border rounded-xl">
               <Filter className="mr-2 size-4 text-primary/60" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -116,6 +155,54 @@ export default function MentoresPage() {
               <SelectItem value="no" className="rounded-lg font-medium">Faltas</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={mentorFilter} onValueChange={setMentorFilter}>
+            <SelectTrigger className="w-full sm:w-44 h-12 bg-muted/10 border-border rounded-xl">
+              <SelectValue placeholder="Mentor" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
+              <SelectItem value="all" className="rounded-lg font-medium">Todos Mentores</SelectItem>
+              {uniqueMentors.map(m => (
+                <SelectItem key={m} value={m} className="rounded-lg font-medium">{m}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={anoFilter} onValueChange={(v) => { setAnoFilter(v); setSemanaFilter("all") }}>
+            <SelectTrigger className="w-full sm:w-32 h-12 bg-muted/10 border-border rounded-xl">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
+              <SelectItem value="all" className="rounded-lg font-medium">Todos Anos</SelectItem>
+              {uniqueYears.map(y => (
+                <SelectItem key={y} value={String(y)} className="rounded-lg font-medium">{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={semanaFilter} onValueChange={setSemanaFilter}>
+            <SelectTrigger className="w-full sm:w-36 h-12 bg-muted/10 border-border rounded-xl">
+              <SelectValue placeholder="Semana" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
+              <SelectItem value="all" className="rounded-lg font-medium">Todas Semanas</SelectItem>
+              {uniqueWeeks.map(w => (
+                <SelectItem key={w} value={String(w)} className="rounded-lg font-medium">Semana {w}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              className="h-12 w-36 bg-muted/10 border-border"
+              value={dateRange.from}
+              onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+            />
+            <span className="text-muted-foreground text-xs font-medium">a</span>
+            <Input
+              type="date"
+              className="h-12 w-36 bg-muted/10 border-border"
+              value={dateRange.to}
+              onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+            />
+          </div>
         </div>
       </motion.div>
 
