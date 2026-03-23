@@ -27,8 +27,8 @@ interface Meeting {
   semana: number | null
   ano: number | null
   resumo: string | null
-  acoes_cliente: string | string[] | null
-  acoes_mentor: string | string[] | null
+  acoes_cliente: string | Array<{ acao: string; prazo: string; status: string }> | null
+  acoes_mentor: string | Array<{ acao: string; prazo: string; status: string }> | null
   nps: number | null
   transcricao: string | null
 }
@@ -335,12 +335,21 @@ export default function MentoresPage() {
                     <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ações do Cliente</h4>
                     {Array.isArray(selectedMeeting.acoes_cliente) ? (
                       <ul className="space-y-1.5">
-                        {selectedMeeting.acoes_cliente.map((acao, i) => (
-                          <li key={i} className="text-sm text-foreground flex items-start gap-2">
-                            <span className="text-primary mt-0.5">•</span>
-                            <span>{acao}</span>
-                          </li>
-                        ))}
+                        {selectedMeeting.acoes_cliente.map((item, i) => {
+                          const label = typeof item === 'string' ? item : item.acao
+                          const prazo = typeof item === 'string' ? null : item.prazo
+                          const status = typeof item === 'string' ? null : item.status
+                          return (
+                            <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                              <span className="text-primary mt-0.5">•</span>
+                              <span>
+                                {label}
+                                {prazo && <span className="text-muted-foreground ml-1">— Prazo: {prazo}</span>}
+                                {status && <span className="text-muted-foreground ml-1">({status})</span>}
+                              </span>
+                            </li>
+                          )
+                        })}
                       </ul>
                     ) : (
                       <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.acoes_cliente}</p>
@@ -353,12 +362,21 @@ export default function MentoresPage() {
                     <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ações do Mentor</h4>
                     {Array.isArray(selectedMeeting.acoes_mentor) ? (
                       <ul className="space-y-1.5">
-                        {selectedMeeting.acoes_mentor.map((acao, i) => (
-                          <li key={i} className="text-sm text-foreground flex items-start gap-2">
-                            <span className="text-primary mt-0.5">•</span>
-                            <span>{acao}</span>
-                          </li>
-                        ))}
+                        {selectedMeeting.acoes_mentor.map((item, i) => {
+                          const label = typeof item === 'string' ? item : item.acao
+                          const prazo = typeof item === 'string' ? null : item.prazo
+                          const status = typeof item === 'string' ? null : item.status
+                          return (
+                            <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                              <span className="text-primary mt-0.5">•</span>
+                              <span>
+                                {label}
+                                {prazo && <span className="text-muted-foreground ml-1">— Prazo: {prazo}</span>}
+                                {status && <span className="text-muted-foreground ml-1">({status})</span>}
+                              </span>
+                            </li>
+                          )
+                        })}
                       </ul>
                     ) : (
                       <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.acoes_mentor}</p>
