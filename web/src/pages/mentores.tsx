@@ -283,7 +283,7 @@ export default function MentoresPage() {
       </ScrollArea>
 
       <Sheet open={!!selectedMeeting} onOpenChange={(open) => !open && setSelectedMeeting(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto p-6">
           {selectedMeeting && (
             <>
               <SheetHeader className="space-y-3 pb-6 border-b border-border/50">
@@ -305,7 +305,7 @@ export default function MentoresPage() {
                 </SheetDescription>
               </SheetHeader>
 
-              <div className="space-y-6 pt-6">
+              <div className="space-y-6 pt-6 px-2">
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="size-4 text-primary/60" />
@@ -321,7 +321,7 @@ export default function MentoresPage() {
                   </div>
                 )}
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Resumo</h4>
                   {selectedMeeting.resumo ? (() => {
                     try {
@@ -331,9 +331,9 @@ export default function MentoresPage() {
                           <div className="space-y-3">
                             <p className="text-sm font-semibold text-foreground">{parsed.titulo}</p>
                             {parsed.topicos.map((topico: { tema: string; pontos: string[] }, i: number) => (
-                              <div key={i} className="space-y-1">
+                              <div key={i} className="space-y-1.5">
                                 <p className="text-sm font-medium text-foreground/80">{topico.tema}</p>
-                                <ul className="space-y-0.5 pl-1">
+                                <ul className="space-y-1 pl-2">
                                   {topico.pontos.map((ponto: string, j: number) => (
                                     <li key={j} className="text-sm text-foreground flex items-start gap-2">
                                       <span className="text-primary mt-0.5">•</span>
