@@ -58,15 +58,6 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
         setActions(flatActions)
       }
       
-      if (!loading && actions.length === 0) {
-        setActions([
-          { text: "Confirmar meta de faturamento de R$ 3,6 milhões para 2026", done: false, meeting_date: "2026-03-10", mentor: "Rafael Galdino" },
-          { text: "Separar fontes de receita e definir metas por produto", done: false, meeting_date: "2026-03-10", mentor: "Rafael Galdino" },
-          { text: "Reservar dois dias para análise de planilhas e foco", done: true, meeting_date: "2026-03-01", mentor: "Issao Yokoi" },
-          { text: "Avaliar estratégias para redução de churn (50% -> 30%)", done: false, meeting_date: "2026-03-01", mentor: "Issao Yokoi" },
-          { text: "Estruturar gamificação da experiência do aluno com IA", done: false, meeting_date: "2026-02-15", mentor: "Rodrigo Nogueira" },
-        ])
-      }
       setLoading(false)
     }
 
