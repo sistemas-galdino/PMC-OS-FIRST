@@ -36,6 +36,7 @@ interface Product {
   id: string
   nome: string
   preco: number
+  ticket_medio: number | null
   tipo: 'Recorrente' | 'Avulso'
   vendas_mes: number
 }
@@ -53,7 +54,7 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
   const [showSheet, setShowSheet] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ nome: '', preco: 0, tipo: 'Recorrente' as 'Recorrente' | 'Avulso', vendas_mes: 0 })
+  const [form, setForm] = useState({ nome: '', preco: 0, ticket_medio: 0, tipo: 'Recorrente' as 'Recorrente' | 'Avulso', vendas_mes: 0 })
 
   useEffect(() => {
     if (!resolvedClientId) {
@@ -78,13 +79,13 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
 
   function openNew() {
     setEditingProduct(null)
-    setForm({ nome: '', preco: 0, tipo: 'Recorrente', vendas_mes: 0 })
+    setForm({ nome: '', preco: 0, ticket_medio: 0, tipo: 'Recorrente', vendas_mes: 0 })
     setShowSheet(true)
   }
 
   function openEdit(product: Product) {
     setEditingProduct(product)
-    setForm({ nome: product.nome, preco: product.preco, tipo: product.tipo, vendas_mes: product.vendas_mes })
+    setForm({ nome: product.nome, preco: product.preco, ticket_medio: product.ticket_medio ?? 0, tipo: product.tipo, vendas_mes: product.vendas_mes })
     setShowSheet(true)
   }
 
@@ -241,8 +242,12 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
               <CardContent className="pt-8">
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Valor Unit.</p>
-                    <p className="text-2xl font-bold tracking-tight text-foreground">R$ {product.preco}</p>
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                      {product.ticket_medio != null ? 'Ticket Médio' : 'Valor Unit.'}
+                    </p>
+                    <p className="text-2xl font-bold tracking-tight text-foreground">
+                      R$ {product.ticket_medio != null ? product.ticket_medio : product.preco}
+                    </p>
                   </div>
                   <div className="space-y-1.5 border-l border-border/50 pl-6">
                     <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Faturamento</p>
@@ -288,6 +293,15 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
                 className="h-11 rounded-xl"
                 value={form.preco}
                 onChange={(e) => setForm(prev => ({ ...prev, preco: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ticket Médio (R$)</Label>
+              <Input
+                type="number"
+                className="h-11 rounded-xl"
+                value={form.ticket_medio}
+                onChange={(e) => setForm(prev => ({ ...prev, ticket_medio: Number(e.target.value) }))}
               />
             </div>
             <div className="space-y-2">
