@@ -400,24 +400,30 @@ export default function AdminDashboard() {
             <CardHeader className="border-b border-border/50">
               <CardTitle className="text-base font-semibold">Distribuição por Canal de Venda</CardTitle>
             </CardHeader>
-            <CardContent className="h-[350px] pt-6">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={canalData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={3}
-                    dataKey="value"
-                    animationDuration={1500}
-                  >
-                    {canalData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
+            <CardContent className="h-[380px] pt-4 overflow-y-auto">
+              <ResponsiveContainer width="100%" height={Math.max(380, canalData.length * 36)}>
+                <BarChart
+                  data={canalData}
+                  layout="vertical"
+                  margin={{ left: 8, right: 24, top: 4, bottom: 4 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={200}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: 500 }}
+                  />
                   <Tooltip
+                    cursor={{ fill: 'rgba(218,252,103,0.05)' }}
                     contentStyle={{
                       backgroundColor: 'rgba(0,0,0,0.8)',
                       border: '1px solid rgba(218,252,103,0.2)',
@@ -425,13 +431,14 @@ export default function AdminDashboard() {
                       fontSize: '12px'
                     }}
                   />
-                  <Legend
-                    verticalAlign="bottom"
-                    align="center"
-                    iconType="circle"
-                    formatter={(value) => <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{value}</span>}
+                  <Bar
+                    dataKey="value"
+                    fill="#DAFC67"
+                    radius={[0, 6, 6, 0]}
+                    barSize={20}
+                    animationDuration={1500}
                   />
-                </PieChart>
+                </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
