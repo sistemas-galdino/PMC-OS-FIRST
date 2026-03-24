@@ -59,6 +59,7 @@ export default function AdminDashboard() {
   const [geoData, setGeoData] = useState<any[]>([])
   const [nicheData, setNicheData] = useState<any[]>([])
   const [csData, setCsData] = useState<any[]>([])
+  const [canalData, setCanalData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -125,6 +126,18 @@ export default function AdminDashboard() {
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
           setCsData(csFormatted)
+
+          // Process Canal de Venda Data
+          const canalMap: Record<string, number> = {}
+          clients.forEach(c => {
+            if (c.canal_de_venda) {
+              canalMap[c.canal_de_venda] = (canalMap[c.canal_de_venda] || 0) + 1
+            }
+          })
+          const canalFormatted = Object.entries(canalMap)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+          setCanalData(canalFormatted)
 
         }
 
@@ -379,6 +392,47 @@ export default function AdminDashboard() {
                    />
                  </BarChart>
                </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
+        <motion.div variants={item}>
+          <Card className="min-h-[450px]">
+            <CardHeader className="border-b border-border/50">
+              <CardTitle className="text-base font-semibold">Distribuição por Canal de Venda</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[350px] pt-6">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={canalData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={3}
+                    dataKey="value"
+                    animationDuration={1500}
+                  >
+                    {canalData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(0,0,0,0.8)',
+                      border: '1px solid rgba(218,252,103,0.2)',
+                      borderRadius: '12px',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    align="center"
+                    iconType="circle"
+                    formatter={(value) => <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{value}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </motion.div>
