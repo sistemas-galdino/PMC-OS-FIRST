@@ -80,7 +80,7 @@ export default function AdminDashboard() {
         if (geoError) throw geoError
 
         const { data: reviews, error: reviewsError } = await supabase
-          .from('reunioes_mentoria')
+          .from('reunioes_mentoria_new')
           .select('nps')
           .not('nps', 'is', null)
 

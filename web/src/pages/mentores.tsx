@@ -47,7 +47,7 @@ export default function MentoresPage() {
   useEffect(() => {
     async function fetchMeetings() {
       const { data, error } = await supabase
-        .from('reunioes_mentoria')
+        .from('reunioes_mentoria_new')
         .select('*')
         .order('data_reuniao', { ascending: false })
       
@@ -325,7 +325,8 @@ export default function MentoresPage() {
                   <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Resumo</h4>
                   {selectedMeeting.resumo ? (() => {
                     try {
-                      const parsed = JSON.parse(selectedMeeting.resumo)
+                      let parsed = JSON.parse(selectedMeeting.resumo)
+                      if (parsed && typeof parsed === 'object' && parsed.resumo) parsed = parsed.resumo
                       if (parsed && typeof parsed === 'object' && parsed.titulo && Array.isArray(parsed.topicos)) {
                         return (
                           <div className="space-y-3">

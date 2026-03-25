@@ -100,7 +100,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
             .maybeSingle()
 
           const { data: meetings } = await supabase
-            .from('reunioes_mentoria')
+            .from('reunioes_mentoria_new')
             .select('acoes_cliente')
             .eq('id_cliente', clientEntry.id_cliente)
             .order('data_reunioes', { ascending: false })

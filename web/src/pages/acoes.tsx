@@ -40,7 +40,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
 
       if (clientEntry) {
         const { data: meetings } = await supabase
-          .from('reunioes_mentoria')
+          .from('reunioes_mentoria_new')
           .select('acoes_cliente, data_reuniao, mentor')
           .eq('id_cliente', clientEntry.id_cliente)
           .order('data_reuniao', { ascending: false })
