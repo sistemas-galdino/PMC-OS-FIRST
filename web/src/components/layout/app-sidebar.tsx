@@ -52,6 +52,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Time", icon: Users, url: "/time" },
     { title: "Produtos", icon: Package, url: "/produtos" },
     { title: "Canais", icon: Megaphone, url: "/canais" },
+    { title: "Reuniões", icon: Calendar, url: "/reunioes" },
     { title: "Ações", icon: CheckSquare, url: "/acoes" },
     { title: "Jornada", icon: Compass, url: "/jornada" },
   ]

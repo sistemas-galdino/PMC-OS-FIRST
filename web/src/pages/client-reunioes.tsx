@@ -3,20 +3,19 @@ import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import {
   CalendarIcon as Calendar,
   SearchIcon as Search,
   FilterIcon as Filter,
-  MessageSquareIcon as MessageSquare,
   VideoIcon,
   FileTextIcon
 } from "@/components/ui/icons"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { motion } from "framer-motion"
+import type { Session } from "@supabase/supabase-js"
 
 interface Meeting {
   id_unico: string
@@ -37,8 +36,13 @@ interface Meeting {
   link_geminidoc: string | null
 }
 
-export default function MentoresPage() {
-  const [meetings, setMeetings] = useState<Record<string, Meeting[]>>({})
+interface ClientReunioesProps {
+  session?: Session
+  clientId?: string
+}
+
+export default function ClientReunioesPage({ session, clientId }: ClientReunioesProps) {
+  const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -50,40 +54,49 @@ export default function MentoresPage() {
 
   useEffect(() => {
     async function fetchMeetings() {
+      const resolvedClientId = clientId || session?.user?.id
+      if (!resolvedClientId) {
+        setLoading(false)
+        return
+      }
+
+      const { data: clientEntry } = await supabase
+        .from('clientes_entrada_new')
+        .select('id_cliente')
+        .eq('id_cliente', resolvedClientId)
+        .maybeSingle()
+
+      if (!clientEntry) {
+        setLoading(false)
+        return
+      }
+
       const { data, error } = await supabase
         .from('reunioes_mentoria_new')
         .select('*')
+        .eq('id_cliente', clientEntry.id_cliente)
         .order('data_reuniao', { ascending: false })
-      
+
       if (data && !error) {
-        const grouped = data.reduce((acc: Record<string, Meeting[]>, meeting: Meeting) => {
-          const mentor = meeting.mentor || "Sem Mentor"
-          if (!acc[mentor]) acc[mentor] = []
-          acc[mentor].push(meeting)
-          return acc
-        }, {})
-        setMeetings(grouped)
+        setMeetings(data)
       }
       setLoading(false)
     }
 
     fetchMeetings()
-  }, [])
+  }, [session, clientId])
 
-  const allMeetings = Object.values(meetings).flat()
-  const uniqueMentors = [...new Set(allMeetings.map(m => m.mentor))].filter(Boolean).sort()
-  const uniqueYears = [...new Set(allMeetings.map(m => m.ano))].filter(Boolean).sort() as number[]
+  const uniqueMentors = [...new Set(meetings.map(m => m.mentor))].filter(Boolean).sort()
+  const uniqueYears = [...new Set(meetings.map(m => m.ano))].filter(Boolean).sort() as number[]
   const uniqueWeeks = [...new Set(
-    allMeetings
+    meetings
       .filter(m => anoFilter === "all" || String(m.ano) === anoFilter)
       .map(m => m.semana)
   )].filter(Boolean).sort((a, b) => (a as number) - (b as number)) as number[]
 
-  const filteredMeetings = allMeetings.filter(m => {
+  const filteredMeetings = meetings.filter(m => {
     const matchesSearch = searchTerm === "" ||
-      m.mentor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.nome_cliente_formatado?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.nome_empresa_formatado?.toLowerCase().includes(searchTerm.toLowerCase())
+      m.mentor?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" ||
       (statusFilter === "yes" && m.cliente_compareceu !== false) ||
@@ -102,20 +115,11 @@ export default function MentoresPage() {
     return matchesSearch && matchesStatus && matchesMentor && matchesAno && matchesSemana && matchesDate
   })
 
-  const filteredMentors = Object.entries(
-    filteredMeetings.reduce((acc: Record<string, Meeting[]>, meeting) => {
-      const mentor = meeting.mentor || "Sem Mentor"
-      if (!acc[mentor]) acc[mentor] = []
-      acc[mentor].push(meeting)
-      return acc
-    }, {})
-  )
-
   const container = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: { staggerChildren: 0.1 }
+      transition: { staggerChildren: 0.05 }
     }
   }
 
@@ -135,21 +139,21 @@ export default function MentoresPage() {
 
   return (
     <div className="space-y-10 pb-10">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6 }}
         className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
       >
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Time de Mentores</h1>
-          <p className="text-muted-foreground font-medium text-sm">Histórico de sessões estratégicas e acompanhamento.</p>
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Minhas Reuniões</h1>
+          <p className="text-muted-foreground font-medium text-sm">Histórico de sessões com seus mentores.</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar mentor ou empresa..."
+              placeholder="Buscar mentor..."
               className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -218,87 +222,71 @@ export default function MentoresPage() {
       </motion.div>
 
       <ScrollArea className="h-[calc(100vh-16rem)] pr-6 -mr-6">
-        <motion.div 
+        <motion.div
           variants={container}
           initial="hidden"
           animate="show"
-          className="space-y-16 pb-10"
+          className="space-y-6 pb-10"
         >
-          {filteredMentors.map(([mentor, mentorMeetings]) => (
-            <div key={mentor} className="space-y-8">
-              <motion.div variants={item} className="flex items-center gap-5 bg-muted/10 p-6 rounded-2xl border border-border/50 backdrop-blur-sm">
-                <Avatar className="size-16 border-2 border-primary/20 p-1 bg-background">
-                  <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl uppercase">
-                    {mentor.substring(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="space-y-1">
-                  <h2 className="text-2xl font-bold tracking-tight text-foreground">{mentor}</h2>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary font-bold text-[10px] tracking-wider uppercase px-2.5">
-                      {mentorMeetings.length} Sessões
-                    </Badge>
-                    <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
-                      <MessageSquare className="size-3" /> Mentor Especialista
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
-
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {mentorMeetings.map((meeting) => (
-                  <motion.div key={meeting.id_unico} variants={item}>
-                    <Card className="hover:border-primary/30 transition-all duration-300">
-                      <CardContent className="p-6 space-y-5">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="space-y-1.5 flex-1">
-                            <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">{meeting.nome_cliente_formatado}</h3>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{meeting.nome_empresa_formatado}</p>
-                          </div>
-                          <Badge 
-                            variant="outline"
-                            className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
-                              meeting.cliente_compareceu === false 
-                                ? "bg-destructive/10 border-destructive/20 text-destructive" 
-                                : "bg-primary/10 border-primary/20 text-primary"
-                            }`}
-                          >
-                            {meeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
-                          </Badge>
-                        </div>
-                        
-                        <div className="flex items-center justify-between border-t border-border/50 pt-4">
-                          <div className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
-                            <Calendar className="size-3.5 text-primary/60" />
-                            <span className="uppercase tracking-widest">{new Date(meeting.data_reuniao).toLocaleDateString('pt-BR')}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {meeting.link_gravacao && (
-                              <a href={meeting.link_gravacao} target="_blank" rel="noopener noreferrer" title="Gravação">
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
-                                  <VideoIcon className="size-3.5" />
-                                </Button>
-                              </a>
-                            )}
-                            {meeting.link_geminidoc && (
-                              <a href={meeting.link_geminidoc} target="_blank" rel="noopener noreferrer" title="Transcrição">
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
-                                  <FileTextIcon className="size-3.5" />
-                                </Button>
-                              </a>
-                            )}
-                            <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5" onClick={() => setSelectedMeeting(meeting)}>
-                              Ver Resumo
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
+          {filteredMeetings.length === 0 ? (
+            <div className="text-center py-20">
+              <Calendar className="size-12 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground font-medium">Nenhuma reunião encontrada.</p>
             </div>
-          ))}
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredMeetings.map((meeting) => (
+                <motion.div key={meeting.id_unico} variants={item}>
+                  <Card className="hover:border-primary/30 transition-all duration-300">
+                    <CardContent className="p-6 space-y-5">
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="space-y-1.5 flex-1">
+                          <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">{meeting.mentor}</h3>
+                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Mentor</p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
+                            meeting.cliente_compareceu === false
+                              ? "bg-destructive/10 border-destructive/20 text-destructive"
+                              : "bg-primary/10 border-primary/20 text-primary"
+                          }`}
+                        >
+                          {meeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between border-t border-border/50 pt-4">
+                        <div className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
+                          <Calendar className="size-3.5 text-primary/60" />
+                          <span className="uppercase tracking-widest">{new Date(meeting.data_reuniao).toLocaleDateString('pt-BR')}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {meeting.link_gravacao && (
+                            <a href={meeting.link_gravacao} target="_blank" rel="noopener noreferrer" title="Gravação">
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
+                                <VideoIcon className="size-3.5" />
+                              </Button>
+                            </a>
+                          )}
+                          {meeting.link_geminidoc && (
+                            <a href={meeting.link_geminidoc} target="_blank" rel="noopener noreferrer" title="Transcrição">
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
+                                <FileTextIcon className="size-3.5" />
+                              </Button>
+                            </a>
+                          )}
+                          <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5" onClick={() => setSelectedMeeting(meeting)}>
+                            Ver Resumo
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </motion.div>
       </ScrollArea>
 
@@ -308,7 +296,7 @@ export default function MentoresPage() {
             <>
               <SheetHeader className="space-y-3 pb-6 border-b border-border/50">
                 <div className="flex items-center justify-between gap-3">
-                  <SheetTitle className="text-xl font-bold">{selectedMeeting.nome_cliente_formatado}</SheetTitle>
+                  <SheetTitle className="text-xl font-bold">{selectedMeeting.mentor}</SheetTitle>
                   <Badge
                     variant="outline"
                     className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
@@ -321,7 +309,7 @@ export default function MentoresPage() {
                   </Badge>
                 </div>
                 <SheetDescription className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-                  {selectedMeeting.nome_empresa_formatado}
+                  Sessão de Mentoria
                 </SheetDescription>
               </SheetHeader>
 
@@ -331,7 +319,24 @@ export default function MentoresPage() {
                     <Calendar className="size-4 text-primary/60" />
                     <span>{new Date(selectedMeeting.data_reuniao).toLocaleDateString('pt-BR')}</span>
                   </div>
-                  <span className="font-medium text-foreground">{selectedMeeting.mentor}</span>
+                  <div className="flex items-center gap-2">
+                    {selectedMeeting.link_gravacao && (
+                      <a href={selectedMeeting.link_gravacao} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5">
+                          <VideoIcon className="size-3.5" />
+                          Gravação
+                        </Button>
+                      </a>
+                    )}
+                    {selectedMeeting.link_geminidoc && (
+                      <a href={selectedMeeting.link_geminidoc} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5">
+                          <FileTextIcon className="size-3.5" />
+                          Transcrição
+                        </Button>
+                      </a>
+                    )}
+                  </div>
                 </div>
 
                 {selectedMeeting.nps != null && (
@@ -378,7 +383,7 @@ export default function MentoresPage() {
 
                 {selectedMeeting.acoes_cliente && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ações do Cliente</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Suas Ações</h4>
                     {Array.isArray(selectedMeeting.acoes_cliente) ? (
                       <ul className="space-y-1.5">
                         {selectedMeeting.acoes_cliente.map((item, i) => {
@@ -437,4 +442,3 @@ export default function MentoresPage() {
     </div>
   )
 }
-
