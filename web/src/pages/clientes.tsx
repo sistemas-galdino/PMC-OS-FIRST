@@ -198,9 +198,11 @@ export default function ClientesPage() {
   }
 
   const filteredClients = clients.filter(client => {
+    const term = searchTerm.toLowerCase()
     const matchesSearch =
-      client.nome_cliente_formatado?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.nome_empresa_formatado?.toLowerCase().includes(searchTerm.toLowerCase())
+      client.nome_cliente_formatado?.toLowerCase().includes(term) ||
+      client.nome_empresa_formatado?.toLowerCase().includes(term) ||
+      (client.codigo_cliente != null && String(client.codigo_cliente).includes(searchTerm))
 
     const matchesSc = scFilter === "all" || client.sc === scFilter
 
