@@ -13,6 +13,8 @@ import AcoesPage from "@/pages/acoes"
 import OnboardingPage from "@/pages/onboarding"
 import ClientProfilePage from "@/pages/client-profile"
 import ClientReunioesPage from "@/pages/client-reunioes"
+import DefinirSenhaPage from "@/pages/definir-senha"
+import CadastroPage from "@/pages/cadastro"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { BackgroundShader } from "@/components/ui/background-shader"
@@ -61,6 +63,7 @@ function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [needsOnboarding, setNeedsOnboarding] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -103,6 +106,21 @@ function App() {
         .maybeSingle()
         .then(({ data }) => {
           setIsAdmin(!!data)
+          // If not admin, check if client needs onboarding
+          if (!data) {
+            supabase
+              .from('cliente_onboarding')
+              .select('status')
+              .eq('id_cliente', session.user.id)
+              .maybeSingle()
+              .then(({ data: onboarding }) => {
+                if (onboarding && onboarding.status === 'em_andamento') {
+                  setNeedsOnboarding(true)
+                } else {
+                  setNeedsOnboarding(false)
+                }
+              })
+          }
         })
     }
   }, [session])
@@ -128,28 +146,38 @@ function App() {
       <BackgroundShader />
       <BrowserRouter>
         <Routes>
-          <Route 
-            path="/login" 
-            element={!session ? <LoginPage /> : <Navigate to="/" replace />} 
+          <Route
+            path="/login"
+            element={!session ? <LoginPage /> : <Navigate to="/" replace />}
           />
-          <Route 
-            path="/*" 
+          <Route
+            path="/definir-senha"
+            element={<DefinirSenhaPage />}
+          />
+          <Route
+            path="/cadastro"
+            element={session ? <CadastroPage session={session} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/*"
             element={session ? (
-              <DashboardLayout session={session}>
-                <Routes>
-                  <Route path="/" element={isAdmin ? <AdminDashboard /> : <ClientDashboard session={session} />} />
-                  <Route path="/mentores" element={<MentoresPage />} />
-                  <Route path="/clientes" element={<ClientesPage />} />
-                  <Route path="/produtos" element={<ProdutosPage session={session} />} />
-                  <Route path="/canais" element={<CanaisPage session={session} />} />
-                  <Route path="/acoes" element={<AcoesPage session={session} />} />
-                  <Route path="/reunioes" element={<ClientReunioesPage session={session} />} />
-                  <Route path="/cliente/:id" element={<ClientProfilePage />} />
-                  <Route path="/onboarding" element={<OnboardingPage />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </DashboardLayout>
-            ) : <Navigate to="/login" replace />} 
+              needsOnboarding ? <Navigate to="/cadastro" replace /> : (
+                <DashboardLayout session={session}>
+                  <Routes>
+                    <Route path="/" element={isAdmin ? <AdminDashboard /> : <ClientDashboard session={session} />} />
+                    <Route path="/mentores" element={<MentoresPage />} />
+                    <Route path="/clientes" element={<ClientesPage />} />
+                    <Route path="/produtos" element={<ProdutosPage session={session} />} />
+                    <Route path="/canais" element={<CanaisPage session={session} />} />
+                    <Route path="/acoes" element={<AcoesPage session={session} />} />
+                    <Route path="/reunioes" element={<ClientReunioesPage session={session} />} />
+                    <Route path="/cliente/:id" element={<ClientProfilePage />} />
+                    <Route path="/onboarding" element={<OnboardingPage />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </DashboardLayout>
+              )
+            ) : <Navigate to="/login" replace />}
           />
         </Routes>
       </BrowserRouter>

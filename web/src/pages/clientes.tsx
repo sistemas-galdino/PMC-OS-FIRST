@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
+import { RegistrarClienteDialog } from "@/components/clientes/registrar-cliente-dialog"
 
 type NivelEngajamento =
   | 'cliente_novo'
@@ -144,6 +145,7 @@ export default function ClientesPage() {
   const [formCrm, setFormCrm] = useState(false)
   const [formSdr, setFormSdr] = useState(false)
   const [formObs, setFormObs] = useState("")
+  const [showRegistrar, setShowRegistrar] = useState(false)
 
   useEffect(() => {
     async function fetchClients() {
@@ -243,6 +245,12 @@ export default function ClientesPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        <Button
+          onClick={() => setShowRegistrar(true)}
+          className="h-12 px-6 font-bold shadow-xl shadow-primary/20"
+        >
+          + Registrar Novo Cliente
+        </Button>
         <div className="flex flex-col gap-3">
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Filtrar por Responsável (CS):</span>
           <div className="flex flex-wrap gap-2">
@@ -472,6 +480,21 @@ export default function ClientesPage() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <RegistrarClienteDialog
+        open={showRegistrar}
+        onOpenChange={setShowRegistrar}
+        onSuccess={() => {
+          // Refresh client list
+          supabase
+            .from('clientes_entrada_new')
+            .select('*')
+            .order('nome_cliente_formatado', { ascending: true })
+            .then(({ data }) => {
+              if (data) setClients(data)
+            })
+        }}
+      />
     </div>
   )
 }
