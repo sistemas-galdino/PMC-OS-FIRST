@@ -36,8 +36,10 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess }: Props)
         body: { nome, nome_empresa: nomeEmpresa, email },
       })
 
-      if (error) throw error
+      // supabase.functions.invoke returns generic "non-2xx" in error,
+      // but the actual error message is in data.error from our function
       if (data?.error) throw new Error(data.error)
+      if (error) throw error
 
       setSuccess(true)
       setTimeout(() => {
