@@ -161,7 +161,7 @@ function App() {
           <Route
             path="/*"
             element={session ? (
-              needsOnboarding ? <Navigate to="/cadastro" replace /> : (
+              (!isAdmin && needsOnboarding) ? <Navigate to="/cadastro" replace /> : (
                 <DashboardLayout session={session}>
                   <Routes>
                     <Route path="/" element={isAdmin ? <AdminDashboard /> : <ClientDashboard session={session} />} />
