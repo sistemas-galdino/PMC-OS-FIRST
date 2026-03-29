@@ -32,14 +32,28 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess }: Props)
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.functions.invoke('invite-client', {
-        body: { nome, nome_empresa: nomeEmpresa, email },
-      })
+      // Use fetch directly instead of supabase.functions.invoke
+      // because invoke returns data:null on non-2xx, losing the error message
+      const session = await supabase.auth.getSession()
+      const accessToken = session.data.session?.access_token
+      if (!accessToken) throw new Error('Sessao expirada. Faca login novamente.')
 
-      // supabase.functions.invoke returns generic "non-2xx" in error,
-      // but the actual error message is in data.error from our function
-      if (data?.error) throw new Error(data.error)
-      if (error) throw error
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-client`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ nome, nome_empresa: nomeEmpresa, email }),
+        }
+      )
+
+      const data = await resp.json()
+      if (!resp.ok) throw new Error(data.error || `Erro ${resp.status}`)
+      if (data.error) throw new Error(data.error)
 
       setSuccess(true)
       setTimeout(() => {
