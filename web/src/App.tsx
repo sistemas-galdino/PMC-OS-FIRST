@@ -64,6 +64,7 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
+  const [needsPassword, setNeedsPassword] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -110,13 +111,20 @@ function App() {
           if (!data) {
             supabase
               .from('cliente_onboarding')
-              .select('status')
+              .select('status, senha_definida')
               .eq('id_cliente', session.user.id)
               .maybeSingle()
               .then(({ data: onboarding }) => {
                 if (onboarding && onboarding.status === 'em_andamento') {
-                  setNeedsOnboarding(true)
+                  if (!onboarding.senha_definida) {
+                    setNeedsPassword(true)
+                    setNeedsOnboarding(false)
+                  } else {
+                    setNeedsPassword(false)
+                    setNeedsOnboarding(true)
+                  }
                 } else {
+                  setNeedsPassword(false)
                   setNeedsOnboarding(false)
                 }
               })
@@ -161,6 +169,7 @@ function App() {
           <Route
             path="/*"
             element={session ? (
+              (!isAdmin && needsPassword) ? <Navigate to="/definir-senha" replace /> :
               (!isAdmin && needsOnboarding) ? <Navigate to="/cadastro" replace /> : (
                 <DashboardLayout session={session}>
                   <Routes>

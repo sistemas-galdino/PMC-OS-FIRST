@@ -58,6 +58,16 @@ export default function DefinirSenhaPage() {
     try {
       const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error
+
+      // Mark password as set
+      const { data: { session: s } } = await supabase.auth.getSession()
+      if (s?.user?.id) {
+        await supabase
+          .from('cliente_onboarding')
+          .update({ senha_definida: true })
+          .eq('id_cliente', s.user.id)
+      }
+
       navigate('/cadastro', { replace: true })
     } catch (err: any) {
       setError(err.message || "Erro ao definir senha")
