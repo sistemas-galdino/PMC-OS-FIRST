@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import {
   CalendarIcon as Calendar,
   SearchIcon as Search,
@@ -42,6 +42,7 @@ interface ClientReunioesProps {
 }
 
 export default function ClientReunioesPage({ session, clientId }: ClientReunioesProps) {
+  const navigate = useNavigate()
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -50,7 +51,6 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
   const [semanaFilter, setSemanaFilter] = useState("all")
   const [anoFilter, setAnoFilter] = useState("all")
   const [dateRange, setDateRange] = useState({ from: "", to: "" })
-  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null)
 
   useEffect(() => {
     async function fetchMeetings() {
@@ -276,8 +276,8 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
                               </Button>
                             </a>
                           )}
-                          <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5" onClick={() => setSelectedMeeting(meeting)}>
-                            Ver Resumo
+                          <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5" onClick={() => navigate(`/reuniao/${meeting.id_unico}`)}>
+                            Ver Detalhes
                           </Button>
                         </div>
                       </div>
@@ -290,155 +290,6 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
         </motion.div>
       </ScrollArea>
 
-      <Sheet open={!!selectedMeeting} onOpenChange={(open) => !open && setSelectedMeeting(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto p-6">
-          {selectedMeeting && (
-            <>
-              <SheetHeader className="space-y-3 pb-6 border-b border-border/50">
-                <div className="flex items-center justify-between gap-3">
-                  <SheetTitle className="text-xl font-bold">{selectedMeeting.mentor}</SheetTitle>
-                  <Badge
-                    variant="outline"
-                    className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
-                      selectedMeeting.cliente_compareceu === false
-                        ? "bg-destructive/10 border-destructive/20 text-destructive"
-                        : "bg-primary/10 border-primary/20 text-primary"
-                    }`}
-                  >
-                    {selectedMeeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
-                  </Badge>
-                </div>
-                <SheetDescription className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-                  Sessão de Mentoria
-                </SheetDescription>
-              </SheetHeader>
-
-              <div className="space-y-6 pt-6 px-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="size-4 text-primary/60" />
-                    <span>{new Date(selectedMeeting.data_reuniao).toLocaleDateString('pt-BR')}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {selectedMeeting.link_gravacao && (
-                      <a href={selectedMeeting.link_gravacao} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5">
-                          <VideoIcon className="size-3.5" />
-                          Gravação
-                        </Button>
-                      </a>
-                    )}
-                    {selectedMeeting.link_geminidoc && (
-                      <a href={selectedMeeting.link_geminidoc} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider gap-1.5">
-                          <FileTextIcon className="size-3.5" />
-                          Transcrição
-                        </Button>
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                {selectedMeeting.nps != null && (
-                  <div className="flex items-center justify-between bg-muted/10 rounded-xl p-4 border border-border/50">
-                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">NPS</span>
-                    <span className="text-2xl font-bold text-primary">{selectedMeeting.nps}</span>
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Resumo</h4>
-                  {selectedMeeting.resumo ? (() => {
-                    try {
-                      let parsed = JSON.parse(selectedMeeting.resumo)
-                      if (parsed && typeof parsed === 'object' && parsed.resumo) parsed = parsed.resumo
-                      if (parsed && typeof parsed === 'object' && parsed.titulo && Array.isArray(parsed.topicos)) {
-                        return (
-                          <div className="space-y-3">
-                            <p className="text-sm font-semibold text-foreground">{parsed.titulo}</p>
-                            {parsed.topicos.map((topico: { tema: string; pontos: string[] }, i: number) => (
-                              <div key={i} className="space-y-1.5">
-                                <p className="text-sm font-medium text-foreground/80">{topico.tema}</p>
-                                <ul className="space-y-1 pl-2">
-                                  {topico.pontos.map((ponto: string, j: number) => (
-                                    <li key={j} className="text-sm text-foreground flex items-start gap-2">
-                                      <span className="text-primary mt-0.5">•</span>
-                                      <span>{ponto}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            ))}
-                          </div>
-                        )
-                      }
-                      return <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.resumo}</p>
-                    } catch {
-                      return <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.resumo}</p>
-                    }
-                  })() : (
-                    <p className="text-sm text-muted-foreground italic">Sem resumo disponível</p>
-                  )}
-                </div>
-
-                {selectedMeeting.acoes_cliente && (
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Suas Ações</h4>
-                    {Array.isArray(selectedMeeting.acoes_cliente) ? (
-                      <ul className="space-y-1.5">
-                        {selectedMeeting.acoes_cliente.map((item, i) => {
-                          const label = typeof item === 'string' ? item : item.acao
-                          const prazo = typeof item === 'string' ? null : item.prazo
-                          const status = typeof item === 'string' ? null : item.status
-                          return (
-                            <li key={i} className="text-sm text-foreground flex items-start gap-2">
-                              <span className="text-primary mt-0.5">•</span>
-                              <span>
-                                {label}
-                                {prazo && <span className="text-muted-foreground ml-1">— Prazo: {prazo}</span>}
-                                {status && <span className="text-muted-foreground ml-1">({status})</span>}
-                              </span>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    ) : (
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.acoes_cliente}</p>
-                    )}
-                  </div>
-                )}
-
-                {selectedMeeting.acoes_mentor && (
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ações do Mentor</h4>
-                    {Array.isArray(selectedMeeting.acoes_mentor) ? (
-                      <ul className="space-y-1.5">
-                        {selectedMeeting.acoes_mentor.map((item, i) => {
-                          const label = typeof item === 'string' ? item : item.acao
-                          const prazo = typeof item === 'string' ? null : item.prazo
-                          const status = typeof item === 'string' ? null : item.status
-                          return (
-                            <li key={i} className="text-sm text-foreground flex items-start gap-2">
-                              <span className="text-primary mt-0.5">•</span>
-                              <span>
-                                {label}
-                                {prazo && <span className="text-muted-foreground ml-1">— Prazo: {prazo}</span>}
-                                {status && <span className="text-muted-foreground ml-1">({status})</span>}
-                              </span>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    ) : (
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedMeeting.acoes_mentor}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   )
 }
