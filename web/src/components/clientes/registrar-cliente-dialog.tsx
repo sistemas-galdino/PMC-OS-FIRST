@@ -25,6 +25,7 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess }: Props)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [inviteLink, setInviteLink] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,15 +56,19 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess }: Props)
       if (!resp.ok) throw new Error(data.error || `Erro ${resp.status}`)
       if (data.error) throw new Error(data.error)
 
+      if (data.invite_link) setInviteLink(data.invite_link)
       setSuccess(true)
-      setTimeout(() => {
-        setSuccess(false)
-        setNome("")
-        setNomeEmpresa("")
-        setEmail("")
-        onOpenChange(false)
-        onSuccess()
-      }, 2000)
+      if (!data.invite_link) {
+        setTimeout(() => {
+          setSuccess(false)
+          setNome("")
+          setNomeEmpresa("")
+          setEmail("")
+          setInviteLink(null)
+          onOpenChange(false)
+          onSuccess()
+        }, 2000)
+      }
     } catch (err: any) {
       setError(err.message || "Erro ao registrar cliente")
     } finally {
@@ -88,8 +93,21 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess }: Props)
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="font-bold text-foreground">Convite enviado!</p>
-            <p className="text-sm text-muted-foreground">E-mail enviado para {email}</p>
+            <p className="font-bold text-foreground">Cliente registrado!</p>
+            {inviteLink ? (
+              <>
+                <p className="text-sm text-muted-foreground">O email nao foi enviado. Copie e envie o link abaixo para o cliente:</p>
+                <div className="bg-muted/20 border border-border rounded-xl p-3 text-xs text-foreground break-all text-left select-all cursor-pointer" onClick={() => navigator.clipboard.writeText(inviteLink)}>
+                  {inviteLink}
+                </div>
+                <p className="text-[10px] text-muted-foreground">Clique no link acima para copiar</p>
+                <Button variant="outline" size="sm" onClick={() => { setSuccess(false); setInviteLink(null); setNome(""); setNomeEmpresa(""); setEmail(""); onOpenChange(false); onSuccess(); }}>
+                  Fechar
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">E-mail enviado para {email}</p>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5 pt-2">
