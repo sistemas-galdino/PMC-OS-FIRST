@@ -63,7 +63,7 @@ function parseEventTitle(summary) {
   }
 
   // Responsavel pelo prefixo
-  if (/\[ayslan\]/i.test(summary)) {
+  if (/\[(?:pmc\s+)?ayslan\s*\]/i.test(summary)) {
     responsavel = 'Ayslan'
   } else if (/\[pmc.?leo(?:nardo)?\]/i.test(summary) || /\[pmc\s+leonardo\]/i.test(summary)) {
     responsavel = 'Leonardo'
