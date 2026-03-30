@@ -6,11 +6,13 @@ import ClientDashboard from "@/pages/client-dashboard"
 import ProdutosPage from "@/pages/produtos"
 import CanaisPage from "@/pages/canais"
 import AcoesPage from "@/pages/acoes"
+import ClientReunioesPage from "@/pages/client-reunioes"
 
 const TABS = [
   { key: "dashboard", label: "Dashboard" },
   { key: "produtos", label: "Produtos" },
   { key: "canais", label: "Canais" },
+  { key: "reunioes", label: "Reuniões" },
   { key: "acoes", label: "Ações" },
 ] as const
 
@@ -54,6 +56,7 @@ export default function ClientProfilePage() {
       {activeTab === "dashboard" && <ClientDashboard clientId={id} />}
       {activeTab === "produtos" && <ProdutosPage clientId={id} />}
       {activeTab === "canais" && <CanaisPage clientId={id} />}
+      {activeTab === "reunioes" && <ClientReunioesPage clientId={id} />}
       {activeTab === "acoes" && <AcoesPage clientId={id} />}
     </div>
   )

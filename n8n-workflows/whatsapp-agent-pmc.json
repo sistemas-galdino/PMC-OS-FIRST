@@ -1,0 +1,577 @@
+{
+  "name": "WhatsApp Agent PMC - Assistente Inteligente Black Eagle",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-agent",
+        "responseMode": "onReceived",
+        "responseCode": 200,
+        "options": {}
+      },
+      "id": "webhook-evolution",
+      "name": "Evolution API Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 460],
+      "webhookId": "whatsapp-agent-pmc"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\n// Filtrar: somente eventos messages.upsert\nif (!body || body.event !== 'messages.upsert') {\n  return [];\n}\n\nconst data = body.data;\n\n// Filtrar mensagens enviadas pelo proprio bot\nif (data.key && data.key.fromMe) {\n  return [];\n}\n\n// Filtrar mensagens de grupo (somente DM)\nconst remoteJid = data.key?.remoteJid || '';\nif (remoteJid.includes('@g.us')) {\n  return [];\n}\n\n// Extrair numero de telefone\nconst phone = remoteJid.replace('@s.whatsapp.net', '');\n\n// Extrair texto da mensagem (diferentes formatos)\nlet messageText = '';\nif (data.message?.conversation) {\n  messageText = data.message.conversation;\n} else if (data.message?.extendedTextMessage?.text) {\n  messageText = data.message.extendedTextMessage.text;\n} else {\n  // Mensagem de midia (imagem, audio, video, etc.)\n  return [{\n    json: {\n      phone,\n      message: '',\n      isMedia: true,\n      remoteJid,\n      pushName: data.pushName || 'Usuario'\n    }\n  }];\n}\n\n// Sanitizar: trim e limitar tamanho\nmessageText = messageText.trim().substring(0, 2000);\n\nif (!messageText) {\n  return [];\n}\n\nreturn [{\n  json: {\n    phone,\n    message: messageText,\n    isMedia: false,\n    remoteJid,\n    pushName: data.pushName || 'Usuario',\n    timestamp: data.messageTimestamp\n  }\n}];"
+      },
+      "id": "parse-message",
+      "name": "Parse WhatsApp Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 460]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-is-text",
+              "leftValue": "={{ $json.isMedia }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-text-message",
+      "name": "Is Text Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [720, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Parse WhatsApp Message').item.json.phone }}\",\n  \"text\": \"Desculpe, no momento eu so consigo processar mensagens de texto. Por favor, envie sua pergunta em texto.\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "send-media-error",
+      "name": "Send Media Error Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 660]
+    },
+    {
+      "parameters": {
+        "agent": "openAiFunctionsAgent",
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "systemMessage": "Voce e o Assistente Inteligente da Black Eagle, o programa de aceleracao de negocios PMC (Programa Multiplicador de Crescimento). Voce atende via WhatsApp e tem acesso ao banco de dados completo do programa.\n\n## Sobre o PMC\nO PMC e um programa de aceleracao empresarial da Black Eagle que ajuda empreendedores a multiplicar o faturamento das suas empresas. Os clientes participam de mentorias individuais, recebem suporte de Customer Success (CS), e trabalham em estrategias de vendas, marketing e gestao.\n\n## Suas Ferramentas de Consulta\nVoce tem acesso a 7 ferramentas de busca no banco de dados, cada uma para uma tabela especifica. Use a ferramenta correta de acordo com a informacao que precisa:\n\n1. *buscar_clientes* - Dados operacionais dos clientes (tabela principal)\n   Campos: nome_cliente_formatado, nome_empresa_formatado, status_atual, canal_de_venda, unidade_treinamento, estado_uf, tempo_contrato, produto, nicho, subnicho, telefone, sc (CS responsavel), codigo_cliente, nivel_engajamento, tem_crm, tem_sdr, observacoes_cs, nivel_multiplicador, id_cliente\n   Valores de status_atual: 'Ativo no Programa', 'Aguardando Inicio', 'Cliente Cancelado', 'Congelado', 'Finalizado'\n   Valores de nivel_engajamento: 'cliente_novo', 'ativo_alto', 'ativo_medio', 'desengajado', 'sem_onboarding', 'cancelado', 'congelado'\n   Valores de nivel_multiplicador: '30K', '70K', '100K', '300K', '500K', '1MM', '5MM', '10MM', '30MM', '100MM'\n\n2. *buscar_formulario* - Dados detalhados do formulario de entrada\n   Campos: id_cliente, empresa_nome, nicho, estado, site, instagram, descricao, numero_funcionarios, faturamento_atual, meta_faturamento_12_meses, nome, email, telefone, data_nascimento, cpf, cnpj, razao_social, desafios, motivo_entrada, resultado_desejado, ajuda_3_meses, canal_venda, produto, nome_empresa_formatado, nome_cliente_formatado\n\n3. *buscar_reunioes* - Sessoes de mentoria\n   Campos: id_reuniao, id_cliente, data_reuniao, horario, mes, semana, ano, mentor, empresa, pessoa, nome_empresa_formatado, nome_cliente_formatado, cliente_compareceu, nps (1-10), transcricao, resumo, acoes_cliente (JSON), acoes_mentor (JSON), ganho\n\n4. *buscar_produtos* - Produtos dos clientes\n   Campos: id, id_cliente, nome, preco, ticket_medio, tipo ('Recorrente'/'Avulso'), vendas_mes\n\n5. *buscar_canais* - Canais de marketing dos clientes\n   Campos: id, id_cliente, nome, tipo ('Pago'/'Organico'), investimento, leads_mes\n\n6. *buscar_metas* - Metas financeiras dos clientes\n   Campos: id_cliente, faturamento_anual_objetivo, faturamento_mensal_objetivo, meta_2026, colaboradores_total\n\n7. *buscar_mentores* - Equipe de mentores Black Eagle\n   Campos: nome, email\n\n## Relacionamento entre Tabelas\nTodas as tabelas se relacionam pelo campo id_cliente. Quando precisar cruzar dados:\n- Primeiro busque na tabela principal (buscar_clientes) para encontrar o id_cliente\n- Depois use o id_cliente para buscar nas outras tabelas\n\nExemplo: Para saber os produtos de um cliente especifico:\n1. Use buscar_clientes com filtro no nome da empresa para pegar o id_cliente\n2. Use buscar_produtos com filtro no id_cliente encontrado\n\n## Regras de Comportamento\n- Responda SEMPRE em portugues brasileiro\n- Seja objetivo e direto, mas cordial\n- Use formatacao simples para WhatsApp: *negrito* para destaques, listas com - ou numeros\n- NAO mostre detalhes tecnicos (IDs, nomes de tabelas, etc.) ao usuario\n- Se nao encontrar dados, informe educadamente e sugira alternativas de busca\n- Para valores monetarios, use formato brasileiro: R$ 1.234,56\n- Sempre inclua contexto nos numeros (ex: \"de um total de X clientes\")\n- Se a pergunta for ambigua, peca esclarecimento antes de consultar\n- NUNCA compartilhe dados sensiveis como CPF, CNPJ completo ou senhas\n- Limite suas respostas a informacoes relevantes\n- Ao listar muitos itens, mostre os top 10 e informe o total\n- Voce tambem pode fazer calculos, comparacoes e gerar insights a partir dos dados\n\n## Exemplos de Perguntas e Qual Ferramenta Usar\n- \"Quantos clientes ativos temos?\" → buscar_clientes (filtrar status_atual = 'Ativo no Programa')\n- \"Me fala sobre a empresa X\" → buscar_clientes + buscar_formulario (pelo id_cliente)\n- \"Quais clientes estao desengajados?\" → buscar_clientes (filtrar nivel_engajamento = 'desengajado')\n- \"Qual mentor tem mais reunioes?\" → buscar_reunioes (analisar campo mentor)\n- \"Clientes do nicho estetica\" → buscar_clientes (filtrar nicho)\n- \"Produtos do cliente X\" → buscar_clientes (achar id_cliente) + buscar_produtos\n- \"NPS das mentorias\" → buscar_reunioes (analisar campo nps)\n- \"Acoes da ultima mentoria de X\" → buscar_reunioes (filtrar por nome_empresa_formatado)\n- \"Meta de faturamento do cliente X\" → buscar_clientes (achar id_cliente) + buscar_metas",
+        "options": {
+          "maxIterations": 15,
+          "returnIntermediateSteps": false
+        }
+      },
+      "id": "ai-agent",
+      "name": "PMC Assistant Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [960, 340]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 2048
+        }
+      },
+      "id": "llm-openai",
+      "name": "GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [680, 720],
+      "credentials": {
+        "openAiApi": {
+          "id": "OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "buscar_clientes",
+        "description": "Busca dados operacionais de clientes do programa PMC na tabela clientes_entrada_new. Retorna: nome do cliente, nome da empresa, nicho, status atual, nivel de engajamento, SC responsavel, estado, produto, canal de venda, nivel multiplicador, se tem CRM, se tem SDR, observacoes CS, telefone, codigo do cliente, id_cliente (UUID). Use esta ferramenta para perguntas sobre clientes ativos, status, engajamento, distribuicao geografica, responsaveis CS.",
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "clientes_entrada_new",
+        "returnAll": false,
+        "limit": 50,
+        "filterType": "manual",
+        "matchType": "anyFilter",
+        "filters": {
+          "conditions": []
+        }
+      },
+      "id": "tool-clientes",
+      "name": "Buscar Clientes",
+      "type": "@n8n/n8n-nodes-langchain.toolSupabase",
+      "typeVersion": 1,
+      "position": [780, 720],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account - PMC OS v2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "buscar_formulario",
+        "description": "Busca dados detalhados do formulario de entrada dos clientes na tabela clientes_formulario. Retorna: faturamento atual, meta de faturamento 12 meses, numero de funcionarios, desafios do cliente, motivo de entrada no programa, resultado desejado, site, instagram, email, telefone, CPF, CNPJ, razao social, descricao da empresa. Use quando precisar de dados financeiros detalhados, informacoes pessoais ou motivacoes do cliente.",
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "clientes_formulario",
+        "returnAll": false,
+        "limit": 50,
+        "filterType": "manual",
+        "matchType": "anyFilter",
+        "filters": {
+          "conditions": []
+        }
+      },
+      "id": "tool-formulario",
+      "name": "Buscar Formulario",
+      "type": "@n8n/n8n-nodes-langchain.toolSupabase",
+      "typeVersion": 1,
+      "position": [880, 720],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account - PMC OS v2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "buscar_reunioes",
+        "description": "Busca sessoes de mentoria na tabela reunioes_mentoria. Retorna: data da reuniao, horario, mentor, empresa, pessoa (nome do cliente), se compareceu, nota NPS (1-10), transcricao, resumo, acoes do cliente (JSON), acoes do mentor (JSON), ganho financeiro reportado, mes, semana, ano. Use para perguntas sobre mentorias, comparecimento, NPS, acoes definidas, resumos de reunioes, desempenho de mentores.",
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "reunioes_mentoria",
+        "returnAll": false,
+        "limit": 50,
+        "filterType": "manual",
+        "matchType": "anyFilter",
+        "filters": {
+          "conditions": []
+        }
+      },
+      "id": "tool-reunioes",
+      "name": "Buscar Reunioes",
+      "type": "@n8n/n8n-nodes-langchain.toolSupabase",
+      "typeVersion": 1,
+      "position": [980, 720],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account - PMC OS v2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "buscar_produtos",
+        "description": "Busca produtos dos clientes na tabela cliente_produtos. Retorna: nome do produto, preco, ticket medio, tipo (Recorrente ou Avulso), vendas por mes, id_cliente. Use para perguntas sobre o que os clientes vendem, seus precos e ticket medio.",
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "cliente_produtos",
+        "returnAll": false,
+        "limit": 50,
+        "filterType": "manual",
+        "matchType": "anyFilter",
+        "filters": {
+          "conditions": []
+        }
+      },
+      "id": "tool-produtos",
+      "name": "Buscar Produtos",
+      "type": "@n8n/n8n-nodes-langchain.toolSupabase",
+      "typeVersion": 1,
+      "position": [1080, 720],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account - PMC OS v2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "buscar_canais",
+        "description": "Busca canais de marketing dos clientes na tabela cliente_canais. Retorna: nome do canal, tipo (Pago ou Organico), investimento mensal, leads gerados por mes, id_cliente. Use para perguntas sobre estrategias de marketing, investimento em midia, canais de aquisicao dos clientes.",
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "cliente_canais",
+        "returnAll": false,
+        "limit": 50,
+        "filterType": "manual",
+        "matchType": "anyFilter",
+        "filters": {
+          "conditions": []
+        }
+      },
+      "id": "tool-canais",
+      "name": "Buscar Canais",
+      "type": "@n8n/n8n-nodes-langchain.toolSupabase",
+      "typeVersion": 1,
+      "position": [1180, 720],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account - PMC OS v2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "buscar_metas",
+        "description": "Busca metas financeiras dos clientes na tabela cliente_metas. Retorna: faturamento anual objetivo, faturamento mensal objetivo, meta para 2026, total de colaboradores, id_cliente. Use para perguntas sobre metas, objetivos financeiros e planejamento dos clientes.",
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "cliente_metas",
+        "returnAll": false,
+        "limit": 50,
+        "filterType": "manual",
+        "matchType": "anyFilter",
+        "filters": {
+          "conditions": []
+        }
+      },
+      "id": "tool-metas",
+      "name": "Buscar Metas",
+      "type": "@n8n/n8n-nodes-langchain.toolSupabase",
+      "typeVersion": 1,
+      "position": [1280, 720],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account - PMC OS v2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "buscar_mentores",
+        "description": "Busca dados da equipe de mentores da Black Eagle na tabela mentores. Retorna: nome do mentor, email. Use para perguntas sobre quais mentores estao disponiveis ou informacoes sobre a equipe.",
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "mentores",
+        "returnAll": true,
+        "filterType": "manual",
+        "matchType": "anyFilter",
+        "filters": {
+          "conditions": []
+        }
+      },
+      "id": "tool-mentores",
+      "name": "Buscar Mentores",
+      "type": "@n8n/n8n-nodes-langchain.toolSupabase",
+      "typeVersion": 1,
+      "position": [1380, 720],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIAL_ID",
+          "name": "Supabase account - PMC OS v2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "formatar_dados",
+        "description": "Formata e calcula metricas a partir de dados brutos. Use para: calcular percentuais e medias, formatar valores monetarios em BRL (R$), calcular taxas de comparecimento, agrupar dados por categoria, gerar resumos estatisticos. Envie os dados em JSON e descreva a operacao desejada.",
+        "language": "javaScript",
+        "jsCode": "const dataStr = $fromAI('data', 'JSON string with the data to process', 'string');\nconst operation = $fromAI('operation', 'Description of what calculation or formatting to perform', 'string');\n\nlet parsed;\ntry {\n  parsed = JSON.parse(dataStr);\n} catch (e) {\n  return { error: 'JSON invalido', raw: dataStr };\n}\n\n// Helper: formatar BRL\nconst formatBRL = (value) => {\n  if (typeof value !== 'number' || isNaN(value)) return 'N/A';\n  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);\n};\n\n// Helper: formatar percentual\nconst formatPercent = (value) => {\n  if (typeof value !== 'number' || isNaN(value)) return 'N/A';\n  return `${(value * 100).toFixed(1)}%`;\n};\n\n// Processar array de dados\nif (Array.isArray(parsed)) {\n  const formatted = parsed.map(item => {\n    const result = { ...item };\n    for (const [key, value] of Object.entries(result)) {\n      if (typeof value === 'number') {\n        if (key.includes('faturamento') || key.includes('investimento') || key.includes('preco') || key.includes('ticket') || key.includes('ganho') || key.includes('meta')) {\n          result[`${key}_formatado`] = formatBRL(value);\n        }\n      }\n    }\n    return result;\n  });\n  \n  return {\n    total_registros: formatted.length,\n    operacao: operation,\n    dados: formatted\n  };\n}\n\nreturn {\n  operacao: operation,\n  dados: parsed\n};"
+      },
+      "id": "tool-formatter",
+      "name": "Formatar Dados",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.2,
+      "position": [1480, 720]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ 'whatsapp_' + $('Parse WhatsApp Message').item.json.phone }}",
+        "contextWindowLength": 20,
+        "sessionTTL": 3600
+      },
+      "id": "memory-redis",
+      "name": "Redis Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.3,
+      "position": [1580, 720],
+      "credentials": {
+        "redis": {
+          "id": "REDIS_CREDENTIAL_ID",
+          "name": "Redis"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const agentOutput = $input.first().json.output || $input.first().json.text || 'Desculpe, nao consegui processar sua solicitacao. Tente novamente.';\nconst phone = $('Parse WhatsApp Message').first().json.phone;\n\n// WhatsApp tem limite de ~4096 caracteres por mensagem\nconst MAX_LENGTH = 4000;\nlet responseText = agentOutput;\n\n// Truncar se muito longo\nif (responseText.length > MAX_LENGTH) {\n  responseText = responseText.substring(0, MAX_LENGTH) + '\\n\\n_... resposta truncada por limite do WhatsApp_';\n}\n\n// Converter markdown para formato WhatsApp\n// Headers ## → *bold*\nresponseText = responseText.replace(/#{1,6}\\s+(.+)/g, '*$1*');\n// **bold** → *bold* (WhatsApp usa asterisco simples)\nresponseText = responseText.replace(/\\*\\*(.+?)\\*\\*/g, '*$1*');\n// Manter _italic_ (WhatsApp suporta)\n// Manter ~strikethrough~ (WhatsApp suporta)\n// ```code``` → manter (WhatsApp suporta)\n\nreturn [{\n  json: {\n    phone,\n    text: responseText\n  }\n}];"
+      },
+      "id": "format-response",
+      "name": "Format WhatsApp Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone }}\",\n  \"text\": \"{{ $json.text }}\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "send-reply",
+      "name": "Send WhatsApp Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 340]
+    }
+  ],
+  "connections": {
+    "Evolution API Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse WhatsApp Message": {
+      "main": [
+        [
+          {
+            "node": "Is Text Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Text Message?": {
+      "main": [
+        [
+          {
+            "node": "PMC Assistant Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Media Error Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PMC Assistant Agent": {
+      "main": [
+        [
+          {
+            "node": "Format WhatsApp Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format WhatsApp Response": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT-4o": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "PMC Assistant Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Clientes": {
+      "ai_tool": [
+        [
+          {
+            "node": "PMC Assistant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Formulario": {
+      "ai_tool": [
+        [
+          {
+            "node": "PMC Assistant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Reunioes": {
+      "ai_tool": [
+        [
+          {
+            "node": "PMC Assistant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Produtos": {
+      "ai_tool": [
+        [
+          {
+            "node": "PMC Assistant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Canais": {
+      "ai_tool": [
+        [
+          {
+            "node": "PMC Assistant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Metas": {
+      "ai_tool": [
+        [
+          {
+            "node": "PMC Assistant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Mentores": {
+      "ai_tool": [
+        [
+          {
+            "node": "PMC Assistant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar Dados": {
+      "ai_tool": [
+        [
+          {
+            "node": "PMC Assistant Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "PMC Assistant Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "WhatsApp",
+      "id": "tag-whatsapp"
+    },
+    {
+      "name": "AI Agent",
+      "id": "tag-ai-agent"
+    },
+    {
+      "name": "PMC",
+      "id": "tag-pmc"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-03-25T00:00:00.000Z",
+  "versionId": "2"
+}

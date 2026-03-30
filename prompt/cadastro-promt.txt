@@ -1,0 +1,266 @@
+Eu quero criar o fluxo de cadastro de clientes no sistema. A ideia é que antes do onboaridng as meninas do Sucesso Do cliente solicitem
+O nome do cliente, nome da empresa, e um email para que seja enviado o link de cadastro do sistema, e na tela de "clientes" elas possam registrar o cliente com esses dados basicos iniciais.
+O cliente deve receber no email dele, um link de cadastro
+Onde nesse link vai possibilitar ele criar uma senha para acessar o sistema dele. No processo do cadastro, depois dele criar a senha, ele deve ser direcionado
+a uma especie de formulario, onde precisara responder algumas perguntas:
+
+Criar uma página chamada:
+
+“Onboarding”
+
+ESTRUTURA DA PÁGINA:
+
+- Logo do PMC no topo
+
+- Título:
+
+“Bem-vindo ao Programa Multiplicador de Crescimento”
+
+- Subtítulo:
+
+“Preencha as informações abaixo com atenção. Esses dados serão utilizados para personalizar sua jornada e para a emissão do contrato.”
+
+- Formulário dividido em etapas
+
+- Barra de progresso (ex: 1/6, 2/6...)
+
+- Botões:
+
+  - “Salvar e continuar”
+
+  - “Voltar”
+
+---
+
+========================
+
+2. ETAPAS DO FORMULÁRIO
+
+========================
+
+ETAPA 1 — DADOS DO RESPONSÁVEL
+
+Campos:
+
+- Nome completo do responsável legal pela contratação
+
+- Gênero (Feminino / Masculino)
+
+- E-mail principal
+
+- Data de nascimento
+
+- Endereço completo com CEP
+
+- WhatsApp com DDD
+
+- Estado civil (dropdown)
+
+- Faixa etária (dropdown)
+
+- Formação acadêmica (dropdown)
+
+- Estado (UF)
+
+---
+
+ETAPA 2 — DADOS DO NEGÓCIO
+
+Campos:
+
+- Nome da empresa
+
+- Nicho de atuação (dropdown com categorias)
+
+- Descreva brevemente seu negócio (campo longo)
+
+- Site (campo texto)
+
+- Instagram (campo texto)
+
+---
+
+ETAPA 3 — ESTRUTURA DA EMPRESA
+
+Campos:
+
+- Faturamento anual (dropdown)
+
+- Quantidade de funcionários (dropdown)
+
+- Quantidade de gestores (dropdown)
+
+---
+
+ETAPA 4 — DIAGNÓSTICO EMPRESARIAL
+
+Campos:
+
+- Quais são os 2 principais desafios da sua empresa hoje? (campo longo)
+
+- Por que você ainda não conseguiu superá-los? (campo longo)
+
+- Referências de posicionamento de marca (campo texto)
+
+- Meta de faturamento para os próximos 12 meses (campo texto)
+
+---
+
+ETAPA 5 — EXPECTATIVAS NO PMC
+
+Campos:
+
+- Expectativas ao entrar no programa (campo longo)
+
+- Principal motivo que poderia ter impedido a entrada (campo texto)
+
+- Como conheceu o PMC (dropdown)
+
+- Por que decidiu entrar (campo longo)
+
+- 3 entregas mais importantes para sua decisão (campo longo)
+
+- Resultado que deseja alcançar até o final do programa (campo longo)
+
+- O que espera que o Galdino ajude nos próximos 3 meses (campo longo)
+
+---
+
+ETAPA 6 — DADOS PARA CONTRATO
+
+Campos:
+
+- Contrato emitido em nome de:
+
+  ( ) Pessoa Física
+
+  ( ) Pessoa Jurídica
+
+- Razão Social
+
+- Nacionalidade
+
+- E-mail do representante legal
+
+- Telefone do representante legal
+
+- Profissão
+
+- CPF
+
+- CNPJ
+
+REGRAS CONDICIONAIS:
+
+- Se Pessoa Física:
+
+  → CPF obrigatório
+
+  → CNPJ e Razão Social opcionais
+
+- Se Pessoa Jurídica:
+
+  → CNPJ e Razão Social obrigatórios
+
+---
+
+========================
+
+3. REGRAS DO FORMULÁRIO
+
+========================
+
+- Campos obrigatórios devem ser validados antes de avançar
+
+- Possuir salvamento automático por etapa
+
+- Permitir continuar depois (não perder progresso)
+
+- Aplicar máscaras:
+
+  - telefone
+
+  - CPF
+
+  - CNPJ
+
+  - data
+
+---
+
+CONFIRMAÇÃO FINAL:
+
+Ao enviar:
+
+- Exibir mensagem:
+
+“Recebemos suas informações com sucesso. Nosso time irá analisar os dados para dar sequência ao seu onboarding no PMC.”
+
+- Atualizar status para: “Enviado”
+
+- Registrar data e hora
+
+---
+
+========================
+
+4. EXPERIÊNCIA VISUAL
+
+========================
+
+- Interface limpa
+
+- Formulário em etapas
+
+- Barra de progresso
+
+- Responsivo (mobile e desktop)
+
+- Inputs organizados
+
+- UX simples e rápido
+
+---
+
+
+Eu quero tambem identificar o nivel de maturidade desse cliente em Inteligencia artificial, pra isso eu tambem preciso fazer algumas perguntas a ele,
+entao preciso transcicionar ele para essaas outras perguntas:
+
+## 📋 Perguntas do Formulário — Nível de Maturidade em IA
+
+---
+
+### Diagnóstico de Maturidade
+
+. **Indicadores** — Você utiliza indicadores (KPIs) acompanhados com IA?
+   *(Sim / Não)*
+
+. **Dashboard** — Você tem dashboards de acompanhamento?
+   *(Sim / Não)*
+
+. **Processos** — Você tem processos mapeados com uso de IA?
+    *(Sim / Não)*
+
+. **Agentes** — Você utiliza agentes de IA?
+    *(Sim / Não)*
+
+. **Sistema** — Você tem sistemas integrados com IA?
+    *(Sim / Não)*
+
+---
+
+### Interesses e Próximos Passos
+
+. **Conteúdos de Interesse** — Quais conteúdos são do seu interesse? *(múltipla escolha)*
+    - IA aplicada ao Comercial/Vendas (prospecção, follow-up, fechamento)
+    - IA aplicada ao Marketing (geração de leads, conteúdo, campanhas)
+    - IA para Automação de Processos
+    - IA para Gestão e Operações
+    - IA para Atendimento ao Cliente
+    - Outro
+
+. **Outro** *(campo aberto)* — Se marcou "Outro", descreva qual conteúdo tem interesse.
+
+____________
+
+Se esse cliente tiver respondido tudo com sim, ele está no nivel 1, caso contrário está no nível 2 
