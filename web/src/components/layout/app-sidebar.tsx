@@ -45,7 +45,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Pendentes Onboarding", icon: Clock, url: "/onboarding" },
     { title: "Mentores", icon: MessageSquare, url: "/mentores" },
     { title: "Reunioes Galdino", icon: Calendar, url: "/reunioes-galdino" },
-    { title: "Black CRM", icon: Settings, url: "/crm" },
+    { title: "Reunioes Black CRM", icon: Settings, url: "/reunioes-blackcrm" },
   ]
 
   const clientItems = [
