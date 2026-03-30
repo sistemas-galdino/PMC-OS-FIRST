@@ -32,7 +32,7 @@ interface Meeting {
   link_geminidoc: string | null
 }
 
-type Tab = "resumo" | "acoes" | "transcricao" | "gravacao"
+type Tab = "resumo" | "detalhes" | "acoes" | "transcricao" | "gravacao"
 
 export default function ReuniaoGaldinoDetalhePage() {
   const { id } = useParams<{ id: string }>()
@@ -76,6 +76,7 @@ export default function ReuniaoGaldinoDetalhePage() {
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "resumo", label: "Resumo", icon: <FileTextIcon className="size-4" /> },
+    { key: "detalhes", label: "Detalhes", icon: <ClipboardList className="size-4" /> },
     { key: "acoes", label: "Acoes", icon: <ClipboardList className="size-4" /> },
     { key: "transcricao", label: "Transcricao", icon: <FileTextIcon className="size-4" /> },
     { key: "gravacao", label: "Gravacao", icon: <VideoIcon className="size-4" /> },
@@ -174,6 +175,7 @@ export default function ReuniaoGaldinoDetalhePage() {
         transition={{ duration: 0.3 }}
       >
         {activeTab === "resumo" && <TabResumo meeting={meeting} />}
+        {activeTab === "detalhes" && <TabDetalhes meeting={meeting} />}
         {activeTab === "acoes" && <TabAcoes meeting={meeting} />}
         {activeTab === "transcricao" && <TabTranscricao meeting={meeting} />}
         {activeTab === "gravacao" && <TabGravacao meeting={meeting} />}
@@ -182,8 +184,26 @@ export default function ReuniaoGaldinoDetalhePage() {
   )
 }
 
+function TabDetalhes({ meeting }: { meeting: Meeting }) {
+  if (!meeting.detalhes_reuniao) {
+    return <EmptyState text="Sem detalhes disponiveis para esta reuniao." />
+  }
+
+  return (
+    <Card className="border-border bg-card/50 backdrop-blur-md">
+      <CardContent className="p-6 md:p-8">
+        <ScrollArea className="max-h-[60vh]">
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap pr-4">
+            {meeting.detalhes_reuniao}
+          </p>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  )
+}
+
 function TabResumo({ meeting }: { meeting: Meeting }) {
-  const content = meeting.resumo || meeting.detalhes_reuniao
+  const content = meeting.resumo
 
   if (!content) {
     return <EmptyState text="Sem resumo disponivel para esta reuniao." />
