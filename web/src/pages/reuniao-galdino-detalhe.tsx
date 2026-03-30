@@ -184,6 +184,91 @@ export default function ReuniaoGaldinoDetalhePage() {
   )
 }
 
+function FormattedContent({ text }: { text: string }) {
+  const lines = text.split('\n')
+  const elements: React.ReactNode[] = []
+  let currentBullets: string[] = []
+  let key = 0
+
+  function flushBullets() {
+    if (currentBullets.length > 0) {
+      elements.push(
+        <ul key={key++} className="space-y-2 pl-1 mb-5">
+          {currentBullets.map((bullet, j) => (
+            <li key={j} className="text-sm text-foreground/80 flex items-start gap-2.5">
+              <span className="text-primary mt-0.5 shrink-0">•</span>
+              <span className="leading-relaxed">{formatInline(bullet)}</span>
+            </li>
+          ))}
+        </ul>
+      )
+      currentBullets = []
+    }
+  }
+
+  function formatInline(text: string): React.ReactNode {
+    const parts: React.ReactNode[] = []
+    const regex = /\*\*(.+?)\*\*/g
+    let lastIndex = 0
+    let match
+    let i = 0
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index))
+      }
+      parts.push(<strong key={i++} className="font-semibold text-foreground">{match[1]}</strong>)
+      lastIndex = regex.lastIndex
+    }
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex))
+    }
+    return parts.length === 1 ? parts[0] : parts
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+
+    if (trimmed === '') {
+      flushBullets()
+      continue
+    }
+
+    // Heading: **1. Title** or **Title**
+    const headingMatch = trimmed.match(/^\*\*(\d+\.\s*)?(.*?)\*\*$/)
+    if (headingMatch) {
+      flushBullets()
+      const number = headingMatch[1] || ''
+      const title = headingMatch[2]
+      elements.push(
+        <h4 key={key++} className="text-base font-bold text-foreground mt-6 mb-3 first:mt-0 flex items-center gap-2">
+          {number && <span className="text-primary font-bold">{number.trim()}</span>}
+          <span>{title}</span>
+        </h4>
+      )
+      continue
+    }
+
+    // Bullet: - text
+    const bulletMatch = trimmed.match(/^[-•]\s+(.+)$/)
+    if (bulletMatch) {
+      currentBullets.push(bulletMatch[1])
+      continue
+    }
+
+    // Regular paragraph
+    flushBullets()
+    elements.push(
+      <p key={key++} className="text-sm text-foreground/80 leading-relaxed mb-3">
+        {formatInline(trimmed)}
+      </p>
+    )
+  }
+
+  flushBullets()
+
+  return <>{elements}</>
+}
+
 function TabDetalhes({ meeting }: { meeting: Meeting }) {
   if (!meeting.detalhes_reuniao) {
     return <EmptyState text="Sem detalhes disponiveis para esta reuniao." />
@@ -193,9 +278,9 @@ function TabDetalhes({ meeting }: { meeting: Meeting }) {
     <Card className="border-border bg-card/50 backdrop-blur-md">
       <CardContent className="p-6 md:p-8">
         <ScrollArea className="max-h-[60vh]">
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap pr-4">
-            {meeting.detalhes_reuniao}
-          </p>
+          <div className="pr-4">
+            <FormattedContent text={meeting.detalhes_reuniao} />
+          </div>
         </ScrollArea>
       </CardContent>
     </Card>
@@ -239,7 +324,7 @@ function TabResumo({ meeting }: { meeting: Meeting }) {
   return (
     <Card className="border-border bg-card/50 backdrop-blur-md">
       <CardContent className="p-6 md:p-8">
-        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{content}</p>
+        <FormattedContent text={content} />
       </CardContent>
     </Card>
   )
@@ -318,9 +403,9 @@ function TabTranscricao({ meeting }: { meeting: Meeting }) {
     <Card className="border-border bg-card/50 backdrop-blur-md">
       <CardContent className="p-6 md:p-8">
         <ScrollArea className="max-h-[60vh]">
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap pr-4">
-            {meeting.transcricao}
-          </p>
+          <div className="pr-4">
+            <FormattedContent text={meeting.transcricao} />
+          </div>
         </ScrollArea>
       </CardContent>
     </Card>
