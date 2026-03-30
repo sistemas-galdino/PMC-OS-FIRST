@@ -170,11 +170,74 @@ Google Agenda → n8n → Supabase
 
 ---
 
+# 4. Tabela: reunioes_blackcrm
+
+## Descrição
+
+Armazena registros de reuniões de implementação e tutoria do Black CRM, conduzidas por Ayslan e Leonardo.
+
+Origem:
+Google Agenda (especialistablackcrm@rafaelgaldino.com.br) → Script → Supabase
+
+## Chave principal
+
+* id_unico (text) — identificador único da reunião
+
+## Colunas
+
+### Identificação
+
+* id_unico (text) — PK
+* id_reuniao (text) — ID do evento no Google Calendar
+* id_cliente (text) — referência lógica ao clientes_formulario
+* codigo_cliente (numeric) — código do cliente
+
+### Empresa
+
+* empresa (text) — nome extraído do evento do calendário
+* nome_empresa_formatado (text) — nome da empresa no banco
+
+### Temporal
+
+* data_reuniao (text) — data da reunião (DD/MM/YYYY)
+* horario (text) — horário (HH:MM)
+* mes (numeric) — mês
+* semana (numeric) — número da semana
+* ano (numeric) — ano
+* inicio_semana (text) — início da semana
+* fim_semana (text) — fim da semana
+
+### Classificação
+
+* tipo_reuniao (text) — 'implementacao' ou 'tutoria'
+* responsavel (text) — quem conduziu (Ayslan ou Leonardo)
+
+### Pós-Reunião (enriquecimento)
+
+* nps (numeric) — nota NPS (1-10)
+* transcricao (text)
+* transcricao_md (text)
+* resumo (text)
+* resumo_json (text)
+* acoes (text)
+* link_gravacao (text)
+* link_geminidoc (text)
+
+### Matching
+
+* status_match (text) — 'Identificado' ou 'Nao identificado'
+* metodo_match (text) — método usado para match
+* observacoes (text)
+* created_at (text)
+
+---
+
 # Relações Lógicas
 
 clientes_formulario.id_cliente
 → clientes_entrada.id_cliente
 → reunioes_mentoria.id_cliente
+→ reunioes_blackcrm.id_cliente
 
 Não há foreign key explícita, mas existe dependência lógica.
 
