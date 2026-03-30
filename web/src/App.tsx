@@ -16,6 +16,8 @@ import ClientReunioesPage from "@/pages/client-reunioes"
 import DefinirSenhaPage from "@/pages/definir-senha"
 import CadastroPage from "@/pages/cadastro"
 import ReuniaoDetalhePage from "@/pages/reuniao-detalhe"
+import ReunioesGaldinoPage from "@/pages/reunioes-galdino"
+import ReuniaoGaldinoDetalhePage from "@/pages/reuniao-galdino-detalhe"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { BackgroundShader } from "@/components/ui/background-shader"
@@ -183,6 +185,8 @@ function App() {
                     <Route path="/reunioes" element={<ClientReunioesPage session={session} />} />
                     <Route path="/cliente/:id" element={<ClientProfilePage />} />
                     <Route path="/reuniao/:id" element={<ReuniaoDetalhePage />} />
+                    <Route path="/reunioes-galdino" element={<ReunioesGaldinoPage />} />
+                    <Route path="/reuniao-galdino/:id" element={<ReuniaoGaldinoDetalhePage />} />
                     <Route path="/onboarding" element={<OnboardingPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
