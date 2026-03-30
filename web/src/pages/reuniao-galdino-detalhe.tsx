@@ -277,11 +277,7 @@ function TabDetalhes({ meeting }: { meeting: Meeting }) {
   return (
     <Card className="border-border bg-card/50 backdrop-blur-md">
       <CardContent className="p-6 md:p-8">
-        <ScrollArea className="max-h-[60vh]">
-          <div className="pr-4">
-            <FormattedContent text={meeting.detalhes_reuniao} />
-          </div>
-        </ScrollArea>
+        <FormattedContent text={meeting.detalhes_reuniao} />
       </CardContent>
     </Card>
   )
@@ -402,11 +398,7 @@ function TabTranscricao({ meeting }: { meeting: Meeting }) {
   return (
     <Card className="border-border bg-card/50 backdrop-blur-md">
       <CardContent className="p-6 md:p-8">
-        <ScrollArea className="max-h-[60vh]">
-          <div className="pr-4">
-            <FormattedContent text={meeting.transcricao} />
-          </div>
-        </ScrollArea>
+        <FormattedContent text={meeting.transcricao} />
       </CardContent>
     </Card>
   )
