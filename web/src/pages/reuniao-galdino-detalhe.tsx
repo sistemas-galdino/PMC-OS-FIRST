@@ -125,7 +125,7 @@ export default function ReuniaoGaldinoDetalhePage() {
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Calendar className="size-4 text-primary/60" />
-                <span className="font-medium">{new Date(meeting.data_reuniao).toLocaleDateString('pt-BR')}</span>
+                <span className="font-medium">{new Date(meeting.data_reuniao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
               </div>
               {meeting.horario && (
                 <>

@@ -249,21 +249,21 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
                         <Badge
                           variant="outline"
                           className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
-                            new Date(meeting.data_reuniao) > new Date()
+                            new Date(meeting.data_reuniao + 'T00:00:00') > new Date()
                               ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
                               : meeting.cliente_compareceu === false
                                 ? "bg-destructive/10 border-destructive/20 text-destructive"
                                 : "bg-primary/10 border-primary/20 text-primary"
                           }`}
                         >
-                          {new Date(meeting.data_reuniao) > new Date() ? "Agendada" : meeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
+                          {new Date(meeting.data_reuniao + 'T00:00:00') > new Date() ? "Agendada" : meeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
                         </Badge>
                       </div>
 
                       <div className="flex items-center justify-between border-t border-border/50 pt-4">
                         <div className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
                           <Calendar className="size-3.5 text-primary/60" />
-                          <span className="uppercase tracking-widest">{new Date(meeting.data_reuniao).toLocaleDateString('pt-BR')}</span>
+                          <span className="uppercase tracking-widest">{new Date(meeting.data_reuniao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           {meeting.link_gravacao && (

@@ -335,7 +335,7 @@ export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlac
                                   <span className="uppercase tracking-widest">
                                     {(() => {
                                       try {
-                                        const d = new Date(meeting.data_reuniao)
+                                        const d = new Date(meeting.data_reuniao + 'T00:00:00')
                                         return isNaN(d.getTime()) ? meeting.data_reuniao : d.toLocaleDateString('pt-BR')
                                       } catch { return meeting.data_reuniao }
                                     })()}

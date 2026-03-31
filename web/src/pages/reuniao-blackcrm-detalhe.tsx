@@ -205,7 +205,7 @@ export default function ReuniaoBlackCRMDetalhePage() {
                 <span className="font-medium">
                   {(() => {
                     try {
-                      const d = new Date(meeting.data_reuniao)
+                      const d = new Date(meeting.data_reuniao + 'T00:00:00')
                       return isNaN(d.getTime()) ? meeting.data_reuniao : d.toLocaleDateString('pt-BR')
                     } catch { return meeting.data_reuniao }
                   })()}
