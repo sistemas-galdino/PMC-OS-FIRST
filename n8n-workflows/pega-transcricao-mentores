@@ -1,0 +1,934 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.3,
+            "position": [
+                -464,
+                272
+            ],
+            "id": "f4102e81-4cd0-4d95-9aca-94f7cd8c31bd",
+            "name": "Schedule Trigger"
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "calendar": {
+                    "__rl": true,
+                    "value": "mentor@rafaelgaldino.com.br",
+                    "mode": "list",
+                    "cachedResultName": "mentor@rafaelgaldino.com.br"
+                },
+                "timeMin": "={{ $now.startOf('day') }}",
+                "timeMax": "={{ $now.endOf('day') }}",
+                "options": {
+                    "fields": "",
+                    "timeZone": {
+                        "__rl": true,
+                        "value": "America/Sao_Paulo",
+                        "mode": "list",
+                        "cachedResultName": "America/Sao_Paulo"
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.googleCalendar",
+            "typeVersion": 1.3,
+            "position": [
+                -272,
+                272
+            ],
+            "id": "253df090-d618-4da6-bed3-3869450950ef",
+            "name": "Get many events",
+            "retryOnFail": true,
+            "credentials": {
+                "googleCalendarOAuth2Api": {
+                    "id": "FnqyZleFOdR0JCRA",
+                    "name": "Google Calendar account - Mentor"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "n8n-nodes-base.splitInBatches",
+            "typeVersion": 3,
+            "position": [
+                432,
+                256
+            ],
+            "id": "fa33a956-8199-4a54-b252-098117a2f020",
+            "name": "Loop Over Items"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 3
+                    },
+                    "conditions": [
+                        {
+                            "id": "e67d7280-9faa-487c-85a4-89288a71ac59",
+                            "leftValue": "={{ $json.temGravacao }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "equals"
+                            }
+                        },
+                        {
+                            "id": "a1781f6f-7c22-4e8b-8b40-9a7f0e4aac0f",
+                            "leftValue": "={{ $json.temAnotacoesGemini }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.3,
+            "position": [
+                848,
+                272
+            ],
+            "id": "0dcff2a8-837e-41cb-ac33-802654c6f3fc",
+            "name": "Gerou tudo?"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 3
+                    },
+                    "conditions": [
+                        {
+                            "id": "a39e72c6-277e-467f-88de-044b137adeea",
+                            "leftValue": "={{ $json.summary }}",
+                            "rightValue": "[PMC] Acompanhamento",
+                            "operator": {
+                                "type": "string",
+                                "operation": "contains"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.filter",
+            "typeVersion": 2.3,
+            "position": [
+                -80,
+                272
+            ],
+            "id": "422ff0cb-c025-47ff-a4b8-376dde14b49f",
+            "name": "Filter"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 3
+                    },
+                    "conditions": [
+                        {
+                            "id": "a8133b50-7c4a-4407-8352-9afc00bc98f9",
+                            "leftValue": "={{ $json.attachments }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "array",
+                                "operation": "exists",
+                                "singleValue": true
+                            }
+                        },
+                        {
+                            "id": "a7edb268-d9ec-44d4-b0b2-2ea421531e67",
+                            "leftValue": "={{ $json.attachments }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "array",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.3,
+            "position": [
+                176,
+                272
+            ],
+            "id": "af8aba55-8859-4b2b-9609-50d85fbce4d9",
+            "name": "existe arquivos?"
+        },
+        {
+            "parameters": {
+                "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  const event = item.json;\n  const attachments = event.attachments || [];\n\n  const gravacao = attachments.find(a => a.mimeType === 'video/mp4');\n  const anotacoesGemini = attachments.find(a => a.title === 'Anotações do Gemini');\n  const transcricao = attachments.find(a => a.title?.toLowerCase().includes('transcript'));\n\n  results.push({\n    json: {\n      id: event.id,\n      summary: event.summary,\n      temGravacao: !!gravacao,\n      temAnotacoesGemini: !!anotacoesGemini,\n      temTranscricao: !!transcricao,\n      gravacao: {\n        url: gravacao?.fileUrl || null,\n        fileId: gravacao?.fileId || null,\n      },\n      anotacoesGemini: {\n        url: anotacoesGemini?.fileUrl || null,\n        fileId: anotacoesGemini?.fileId || null,\n      },\n      transcricao: {\n        url: transcricao?.fileUrl || null,\n        fileId: transcricao?.fileId || null,\n      },\n    }\n  });\n}\n\nreturn results;"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                656,
+                272
+            ],
+            "id": "30ed369f-86da-4299-95f3-8c7cc3631258",
+            "name": "pega informacoes"
+        },
+        {
+            "parameters": {
+                "operation": "get",
+                "tableId": "reunioes_mentoria_new",
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id_reuniao",
+                            "keyValue": "={{ $json.id }}"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1056,
+                256
+            ],
+            "id": "7d82148c-648f-47aa-b8cf-58ef2dd4be05",
+            "name": "pega dados cliente",
+            "alwaysOutputData": true,
+            "credentials": {
+                "supabaseApi": {
+                    "id": "42VQY5Hua8ZlM4pO",
+                    "name": "Supabase account - PMC OS v2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 3
+                    },
+                    "conditions": [
+                        {
+                            "id": "357ac0fb-fb73-46b5-86c6-10aa697978da",
+                            "leftValue": "={{ $json.id_unico }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "exists",
+                                "singleValue": true
+                            }
+                        },
+                        {
+                            "id": "6a0f15b7-9770-4b4d-8b35-6e6c9a66a4ad",
+                            "leftValue": "={{ $json.link_gravacao }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "empty",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.3,
+            "position": [
+                1232,
+                272
+            ],
+            "id": "b9db5831-0c63-4126-aebd-e5723f0cb521",
+            "name": "reuniao existe e dados nao foram preenchidos?"
+        },
+        {
+            "parameters": {
+                "jsCode": "const items = $input.all();\nconst results = [];\n\nconst SKIP_HEADINGS = /^(Convidados|Anexos|Registros da reuni[aã]o|Participants|Attachments|Meeting notes)$/i;\nconst STOP_SECTIONS = /^(Pr[oó]ximas etapas|Pr[oó]ximos passos|A[çc][oõ]es sugeridas|Next steps|Revise as anota[çc][oõ]es|Envie feedback)/i;\nconst SECTION_HEADINGS = /^(Resumo|Sum[aá]rio|Detalhes|Discuss[aã]o|T[oó]picos discutidos)$/i;\nconst DATE_PATTERN = /^\\d{1,2} de \\w+\\.? de \\d{4}$/i;\nconst TIMESTAMP_HEADING = /^\\d{2}:\\d{2}:\\d{2}$/;\nconst TRANSCRIPTION_FOOTER = /^(A transcri[çc][aã]o foi encerrada|Esta transcri[çc][aã]o edit[aá]vel)/i;\n\n// Extrai texto puro de um bloco\nfunction extractText(block) {\n  return (block.paragraph?.elements || [])\n    .map(el => el.textRun?.content || el.dateElement?.dateElementProperties?.displayText || \"\")\n    .join(\"\")\n    .replace(/[\\n\\u000b]+/g, \" \")\n    .trim();\n}\n\nfor (const item of items) {\n  const doc = item.json;\n  const tabs = doc.tabs || [];\n\n  const documentId = doc.documentId || \"\";\n  const titulo = (doc.title || \"\").replace(/\\s*-\\s*\\d{4}\\/\\d{2}\\/\\d{2}.*$/, \"\").trim();\n\n  // Separa as abas por título\n  const abaObservacoes = tabs.find(t => /observa[çc][oõ]es/i.test(t.tabProperties?.title || \"\"));\n  const abaTranscricao = tabs.find(t => /transcri[çc][aã]o/i.test(t.tabProperties?.title || \"\"));\n\n  // ── ABA OBSERVAÇÕES ──────────────────────────────────────────\n  let resumo = \"\", detalhes = \"\", conteudo = \"\";\n\n  if (abaObservacoes) {\n    const bodyContent = abaObservacoes.documentTab?.body?.content || [];\n    let currentSection = \"\";\n    const conteudoLines = [];\n\n    for (const block of bodyContent) {\n      if (!block.paragraph) continue;\n      const text = extractText(block);\n      if (!text) continue;\n\n      if (STOP_SECTIONS.test(text)) break;\n      if (DATE_PATTERN.test(text)) continue;\n      if (SKIP_HEADINGS.test(text)) continue;\n\n      const styleType = block.paragraph?.paragraphStyle?.namedStyleType || \"\";\n      const isHeading = styleType.startsWith(\"HEADING\");\n\n      if (styleType === \"HEADING_2\") continue;\n\n      if (isHeading && SECTION_HEADINGS.test(text)) {\n        currentSection = text.toLowerCase().normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\");\n        continue;\n      }\n\n      if (currentSection.startsWith(\"resum\") || currentSection.startsWith(\"sum\")) {\n        resumo += (resumo ? \"\\n\" : \"\") + text;\n      } else if (currentSection.startsWith(\"detalhe\") || currentSection.startsWith(\"discuss\") || currentSection.startsWith(\"topic\")) {\n        detalhes += (detalhes ? \"\\n\" : \"\") + text;\n      }\n\n      conteudoLines.push(text);\n    }\n\n    conteudo = conteudoLines.join(\"\\n\").trim();\n  }\n\n  // ── ABA TRANSCRIÇÃO ───────────────────────────────────────────\n  let transcricao = \"\";\n\n  if (abaTranscricao) {\n    const bodyContent = abaTranscricao.documentTab?.body?.content || [];\n    const transcricaoLines = [];\n\n    for (const block of bodyContent) {\n      if (!block.paragraph) continue;\n      const text = extractText(block);\n      if (!text) continue;\n\n      if (TRANSCRIPTION_FOOTER.test(text)) break;\n      if (DATE_PATTERN.test(text)) continue;\n\n      const styleType = block.paragraph?.paragraphStyle?.namedStyleType || \"\";\n\n      // Ignora o título da aba (HEADING_2)\n      if (styleType === \"HEADING_2\") continue;\n\n      // Timestamps viram marcadores de tempo na transcrição\n      if (styleType === \"HEADING_3\" && TIMESTAMP_HEADING.test(text)) {\n        transcricaoLines.push(`\\n[${text}]`);\n        continue;\n      }\n\n      transcricaoLines.push(text);\n    }\n\n    transcricao = transcricaoLines.join(\"\\n\").trim();\n  }\n\n  results.push({\n    json: {\n      documentId,\n      titulo,\n      resumo: resumo.trim(),\n      detalhes: detalhes.trim(),\n      conteudo,\n      transcricao,\n      parsing_ok: !!(resumo || detalhes),\n    }\n  });\n}\n\nreturn results;"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1744,
+                336
+            ],
+            "id": "85afa42b-7636-42bc-bfa4-15caf6575555",
+            "name": "extrai informacoes das anotacoes",
+            "retryOnFail": true,
+            "waitBetweenTries": 5000,
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "url": "=https://docs.googleapis.com/v1/documents/{{ $('pega informacoes').item.json.anotacoesGemini.fileId }}?includeTabsContent=true",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "googleDocsOAuth2Api",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1488,
+                320
+            ],
+            "id": "aeb29c92-8990-4d8c-9ce9-8278e0263947",
+            "name": "pego conteudo escrito",
+            "retryOnFail": true,
+            "waitBetweenTries": 5000,
+            "credentials": {
+                "googleDocsOAuth2Api": {
+                    "id": "nrOfW28uyajOIrDM",
+                    "name": "Google Docs account - Mentor"
+                }
+            },
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "=Aqui está a transcricão da reunião: \n\n{{ $json.transcricao }}",
+                "hasOutputParser": true,
+                "options": {
+                    "systemMessage": "Você é um consultor estratégico especialista em marketing, crescimento empresarial e implementação de inteligência artificial.\n\nAnalise a transcrição da reunião de mentoria abaixo e gere três resultados:\n1) Os ganhos da reunião para o cliente\n2) As ações que o cliente deve executar\n3) As ações que o mentor deve executar\n\nREGRAS IMPORTANTES\n- As ações devem ser tarefas práticas e executáveis.\n- O status das tarefas deve iniciar sempre como \"A fazer\".\n- Caso o responsável não esteja explícito, considere \"Cliente\".\n- O ganho_reuniao deve explicar o principal avanço ou benefício conquistado pelo cliente nesta reunião.\n\nAntes de gerar qualquer resultado, analise se a reunião realmente aconteceu.\nConsidere que NÃO houve reunião se:\n- Não houver interação entre duas partes.\n- A transcrição mostrar apenas o mentor aguardando.\n- Não houver discussão estratégica real.\n- Não houver troca de informações ou decisões.\n\nSe a reunião NÃO aconteceu:\n- Defina \"reuniao_realizada\": false\n- Explique o motivo em \"motivo_nao_realizada\"\n- Deixe ganho_reuniao vazio\n- Retorne arrays vazios em acoes_cliente e acoes_mentor\n\nSe a reunião aconteceu normalmente:\n- Defina \"reuniao_realizada\": true\n- Deixe \"motivo_nao_realizada\" vazio\n- Gere ganho e ações normalmente\n\nSe não houver prazo explícito mencionado na transcrição, deixe o campo prazo como string vazia \"\"."
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 3.1,
+            "position": [
+                1952,
+                336
+            ],
+            "id": "496e36f4-c3aa-424a-ba87-4f5a98cae0ed",
+            "name": "AI Agent",
+            "retryOnFail": true,
+            "waitBetweenTries": 5000,
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "model": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "gpt-5-mini"
+                },
+                "builtInTools": {},
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+            "typeVersion": 1.3,
+            "position": [
+                1792,
+                576
+            ],
+            "id": "c45291bd-9e9c-4dca-96e3-64f79edcd372",
+            "name": "OpenAI Chat Model",
+            "credentials": {
+                "openAiApi": {
+                    "id": "COs8kgDG2WfzEKYp",
+                    "name": "OpenAi account - David"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsonSchemaExample": "{\n  \"reuniao_realizada\": true,\n  \"motivo_nao_realizada\": \"\",\n  \"ganho_reuniao\": \"Principal ganho ou avanço do cliente nesta reunião\",\n  \"acoes_cliente\": [\n    {\n      \"acao\": \"Tarefa que o cliente precisa executar\",\n      \"prazo\": \"\",\n      \"status\": \"A fazer\"\n    }\n  ],\n  \"acoes_mentor\": [\n    {\n      \"acao\": \"Tarefa que o mentor precisa executar\",\n      \"prazo\": \"\",\n      \"status\": \"A fazer\"\n    }\n  ]\n}"
+            },
+            "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+            "typeVersion": 1.3,
+            "position": [
+                2208,
+                576
+            ],
+            "id": "720def3b-b63f-4783-ad9f-9be0b7735147",
+            "name": "Structured Output Parser"
+        },
+        {
+            "parameters": {},
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                352,
+                576
+            ],
+            "id": "8a3071ef-a8db-4d2e-b1de-8da7136533ec",
+            "name": "No Operation, do nothing"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 3
+                    },
+                    "conditions": [
+                        {
+                            "id": "74cec2be-a341-4202-aa34-68e5b1e64513",
+                            "leftValue": "={{ $json.output.reuniao_realizada }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.3,
+            "position": [
+                2304,
+                336
+            ],
+            "id": "9195dd5d-b480-433c-a8b9-508da06318ab",
+            "name": "tem trasncricao?"
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "def945a6-1518-41ba-890c-90e8be81ba05",
+                            "name": "ganho_reuniao",
+                            "value": "={{ $json.output.ganho_reuniao }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "0a935716-ef3a-4d8f-b685-0c0afa185931",
+                            "name": "acoes_cliente",
+                            "value": "={{ $json.output.acoes_cliente }}",
+                            "type": "array"
+                        },
+                        {
+                            "id": "6fc02922-09d3-49bd-a7a6-b5fc89b243da",
+                            "name": "acoes_mentor",
+                            "value": "={{ $json.output.acoes_mentor }}",
+                            "type": "array"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                2560,
+                320
+            ],
+            "id": "f15ba204-08bb-4979-80dd-9c3e8ccb89b6",
+            "name": "organiza dados"
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "tableId": "reunioes_mentoria_new",
+                "matchType": "allFilters",
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id_reuniao",
+                            "condition": "eq",
+                            "keyValue": "={{ $('pega informacoes').item.json.id }}"
+                        }
+                    ]
+                },
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "gravada",
+                            "fieldValue": "TRUE"
+                        },
+                        {
+                            "fieldId": "tem_transcricao",
+                            "fieldValue": "TRUE"
+                        },
+                        {
+                            "fieldId": "link_gravacao",
+                            "fieldValue": "={{ $('pega informacoes').item.json.gravacao.url }}"
+                        },
+                        {
+                            "fieldId": "link_geminidoc",
+                            "fieldValue": "={{ $('pega informacoes').item.json.anotacoesGemini.url }}"
+                        },
+                        {
+                            "fieldId": "acoes_cliente",
+                            "fieldValue": "={{ $json.acoes_cliente }}"
+                        },
+                        {
+                            "fieldId": "acoes_mentor",
+                            "fieldValue": "={{ $json.acoes_mentor }}"
+                        },
+                        {
+                            "fieldId": "ganho",
+                            "fieldValue": "={{ $json.ganho_reuniao }}"
+                        },
+                        {
+                            "fieldId": "cliente_compareceu",
+                            "fieldValue": "TRUE"
+                        },
+                        {
+                            "fieldId": "resumo",
+                            "fieldValue": "={{ $('extrai informacoes das anotacoes').item.json.conteudo }}"
+                        },
+                        {
+                            "fieldId": "transcricao",
+                            "fieldValue": "={{ $('extrai informacoes das anotacoes').item.json.transcricao }}"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                2816,
+                320
+            ],
+            "id": "45c71c47-5481-4199-ad0d-c80aab977491",
+            "name": "preenche tabela",
+            "retryOnFail": true,
+            "waitBetweenTries": 5000,
+            "credentials": {
+                "supabaseApi": {
+                    "id": "42VQY5Hua8ZlM4pO",
+                    "name": "Supabase account - PMC OS v2"
+                }
+            },
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "tableId": "reunioes_mentoria_new",
+                "matchType": "allFilters",
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id_reuniao",
+                            "condition": "eq",
+                            "keyValue": "={{ $('pega informacoes').item.json.id }}"
+                        }
+                    ]
+                },
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "gravada",
+                            "fieldValue": "TRUE"
+                        },
+                        {
+                            "fieldId": "tem_transcricao",
+                            "fieldValue": "FALSE"
+                        },
+                        {
+                            "fieldId": "link_gravacao",
+                            "fieldValue": "={{ $('pega informacoes').item.json.gravacao.url }}"
+                        },
+                        {
+                            "fieldId": "link_geminidoc",
+                            "fieldValue": "={{ $('pega informacoes').item.json.anotacoesGemini.url }}"
+                        },
+                        {
+                            "fieldId": "cliente_compareceu",
+                            "fieldValue": "TRUE"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                2736,
+                608
+            ],
+            "id": "207f8166-5e4d-49ac-9c4e-f3b217411eac",
+            "name": "preenche tabela1",
+            "retryOnFail": true,
+            "waitBetweenTries": 5000,
+            "credentials": {
+                "supabaseApi": {
+                    "id": "42VQY5Hua8ZlM4pO",
+                    "name": "Supabase account - PMC OS v2"
+                }
+            },
+            "onError": "continueErrorOutput"
+        }
+    ],
+    "connections": {
+        "Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Get many events",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get many events": {
+            "main": [
+                [
+                    {
+                        "node": "Filter",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Loop Over Items": {
+            "main": [
+                [],
+                [
+                    {
+                        "node": "pega informacoes",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Gerou tudo?": {
+            "main": [
+                [
+                    {
+                        "node": "pega dados cliente",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter": {
+            "main": [
+                [
+                    {
+                        "node": "existe arquivos?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "existe arquivos?": {
+            "main": [
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "No Operation, do nothing",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "pega informacoes": {
+            "main": [
+                [
+                    {
+                        "node": "Gerou tudo?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "pega dados cliente": {
+            "main": [
+                [
+                    {
+                        "node": "reuniao existe e dados nao foram preenchidos?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "reuniao existe e dados nao foram preenchidos?": {
+            "main": [
+                [
+                    {
+                        "node": "pego conteudo escrito",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "extrai informacoes das anotacoes": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "pego conteudo escrito": {
+            "main": [
+                [
+                    {
+                        "node": "extrai informacoes das anotacoes",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent": {
+            "main": [
+                [
+                    {
+                        "node": "tem trasncricao?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenAI Chat Model": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Structured Output Parser": {
+            "ai_outputParser": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "ai_outputParser",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "tem trasncricao?": {
+            "main": [
+                [
+                    {
+                        "node": "organiza dados",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "preenche tabela1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "organiza dados": {
+            "main": [
+                [
+                    {
+                        "node": "preenche tabela",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "preenche tabela": {
+            "main": [
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "preenche tabela1": {
+            "main": [
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {
+        "AI Agent": [
+            {
+                "output": {
+                    "reuniao_realizada": true,
+                    "motivo_nao_realizada": "",
+                    "ganho_reuniao": "Resolução e avanço operacional: identificaram e corrigiram (ou confirmaram a correção) do problema de sincronização entre as áreas “controle” e “planejamento”, deixando o planejamento editável; o mentor criou/agilizou agentes (Gemini / prompt) e iniciou o processo de compartilhamento de acesso ao projeto Lovable. Também ficaram definidos próximos passos claros para testar agentes, ajustar o campo de evolução, criar o avatar e integrar um agente ao WhatsApp, além de agendar o próximo encontro para acompanhamento.",
+                    "acoes_cliente": [
+                        {
+                            "acao": "Testar os agentes (Gemini e o agente que o mentor enviou) usando casos reais e dar feedback específico sobre respostas e tom.",
+                            "prazo": "Até amanhã",
+                            "status": "A fazer"
+                        },
+                        {
+                            "acao": "Enviar ao mentor o prompt/base de conhecimento (ou link) do agente Galdino/branding e qualquer outro agente que usa no atendimento para que ele possa testar e ajustar.",
+                            "prazo": "Até amanhã",
+                            "status": "A fazer"
+                        },
+                        {
+                            "acao": "Preparar e carregar alguns registros de pacientes (ex.: Ana Cláudia/ Ana Matias) na ferramenta para reproduzir o problema de sincronização e documentar exemplos onde o planejamento foi sobrescrito ou não aparece.",
+                            "prazo": "",
+                            "status": "A fazer"
+                        },
+                        {
+                            "acao": "Adicionar o e‑mail do mentor como colaborador no projeto Lovable (seguir o processo de share/convite indicado) e confirmar que o mentor tem acesso como colaborador/criador conforme combinado.",
+                            "prazo": "",
+                            "status": "A fazer"
+                        },
+                        {
+                            "acao": "Enviar o roteiro/textos para o WhatsApp e para o avatar (falar com Andressa se necessário) para que o mentor possa montar o avatar e configurar mensagens automáticas.",
+                            "prazo": "Até amanhã",
+                            "status": "A fazer"
+                        },
+                        {
+                            "acao": "Agendar a próxima reunião de acompanhamento para sexta‑feira (dia 13) e enviar o convite ao mentor.",
+                            "prazo": "Sexta‑feira (dia 13)",
+                            "status": "A fazer"
+                        }
+                    ],
+                    "acoes_mentor": [
+                        {
+                            "acao": "Enviar o link do prompt e o acesso ao agente Gemini criado para que a cliente possa testar diretamente.",
+                            "prazo": "",
+                            "status": "A fazer"
+                        },
+                        {
+                            "acao": "Implementar o ajuste no sistema para o campo de ‘evolução’ (permitir alterar/incluir) e confirmar que a sincronização entre 'controle' e 'planejamento' está estável.",
+                            "prazo": "",
+                            "status": "A fazer"
+                        },
+                        {
+                            "acao": "Transferir/compartilhar formalmente o projeto Lovable (alterar owner/convidar conforme combinado) e confirmar quando a transferência/convite estiver concluído.",
+                            "prazo": "",
+                            "status": "A fazer"
+                        },
+                        {
+                            "acao": "Criar/ajustar o avatar e incorporar os textos/roteiros que a cliente enviar, deixando o tom alinhado com a comunicação da clínica.",
+                            "prazo": "",
+                            "status": "A fazer"
+                        },
+                        {
+                            "acao": "Alinhar com o Léo (ou responsável técnico) a integração do agente ao WhatsApp, definir a arquitetura (como o agente será acionado e limitações) e iniciar a implementação ou indicar passos técnicos necessários.",
+                            "prazo": "",
+                            "status": "A fazer"
+                        },
+                        {
+                            "acao": "Testar os agentes recebidos com a base de conhecimento da cliente, ajustar respostas/tonalidade e devolver um relatório curto com correções sugeridas.",
+                            "prazo": "",
+                            "status": "A fazer"
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "f7283213f5bd43f486bac74e0e7d5dc62df8cbd28ff61aa31e849bd6056ffc1f"
+    }
+}

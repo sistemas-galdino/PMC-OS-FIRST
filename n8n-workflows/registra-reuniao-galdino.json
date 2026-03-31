@@ -1,0 +1,569 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "pollTimes": {
+                    "item": [
+                        {
+                            "mode": "everyMinute"
+                        }
+                    ]
+                },
+                "calendarId": {
+                    "__rl": true,
+                    "value": "dono@rafaelgaldino.com.br",
+                    "mode": "list",
+                    "cachedResultName": "dono@rafaelgaldino.com.br"
+                },
+                "triggerOn": "eventCreated",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.googleCalendarTrigger",
+            "typeVersion": 1,
+            "position": [
+                -1200,
+                -496
+            ],
+            "id": "e84ee0ec-0f7a-4457-8a48-c204fb0657d2",
+            "name": "Google Calendar Trigger",
+            "retryOnFail": true,
+            "credentials": {
+                "googleCalendarOAuth2Api": {
+                    "id": "FnqyZleFOdR0JCRA",
+                    "name": "Google Calendar account - Mentor"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const meses = [\n  \"Janeiro\",\"Fevereiro\",\"Março\",\"Abril\",\"Maio\",\"Junho\",\n  \"Julho\",\"Agosto\",\"Setembro\",\"Outubro\",\"Novembro\",\"Dezembro\"\n];\n\n// Função para calcular semana ISO e início/fim dela\nfunction getISOWeekData(date) {\n  const d = new Date(date);\n  d.setHours(0, 0, 0, 0);\n\n  const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay(); // ISO: seg=1, dom=7\n\n  const thursday = new Date(d);\n  thursday.setDate(d.getDate() - dayOfWeek + 4);\n\n  const yearStart = new Date(thursday.getFullYear(), 0, 1);\n  const weekNo = Math.ceil((((thursday - yearStart) / 86400000) + 1) / 7);\n\n  const monday = new Date(d);\n  monday.setDate(d.getDate() - dayOfWeek + 1);\n\n  const sunday = new Date(monday);\n  sunday.setDate(monday.getDate() + 6);\n\n  const toISO = (dt) => dt.toISOString().split(\"T\")[0];\n\n  return {\n    semanaISO: weekNo,\n    inicioSemanaISO: toISO(monday),\n    fimSemanaISO: toISO(sunday)\n  };\n}\n\n// Extrai texto puro removendo tags HTML\nfunction stripHtml(html) {\n  return html\n    .replace(/<br\\s*\\/?>/gi, \"\\n\")\n    .replace(/<[^>]+>/g, \"\")\n    .replace(/&nbsp;/g, \" \")\n    .trim();\n}\n\n// Extrai um valor da description baseado no label\nfunction extractFromDescription(description, label) {\n  const plain = stripHtml(description);\n  const lines = plain.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\n  const idx = lines.findIndex(l =>\n    l.toLowerCase().includes(label.toLowerCase())\n  );\n\n  if (idx !== -1 && lines[idx + 1]) {\n    return lines[idx + 1].trim();\n  }\n\n  return null;\n}\n\n// Extrai nome do mentor do summary\nfunction extractMentor(summary) {\n  const match = summary.match(/[-–]\\s*([^(-]+)\\s*\\(/);\n  if (match) return match[1].trim();\n  return null;\n}\n\n// ✅ NOVA FUNÇÃO: extrair hora no fuso de Brasília\nfunction extractHoraBrasilia(dateTime) {\n  if (!dateTime) return null;\n\n  const date = new Date(dateTime);\n\n  return date.toLocaleTimeString(\"pt-BR\", {\n    timeZone: \"America/Sao_Paulo\",\n    hour: \"2-digit\",\n    minute: \"2-digit\",\n    hour12: false\n  });\n}\n\n// Processa cada item\nreturn $input.all().map(item => {\n  const event = item.json;\n  const description = event.description || \"\";\n  const summary = event.summary || \"\";\n  const startDateTime = event.start?.dateTime || event.start?.date;\n\n  const dateObj = new Date(startDateTime);\n  const datePart = startDateTime.split(\"T\")[0];\n\n  const [ano, mesNum] = datePart.split(\"-\").map(Number);\n\n  const { semanaISO, inicioSemanaISO, fimSemanaISO } =\n    getISOWeekData(datePart + \"T12:00:00Z\");\n\n  const horaReuniao = extractHoraBrasilia(startDateTime);\n\n  return {\n    json: {\n      nomeEmpresa: extractFromDescription(description, \"Qual o nome da empresa?\"),\n      codigoEmpresa: extractFromDescription(description, \"Qual o seu ID?\"),\n      nomeMentor: extractMentor(summary),\n      nomePessoaQueAgendou: extractFromDescription(description, \"Reservado por\"),\n\n      dataReuniaoISO: datePart,\n      dataHoraISO: startDateTime,\n      horaReuniao: horaReuniao, // ✅ horário formatado (ex: 11:00)\n\n      mesNumero: mesNum,\n      mesNome: meses[mesNum - 1],\n      ano: ano,\n\n      semanaISO,\n      inicioSemanaISO,\n      fimSemanaISO,\n\n      idReuniao: event.id\n    }\n  };\n});"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -688,
+                -544
+            ],
+            "id": "fd810d98-d9a5-4164-99d0-033c07d1c73d",
+            "name": "Formaliza dados"
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "n8n-nodes-base.splitInBatches",
+            "typeVersion": 3,
+            "position": [
+                -1008,
+                -352
+            ],
+            "id": "cc7defe9-6bd1-476f-9d00-f6b30e88ca77",
+            "name": "Loop Over Items"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 3
+                    },
+                    "conditions": [
+                        {
+                            "id": "val-codigo-001",
+                            "leftValue": "={{ $json.codigoEmpresa }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "isNotEmpty"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.3,
+            "position": [
+                -504,
+                -544
+            ],
+            "id": "a1b2c3d4-0001-4000-8000-000000000001",
+            "name": "Código válido?"
+        },
+        {
+            "parameters": {
+                "operation": "get",
+                "tableId": "clientes_entrada_new",
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "codigo_cliente",
+                            "keyValue": "={{ $json.codigoEmpresa }}"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                -296,
+                -544
+            ],
+            "id": "bc90b12e-bcb2-4295-afb5-bfabf3826297",
+            "name": "Puxa dados da empresa",
+            "alwaysOutputData": true,
+            "credentials": {
+                "supabaseApi": {
+                    "id": "42VQY5Hua8ZlM4pO",
+                    "name": "Supabase account - PMC OS v2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "15c5ed3a-4cb1-4907-8d4a-7a617b5402b2",
+                            "name": "id_cliente",
+                            "value": "={{ $json.id_cliente }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "d77597da-9a9f-4693-a366-2abc33650a0b",
+                            "name": "empresa_nome",
+                            "value": "={{ $json.nome_empresa_formatado }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "1378a6d3-4f29-4ee5-849f-a88ad65581ac",
+                            "name": "codigo_cliente",
+                            "value": "={{ $json.codigo_cliente }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "1c8784b6-dd8d-48bd-8a68-403bea7a22f6",
+                            "name": "cliente_nome",
+                            "value": "={{ $json.nome_cliente_formatado }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                120,
+                -560
+            ],
+            "id": "d9186567-fcba-4cbe-ae0e-579a848c6db9",
+            "name": "Organiza dados empresa"
+        },
+        {
+            "parameters": {
+                "tableId": "reunioes_galdino",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "id_cliente",
+                            "fieldValue": "={{ $json.id_cliente }}"
+                        },
+                        {
+                            "fieldId": "mes",
+                            "fieldValue": "={{ $('Formaliza dados').item.json.mesNumero }}"
+                        },
+                        {
+                            "fieldId": "semana",
+                            "fieldValue": "={{ $('Formaliza dados').item.json.semanaISO }}"
+                        },
+                        {
+                            "fieldId": "empresa",
+                            "fieldValue": "={{ $json.empresa_nome }}"
+                        },
+                        {
+                            "fieldId": "pessoa",
+                            "fieldValue": "={{ $('Formaliza dados').item.json.nomePessoaQueAgendou }}"
+                        },
+                        {
+                            "fieldId": "data_reuniao",
+                            "fieldValue": "={{ $('Formaliza dados').item.json.dataReuniaoISO }}"
+                        },
+                        {
+                            "fieldId": "inicio_semana",
+                            "fieldValue": "={{ $('Formaliza dados').item.json.inicioSemanaISO }}"
+                        },
+                        {
+                            "fieldId": "fim_semana",
+                            "fieldValue": "={{ $('Formaliza dados').item.json.fimSemanaISO }}"
+                        },
+                        {
+                            "fieldId": "id_reuniao",
+                            "fieldValue": "={{ $('Formaliza dados').item.json.idReuniao }}"
+                        },
+                        {
+                            "fieldId": "ano",
+                            "fieldValue": "={{ $('Formaliza dados').item.json.ano }}"
+                        },
+                        {
+                            "fieldId": "horario",
+                            "fieldValue": "={{ $('Formaliza dados').item.json.horaReuniao }}"
+                        },
+                        {
+                            "fieldId": "nome_empresa_formatado",
+                            "fieldValue": "={{ $json.empresa_nome }}"
+                        },
+                        {
+                            "fieldId": "nome_cliente_formatado",
+                            "fieldValue": "={{ $json.cliente_nome }}"
+                        },
+                        {
+                            "fieldId": "codigo_cliente",
+                            "fieldValue": "={{ $json.codigo_cliente }}"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                296,
+                -448
+            ],
+            "id": "79212f67-31bf-4e99-9381-8b9fb1fc8779",
+            "name": "Registra Reunião",
+            "credentials": {
+                "supabaseApi": {
+                    "id": "42VQY5Hua8ZlM4pO",
+                    "name": "Supabase account - PMC OS v2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 3
+                    },
+                    "conditions": [
+                        {
+                            "id": "358860a9-3587-4bb3-8c6f-be905ccf63d1",
+                            "leftValue": "={{ $json.summary }}",
+                            "rightValue": "PMC - Reunião Individual - Rafael Galdino",
+                            "operator": {
+                                "type": "string",
+                                "operation": "startsWith"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.3,
+            "position": [
+                -976,
+                -544
+            ],
+            "id": "49eea3e5-e48d-47df-872a-eef23de30a85",
+            "name": "É reuniao individual?"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 3
+                    },
+                    "conditions": [
+                        {
+                            "id": "782f8c68-67a7-47b9-97ae-dad608a50cdf",
+                            "leftValue": "={{ $json.id_cliente }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "exists",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.3,
+            "position": [
+                -104,
+                -544
+            ],
+            "id": "d4c6ebda-f8b6-472a-aa73-0ce43c84ed87",
+            "name": "cliente existe?"
+        },
+        {
+            "parameters": {
+                "errorMessage": "=CÓDIGO INVÁLIDO: A pessoa não preencheu o código da empresa ou o campo veio vazio.\n\nPessoa: {{ $json.nomePessoaQueAgendou }}\nEmpresa informada: {{ $json.nomeEmpresa }}\nData da reunião: {{ $json.dataReuniaoISO }}\nHorário: {{ $json.horaReuniao }}\nID do evento: {{ $json.idReuniao }}"
+            },
+            "type": "n8n-nodes-base.stopAndError",
+            "typeVersion": 1,
+            "position": [
+                -504,
+                -340
+            ],
+            "id": "a1b2c3d4-0002-4000-8000-000000000002",
+            "name": "Erro: Código inválido"
+        },
+        {
+            "parameters": {
+                "errorMessage": "=CLIENTE NÃO ENCONTRADO: O código informado não existe na tabela clientes_entrada_new.\n\nCódigo informado: {{ $('Formaliza dados').item.json.codigoEmpresa }}\nPessoa: {{ $('Formaliza dados').item.json.nomePessoaQueAgendou }}\nEmpresa informada: {{ $('Formaliza dados').item.json.nomeEmpresa }}\nData da reunião: {{ $('Formaliza dados').item.json.dataReuniaoISO }}\nHorário: {{ $('Formaliza dados').item.json.horaReuniao }}\nID do evento: {{ $('Formaliza dados').item.json.idReuniao }}"
+            },
+            "type": "n8n-nodes-base.stopAndError",
+            "typeVersion": 1,
+            "position": [
+                -104,
+                -340
+            ],
+            "id": "a1b2c3d4-0003-4000-8000-000000000003",
+            "name": "Erro: Cliente não encontrado"
+        }
+    ],
+    "connections": {
+        "Google Calendar Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Formaliza dados": {
+            "main": [
+                [
+                    {
+                        "node": "Código válido?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Código válido?": {
+            "main": [
+                [
+                    {
+                        "node": "Puxa dados da empresa",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Erro: Código inválido",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Loop Over Items": {
+            "main": [
+                [],
+                [
+                    {
+                        "node": "É reuniao individual?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Puxa dados da empresa": {
+            "main": [
+                [
+                    {
+                        "node": "cliente existe?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Organiza dados empresa": {
+            "main": [
+                [
+                    {
+                        "node": "Registra Reunião",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Registra Reunião": {
+            "main": [
+                [
+                    {
+                        "node": "Loop Over Items",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "É reuniao individual?": {
+            "main": [
+                [
+                    {
+                        "node": "Formaliza dados",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "cliente existe?": {
+            "main": [
+                [
+                    {
+                        "node": "Organiza dados empresa",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Erro: Cliente não encontrado",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {
+        "Google Calendar Trigger": [
+            {
+                "kind": "calendar#event",
+                "etag": "\"3549671834478718\"",
+                "id": "b2l1lv0csinv9mma93ceulf7dc",
+                "status": "confirmed",
+                "htmlLink": "https://www.google.com/calendar/event?eid=YjJsMWx2MGNzaW52OW1tYTkzY2V1bGY3ZGMgZG9ub0ByYWZhZWxnYWxkaW5vLmNvbS5icg",
+                "created": "2026-03-30T01:58:35.000Z",
+                "updated": "2026-03-30T01:58:37.239Z",
+                "summary": "PMC - Reunião Individual - Rafael Galdino (David Abner)",
+                "description": "<b>Reservado por</b>\nDavid Abner\ndavid.abner123@gmail.com\n<br><b>Qual o nome da empresa?</b>\ndavidabn\n<br><b>Qual o seu ID? (O ID está localizado na descrição do seu grupo de Whatsapp, são 3 dígitos, ex: 101)</b>\n278\n<br><p>✨ Olá, mentorado do Programa Multiplicador de Crescimento.</p><p><br></p><p>Esse é o link exclusivo para você <strong><b>agendar a sua reunião individual com o Galdino</b></strong>.</p><p><br></p><p>Basta selecionar o dia e horário disponível, colocar o seu nome e e-mail.</p><p><br></p><p>Você vai receber o link do convite no seu e-mail e também enviaremos no seu grupo individual.</p>",
+                "creator": {
+                    "email": "dono@rafaelgaldino.com.br",
+                    "self": true
+                },
+                "organizer": {
+                    "email": "dono@rafaelgaldino.com.br",
+                    "self": true
+                },
+                "start": {
+                    "dateTime": "2026-04-15T11:00:00-03:00",
+                    "timeZone": "America/Fortaleza"
+                },
+                "end": {
+                    "dateTime": "2026-04-15T12:00:00-03:00",
+                    "timeZone": "America/Fortaleza"
+                },
+                "iCalUID": "b2l1lv0csinv9mma93ceulf7dc@google.com",
+                "sequence": 0,
+                "attendees": [
+                    {
+                        "email": "atendimento_02@rafaelgaldino.com.br",
+                        "responseStatus": "needsAction"
+                    },
+                    {
+                        "email": "atendimento_01@rafaelgaldino.com.br",
+                        "responseStatus": "needsAction"
+                    },
+                    {
+                        "email": "david.abner123@gmail.com",
+                        "responseStatus": "accepted"
+                    },
+                    {
+                        "email": "dono@rafaelgaldino.com.br",
+                        "organizer": true,
+                        "self": true,
+                        "responseStatus": "accepted"
+                    },
+                    {
+                        "email": "atendimento_04@rafaelgaldino.com.br",
+                        "responseStatus": "needsAction"
+                    },
+                    {
+                        "email": "atendimento_03@rafaelgaldino.com.br",
+                        "responseStatus": "needsAction"
+                    }
+                ],
+                "extendedProperties": {
+                    "shared": {
+                        "goo.createdByAvailId": "37od7djn0ac99oqih4p1ec3qdg",
+                        "goo.createdBySet": "default_cita"
+                    }
+                },
+                "hangoutLink": "https://meet.google.com/yow-zjzz-btk",
+                "conferenceData": {
+                    "createRequest": {
+                        "requestId": "n4purvm8nqmodcf9las9u8u4tc",
+                        "conferenceSolutionKey": {
+                            "type": "hangoutsMeet"
+                        },
+                        "status": {
+                            "statusCode": "success"
+                        }
+                    },
+                    "entryPoints": [
+                        {
+                            "entryPointType": "video",
+                            "uri": "https://meet.google.com/yow-zjzz-btk",
+                            "label": "meet.google.com/yow-zjzz-btk"
+                        },
+                        {
+                            "entryPointType": "more",
+                            "uri": "https://tel.meet/yow-zjzz-btk?pin=9991568826111",
+                            "pin": "9991568826111"
+                        },
+                        {
+                            "regionCode": "BR",
+                            "entryPointType": "phone",
+                            "uri": "tel:+55-11-4935-3241",
+                            "label": "+55 11 4935-3241",
+                            "pin": "223895931"
+                        }
+                    ],
+                    "conferenceSolution": {
+                        "key": {
+                            "type": "hangoutsMeet"
+                        },
+                        "name": "Google Meet",
+                        "iconUri": "https://fonts.gstatic.com/s/i/productlogos/meet_2020q4/v6/web-512dp/logo_meet_2020q4_color_2x_web_512dp.png"
+                    },
+                    "conferenceId": "yow-zjzz-btk"
+                },
+                "reminders": {
+                    "useDefault": true
+                },
+                "eventType": "default"
+            }
+        ]
+    },
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "f7283213f5bd43f486bac74e0e7d5dc62df8cbd28ff61aa31e849bd6056ffc1f"
+    }
+}
