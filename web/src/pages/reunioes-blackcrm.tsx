@@ -12,11 +12,12 @@ import {
   FilterIcon as Filter,
   MessageSquareIcon as MessageSquare,
   VideoIcon,
-  FileTextIcon
+  FileTextIcon,
+  ChevronDownIcon
 } from "@/components/ui/icons"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface Meeting {
   id_unico: string
@@ -59,6 +60,16 @@ export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlac
   const [semanaFilter, setSemanaFilter] = useState("all")
   const [anoFilter, setAnoFilter] = useState("all")
   const [dateRange, setDateRange] = useState({ from: "", to: "" })
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
+
+  const toggleSection = (key: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   useEffect(() => {
     async function fetchMeetings() {
@@ -252,13 +263,17 @@ export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlac
         >
           {filteredGrouped.map(([responsavel, respMeetings]) => (
             <div key={responsavel} className="space-y-8">
-              <motion.div variants={item} className="flex items-center gap-5 bg-muted/10 p-6 rounded-2xl border border-border/50 backdrop-blur-sm">
+              <motion.div
+                variants={item}
+                className="flex items-center gap-5 bg-muted/10 p-6 rounded-2xl border border-border/50 backdrop-blur-sm cursor-pointer hover:bg-muted/20 transition-colors duration-200"
+                onClick={() => toggleSection(responsavel)}
+              >
                 <Avatar className="size-16 border-2 border-primary/20 p-1 bg-background">
                   <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl uppercase">
                     {responsavel.substring(0, 2)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="space-y-1">
+                <div className="space-y-1 flex-1">
                   <h2 className="text-2xl font-bold tracking-tight text-foreground">{responsavel}</h2>
                   <div className="flex items-center gap-3">
                     <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary font-bold text-[10px] tracking-wider uppercase px-2.5">
@@ -269,73 +284,91 @@ export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlac
                     </span>
                   </div>
                 </div>
+                <motion.div
+                  animate={{ rotate: expandedSections.has(responsavel) ? 180 : 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <ChevronDownIcon className="size-6 text-muted-foreground" />
+                </motion.div>
               </motion.div>
 
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {respMeetings.map((meeting) => (
-                  <motion.div key={meeting.id_unico} variants={item}>
-                    <Card className="hover:border-primary/30 transition-all duration-300">
-                      <CardContent className="p-6 space-y-5">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="space-y-1.5 flex-1">
-                            <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">
-                              {meeting.nome_empresa_formatado || meeting.empresa || "Sem identificacao"}
-                            </h3>
-                            {meeting.tipo_reuniao && (
-                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-                                {meeting.tipo_reuniao === 'implementacao' ? 'Implementacao' : 'Tutoria'}
-                              </p>
-                            )}
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
-                              meeting.tipo_reuniao === 'tutoria'
-                                ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
-                                : "bg-primary/10 border-primary/20 text-primary"
-                            }`}
-                          >
-                            {meeting.tipo_reuniao === 'tutoria' ? 'Tutoria' : 'Implementacao'}
-                          </Badge>
-                        </div>
+              <AnimatePresence initial={false}>
+                {expandedSections.has(responsavel) && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pt-2">
+                      {respMeetings.map((meeting) => (
+                        <div key={meeting.id_unico}>
+                          <Card className="hover:border-primary/30 transition-all duration-300">
+                            <CardContent className="p-6 space-y-5">
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="space-y-1.5 flex-1">
+                                  <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">
+                                    {meeting.nome_empresa_formatado || meeting.empresa || "Sem identificacao"}
+                                  </h3>
+                                  {meeting.tipo_reuniao && (
+                                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+                                      {meeting.tipo_reuniao === 'implementacao' ? 'Implementacao' : 'Tutoria'}
+                                    </p>
+                                  )}
+                                </div>
+                                <Badge
+                                  variant="outline"
+                                  className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
+                                    meeting.tipo_reuniao === 'tutoria'
+                                      ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                                      : "bg-primary/10 border-primary/20 text-primary"
+                                  }`}
+                                >
+                                  {meeting.tipo_reuniao === 'tutoria' ? 'Tutoria' : 'Implementacao'}
+                                </Badge>
+                              </div>
 
-                        <div className="flex items-center justify-between border-t border-border/50 pt-4">
-                          <div className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
-                            <Calendar className="size-3.5 text-primary/60" />
-                            <span className="uppercase tracking-widest">
-                              {(() => {
-                                try {
-                                  const d = new Date(meeting.data_reuniao)
-                                  return isNaN(d.getTime()) ? meeting.data_reuniao : d.toLocaleDateString('pt-BR')
-                                } catch { return meeting.data_reuniao }
-                              })()}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {meeting.link_gravacao && (
-                              <a href={meeting.link_gravacao} target="_blank" rel="noopener noreferrer" title="Gravacao">
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
-                                  <VideoIcon className="size-3.5" />
-                                </Button>
-                              </a>
-                            )}
-                            {meeting.link_geminidoc && (
-                              <a href={meeting.link_geminidoc} target="_blank" rel="noopener noreferrer" title="Documento">
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
-                                  <FileTextIcon className="size-3.5" />
-                                </Button>
-                              </a>
-                            )}
-                            <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5" onClick={() => navigate(`/reuniao-blackcrm/${meeting.id_unico}`)}>
-                              Ver Detalhes
-                            </Button>
-                          </div>
+                              <div className="flex items-center justify-between border-t border-border/50 pt-4">
+                                <div className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
+                                  <Calendar className="size-3.5 text-primary/60" />
+                                  <span className="uppercase tracking-widest">
+                                    {(() => {
+                                      try {
+                                        const d = new Date(meeting.data_reuniao)
+                                        return isNaN(d.getTime()) ? meeting.data_reuniao : d.toLocaleDateString('pt-BR')
+                                      } catch { return meeting.data_reuniao }
+                                    })()}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {meeting.link_gravacao && (
+                                    <a href={meeting.link_gravacao} target="_blank" rel="noopener noreferrer" title="Gravacao">
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
+                                        <VideoIcon className="size-3.5" />
+                                      </Button>
+                                    </a>
+                                  )}
+                                  {meeting.link_geminidoc && (
+                                    <a href={meeting.link_geminidoc} target="_blank" rel="noopener noreferrer" title="Documento">
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
+                                        <FileTextIcon className="size-3.5" />
+                                      </Button>
+                                    </a>
+                                  )}
+                                  <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5" onClick={() => navigate(`/reuniao-blackcrm/${meeting.id_unico}`)}>
+                                    Ver Detalhes
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
                         </div>
-                      </CardContent>
-                    </Card>
+                      ))}
+                    </div>
                   </motion.div>
-                ))}
-              </div>
+                )}
+              </AnimatePresence>
             </div>
           ))}
         </motion.div>
