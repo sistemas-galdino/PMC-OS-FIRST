@@ -99,8 +99,9 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
       m.mentor?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" ||
-      (statusFilter === "yes" && m.cliente_compareceu !== false) ||
-      (statusFilter === "no" && m.cliente_compareceu === false)
+      (statusFilter === "yes" && m.cliente_compareceu !== false && new Date(m.data_reuniao) <= new Date()) ||
+      (statusFilter === "no" && m.cliente_compareceu === false) ||
+      (statusFilter === "scheduled" && new Date(m.data_reuniao) > new Date())
 
     const matchesMentor = mentorFilter === "all" || m.mentor === mentorFilter
 
@@ -168,6 +169,7 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
               <SelectItem value="all" className="rounded-lg font-medium">Todos</SelectItem>
               <SelectItem value="yes" className="rounded-lg font-medium">Realizadas</SelectItem>
               <SelectItem value="no" className="rounded-lg font-medium">Faltas</SelectItem>
+              <SelectItem value="scheduled" className="rounded-lg font-medium">Agendadas</SelectItem>
             </SelectContent>
           </Select>
           <Select value={mentorFilter} onValueChange={setMentorFilter}>

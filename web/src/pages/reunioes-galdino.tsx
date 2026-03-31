@@ -101,8 +101,9 @@ export default function ReunioesGaldinoPage({ session, clientId }: ReunioesGaldi
       m.pessoa?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" ||
-      (statusFilter === "yes" && m.cliente_compareceu !== false) ||
-      (statusFilter === "no" && m.cliente_compareceu === false)
+      (statusFilter === "yes" && m.cliente_compareceu !== false && new Date(m.data_reuniao) <= new Date()) ||
+      (statusFilter === "no" && m.cliente_compareceu === false) ||
+      (statusFilter === "scheduled" && new Date(m.data_reuniao) > new Date())
 
     const matchesAno = anoFilter === "all" || String(m.ano) === anoFilter
 
@@ -168,6 +169,7 @@ export default function ReunioesGaldinoPage({ session, clientId }: ReunioesGaldi
               <SelectItem value="all" className="rounded-lg font-medium">Todos</SelectItem>
               <SelectItem value="yes" className="rounded-lg font-medium">Realizadas</SelectItem>
               <SelectItem value="no" className="rounded-lg font-medium">Faltas</SelectItem>
+              <SelectItem value="scheduled" className="rounded-lg font-medium">Agendadas</SelectItem>
             </SelectContent>
           </Select>
           <Select value={anoFilter} onValueChange={(v) => { setAnoFilter(v); setSemanaFilter("all") }}>
