@@ -288,12 +288,14 @@ export default function MentoresPage() {
                                 <Badge
                                   variant="outline"
                                   className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
-                                    meeting.cliente_compareceu === false
-                                      ? "bg-destructive/10 border-destructive/20 text-destructive"
-                                      : "bg-primary/10 border-primary/20 text-primary"
+                                    new Date(meeting.data_reuniao) > new Date()
+                                      ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                                      : meeting.cliente_compareceu === false
+                                        ? "bg-destructive/10 border-destructive/20 text-destructive"
+                                        : "bg-primary/10 border-primary/20 text-primary"
                                   }`}
                                 >
-                                  {meeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
+                                  {new Date(meeting.data_reuniao) > new Date() ? "Agendada" : meeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
                                 </Badge>
                               </div>
 
