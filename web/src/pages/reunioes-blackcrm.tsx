@@ -42,7 +42,14 @@ interface Meeting {
   observacoes: string | null
 }
 
-export default function ReunioesBlackCRMPage() {
+import type { Session } from "@supabase/supabase-js"
+
+interface ReunioesBlackCRMProps {
+  session?: Session
+  clientId?: string
+}
+
+export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlackCRMProps) {
   const navigate = useNavigate()
   const [meetings, setMeetings] = useState<Record<string, Meeting[]>>({})
   const [loading, setLoading] = useState(true)
@@ -55,10 +62,26 @@ export default function ReunioesBlackCRMPage() {
 
   useEffect(() => {
     async function fetchMeetings() {
-      const { data, error } = await supabase
+      const resolvedClientId = clientId || session?.user?.id
+
+      let query = supabase
         .from('reunioes_blackcrm')
         .select('*')
         .order('data_reuniao', { ascending: false })
+
+      if (resolvedClientId) {
+        const { data: clientEntry } = await supabase
+          .from('clientes_entrada_new')
+          .select('id_cliente')
+          .eq('id_cliente', resolvedClientId)
+          .maybeSingle()
+
+        if (clientEntry) {
+          query = query.eq('id_cliente', clientEntry.id_cliente)
+        }
+      }
+
+      const { data, error } = await query
 
       if (data && !error) {
         const grouped = data.reduce((acc: Record<string, Meeting[]>, meeting: Meeting) => {

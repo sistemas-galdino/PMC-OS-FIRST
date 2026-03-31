@@ -187,9 +187,9 @@ function App() {
                     <Route path="/reunioes" element={<ClientReunioesPage session={session} />} />
                     <Route path="/cliente/:id" element={<ClientProfilePage />} />
                     <Route path="/reuniao/:id" element={<ReuniaoDetalhePage />} />
-                    <Route path="/reunioes-galdino" element={<ReunioesGaldinoPage />} />
+                    <Route path="/reunioes-galdino" element={<ReunioesGaldinoPage session={session} />} />
                     <Route path="/reuniao-galdino/:id" element={<ReuniaoGaldinoDetalhePage />} />
-                    <Route path="/reunioes-blackcrm" element={<ReunioesBlackCRMPage />} />
+                    <Route path="/reunioes-blackcrm" element={<ReunioesBlackCRMPage session={session} />} />
                     <Route path="/reuniao-blackcrm/:id" element={<ReuniaoBlackCRMDetalhePage />} />
                     <Route path="/onboarding" element={<OnboardingPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />

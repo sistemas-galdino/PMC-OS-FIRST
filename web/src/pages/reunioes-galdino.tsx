@@ -37,7 +37,14 @@ interface Meeting {
   detalhes_reuniao: string | null
 }
 
-export default function ReunioesGaldinoPage() {
+import type { Session } from "@supabase/supabase-js"
+
+interface ReunioesGaldinoProps {
+  session?: Session
+  clientId?: string
+}
+
+export default function ReunioesGaldinoPage({ session, clientId }: ReunioesGaldinoProps) {
   const navigate = useNavigate()
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
@@ -49,10 +56,26 @@ export default function ReunioesGaldinoPage() {
 
   useEffect(() => {
     async function fetchMeetings() {
-      const { data, error } = await supabase
+      const resolvedClientId = clientId || session?.user?.id
+
+      let query = supabase
         .from('reunioes_galdino')
         .select('*')
         .order('data_reuniao', { ascending: false })
+
+      if (resolvedClientId) {
+        const { data: clientEntry } = await supabase
+          .from('clientes_entrada_new')
+          .select('id_cliente')
+          .eq('id_cliente', resolvedClientId)
+          .maybeSingle()
+
+        if (clientEntry) {
+          query = query.eq('id_cliente', clientEntry.id_cliente)
+        }
+      }
+
+      const { data, error } = await query
 
       if (data && !error) {
         setMeetings(data)
@@ -61,7 +84,7 @@ export default function ReunioesGaldinoPage() {
     }
 
     fetchMeetings()
-  }, [])
+  }, [session, clientId])
 
   const uniqueYears = [...new Set(meetings.map(m => m.ano))].filter(Boolean).sort() as number[]
   const uniqueWeeks = [...new Set(

@@ -54,6 +54,8 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Produtos", icon: Package, url: "/produtos" },
     { title: "Canais", icon: Megaphone, url: "/canais" },
     { title: "Reuniões", icon: Calendar, url: "/reunioes" },
+    { title: "Reuniões Galdino", icon: Calendar, url: "/reunioes-galdino" },
+    { title: "Reuniões BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },
     { title: "Ações", icon: CheckSquare, url: "/acoes" },
     { title: "Jornada", icon: Compass, url: "/jornada" },
   ]
