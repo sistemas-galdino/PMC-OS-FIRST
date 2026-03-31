@@ -277,7 +277,7 @@ export default function MentoresPage() {
                   >
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pt-2">
                       {mentorMeetings.map((meeting) => (
-                        <motion.div key={meeting.id_unico} variants={item}>
+                        <div key={meeting.id_unico}>
                           <Card className="hover:border-primary/30 transition-all duration-300">
                             <CardContent className="p-6 space-y-5">
                               <div className="flex justify-between items-start gap-4">
@@ -324,7 +324,7 @@ export default function MentoresPage() {
                               </div>
                             </CardContent>
                           </Card>
-                        </motion.div>
+                        </div>
                       ))}
                     </div>
                   </motion.div>
