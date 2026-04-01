@@ -10,6 +10,7 @@ import ClientReunioesPage from "@/pages/client-reunioes"
 import ReunioesGaldinoPage from "@/pages/reunioes-galdino"
 import ReunioesBlackCRMPage from "@/pages/reunioes-blackcrm"
 import RecursosPage from "@/pages/recursos"
+import CalendarioEncontrosPage from "@/pages/calendario-encontros"
 
 const TABS = [
   { key: "dashboard", label: "Dashboard" },
@@ -20,6 +21,7 @@ const TABS = [
   { key: "reunioes-blackcrm", label: "Reuniões BlackCRM" },
   { key: "acoes", label: "Ações" },
   { key: "recursos", label: "Recursos" },
+  { key: "calendario", label: "Calendário" },
 ] as const
 
 type TabKey = typeof TABS[number]["key"]
@@ -67,6 +69,7 @@ export default function ClientProfilePage() {
       {activeTab === "reunioes-blackcrm" && <ReunioesBlackCRMPage clientId={id} />}
       {activeTab === "acoes" && <AcoesPage clientId={id} />}
       {activeTab === "recursos" && <RecursosPage forceAdmin />}
+      {activeTab === "calendario" && <CalendarioEncontrosPage />}
     </div>
   )
 }
