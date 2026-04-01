@@ -1,1 +1,3 @@
 .claude/
+scripts/.env
+scripts/.blackcrm-token.json
