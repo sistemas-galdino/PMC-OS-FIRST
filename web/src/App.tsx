@@ -20,6 +20,8 @@ import ReunioesGaldinoPage from "@/pages/reunioes-galdino"
 import ReuniaoGaldinoDetalhePage from "@/pages/reuniao-galdino-detalhe"
 import ReunioesBlackCRMPage from "@/pages/reunioes-blackcrm"
 import ReuniaoBlackCRMDetalhePage from "@/pages/reuniao-blackcrm-detalhe"
+import RecursosPage from "@/pages/recursos"
+import CalendarioEncontrosPage from "@/pages/calendario-encontros"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { BackgroundShader } from "@/components/ui/background-shader"
@@ -191,6 +193,8 @@ function App() {
                     <Route path="/reuniao-galdino/:id" element={<ReuniaoGaldinoDetalhePage />} />
                     <Route path="/reunioes-blackcrm" element={<ReunioesBlackCRMPage session={session} />} />
                     <Route path="/reuniao-blackcrm/:id" element={<ReuniaoBlackCRMDetalhePage />} />
+                    <Route path="/recursos" element={<RecursosPage session={session} />} />
+                    <Route path="/calendario" element={<CalendarioEncontrosPage />} />
                     <Route path="/onboarding" element={<OnboardingPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

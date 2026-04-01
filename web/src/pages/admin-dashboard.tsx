@@ -2,11 +2,13 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import {
   UsersIcon as Users,
-  UserPlusIcon as UserPlus,
   TrendingUpIcon as TrendingUp,
-  StarIcon as Star,
-  ChevronUpIcon as ChevronUp,
-  ChevronDownIcon as ChevronDown
+  TrendingDownIcon as TrendingDown,
+  XIcon,
+  ShoppingCartIcon,
+  CalendarIcon,
+  ClockIcon,
+  PlayCircleIcon,
 } from "@/components/ui/icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -25,36 +27,40 @@ import {
   Legend
 } from "recharts"
 
-function CountUp({ value }: { value: number }) {
+function CountUp({ value, decimals = 0, suffix = '' }: { value: number; decimals?: number; suffix?: string }) {
   const [displayValue, setDisplayValue] = useState(0)
 
   useEffect(() => {
     let start = 0
     const duration = 1000
     const increment = value / (duration / 16)
-    
+
     const timer = setInterval(() => {
       start += increment
       if (start >= value) {
         setDisplayValue(value)
         clearInterval(timer)
       } else {
-        setDisplayValue(Math.floor(start))
+        setDisplayValue(decimals > 0 ? parseFloat(start.toFixed(decimals)) : Math.floor(start))
       }
     }, 16)
 
     return () => clearInterval(timer)
-  }, [value])
+  }, [value, decimals])
 
-  return <span>{displayValue}</span>
+  return <span>{decimals > 0 ? displayValue.toFixed(decimals) : displayValue}{suffix}</span>
 }
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     total: 0,
     ativos: 0,
-    pendentes: 0,
-    nps: 0,
+    cancelados: 0,
+    desistencias: 0,
+    onboardingMarcado: 0,
+    pendentesOnboarding: 0,
+    aguardandoInicio: 0,
+    churnRate: 0,
   })
   const [geoData, setGeoData] = useState<any[]>([])
   const [nicheData, setNicheData] = useState<any[]>([])
@@ -79,27 +85,26 @@ export default function AdminDashboard() {
 
         if (geoError) throw geoError
 
-        const { data: reviews, error: reviewsError } = await supabase
-          .from('reunioes_mentoria_new')
-          .select('nps')
-          .not('nps', 'is', null)
-
-        if (reviewsError) throw reviewsError
-
         if (clients) {
           // Calculate Stats
           const total = clients.length
-          const ativos = clients.filter(c => c.status_atual?.toLowerCase().includes('ativo')).length
-          const pendentes = clients.filter(c => c.status_atual?.toLowerCase().includes('onboarding')).length
-          
-          const npsRaw = reviews?.reduce((acc, r) => acc + (r.nps || 0), 0) || 0
-          const npsAvg = reviews?.length ? (npsRaw / reviews.length) : 0
+          const ativos = clients.filter(c => c.status_atual === 'Ativo no Programa').length
+          const cancelados = clients.filter(c => c.status_atual === 'Cliente Cancelado').length
+          const desistencias = clients.filter(c => c.status_atual === 'Desistência de Compra').length
+          const onboardingMarcado = clients.filter(c => c.status_atual === 'Onboarding marcado').length
+          const pendentesOnboarding = clients.filter(c => c.status_atual === 'Pendente de Onboarding').length
+          const aguardandoInicio = clients.filter(c => c.status_atual === 'Aguardando Início').length
+          const churnRate = total > 0 ? (cancelados / total) * 100 : 0
 
           setStats({
             total,
             ativos,
-            pendentes,
-            nps: Number(npsAvg.toFixed(1)),
+            cancelados,
+            desistencias,
+            onboardingMarcado,
+            pendentesOnboarding,
+            aguardandoInicio,
+            churnRate: Number(churnRate.toFixed(1)),
           })
 
           // Process Niche Data
@@ -187,15 +192,19 @@ export default function AdminDashboard() {
 
   if (loading) {
     return <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-      {[1, 2, 3, 4].map(i => <Card key={i} className="h-40 animate-pulse bg-card/40" />)}
+      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <Card key={i} className="h-40 animate-pulse bg-card/40" />)}
     </div>
   }
 
   const cards = [
-    { title: "Total Clientes", value: stats.total, icon: Users, description: "Base geral de clientes", trend: "+2.5%", trendUp: true },
-    { title: "Clientes Ativos", value: stats.ativos, icon: TrendingUp, description: "Ativos no programa", trend: "+1.2%", trendUp: true },
-    { title: "Pendentes Onboarding", value: stats.pendentes, icon: UserPlus, description: "Aguardando reunião inicial", trend: "-5%", trendUp: false },
-    { title: "NPS Médio", value: stats.nps, icon: Star, description: "Satisfação dos clientes", trend: "+0.3", trendUp: true },
+    { title: "Total Clientes", value: stats.total, icon: Users, description: "Base geral de clientes", iconClass: "text-primary bg-primary/10" },
+    { title: "Clientes Ativos", value: stats.ativos, icon: TrendingUp, description: "Ativos no programa", iconClass: "text-emerald-400 bg-emerald-500/10" },
+    { title: "Churn Rate", value: stats.churnRate, icon: TrendingDown, description: "Taxa de cancelamento", iconClass: "text-red-400 bg-red-500/10", decimals: 1, suffix: "%" },
+    { title: "Cancelaram", value: stats.cancelados, icon: XIcon, description: "Clientes cancelados", iconClass: "text-red-400 bg-red-500/10" },
+    { title: "Desistência de Compra", value: stats.desistencias, icon: ShoppingCartIcon, description: "Desistiram antes de iniciar", iconClass: "text-orange-400 bg-orange-500/10" },
+    { title: "Onboarding Marcado", value: stats.onboardingMarcado, icon: CalendarIcon, description: "Reunião de onboarding agendada", iconClass: "text-blue-400 bg-blue-500/10" },
+    { title: "Pendentes Onboarding", value: stats.pendentesOnboarding, icon: ClockIcon, description: "Aguardando agendamento", iconClass: "text-yellow-400 bg-yellow-500/10" },
+    { title: "Vão Iniciar", value: stats.aguardandoInicio, icon: PlayCircleIcon, description: "Aguardando início no programa", iconClass: "text-emerald-400 bg-emerald-500/10" },
   ]
 
   const container = {
@@ -241,21 +250,15 @@ export default function AdminDashboard() {
             <Card className="hover:shadow-primary/10">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{card.title}</CardTitle>
-                <div className="bg-primary/10 p-2.5 rounded-xl">
-                  <card.icon className="size-4 text-primary" />
+                <div className={`p-2.5 rounded-xl ${card.iconClass}`}>
+                  <card.icon className="size-4" />
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="text-4xl font-bold tracking-tight mb-3">
-                  <CountUp value={card.value} />
+                  <CountUp value={card.value} decimals={card.decimals} suffix={card.suffix} />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="ghost" className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${card.trendUp ? 'text-primary' : 'text-destructive'}`}>
-                    {card.trendUp ? <ChevronUp className="size-3 mr-1" /> : <ChevronDown className="size-3 mr-1" />}
-                    {card.trend}
-                  </Badge>
-                  <span className="text-[11px] font-medium text-muted-foreground">{card.description}</span>
-                </div>
+                <span className="text-[11px] font-medium text-muted-foreground">{card.description}</span>
               </CardContent>
             </Card>
           </motion.div>

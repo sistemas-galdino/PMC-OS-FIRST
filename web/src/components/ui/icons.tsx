@@ -202,3 +202,11 @@ export const FileTextIcon = (props: IconProps) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm-4 9h4m-4 4h4m-2-8V2l6 6"/></svg>
 );
 
+export const TrendingDownIcon = (props: IconProps) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"><path d="m3 7l6 6l4-4l8 8"/><path d="M14 17h7v-7"/></g></svg>
+);
+
+export const PlayCircleIcon = (props: IconProps) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0-18 0"/><path d="m10 8l6 4l-6 4z"/></g></svg>
+);
+

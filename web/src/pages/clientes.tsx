@@ -75,6 +75,7 @@ interface Client {
 const STATUS_OPTIONS = [
   'Ativo no Programa',
   'Aguardando Início',
+  'Onboarding marcado',
   'Pendente de Onboarding',
   'Cliente Cancelado',
   'Desistência de Compra',
@@ -485,6 +486,7 @@ export default function ClientesPage() {
       <RegistrarClienteDialog
         open={showRegistrar}
         onOpenChange={setShowRegistrar}
+        scOptions={uniqueScs}
         onSuccess={() => {
           // Refresh client list
           supabase

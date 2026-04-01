@@ -232,6 +232,73 @@ Google Agenda (especialistablackcrm@rafaelgaldino.com.br) → Script → Supabas
 
 ---
 
+# 5. Tabela: encontros_ao_vivo
+
+## Descrição
+
+Armazena os encontros ao vivo em grupo do programa PMC (Multiplica).
+Tipos: Multiplica Time Nível 1, Multiplica Time Nível 2, Multiplica Dono, Multiplica Case.
+
+Origem:
+Google Calendar (agenda "[PMC] AO VIVO COM GALDINO" de dono@rafaelgaldino.com.br) → Script fetch/import → Supabase
+
+## Chave principal
+
+* `id_unico` (text) — UUID gerado no import
+
+## Colunas
+
+### Identificação
+
+* id_unico (text) — PK
+* id_evento_google (text, UNIQUE) — ID do evento no Google Calendar
+* tipo_encontro (text) — 'multiplica_time_nivel_1', 'multiplica_time_nivel_2', 'multiplica_dono', 'multiplica_case'
+
+### Conteúdo
+
+* titulo_original (text) — título exato do Google Calendar
+* titulo_formatado (text) — título padronizado para exibição
+* descricao (text) — descrição do evento
+
+### Temporal
+
+* data_encontro (text) — DD/MM/YYYY
+* horario_inicio (text) — HH:MM
+* horario_fim (text) — HH:MM
+* duracao_minutos (numeric)
+* mes (numeric)
+* semana (numeric)
+* ano (numeric)
+* inicio_semana (text)
+* fim_semana (text)
+* timezone (text) — ex: America/Fortaleza
+* data_hora_inicio_iso (text) — ISO8601 completo
+* data_hora_fim_iso (text) — ISO8601 completo
+
+### Links
+
+* link_google_meet (text) — link para entrar na reunião
+* link_gravacao (text) — link da gravação
+* link_geminidoc (text) — link do doc Gemini
+
+### Pós-encontro
+
+* transcricao (text)
+* transcricao_md (text)
+* resumo (text)
+* resumo_json (text)
+* detalhes_encontro (text)
+
+### Status e metadata
+
+* status (text) — 'agendado', 'realizado', 'cancelado'
+* qtd_participantes (numeric)
+* observacoes (text)
+* created_at (text)
+* updated_at (text)
+
+---
+
 # Relações Lógicas
 
 clientes_formulario.id_cliente

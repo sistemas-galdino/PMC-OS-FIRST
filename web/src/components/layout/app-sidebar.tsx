@@ -25,6 +25,7 @@ import {
   MegaphoneIcon as Megaphone,
   CheckSquareIcon as CheckSquare,
   CompassIcon as Compass,
+  BookOpenIcon as BookOpen,
 } from "@/components/ui/icons"
 import { supabase } from "@/lib/supabase"
 import { useLocation, useNavigate } from "react-router-dom"
@@ -41,11 +42,12 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
   const adminItems = [
     { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
     { title: "Clientes", icon: Users, url: "/clientes" },
-    { title: "Turmas e Estados", icon: Calendar, url: "/turmas" },
     { title: "Pendentes Onboarding", icon: Clock, url: "/onboarding" },
     { title: "Mentores", icon: MessageSquare, url: "/mentores" },
     { title: "Reunioes Galdino", icon: Calendar, url: "/reunioes-galdino" },
     { title: "Reunioes Black CRM", icon: Settings, url: "/reunioes-blackcrm" },
+    { title: "Recursos", icon: BookOpen, url: "/recursos" },
+    { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
   ]
 
   const clientItems = [
@@ -58,6 +60,8 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Reuniões BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },
     { title: "Ações", icon: CheckSquare, url: "/acoes" },
     { title: "Jornada", icon: Compass, url: "/jornada" },
+    { title: "Recursos", icon: BookOpen, url: "/recursos" },
+    { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
   ]
 
   const items = isAdmin ? adminItems : clientItems
