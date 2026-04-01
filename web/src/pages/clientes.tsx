@@ -247,7 +247,8 @@ export default function ClientesPage() {
         </div>
         <Button
           onClick={() => setShowRegistrar(true)}
-          className="h-12 px-6 font-bold shadow-xl shadow-primary/20"
+          size="sm"
+          className="h-9 px-4 text-xs font-bold shadow-lg shadow-primary/20"
         >
           + Registrar Novo Cliente
         </Button>
