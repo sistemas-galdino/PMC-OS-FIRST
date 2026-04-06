@@ -33,6 +33,7 @@ import {
   BriefcaseIcon as Briefcase,
   UserCheckIcon as UserCheck,
   Edit3Icon as Edit3,
+  PlusIcon as Plus,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -352,20 +353,30 @@ export default function ClientesPage() {
 
   return (
     <div className="space-y-10 pb-10">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col gap-3 border-l-4 border-primary pl-8 py-2"
-      >
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Gestão de Clientes</h1>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">PMC CRM</Badge>
-          <p className="text-muted-foreground font-medium text-sm">Base estratégica de empresários do programa.</p>
-        </div>
-      </motion.div>
+      <div className="flex items-start justify-between gap-6">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+          className="flex flex-col gap-3 border-l-4 border-primary pl-8 py-2"
+        >
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Gestão de Clientes</h1>
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">PMC CRM</Badge>
+            <p className="text-muted-foreground font-medium text-sm">Base estratégica de empresários do programa.</p>
+          </div>
+        </motion.div>
+        <Button
+          onClick={() => setShowRegistrar(true)}
+          size="sm"
+          className="size-10 p-0 rounded-xl shadow-lg shadow-primary/20 shrink-0 mt-2"
+          aria-label="Registrar Novo Cliente"
+        >
+          <Plus className="size-5" />
+        </Button>
+      </div>
 
-      <div className="flex flex-col md:flex-row md:items-center gap-8 bg-muted/10 p-6 rounded-2xl border border-border/50">
+      <div className="flex flex-col md:flex-row md:items-center gap-4 bg-muted/10 p-6 rounded-2xl border border-border/50">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
           <Input
@@ -375,36 +386,17 @@ export default function ClientesPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button
-          onClick={() => setShowRegistrar(true)}
-          size="sm"
-          className="h-9 px-4 text-xs font-bold shadow-lg shadow-primary/20"
-        >
-          + Registrar Novo Cliente
-        </Button>
+        <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as 'az' | 'recent')}>
+          <SelectTrigger className="h-10 w-[200px] rounded-xl border-border bg-background text-xs font-bold uppercase tracking-wider">
+            <SelectValue placeholder="Ordenar por..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="az">A → Z</SelectItem>
+            <SelectItem value="recent">Últimos Adicionados</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="flex flex-col gap-3">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Ordenar por:</span>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={sortOrder === 'az' ? 'default' : 'outline'}
-              size="sm"
-              className="h-9 px-4 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all duration-300"
-              onClick={() => setSortOrder('az')}
-            >
-              A → Z
-            </Button>
-            <Button
-              variant={sortOrder === 'recent' ? 'default' : 'outline'}
-              size="sm"
-              className="h-9 px-4 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all duration-300"
-              onClick={() => setSortOrder('recent')}
-            >
-              Últimos Adicionados
-            </Button>
-          </div>
-        </div>
-        <div className="flex flex-col gap-3">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Filtrar por Responsável (CS):</span>
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Filtrar por CS:</span>
           <div className="flex flex-wrap gap-2">
             <Button
               variant={scFilter === 'all' ? 'default' : 'outline'}
@@ -468,49 +460,49 @@ export default function ClientesPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.6 }}
-        className="border border-border bg-card/50 backdrop-blur-md rounded-2xl overflow-hidden shadow-xl"
+        className="border border-border bg-card/50 backdrop-blur-md rounded-2xl shadow-xl"
       >
-        <Table>
+        <Table className="table-fixed w-full">
           <TableHeader className="bg-muted/30">
             <TableRow className="border-b border-border/50 hover:bg-transparent">
-              <TableHead className="w-12 py-5 px-4">
+              <TableHead className="w-[40px] py-5 pl-4 pr-0">
                 <Checkbox
                   checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
                   onCheckedChange={toggleSelectAll}
                   aria-label="Selecionar todos"
                 />
               </TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-6">Código</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-6">Cliente / Empresa</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">Status Atual</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">CS Responsável</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">Engajamento</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">CRM</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">SDR</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 text-right px-6">Ações</TableHead>
+              <TableHead className="w-[70px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Código</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Cliente / Empresa</TableHead>
+              <TableHead className="w-[150px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Status Atual</TableHead>
+              <TableHead className="w-[140px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">CS Responsável</TableHead>
+              <TableHead className="w-[120px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Engajamento</TableHead>
+              <TableHead className="w-[50px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-2">CRM</TableHead>
+              <TableHead className="w-[50px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-2">SDR</TableHead>
+              <TableHead className="w-[60px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 text-right pr-4">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredClients.map((client) => (
               <TableRow key={client.id_entrada} className="hover:bg-primary/5 border-b border-border/30 transition-colors group">
-                <TableCell className="py-5 px-4" onClick={(e) => e.stopPropagation()}>
+                <TableCell className="py-5 pl-4 pr-0" onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selectedIds.has(client.id_entrada)}
                     onCheckedChange={() => toggleSelect(client.id_entrada)}
                     aria-label={`Selecionar ${client.nome_cliente_formatado}`}
                   />
                 </TableCell>
-                <TableCell className="py-5 px-6">
+                <TableCell className="py-5 px-3">
                   <span className="text-xs font-mono text-muted-foreground">
                     {client.codigo_cliente ?? '—'}
                   </span>
                 </TableCell>
-                <TableCell className="py-5 px-6">
+                <TableCell className="py-5 px-3">
                   <div className="flex flex-col gap-1">
-                    <span className="font-bold text-sm text-foreground tracking-tight">{client.nome_cliente_formatado}</span>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium">
-                      <Briefcase className="size-3 text-primary/60" />
-                      {client.nome_empresa_formatado}
+                    <span className="font-bold text-sm text-foreground tracking-tight truncate">{client.nome_cliente_formatado}</span>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium truncate">
+                      <Briefcase className="size-3 shrink-0 text-primary/60" />
+                      <span className="truncate">{client.nome_empresa_formatado}</span>
                     </div>
                   </div>
                 </TableCell>
@@ -547,7 +539,7 @@ export default function ClientesPage() {
                     {client.tem_sdr ? 'Sim' : 'Não'}
                   </span>
                 </TableCell>
-                <TableCell className="text-right px-6">
+                <TableCell className="text-right pr-4">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="size-9 p-0 rounded-lg hover:bg-muted">

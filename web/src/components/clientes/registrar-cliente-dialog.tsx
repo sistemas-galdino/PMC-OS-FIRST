@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select"
 import { UF_OPTIONS } from "@/components/onboarding/step-dados-responsavel"
 import { NICHO_OPTIONS } from "@/components/onboarding/step-dados-negocio"
+import { ComboboxInput } from "@/components/ui/combobox-input"
 
 const STATUS_OPTIONS = [
   'Ativo no Programa',
@@ -70,6 +71,26 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
+
+  const [produtoOptions, setProdutoOptions] = useState<string[]>([])
+  const [canalOptions, setCanalOptions] = useState<string[]>([])
+  const [unidadeOptions, setUnidadeOptions] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!open) return
+    supabase
+      .from('clientes_entrada_new')
+      .select('produto, canal_de_venda, unidade_treinamento')
+      .then(({ data }) => {
+        if (!data) return
+        const produtos = [...new Set(data.map(d => d.produto).filter(Boolean))].sort()
+        const canais = [...new Set(data.map(d => d.canal_de_venda).filter(Boolean))].sort()
+        const unidades = [...new Set(data.map(d => d.unidade_treinamento).filter(Boolean))].sort()
+        setProdutoOptions(produtos)
+        setCanalOptions(canais)
+        setUnidadeOptions(unidades)
+      })
+  }, [open])
 
   const set = (field: keyof typeof form) => (value: string) =>
     setForm(prev => ({ ...prev, [field]: value }))
@@ -290,33 +311,33 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
                 {/* Unidade */}
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Unidade</Label>
-                  <Input
+                  <ComboboxInput
                     value={form.unidade_treinamento}
-                    onChange={(e) => set('unidade_treinamento')(e.target.value)}
+                    onChange={set('unidade_treinamento')}
+                    options={unidadeOptions}
                     placeholder="Unidade de treinamento"
-                    className="h-11 rounded-xl border-border bg-background"
                   />
                 </div>
 
                 {/* Produto */}
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Produto</Label>
-                  <Input
+                  <ComboboxInput
                     value={form.produto}
-                    onChange={(e) => set('produto')(e.target.value)}
+                    onChange={set('produto')}
+                    options={produtoOptions}
                     placeholder="Ex: PMC, PCE..."
-                    className="h-11 rounded-xl border-border bg-background"
                   />
                 </div>
 
                 {/* Canal de venda */}
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Canal de Venda</Label>
-                  <Input
+                  <ComboboxInput
                     value={form.canal_de_venda}
-                    onChange={(e) => set('canal_de_venda')(e.target.value)}
+                    onChange={set('canal_de_venda')}
+                    options={canalOptions}
                     placeholder="Ex: IA para Negócios..."
-                    className="h-11 rounded-xl border-border bg-background"
                   />
                 </div>
 
