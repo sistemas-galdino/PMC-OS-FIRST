@@ -91,8 +91,8 @@ function App() {
 
     initialize()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      if (mounted) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (mounted && event !== 'TOKEN_REFRESHED') {
         setSession(s)
       }
     })
@@ -106,39 +106,41 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (session?.user?.email) {
-      supabase
-        .from('mentores')
-        .select('id')
-        .eq('email', session.user.email)
-        .maybeSingle()
-        .then(({ data }) => {
-          setIsAdmin(!!data)
-          // If not admin, check if client needs onboarding
-          if (!data) {
-            supabase
-              .from('cliente_onboarding')
-              .select('status, senha_definida')
-              .eq('id_cliente', session.user.id)
-              .maybeSingle()
-              .then(({ data: onboarding }) => {
-                if (onboarding && onboarding.status === 'em_andamento') {
-                  if (!onboarding.senha_definida) {
-                    setNeedsPassword(true)
-                    setNeedsOnboarding(false)
-                  } else {
-                    setNeedsPassword(false)
-                    setNeedsOnboarding(true)
-                  }
-                } else {
-                  setNeedsPassword(false)
-                  setNeedsOnboarding(false)
-                }
-              })
-          }
-        })
+    if (!session?.user?.email) return
+
+    let cancelled = false
+
+    async function checkUserRole() {
+      const [{ data: mentor }, { data: onboarding }] = await Promise.all([
+        supabase
+          .from('mentores')
+          .select('id')
+          .eq('email', session.user.email)
+          .maybeSingle(),
+        supabase
+          .from('cliente_onboarding')
+          .select('status, senha_definida')
+          .eq('id_cliente', session.user.id)
+          .maybeSingle(),
+      ])
+
+      if (cancelled) return
+
+      const admin = !!mentor
+      setIsAdmin(admin)
+
+      if (!admin && onboarding && onboarding.status === 'em_andamento') {
+        setNeedsPassword(!onboarding.senha_definida)
+        setNeedsOnboarding(!!onboarding.senha_definida)
+      } else {
+        setNeedsPassword(false)
+        setNeedsOnboarding(false)
+      }
     }
-  }, [session])
+
+    checkUserRole()
+    return () => { cancelled = true }
+  }, [session?.user?.id])
 
   if (loading) {
     return (
@@ -178,7 +180,7 @@ function App() {
             element={session ? (
               (!isAdmin && needsPassword) ? <Navigate to="/definir-senha" replace /> :
               (!isAdmin && needsOnboarding) ? <Navigate to="/cadastro" replace /> : (
-                <DashboardLayout session={session}>
+                <DashboardLayout session={session} isAdmin={isAdmin}>
                   <Routes>
                     <Route path="/" element={isAdmin ? <AdminDashboard /> : <ClientDashboard session={session} />} />
                     <Route path="/mentores" element={<MentoresPage />} />

@@ -1,34 +1,18 @@
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "./app-sidebar"
-import { supabase } from "@/lib/supabase"
 import type { Session } from "@supabase/supabase-js"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useLocation } from "react-router-dom"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
   session: Session
+  isAdmin: boolean
 }
 
-export function DashboardLayout({ children, session }: DashboardLayoutProps) {
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    async function checkAdmin() {
-      if (session?.user?.email) {
-        const { data } = await supabase
-          .from('mentores')
-          .select('id')
-          .eq('email', session.user.email)
-          .maybeSingle()
-        
-        setIsAdmin(!!data)
-      }
-    }
-
-    checkAdmin()
-  }, [session.user.email])
+export function DashboardLayout({ children, session, isAdmin }: DashboardLayoutProps) {
+  const location = useLocation()
 
   return (
     <TooltipProvider>
@@ -39,13 +23,13 @@ export function DashboardLayout({ children, session }: DashboardLayoutProps) {
             <SidebarTrigger className="text-primary hover:bg-primary/10 transition-colors shadow-lg bg-background/20 backdrop-blur-md border border-border/50" />
           </div>
           <main className="flex-1 overflow-y-auto">
-            <AnimatePresence mode="wait">
-              <motion.div 
-                key={window.location.pathname}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
+            <AnimatePresence mode="popLayout">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
                 className="p-6 lg:p-10"
               >
                 <div className="mx-auto max-w-7xl">

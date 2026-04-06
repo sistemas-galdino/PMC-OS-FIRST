@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import {
   Table,
@@ -34,6 +34,8 @@ import {
   UserCheckIcon as UserCheck,
   Edit3Icon as Edit3,
   PlusIcon as Plus,
+  FilterIcon,
+  XIcon,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -46,6 +48,7 @@ import {
 import { useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ComboboxInput } from "@/components/ui/combobox-input"
 import { RegistrarClienteDialog } from "@/components/clientes/registrar-cliente-dialog"
 
 type NivelEngajamento =
@@ -72,6 +75,11 @@ interface Client {
   tem_crm: boolean
   tem_sdr: boolean
   observacoes_cs: string | null
+  produto: string | null
+  canal_de_venda: string | null
+  unidade_treinamento: string | null
+  mes_treinamento: string | null
+  ano_treinamento: number | null
 }
 
 const STATUS_OPTIONS = [
@@ -102,6 +110,13 @@ const ENGAGEMENT_CLASSES: Record<NivelEngajamento, string> = {
   cancelado: 'border-red-500/30 text-red-400 bg-red-500/10',
   congelado: 'border-slate-500/30 text-slate-400 bg-slate-500/10',
 }
+
+const MESES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+]
+const currentYear = new Date().getFullYear()
+const ANO_OPTIONS = [currentYear - 1, currentYear, currentYear + 1]
 
 function EngagementBadge({ value }: { value: NivelEngajamento | null }) {
   if (!value) return <span className="text-muted-foreground text-xs">—</span>
@@ -150,8 +165,22 @@ export default function ClientesPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [scFilter, setScFilter] = useState("all")
+  const [filters, setFilters] = useState<Record<string, string>>({})
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false)
+  const [filterCategory, setFilterCategory] = useState<string | null>(null)
+  const [filterSearch, setFilterSearch] = useState("")
   const [sortOrder, setSortOrder] = useState<'az' | 'recent'>('az')
+  const filterRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterMenuOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
   const [editClient, setEditClient] = useState<Client | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -172,6 +201,11 @@ export default function ClientesPage() {
   const [bulkEngajamento, setBulkEngajamento] = useState<NivelEngajamento | null>(null)
   const [bulkCrm, setBulkCrm] = useState<boolean | null>(null)
   const [bulkSdr, setBulkSdr] = useState<boolean | null>(null)
+  const [bulkProduto, setBulkProduto] = useState<string | null>(null)
+  const [bulkCanal, setBulkCanal] = useState<string | null>(null)
+  const [bulkUnidade, setBulkUnidade] = useState<string | null>(null)
+  const [bulkMes, setBulkMes] = useState<string | null>(null)
+  const [bulkAno, setBulkAno] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchClients() {
@@ -232,15 +266,57 @@ export default function ClientesPage() {
       client.nome_empresa_formatado?.toLowerCase().includes(term) ||
       (client.codigo_cliente != null && String(client.codigo_cliente).includes(searchTerm))
 
-    const matchesSc = scFilter === "all" || client.sc === scFilter
+    const matchesFilters =
+      (!filters.cs || client.sc === filters.cs) &&
+      (!filters.status || client.status_atual === filters.status) &&
+      (!filters.engajamento || client.nivel_engajamento === filters.engajamento) &&
+      (!filters.produto || client.produto === filters.produto) &&
+      (!filters.unidade || client.unidade_treinamento === filters.unidade) &&
+      (!filters.crm || (filters.crm === 'Sim' ? client.tem_crm : !client.tem_crm)) &&
+      (!filters.sdr || (filters.sdr === 'Sim' ? client.tem_sdr : !client.tem_sdr))
 
-    return matchesSearch && matchesSc
+    return matchesSearch && matchesFilters
   }).sort((a, b) => {
     if (sortOrder === 'recent') return b.id_entrada - a.id_entrada
     return (a.nome_cliente_formatado ?? '').localeCompare(b.nome_cliente_formatado ?? '', 'pt-BR')
   })
 
   const uniqueScs = Array.from(new Set(clients.map(c => c.sc).filter(Boolean)))
+  const produtoOptions = [...new Set(clients.map(c => c.produto).filter(Boolean) as string[])].sort()
+  const canalOptions = [...new Set(clients.map(c => c.canal_de_venda).filter(Boolean) as string[])].sort()
+  const unidadeOptions = [...new Set(clients.map(c => c.unidade_treinamento).filter(Boolean) as string[])].sort()
+
+  const filterCategories: { key: string; label: string; options: string[] }[] = [
+    { key: 'status', label: 'Status', options: STATUS_OPTIONS },
+    { key: 'cs', label: 'CS Responsável', options: uniqueScs },
+    { key: 'engajamento', label: 'Engajamento', options: Object.values(ENGAGEMENT_LABELS) },
+    { key: 'produto', label: 'Produto', options: produtoOptions },
+    { key: 'unidade', label: 'Unidade', options: unidadeOptions },
+    { key: 'crm', label: 'CRM', options: ['Sim', 'Não'] },
+    { key: 'sdr', label: 'SDR', options: ['Sim', 'Não'] },
+  ]
+
+  function applyFilter(key: string, value: string) {
+    // For engajamento, we need to store the key, not the label
+    if (key === 'engajamento') {
+      const entry = Object.entries(ENGAGEMENT_LABELS).find(([, label]) => label === value)
+      if (entry) value = entry[0]
+    }
+    setFilters(prev => ({ ...prev, [key]: value }))
+    setFilterCategory(null)
+    setFilterSearch("")
+    setFilterMenuOpen(false)
+  }
+
+  function removeFilter(key: string) {
+    setFilters(prev => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
+  const activeFilterCount = Object.keys(filters).length
 
   // Bulk selection helpers
   const filteredIds = new Set(filteredClients.map(c => c.id_entrada))
@@ -279,6 +355,11 @@ export default function ClientesPage() {
     setBulkEngajamento(null)
     setBulkCrm(null)
     setBulkSdr(null)
+    setBulkProduto(null)
+    setBulkCanal(null)
+    setBulkUnidade(null)
+    setBulkMes(null)
+    setBulkAno(null)
     setBulkEditOpen(true)
   }
 
@@ -292,6 +373,11 @@ export default function ClientesPage() {
     if (bulkEngajamento !== null) updates.nivel_engajamento = bulkEngajamento
     if (bulkCrm !== null) updates.tem_crm = bulkCrm
     if (bulkSdr !== null) updates.tem_sdr = bulkSdr
+    if (bulkProduto !== null) updates.produto = bulkProduto
+    if (bulkCanal !== null) updates.canal_de_venda = bulkCanal
+    if (bulkUnidade !== null) updates.unidade_treinamento = bulkUnidade
+    if (bulkMes !== null) updates.mes_treinamento = bulkMes
+    if (bulkAno !== null) updates.ano_treinamento = parseInt(bulkAno)
 
     if (Object.keys(updates).length === 0) {
       setBulkSaving(false)
@@ -329,6 +415,11 @@ export default function ClientesPage() {
           ...(bulkEngajamento !== null && { nivel_engajamento: bulkEngajamento as NivelEngajamento }),
           ...(bulkCrm !== null && { tem_crm: bulkCrm }),
           ...(bulkSdr !== null && { tem_sdr: bulkSdr }),
+          ...(bulkProduto !== null && { produto: bulkProduto }),
+          ...(bulkCanal !== null && { canal_de_venda: bulkCanal }),
+          ...(bulkUnidade !== null && { unidade_treinamento: bulkUnidade }),
+          ...(bulkMes !== null && { mes_treinamento: bulkMes }),
+          ...(bulkAno !== null && { ano_treinamento: parseInt(bulkAno) }),
         }
       }))
     }
@@ -376,49 +467,151 @@ export default function ClientesPage() {
         </Button>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center gap-4 bg-muted/10 p-6 rounded-2xl border border-border/50">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por cliente ou empresa..."
-            className="pl-11 h-12 bg-background border-border focus-visible:border-primary/50 shadow-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as 'az' | 'recent')}>
-          <SelectTrigger className="h-10 w-[200px] rounded-xl border-border bg-background text-xs font-bold uppercase tracking-wider">
-            <SelectValue placeholder="Ordenar por..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="az">A → Z</SelectItem>
-            <SelectItem value="recent">Últimos Adicionados</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="flex flex-col gap-3">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Filtrar por CS:</span>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={scFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              className="h-9 px-4 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all duration-300"
-              onClick={() => setScFilter('all')}
-            >
-              Todos
-            </Button>
-            {uniqueScs.map(sc => (
-              <Button
-                key={sc}
-                variant={scFilter === sc ? 'default' : 'outline'}
-                size="sm"
-                className="h-9 px-4 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all duration-300"
-                onClick={() => setScFilter(sc)}
-              >
-                {sc}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 bg-muted/10 p-6 rounded-2xl border border-border/50">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por cliente ou empresa..."
+              className="pl-11 h-12 bg-background border-border focus-visible:border-primary/50 shadow-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl border-border bg-background text-xs font-bold uppercase tracking-wider gap-2">
+                Ordenar ↓↑
               </Button>
-            ))}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48 bg-card/95 backdrop-blur-xl border-border rounded-xl p-2 shadow-2xl">
+              <DropdownMenuItem
+                className={`rounded-lg text-xs font-semibold py-2.5 cursor-pointer ${sortOrder === 'az' ? 'bg-primary/10 text-primary' : 'focus:bg-primary/10 focus:text-primary'}`}
+                onClick={() => setSortOrder('az')}
+              >
+                A → Z
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className={`rounded-lg text-xs font-semibold py-2.5 cursor-pointer ${sortOrder === 'recent' ? 'bg-primary/10 text-primary' : 'focus:bg-primary/10 focus:text-primary'}`}
+                onClick={() => setSortOrder('recent')}
+              >
+                Últimos Adicionados
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <div className="relative" ref={filterRef}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 px-4 rounded-xl border-border bg-background text-xs font-bold uppercase tracking-wider gap-2"
+              onClick={() => { setFilterMenuOpen(!filterMenuOpen); setFilterCategory(null); setFilterSearch("") }}
+            >
+              <FilterIcon className="size-3.5" />
+              Filtrar
+              {activeFilterCount > 0 && (
+                <span className="size-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">{activeFilterCount}</span>
+              )}
+            </Button>
+            {filterMenuOpen && (
+              <div className="absolute z-50 mt-2 w-56 rounded-xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl py-2">
+                {!filterCategory ? (
+                  <>
+                    <div className="px-3 pb-2">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Filtrar..."
+                          value={filterSearch}
+                          onChange={(e) => setFilterSearch(e.target.value)}
+                          className="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    {filterCategories
+                      .filter(cat => cat.label.toLowerCase().includes(filterSearch.toLowerCase()))
+                      .map(cat => (
+                        <button
+                          key={cat.key}
+                          type="button"
+                          className={`w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer flex items-center justify-between ${filters[cat.key] ? 'text-primary' : 'text-foreground'}`}
+                          onClick={() => { setFilterCategory(cat.key); setFilterSearch("") }}
+                        >
+                          {cat.label}
+                          {filters[cat.key] && <span className="text-[10px] text-primary/70">ativo</span>}
+                        </button>
+                      ))}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      onClick={() => { setFilterCategory(null); setFilterSearch("") }}
+                    >
+                      ← {filterCategories.find(c => c.key === filterCategory)?.label}
+                    </button>
+                    <div className="px-3 py-2">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Buscar..."
+                          value={filterSearch}
+                          onChange={(e) => setFilterSearch(e.target.value)}
+                          className="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {filterCategories
+                        .find(c => c.key === filterCategory)
+                        ?.options.filter(opt => opt.toLowerCase().includes(filterSearch.toLowerCase()))
+                        .map(opt => (
+                          <button
+                            key={opt}
+                            type="button"
+                            className={`w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer ${filters[filterCategory] === opt || (filterCategory === 'engajamento' && filters[filterCategory] === Object.entries(ENGAGEMENT_LABELS).find(([, l]) => l === opt)?.[0]) ? 'bg-primary/10 text-primary' : 'text-foreground'}`}
+                            onClick={() => applyFilter(filterCategory, opt)}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
+        {activeFilterCount > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {Object.entries(filters).map(([key, value]) => {
+              const cat = filterCategories.find(c => c.key === key)
+              const displayValue = key === 'engajamento' ? (ENGAGEMENT_LABELS[value as NivelEngajamento] || value) : value
+              return (
+                <Badge
+                  key={key}
+                  variant="outline"
+                  className="rounded-lg px-3 py-1.5 text-[11px] font-bold border-primary/30 text-primary bg-primary/10 gap-2 cursor-pointer hover:bg-primary/20 transition-colors"
+                  onClick={() => removeFilter(key)}
+                >
+                  <span className="text-muted-foreground font-normal">{cat?.label}:</span> {displayValue}
+                  <XIcon className="size-3" />
+                </Badge>
+              )
+            })}
+            <button
+              type="button"
+              className="text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer px-2"
+              onClick={() => setFilters({})}
+            >
+              Limpar filtros
+            </button>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -474,7 +667,7 @@ export default function ClientesPage() {
               </TableHead>
               <TableHead className="w-[70px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Código</TableHead>
               <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Cliente / Empresa</TableHead>
-              <TableHead className="w-[150px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Status Atual</TableHead>
+              <TableHead className="w-[180px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Status Atual</TableHead>
               <TableHead className="w-[140px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">CS Responsável</TableHead>
               <TableHead className="w-[120px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Engajamento</TableHead>
               <TableHead className="w-[50px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-2">CRM</TableHead>
@@ -506,10 +699,10 @@ export default function ClientesPage() {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="px-3">
                   <Badge
                     variant="outline"
-                    className={`rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                    className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider max-w-full truncate inline-block ${
                       client.status_atual?.toLowerCase().includes('ativo')
                         ? 'border-primary/30 text-primary bg-primary/10'
                         : 'border-border text-muted-foreground bg-muted/20'
@@ -737,12 +930,65 @@ export default function ClientesPage() {
                 <span className="text-sm text-muted-foreground">{bulkSdr ? 'Ativar' : 'Desativar'} para todos</span>
               </div>
             </BulkField>
+
+            <BulkField label="Produto" enabled={bulkProduto !== null} onToggle={() => setBulkProduto(prev => prev === null ? "" : null)}>
+              <ComboboxInput
+                value={bulkProduto ?? ""}
+                onChange={(v) => setBulkProduto(v)}
+                options={produtoOptions}
+                placeholder="Ex: PMC, PCE..."
+              />
+            </BulkField>
+
+            <BulkField label="Canal de Venda" enabled={bulkCanal !== null} onToggle={() => setBulkCanal(prev => prev === null ? "" : null)}>
+              <ComboboxInput
+                value={bulkCanal ?? ""}
+                onChange={(v) => setBulkCanal(v)}
+                options={canalOptions}
+                placeholder="Ex: IA para Negócios..."
+              />
+            </BulkField>
+
+            <BulkField label="Unidade" enabled={bulkUnidade !== null} onToggle={() => setBulkUnidade(prev => prev === null ? "" : null)}>
+              <ComboboxInput
+                value={bulkUnidade ?? ""}
+                onChange={(v) => setBulkUnidade(v)}
+                options={unidadeOptions}
+                placeholder="Unidade de treinamento"
+              />
+            </BulkField>
+
+            <BulkField label="Mês Treinamento" enabled={bulkMes !== null} onToggle={() => setBulkMes(prev => prev === null ? MESES[0] : null)}>
+              <Select value={bulkMes ?? ""} onValueChange={setBulkMes}>
+                <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                  <SelectValue placeholder="Selecionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {MESES.map(m => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </BulkField>
+
+            <BulkField label="Ano Treinamento" enabled={bulkAno !== null} onToggle={() => setBulkAno(prev => prev === null ? String(currentYear) : null)}>
+              <Select value={bulkAno ?? ""} onValueChange={setBulkAno}>
+                <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                  <SelectValue placeholder="Selecionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {ANO_OPTIONS.map(a => (
+                    <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </BulkField>
           </div>
 
           <SheetFooter className="p-6 border-t border-border">
             <Button
               onClick={handleBulkSave}
-              disabled={bulkSaving || (bulkStatus === null && bulkSc === null && bulkEngajamento === null && bulkCrm === null && bulkSdr === null)}
+              disabled={bulkSaving || (bulkStatus === null && bulkSc === null && bulkEngajamento === null && bulkCrm === null && bulkSdr === null && bulkProduto === null && bulkCanal === null && bulkUnidade === null && bulkMes === null && bulkAno === null)}
               className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs"
             >
               {bulkSaving ? 'Salvando...' : `Aplicar a ${selectedIds.size} Clientes`}
