@@ -111,6 +111,7 @@ function App() {
     let cancelled = false
 
     async function checkUserRole() {
+      if (!session?.user?.email) return
       const [{ data: mentor }, { data: onboarding }] = await Promise.all([
         supabase
           .from('mentores')
@@ -180,7 +181,7 @@ function App() {
             element={session ? (
               (!isAdmin && needsPassword) ? <Navigate to="/definir-senha" replace /> :
               (!isAdmin && needsOnboarding) ? <Navigate to="/cadastro" replace /> : (
-                <DashboardLayout session={session} isAdmin={isAdmin}>
+                <DashboardLayout isAdmin={isAdmin}>
                   <Routes>
                     <Route path="/" element={isAdmin ? <AdminDashboard /> : <ClientDashboard session={session} />} />
                     <Route path="/mentores" element={<MentoresPage />} />

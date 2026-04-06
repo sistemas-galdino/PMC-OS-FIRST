@@ -1,17 +1,15 @@
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "./app-sidebar"
-import type { Session } from "@supabase/supabase-js"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { motion, AnimatePresence } from "framer-motion"
 import { useLocation } from "react-router-dom"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
-  session: Session
   isAdmin: boolean
 }
 
-export function DashboardLayout({ children, session, isAdmin }: DashboardLayoutProps) {
+export function DashboardLayout({ children, isAdmin }: DashboardLayoutProps) {
   const location = useLocation()
 
   return (
