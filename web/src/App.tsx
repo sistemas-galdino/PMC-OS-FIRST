@@ -107,21 +107,21 @@ function App() {
 
   useEffect(() => {
     if (!session?.user?.email) return
+    const { email, id } = session.user
 
     let cancelled = false
 
     async function checkUserRole() {
-      if (!session?.user?.email) return
       const [{ data: mentor }, { data: onboarding }] = await Promise.all([
         supabase
           .from('mentores')
           .select('id')
-          .eq('email', session.user.email)
+          .eq('email', email)
           .maybeSingle(),
         supabase
           .from('cliente_onboarding')
           .select('status, senha_definida')
-          .eq('id_cliente', session.user.id)
+          .eq('id_cliente', id)
           .maybeSingle(),
       ])
 
