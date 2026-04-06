@@ -1,4 +1,4 @@
-# Implementation Plan: Global Mesh Gradient Background
+2
 
 ## Objective
 Integrate an animated mesh gradient background globally into the PMC OS and Portal do Cliente systems, using `@paper-design/shaders-react` with a custom "Neon Lime" and "Dark" brand palette.

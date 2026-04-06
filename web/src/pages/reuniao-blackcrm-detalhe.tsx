@@ -27,6 +27,8 @@ interface Meeting {
   resumo: string | null
   resumo_json: string | null
   acoes: string | null
+  acoes_cliente: string | Array<{ acao: string; prazo: string; status: string }> | null
+  acoes_mentor: string | Array<{ acao: string; prazo: string; status: string }> | null
   link_gravacao: string | null
   link_geminidoc: string | null
   observacoes: string | null
@@ -115,7 +117,7 @@ function FormattedContent({ text }: { text: string }) {
   return <>{elements}</>
 }
 
-export default function ReuniaoBlackCRMDetalhePage() {
+export default function ReuniaoBlackCRMDetalhePage({ isAdmin = false }: { isAdmin?: boolean }) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [meeting, setMeeting] = useState<Meeting | null>(null)
@@ -263,7 +265,7 @@ export default function ReuniaoBlackCRMDetalhePage() {
         transition={{ duration: 0.3 }}
       >
         {activeTab === "resumo" && <TabResumo meeting={meeting} />}
-        {activeTab === "acoes" && <TabAcoes meeting={meeting} />}
+        {activeTab === "acoes" && <TabAcoes meeting={meeting} isAdmin={isAdmin} />}
         {activeTab === "transcricao" && <TabTranscricao meeting={meeting} />}
         {activeTab === "gravacao" && <TabGravacao meeting={meeting} />}
       </motion.div>
@@ -314,17 +316,133 @@ function TabResumo({ meeting }: { meeting: Meeting }) {
   )
 }
 
-function TabAcoes({ meeting }: { meeting: Meeting }) {
-  if (!meeting.acoes) {
-    return <EmptyState text="Sem acoes registradas para esta reuniao." />
-  }
+function AcoesCards({ acoes, label }: { acoes: Array<{ acao: string; prazo: string; status: string }>, label?: string }) {
+  return (
+    <div className="space-y-3">
+      {label && (
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">{label}</h3>
+      )}
+      {acoes.map((item, i) => {
+        const acao = typeof item === 'string' ? item : item.acao
+        const prazo = typeof item === 'string' ? null : item.prazo
+        const status = typeof item === 'string' ? null : item.status
+        const isDone = status?.toLowerCase() === 'concluída' || status?.toLowerCase() === 'concluida' || status?.toLowerCase() === 'done'
 
+        return (
+          <Card key={i} className="border-border bg-card/50 backdrop-blur-md hover:border-primary/20 transition-colors">
+            <CardContent className="p-5 flex items-start gap-4">
+              <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isDone ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground'}`}>
+                <span className="text-sm font-bold">{i + 1}</span>
+              </div>
+              <div className="flex-1 space-y-1">
+                <p className="text-sm font-medium text-foreground">{acao}</p>
+                <div className="flex items-center gap-3">
+                  {prazo && (
+                    <span className="text-xs text-muted-foreground">
+                      <Calendar className="size-3 inline mr-1" />
+                      Prazo: {prazo}
+                    </span>
+                  )}
+                  {status && (
+                    <Badge
+                      variant="outline"
+                      className={`text-[9px] font-bold uppercase ${
+                        isDone
+                          ? 'bg-primary/10 border-primary/20 text-primary'
+                          : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                      }`}
+                    >
+                      {status}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
+
+function AcoesContent({ acoes }: { acoes: string | Array<{ acao: string; prazo: string; status: string }> }) {
+  if (Array.isArray(acoes)) {
+    return <AcoesCards acoes={acoes} />
+  }
   return (
     <Card className="border-border bg-card/50 backdrop-blur-md">
       <CardContent className="p-6 md:p-8">
-        <FormattedContent text={meeting.acoes} />
+        <FormattedContent text={acoes} />
       </CardContent>
     </Card>
+  )
+}
+
+function TabAcoes({ meeting, isAdmin }: { meeting: Meeting; isAdmin: boolean }) {
+  const [acoesView, setAcoesView] = useState<'cliente' | 'especialista'>('cliente')
+  const hasAcoesCliente = !!meeting.acoes_cliente
+  const hasAcoesMentor = !!meeting.acoes_mentor
+  const hasAcoesTexto = !!meeting.acoes
+
+  if (!hasAcoesCliente && !hasAcoesMentor && !hasAcoesTexto) {
+    return <EmptyState text="Sem acoes registradas para esta reuniao." />
+  }
+
+  // Cliente: só mostra ações do cliente
+  if (!isAdmin) {
+    if (!hasAcoesCliente && !hasAcoesTexto) {
+      return <EmptyState text="Sem acoes registradas para esta reuniao." />
+    }
+    if (hasAcoesCliente) {
+      return <AcoesContent acoes={meeting.acoes_cliente!} />
+    }
+    return (
+      <Card className="border-border bg-card/50 backdrop-blur-md">
+        <CardContent className="p-6 md:p-8">
+          <FormattedContent text={meeting.acoes!} />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Admin: toggle entre cliente e especialista
+  const currentAcoes = acoesView === 'cliente' ? meeting.acoes_cliente : meeting.acoes_mentor
+
+  return (
+    <div className="space-y-6">
+      {hasAcoesCliente && hasAcoesMentor && (
+        <div className="flex gap-2">
+          <Button
+            variant={acoesView === 'cliente' ? 'default' : 'outline'}
+            size="sm"
+            className="h-9 px-5 rounded-xl font-bold text-[11px] uppercase tracking-wider"
+            onClick={() => setAcoesView('cliente')}
+          >
+            Acoes do Cliente
+          </Button>
+          <Button
+            variant={acoesView === 'especialista' ? 'default' : 'outline'}
+            size="sm"
+            className="h-9 px-5 rounded-xl font-bold text-[11px] uppercase tracking-wider"
+            onClick={() => setAcoesView('especialista')}
+          >
+            Acoes do Especialista
+          </Button>
+        </div>
+      )}
+
+      {currentAcoes ? (
+        <AcoesContent acoes={currentAcoes} />
+      ) : hasAcoesTexto && !hasAcoesCliente && !hasAcoesMentor ? (
+        <Card className="border-border bg-card/50 backdrop-blur-md">
+          <CardContent className="p-6 md:p-8">
+            <FormattedContent text={meeting.acoes!} />
+          </CardContent>
+        </Card>
+      ) : (
+        <EmptyState text={`Sem acoes do ${acoesView === 'cliente' ? 'cliente' : 'especialista'} para esta reuniao.`} />
+      )}
+    </div>
   )
 }
 

@@ -137,6 +137,7 @@ export default function ClientesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [scFilter, setScFilter] = useState("all")
+  const [sortOrder, setSortOrder] = useState<'az' | 'recent'>('az')
   const [editClient, setEditClient] = useState<Client | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -210,6 +211,9 @@ export default function ClientesPage() {
     const matchesSc = scFilter === "all" || client.sc === scFilter
 
     return matchesSearch && matchesSc
+  }).sort((a, b) => {
+    if (sortOrder === 'recent') return b.id_entrada - a.id_entrada
+    return (a.nome_cliente_formatado ?? '').localeCompare(b.nome_cliente_formatado ?? '', 'pt-BR')
   })
 
   const uniqueScs = Array.from(new Set(clients.map(c => c.sc).filter(Boolean)))
@@ -253,6 +257,27 @@ export default function ClientesPage() {
         >
           + Registrar Novo Cliente
         </Button>
+        <div className="flex flex-col gap-3">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Ordenar por:</span>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={sortOrder === 'az' ? 'default' : 'outline'}
+              size="sm"
+              className="h-9 px-4 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all duration-300"
+              onClick={() => setSortOrder('az')}
+            >
+              A → Z
+            </Button>
+            <Button
+              variant={sortOrder === 'recent' ? 'default' : 'outline'}
+              size="sm"
+              className="h-9 px-4 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all duration-300"
+              onClick={() => setSortOrder('recent')}
+            >
+              Últimos Adicionados
+            </Button>
+          </div>
+        </div>
         <div className="flex flex-col gap-3">
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Filtrar por Responsável (CS):</span>
           <div className="flex flex-wrap gap-2">

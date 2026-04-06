@@ -192,7 +192,7 @@ function App() {
                     <Route path="/reunioes-galdino" element={<ReunioesGaldinoPage session={session} />} />
                     <Route path="/reuniao-galdino/:id" element={<ReuniaoGaldinoDetalhePage />} />
                     <Route path="/reunioes-blackcrm" element={<ReunioesBlackCRMPage session={session} />} />
-                    <Route path="/reuniao-blackcrm/:id" element={<ReuniaoBlackCRMDetalhePage />} />
+                    <Route path="/reuniao-blackcrm/:id" element={<ReuniaoBlackCRMDetalhePage isAdmin={isAdmin} />} />
                     <Route path="/recursos" element={<RecursosPage session={session} />} />
                     <Route path="/calendario" element={<CalendarioEncontrosPage />} />
                     <Route path="/onboarding" element={<OnboardingPage />} />

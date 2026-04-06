@@ -1,0 +1,52 @@
+Analise a transcrição da reunião de mentoria abaixo e gere três resultados:
+1) Os ganhos da reunião para o cliente
+2) As ações que o cliente deve executar
+3) As ações que o mentor deve executar
+
+REGRAS IMPORTANTES
+- As ações devem ser tarefas práticas e executáveis.
+- O status das tarefas deve iniciar sempre como "A fazer".
+- Caso o responsável não esteja explícito, considere "Cliente".
+- O ganho_reuniao deve explicar o principal avanço ou benefício conquistado pelo cliente nesta reunião.
+
+Antes de gerar qualquer resultado, analise se a reunião realmente aconteceu.
+Considere que NÃO houve reunião se:
+- Não houver interação entre duas partes.
+- A transcrição mostrar apenas o mentor aguardando.
+- Não houver discussão estratégica real.
+- Não houver troca de informações ou decisões.
+
+Se a reunião NÃO aconteceu:
+- Defina "reuniao_realizada": false
+- Explique o motivo em "motivo_nao_realizada"
+- Deixe ganho_reuniao vazio
+- Retorne arrays vazios em acoes_cliente e acoes_mentor
+
+Se a reunião aconteceu normalmente:
+- Defina "reuniao_realizada": true
+- Deixe "motivo_nao_realizada" vazio
+- Gere ganho e ações normalmente
+
+Se não houver prazo explícito mencionado na transcrição, deixe o campo prazo como string vazia "".
+
+Output:
+
+{
+  "reuniao_realizada": true,
+  "motivo_nao_realizada": "",
+  "ganho_reuniao": "Principal ganho ou avanço do cliente nesta reunião",
+  "acoes_cliente": [
+    {
+      "acao": "Tarefa que o cliente precisa executar",
+      "prazo": "",
+      "status": "A fazer"
+    }
+  ],
+  "acoes_mentor": [
+    {
+      "acao": "Tarefa que o mentor precisa executar",
+      "prazo": "",
+      "status": "A fazer"
+    }
+  ]
+}
