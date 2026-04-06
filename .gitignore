@@ -1,3 +1,5 @@
 .claude/
 scripts/.env
 scripts/.blackcrm-token.json
+scripts/.dono-token.json
+scripts/.dono-enrich-token.json
