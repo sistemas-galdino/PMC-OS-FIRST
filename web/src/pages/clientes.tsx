@@ -43,7 +43,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useNavigate } from "react-router-dom"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
+import { Checkbox } from "@/components/ui/checkbox"
 import { RegistrarClienteDialog } from "@/components/clientes/registrar-cliente-dialog"
 
 type NivelEngajamento =
@@ -131,6 +132,18 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   )
 }
 
+function BulkField({ label, enabled, onToggle, children }: { label: string; enabled: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <div className={`space-y-2 rounded-xl p-4 border transition-colors ${enabled ? 'border-primary/30 bg-primary/5' : 'border-border/50 bg-muted/10 opacity-60'}`}>
+      <div className="flex items-center gap-3">
+        <Checkbox checked={enabled} onCheckedChange={onToggle} />
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+      </div>
+      {enabled && <div className="mt-3">{children}</div>}
+    </div>
+  )
+}
+
 export default function ClientesPage() {
   const navigate = useNavigate()
   const [clients, setClients] = useState<Client[]>([])
@@ -148,6 +161,16 @@ export default function ClientesPage() {
   const [formSdr, setFormSdr] = useState(false)
   const [formObs, setFormObs] = useState("")
   const [showRegistrar, setShowRegistrar] = useState(false)
+
+  // Bulk edit state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkEditOpen, setBulkEditOpen] = useState(false)
+  const [bulkSaving, setBulkSaving] = useState(false)
+  const [bulkStatus, setBulkStatus] = useState<string | null>(null)
+  const [bulkSc, setBulkSc] = useState<string | null>(null)
+  const [bulkEngajamento, setBulkEngajamento] = useState<NivelEngajamento | null>(null)
+  const [bulkCrm, setBulkCrm] = useState<boolean | null>(null)
+  const [bulkSdr, setBulkSdr] = useState<boolean | null>(null)
 
   useEffect(() => {
     async function fetchClients() {
@@ -217,6 +240,108 @@ export default function ClientesPage() {
   })
 
   const uniqueScs = Array.from(new Set(clients.map(c => c.sc).filter(Boolean)))
+
+  // Bulk selection helpers
+  const filteredIds = new Set(filteredClients.map(c => c.id_entrada))
+  const selectedFilteredCount = [...selectedIds].filter(id => filteredIds.has(id)).length
+  const allFilteredSelected = filteredClients.length > 0 && selectedFilteredCount === filteredClients.length
+  const someFilteredSelected = selectedFilteredCount > 0 && !allFilteredSelected
+
+  function toggleSelectAll() {
+    if (allFilteredSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        filteredClients.forEach(c => next.delete(c.id_entrada))
+        return next
+      })
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        filteredClients.forEach(c => next.add(c.id_entrada))
+        return next
+      })
+    }
+  }
+
+  function toggleSelect(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function openBulkEdit() {
+    setBulkStatus(null)
+    setBulkSc(null)
+    setBulkEngajamento(null)
+    setBulkCrm(null)
+    setBulkSdr(null)
+    setBulkEditOpen(true)
+  }
+
+  async function handleBulkSave() {
+    if (selectedIds.size === 0) return
+    setBulkSaving(true)
+
+    const updates: Record<string, unknown> = {}
+    if (bulkStatus !== null) updates.status_atual = bulkStatus
+    if (bulkSc !== null) updates.sc = bulkSc
+    if (bulkEngajamento !== null) updates.nivel_engajamento = bulkEngajamento
+    if (bulkCrm !== null) updates.tem_crm = bulkCrm
+    if (bulkSdr !== null) updates.tem_sdr = bulkSdr
+
+    if (Object.keys(updates).length === 0) {
+      setBulkSaving(false)
+      return
+    }
+
+    const ids = Array.from(selectedIds)
+    const results = await Promise.allSettled(
+      ids.map(id =>
+        supabase
+          .from('clientes_entrada_new')
+          .update(updates)
+          .eq('id_entrada', id)
+          .then(({ error }) => {
+            if (error) throw error
+            return id
+          })
+      )
+    )
+
+    const succeededIds = new Set<number>()
+    const failedIds: number[] = []
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled') succeededIds.add(ids[i])
+      else failedIds.push(ids[i])
+    })
+
+    if (succeededIds.size > 0) {
+      setClients(prev => prev.map(c => {
+        if (!succeededIds.has(c.id_entrada)) return c
+        return {
+          ...c,
+          ...(bulkStatus !== null && { status_atual: bulkStatus }),
+          ...(bulkSc !== null && { sc: bulkSc }),
+          ...(bulkEngajamento !== null && { nivel_engajamento: bulkEngajamento as NivelEngajamento }),
+          ...(bulkCrm !== null && { tem_crm: bulkCrm }),
+          ...(bulkSdr !== null && { tem_sdr: bulkSdr }),
+        }
+      }))
+    }
+
+    if (failedIds.length > 0) {
+      setSelectedIds(new Set(failedIds))
+      alert(`${failedIds.length} de ${ids.length} atualizações falharam. Os clientes com falha permanecem selecionados.`)
+    } else {
+      setSelectedIds(new Set())
+      setBulkEditOpen(false)
+    }
+
+    setBulkSaving(false)
+  }
 
   if (loading) {
     return <div className="space-y-6 animate-pulse">
@@ -304,6 +429,41 @@ export default function ClientesPage() {
         </div>
       </div>
 
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -10, height: 0 }}
+            className="flex items-center gap-4 bg-primary/10 border border-primary/20 rounded-2xl px-6 py-4"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-primary">{selectedIds.size}</span>
+              <span className="text-sm text-muted-foreground">
+                {selectedIds.size === 1 ? 'cliente selecionado' : 'clientes selecionados'}
+              </span>
+            </div>
+            <div className="flex-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 px-4 rounded-lg font-bold text-[10px] uppercase tracking-wider"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Limpar Seleção
+            </Button>
+            <Button
+              size="sm"
+              className="h-9 px-4 rounded-lg font-bold text-[10px] uppercase tracking-wider shadow-lg shadow-primary/20"
+              onClick={openBulkEdit}
+            >
+              <Edit3 className="size-3.5 mr-1.5" />
+              Editar em Massa
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -313,6 +473,13 @@ export default function ClientesPage() {
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow className="border-b border-border/50 hover:bg-transparent">
+              <TableHead className="w-12 py-5 px-4">
+                <Checkbox
+                  checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Selecionar todos"
+                />
+              </TableHead>
               <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-6">Código</TableHead>
               <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-6">Cliente / Empresa</TableHead>
               <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">Status Atual</TableHead>
@@ -326,6 +493,13 @@ export default function ClientesPage() {
           <TableBody>
             {filteredClients.map((client) => (
               <TableRow key={client.id_entrada} className="hover:bg-primary/5 border-b border-border/30 transition-colors group">
+                <TableCell className="py-5 px-4" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedIds.has(client.id_entrada)}
+                    onCheckedChange={() => toggleSelect(client.id_entrada)}
+                    aria-label={`Selecionar ${client.nome_cliente_formatado}`}
+                  />
+                </TableCell>
                 <TableCell className="py-5 px-6">
                   <span className="text-xs font-mono text-muted-foreground">
                     {client.codigo_cliente ?? '—'}
@@ -503,6 +677,83 @@ export default function ClientesPage() {
               className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs"
             >
               {saving ? 'Salvando...' : 'Salvar Alterações'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={bulkEditOpen} onOpenChange={setBulkEditOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-background border-l border-border">
+          <SheetHeader className="p-6 border-b border-border">
+            <SheetTitle className="text-lg font-bold text-foreground">Edição em Massa</SheetTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Alterando <span className="font-bold text-primary">{selectedIds.size}</span> {selectedIds.size === 1 ? 'cliente' : 'clientes'}.
+              Marque apenas os campos que deseja alterar.
+            </p>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <BulkField label="Status Atual" enabled={bulkStatus !== null} onToggle={() => setBulkStatus(prev => prev === null ? STATUS_OPTIONS[0] : null)}>
+              <Select value={bulkStatus ?? ""} onValueChange={setBulkStatus}>
+                <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                  <SelectValue placeholder="Selecionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </BulkField>
+
+            <BulkField label="CS Responsável" enabled={bulkSc !== null} onToggle={() => setBulkSc(prev => prev === null ? (uniqueScs[0] || "") : null)}>
+              <Select value={bulkSc ?? ""} onValueChange={setBulkSc}>
+                <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                  <SelectValue placeholder="Selecionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {uniqueScs.map(sc => (
+                    <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </BulkField>
+
+            <BulkField label="Nível de Engajamento" enabled={bulkEngajamento !== null} onToggle={() => setBulkEngajamento(prev => prev === null ? 'cliente_novo' : null)}>
+              <Select value={bulkEngajamento ?? ""} onValueChange={(v) => setBulkEngajamento(v as NivelEngajamento)}>
+                <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                  <SelectValue placeholder="Selecionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(ENGAGEMENT_LABELS) as [NivelEngajamento, string][]).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </BulkField>
+
+            <BulkField label="Black CRM" enabled={bulkCrm !== null} onToggle={() => setBulkCrm(prev => prev === null ? true : null)}>
+              <div className="flex items-center gap-3">
+                <Toggle checked={bulkCrm ?? false} onChange={(v) => setBulkCrm(v)} />
+                <span className="text-sm text-muted-foreground">{bulkCrm ? 'Ativar' : 'Desativar'} para todos</span>
+              </div>
+            </BulkField>
+
+            <BulkField label="Black SDR" enabled={bulkSdr !== null} onToggle={() => setBulkSdr(prev => prev === null ? true : null)}>
+              <div className="flex items-center gap-3">
+                <Toggle checked={bulkSdr ?? false} onChange={(v) => setBulkSdr(v)} />
+                <span className="text-sm text-muted-foreground">{bulkSdr ? 'Ativar' : 'Desativar'} para todos</span>
+              </div>
+            </BulkField>
+          </div>
+
+          <SheetFooter className="p-6 border-t border-border">
+            <Button
+              onClick={handleBulkSave}
+              disabled={bulkSaving || (bulkStatus === null && bulkSc === null && bulkEngajamento === null && bulkCrm === null && bulkSdr === null)}
+              className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs"
+            >
+              {bulkSaving ? 'Salvando...' : `Aplicar a ${selectedIds.size} Clientes`}
             </Button>
           </SheetFooter>
         </SheetContent>
