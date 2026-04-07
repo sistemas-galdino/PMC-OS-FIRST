@@ -50,6 +50,14 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ComboboxInput } from "@/components/ui/combobox-input"
 import { RegistrarClienteDialog } from "@/components/clientes/registrar-cliente-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 type NivelEngajamento =
   | 'cliente_novo'
@@ -206,6 +214,24 @@ export default function ClientesPage() {
   const [bulkUnidade, setBulkUnidade] = useState<string | null>(null)
   const [bulkMes, setBulkMes] = useState<string | null>(null)
   const [bulkAno, setBulkAno] = useState<string | null>(null)
+
+  // Delete confirmation
+  const [deleteClient, setDeleteClient] = useState<Client | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDeleteClient() {
+    if (!deleteClient) return
+    setDeleting(true)
+    const { error } = await supabase
+      .from('clientes_entrada_new')
+      .delete()
+      .eq('id_entrada', deleteClient.id_entrada)
+    if (!error) {
+      setClients(prev => prev.filter(c => c.id_entrada !== deleteClient.id_entrada))
+    }
+    setDeleting(false)
+    setDeleteClient(null)
+  }
 
   useEffect(() => {
     async function fetchClients() {
@@ -761,6 +787,12 @@ export default function ClientesPage() {
                       <DropdownMenuItem className="rounded-lg text-xs font-semibold py-2 text-destructive cursor-pointer focus:bg-destructive/10 focus:text-destructive">
                         Registrar Churn
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="rounded-lg text-xs font-semibold py-2 text-destructive cursor-pointer focus:bg-destructive/10 focus:text-destructive"
+                        onClick={() => setDeleteClient(client)}
+                      >
+                        Excluir Cliente
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -1012,6 +1044,31 @@ export default function ClientesPage() {
             })
         }}
       />
+
+      <Dialog open={!!deleteClient} onOpenChange={(open) => { if (!open) setDeleteClient(null) }}>
+        <DialogContent className="sm:max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-foreground">Excluir Cliente</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Tem certeza que deseja excluir <span className="font-bold text-foreground">{deleteClient?.nome_cliente_formatado}</span>
+              {deleteClient?.nome_empresa_formatado && <> ({deleteClient.nome_empresa_formatado})</>}? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-3 mt-4">
+            <Button variant="outline" onClick={() => setDeleteClient(null)} className="flex-1 rounded-xl font-bold text-xs uppercase tracking-wider">
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteClient}
+              disabled={deleting}
+              className="flex-1 rounded-xl font-bold text-xs uppercase tracking-wider"
+            >
+              {deleting ? 'Excluindo...' : 'Sim, Excluir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
