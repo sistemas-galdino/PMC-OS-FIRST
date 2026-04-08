@@ -26,7 +26,7 @@ interface Meeting {
   data_reuniao: string
   cliente_compareceu: boolean | null
   resumo: string | null
-  acoes_cliente: string | Array<{ acao: string; prazo: string; status: string }> | null
+  acoes_cliente: string | Array<{ acao: string; prazo?: string; status?: string; observacao?: string }> | null
   nps: number | null
   transcricao: string | null
   link_gravacao: string | null
@@ -249,10 +249,6 @@ function normalizeStatus(s: string | null | undefined): string {
 
 function getStatusStyle(value: string) {
   return STATUS_OPTIONS.find(s => s.value === value)?.color || STATUS_OPTIONS[0].color
-}
-
-function getStatusLabel(value: string) {
-  return STATUS_OPTIONS.find(s => s.value === value)?.label || 'Não Iniciado'
 }
 
 function TabAcoes({ meeting, isAdmin, onUpdate }: { meeting: Meeting; isAdmin: boolean; onUpdate: (m: Meeting) => void }) {
