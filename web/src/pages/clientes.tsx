@@ -81,7 +81,6 @@ interface Client {
   nicho: string
   nivel_engajamento: NivelEngajamento | null
   tem_crm: boolean
-  tem_sdr: boolean
   observacoes_cs: string | null
   produto: string | null
   canal_de_venda: string | null
@@ -196,7 +195,7 @@ export default function ClientesPage() {
   const [formSc, setFormSc] = useState("")
   const [formEngajamento, setFormEngajamento] = useState<NivelEngajamento | "">("")
   const [formCrm, setFormCrm] = useState(false)
-  const [formSdr, setFormSdr] = useState(false)
+
   const [formObs, setFormObs] = useState("")
   const [showRegistrar, setShowRegistrar] = useState(false)
 
@@ -208,7 +207,7 @@ export default function ClientesPage() {
   const [bulkSc, setBulkSc] = useState<string | null>(null)
   const [bulkEngajamento, setBulkEngajamento] = useState<NivelEngajamento | null>(null)
   const [bulkCrm, setBulkCrm] = useState<boolean | null>(null)
-  const [bulkSdr, setBulkSdr] = useState<boolean | null>(null)
+
   const [bulkProduto, setBulkProduto] = useState<string | null>(null)
   const [bulkCanal, setBulkCanal] = useState<string | null>(null)
   const [bulkUnidade, setBulkUnidade] = useState<string | null>(null)
@@ -255,7 +254,6 @@ export default function ClientesPage() {
     setFormSc(client.sc ?? "")
     setFormEngajamento(client.nivel_engajamento ?? "")
     setFormCrm(client.tem_crm ?? false)
-    setFormSdr(client.tem_sdr ?? false)
     setFormObs(client.observacoes_cs ?? "")
   }
 
@@ -269,7 +267,6 @@ export default function ClientesPage() {
         sc: formSc || null,
         nivel_engajamento: formEngajamento || null,
         tem_crm: formCrm,
-        tem_sdr: formSdr,
         observacoes_cs: formObs || null,
       })
       .eq('id_entrada', editClient.id_entrada)
@@ -277,7 +274,7 @@ export default function ClientesPage() {
     if (!error) {
       setClients(prev => prev.map(c =>
         c.id_entrada === editClient.id_entrada
-          ? { ...c, status_atual: formStatus, sc: formSc, nivel_engajamento: (formEngajamento as NivelEngajamento) || null, tem_crm: formCrm, tem_sdr: formSdr, observacoes_cs: formObs || null }
+          ? { ...c, status_atual: formStatus, sc: formSc, nivel_engajamento: (formEngajamento as NivelEngajamento) || null, tem_crm: formCrm, observacoes_cs: formObs || null }
           : c
       ))
       setEditClient(null)
@@ -298,8 +295,7 @@ export default function ClientesPage() {
       (!filters.engajamento || client.nivel_engajamento === filters.engajamento) &&
       (!filters.produto || client.produto === filters.produto) &&
       (!filters.unidade || client.unidade_treinamento === filters.unidade) &&
-      (!filters.crm || (filters.crm === 'Sim' ? client.tem_crm : !client.tem_crm)) &&
-      (!filters.sdr || (filters.sdr === 'Sim' ? client.tem_sdr : !client.tem_sdr))
+      (!filters.crm || (filters.crm === 'Sim' ? client.tem_crm : !client.tem_crm))
 
     return matchesSearch && matchesFilters
   }).sort((a, b) => {
@@ -319,7 +315,6 @@ export default function ClientesPage() {
     { key: 'produto', label: 'Produto', options: produtoOptions },
     { key: 'unidade', label: 'Unidade', options: unidadeOptions },
     { key: 'crm', label: 'CRM', options: ['Sim', 'Não'] },
-    { key: 'sdr', label: 'SDR', options: ['Sim', 'Não'] },
   ]
 
   function applyFilter(key: string, value: string) {
@@ -380,7 +375,6 @@ export default function ClientesPage() {
     setBulkSc(null)
     setBulkEngajamento(null)
     setBulkCrm(null)
-    setBulkSdr(null)
     setBulkProduto(null)
     setBulkCanal(null)
     setBulkUnidade(null)
@@ -398,7 +392,6 @@ export default function ClientesPage() {
     if (bulkSc !== null) updates.sc = bulkSc
     if (bulkEngajamento !== null) updates.nivel_engajamento = bulkEngajamento
     if (bulkCrm !== null) updates.tem_crm = bulkCrm
-    if (bulkSdr !== null) updates.tem_sdr = bulkSdr
     if (bulkProduto !== null) updates.produto = bulkProduto
     if (bulkCanal !== null) updates.canal_de_venda = bulkCanal
     if (bulkUnidade !== null) updates.unidade_treinamento = bulkUnidade
@@ -440,7 +433,6 @@ export default function ClientesPage() {
           ...(bulkSc !== null && { sc: bulkSc }),
           ...(bulkEngajamento !== null && { nivel_engajamento: bulkEngajamento as NivelEngajamento }),
           ...(bulkCrm !== null && { tem_crm: bulkCrm }),
-          ...(bulkSdr !== null && { tem_sdr: bulkSdr }),
           ...(bulkProduto !== null && { produto: bulkProduto }),
           ...(bulkCanal !== null && { canal_de_venda: bulkCanal }),
           ...(bulkUnidade !== null && { unidade_treinamento: bulkUnidade }),
@@ -697,7 +689,6 @@ export default function ClientesPage() {
               <TableHead className="w-[140px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">CS Responsável</TableHead>
               <TableHead className="w-[120px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Engajamento</TableHead>
               <TableHead className="w-[50px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-2">CRM</TableHead>
-              <TableHead className="w-[50px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-2">SDR</TableHead>
               <TableHead className="w-[60px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 text-right pr-4">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -751,11 +742,6 @@ export default function ClientesPage() {
                 <TableCell>
                   <span className={`text-[11px] font-bold ${client.tem_crm ? 'text-emerald-400' : 'text-muted-foreground'}`}>
                     {client.tem_crm ? 'Sim' : 'Não'}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span className={`text-[11px] font-bold ${client.tem_sdr ? 'text-emerald-400' : 'text-muted-foreground'}`}>
-                    {client.tem_sdr ? 'Sim' : 'Não'}
                   </span>
                 </TableCell>
                 <TableCell className="text-right pr-4">
@@ -866,13 +852,6 @@ export default function ClientesPage() {
                 </div>
                 <Toggle checked={formCrm} onChange={setFormCrm} />
               </div>
-              <div className="flex items-center justify-between bg-muted/20 rounded-xl px-4 py-3 border border-border/50">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Black SDR</p>
-                  <p className="text-[11px] text-muted-foreground">Tem conta ativa na plataforma</p>
-                </div>
-                <Toggle checked={formSdr} onChange={setFormSdr} />
-              </div>
             </div>
 
             <div className="space-y-2">
@@ -956,13 +935,6 @@ export default function ClientesPage() {
               </div>
             </BulkField>
 
-            <BulkField label="Black SDR" enabled={bulkSdr !== null} onToggle={() => setBulkSdr(prev => prev === null ? true : null)}>
-              <div className="flex items-center gap-3">
-                <Toggle checked={bulkSdr ?? false} onChange={(v) => setBulkSdr(v)} />
-                <span className="text-sm text-muted-foreground">{bulkSdr ? 'Ativar' : 'Desativar'} para todos</span>
-              </div>
-            </BulkField>
-
             <BulkField label="Produto" enabled={bulkProduto !== null} onToggle={() => setBulkProduto(prev => prev === null ? "" : null)}>
               <ComboboxInput
                 value={bulkProduto ?? ""}
@@ -1020,7 +992,7 @@ export default function ClientesPage() {
           <SheetFooter className="p-6 border-t border-border">
             <Button
               onClick={handleBulkSave}
-              disabled={bulkSaving || (bulkStatus === null && bulkSc === null && bulkEngajamento === null && bulkCrm === null && bulkSdr === null && bulkProduto === null && bulkCanal === null && bulkUnidade === null && bulkMes === null && bulkAno === null)}
+              disabled={bulkSaving || (bulkStatus === null && bulkSc === null && bulkEngajamento === null && bulkCrm === null && bulkProduto === null && bulkCanal === null && bulkUnidade === null && bulkMes === null && bulkAno === null)}
               className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs"
             >
               {bulkSaving ? 'Salvando...' : `Aplicar a ${selectedIds.size} Clientes`}
