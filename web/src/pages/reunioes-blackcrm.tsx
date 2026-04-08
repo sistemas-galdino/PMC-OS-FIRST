@@ -57,6 +57,7 @@ export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlac
   const [searchTerm, setSearchTerm] = useState("")
   const [tipoFilter, setTipoFilter] = useState("all")
   const [responsavelFilter, setResponsavelFilter] = useState("all")
+  const [mesFilter, setMesFilter] = useState("all")
   const [semanaFilter, setSemanaFilter] = useState("all")
   const [anoFilter, setAnoFilter] = useState("all")
   const [dateRange, setDateRange] = useState({ from: "", to: "" })
@@ -112,9 +113,15 @@ export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlac
   const allMeetings = Object.values(meetings).flat()
   const uniqueResponsaveis = [...new Set(allMeetings.map(m => m.responsavel))].filter(Boolean).sort() as string[]
   const uniqueYears = [...new Set(allMeetings.map(m => m.ano))].filter(Boolean).sort() as number[]
+  const uniqueMonths = [...new Set(
+    allMeetings
+      .filter(m => anoFilter === "all" || String(m.ano) === anoFilter)
+      .map(m => m.mes)
+  )].filter(Boolean).sort((a, b) => (a as number) - (b as number)) as number[]
   const uniqueWeeks = [...new Set(
     allMeetings
       .filter(m => anoFilter === "all" || String(m.ano) === anoFilter)
+      .filter(m => mesFilter === "all" || String(m.mes) === mesFilter)
       .map(m => m.semana)
   )].filter(Boolean).sort((a, b) => (a as number) - (b as number)) as number[]
 
@@ -130,13 +137,15 @@ export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlac
 
     const matchesAno = anoFilter === "all" || String(m.ano) === anoFilter
 
+    const matchesMes = mesFilter === "all" || String(m.mes) === mesFilter
+
     const matchesSemana = semanaFilter === "all" || String(m.semana) === semanaFilter
 
     const matchesDate =
       (!dateRange.from || m.data_reuniao >= dateRange.from) &&
       (!dateRange.to || m.data_reuniao <= dateRange.to)
 
-    return matchesSearch && matchesTipo && matchesResponsavel && matchesAno && matchesSemana && matchesDate
+    return matchesSearch && matchesTipo && matchesResponsavel && matchesAno && matchesMes && matchesSemana && matchesDate
   })
 
   const filteredGrouped = Object.entries(
@@ -214,7 +223,7 @@ export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlac
               ))}
             </SelectContent>
           </Select>
-          <Select value={anoFilter} onValueChange={(v) => { setAnoFilter(v); setSemanaFilter("all") }}>
+          <Select value={anoFilter} onValueChange={(v) => { setAnoFilter(v); setMesFilter("all"); setSemanaFilter("all") }}>
             <SelectTrigger className="w-full sm:w-32 h-12 bg-muted/10 border-border rounded-xl">
               <SelectValue placeholder="Ano" />
             </SelectTrigger>
@@ -222,6 +231,17 @@ export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlac
               <SelectItem value="all" className="rounded-lg font-medium">Todos Anos</SelectItem>
               {uniqueYears.map(y => (
                 <SelectItem key={y} value={String(y)} className="rounded-lg font-medium">{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={mesFilter} onValueChange={(v) => { setMesFilter(v); setSemanaFilter("all") }}>
+            <SelectTrigger className="w-full sm:w-32 h-12 bg-muted/10 border-border rounded-xl">
+              <SelectValue placeholder="Mês" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
+              <SelectItem value="all" className="rounded-lg font-medium">Todos Meses</SelectItem>
+              {uniqueMonths.map(m => (
+                <SelectItem key={m} value={String(m)} className="rounded-lg font-medium">Mês {m}</SelectItem>
               ))}
             </SelectContent>
           </Select>
