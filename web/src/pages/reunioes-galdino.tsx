@@ -199,7 +199,7 @@ export default function ReunioesGaldinoPage({ session, clientId }: ReunioesGaldi
             <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
               <SelectItem value="all" className="rounded-lg font-medium">Todos Meses</SelectItem>
               {uniqueMonths.map(m => (
-                <SelectItem key={m} value={String(m)} className="rounded-lg font-medium">Mês {m}</SelectItem>
+                <SelectItem key={m} value={String(m)} className="rounded-lg font-medium">{['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][m]}</SelectItem>
               ))}
             </SelectContent>
           </Select>
