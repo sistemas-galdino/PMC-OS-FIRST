@@ -216,7 +216,7 @@ export default function RecursosPage({ session, forceAdmin }: RecursosPageProps)
         )}
       </motion.div>
 
-      {!isAdmin && Object.keys(quickLinks).length > 0 && (
+      {Object.keys(quickLinks).length > 0 && (
         <div className="space-y-6">
           <h2 className="text-xl font-bold tracking-tight text-foreground">Acesso Rápido</h2>
           <motion.div
@@ -273,9 +273,6 @@ export default function RecursosPage({ session, forceAdmin }: RecursosPageProps)
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`block ${!recurso.ativo ? 'opacity-50' : ''}`}
-                  onClick={(e) => {
-                    if (isAdmin) e.preventDefault()
-                  }}
                 >
                   <Card className="group overflow-hidden hover:border-primary/30 transition-all duration-300 cursor-pointer">
                     <CardContent className="flex items-center justify-between p-5">
