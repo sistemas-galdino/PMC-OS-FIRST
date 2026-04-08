@@ -95,7 +95,7 @@ export default function OnboardingPage() {
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow className="border-b border-border/50 hover:bg-transparent">
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-6">Cliente / Empresa</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-6">Empresa / Cliente</TableHead>
               <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">Status</TableHead>
               <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">CS Responsável</TableHead>
             </TableRow>
@@ -112,10 +112,10 @@ export default function OnboardingPage() {
                 <TableRow key={client.id_entrada} className="hover:bg-primary/5 border-b border-border/30 transition-colors group">
                   <TableCell className="py-5 px-6">
                     <div className="flex flex-col gap-1">
-                      <span className="font-bold text-sm text-foreground tracking-tight">{client.nome_cliente_formatado}</span>
+                      <span className="font-bold text-sm text-foreground tracking-tight">{client.nome_empresa_formatado}</span>
                       <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium">
                         <Briefcase className="size-3 text-primary/60" />
-                        {client.nome_empresa_formatado}
+                        {client.nome_cliente_formatado}
                       </div>
                     </div>
                   </TableCell>
