@@ -52,6 +52,8 @@ export default function RecursosPage({ session, forceAdmin }: RecursosPageProps)
   const [editingRecurso, setEditingRecurso] = useState<Recurso | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ titulo: '', url: '', icone: '🔗', categoria: '', ordem: 0, ativo: true })
+  const [quickLinks, setQuickLinks] = useState<Record<string, string>>({})
+  const [clientSc, setClientSc] = useState<string | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -85,6 +87,29 @@ export default function RecursosPage({ session, forceAdmin }: RecursosPageProps)
     }
 
     init()
+
+    // Fetch configurable links and client SC for non-admin
+    if (session?.user?.id) {
+      supabase
+        .from('configuracoes_links')
+        .select('chave, url')
+        .eq('ativo', true)
+        .then(({ data: links }) => {
+          if (links) {
+            const map: Record<string, string> = {}
+            links.forEach(l => { map[l.chave] = l.url })
+            setQuickLinks(map)
+          }
+        })
+      supabase
+        .from('clientes_entrada_new')
+        .select('sc')
+        .eq('id_cliente', session.user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setClientSc(data.sc ?? null)
+        })
+    }
   }, [session, forceAdmin])
 
   function openNew() {
@@ -190,6 +215,38 @@ export default function RecursosPage({ session, forceAdmin }: RecursosPageProps)
           </Button>
         )}
       </motion.div>
+
+      {!isAdmin && Object.keys(quickLinks).length > 0 && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold tracking-tight text-foreground">Acesso Rápido</h2>
+          <motion.div
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="grid gap-4 md:grid-cols-2"
+          >
+            {[
+              { titulo: "Área de Membros", icone: "📚", url: quickLinks.area_membros },
+              { titulo: "Suporte (CS)", icone: "💬", url: clientSc ? quickLinks[`suporte_${clientSc.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`] : '' },
+              { titulo: "Grupo de Avisos", icone: "📢", url: quickLinks.grupo_avisos },
+            ].filter(l => l.url).map(link => (
+              <motion.div key={link.titulo} variants={item}>
+                <a href={link.url} target="_blank" rel="noopener noreferrer" className="block">
+                  <Card className="group overflow-hidden hover:border-primary/30 transition-all duration-300 cursor-pointer">
+                    <CardContent className="flex items-center justify-between p-5">
+                      <div className="flex items-center gap-4">
+                        <span className="text-3xl">{link.icone}</span>
+                        <span className="text-lg font-bold tracking-tight text-foreground">{link.titulo}</span>
+                      </div>
+                      <ExternalLink className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </CardContent>
+                  </Card>
+                </a>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      )}
 
       {Object.keys(grouped).length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
