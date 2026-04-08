@@ -48,6 +48,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Reunioes Black CRM", icon: Settings, url: "/reunioes-blackcrm" },
     { title: "Recursos", icon: BookOpen, url: "/recursos" },
     { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
+    { title: "Configurações", icon: Settings, url: "/configuracoes" },
   ]
 
   const clientItems = [

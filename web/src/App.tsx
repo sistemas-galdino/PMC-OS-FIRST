@@ -22,6 +22,7 @@ import ReunioesBlackCRMPage from "@/pages/reunioes-blackcrm"
 import ReuniaoBlackCRMDetalhePage from "@/pages/reuniao-blackcrm-detalhe"
 import RecursosPage from "@/pages/recursos"
 import CalendarioEncontrosPage from "@/pages/calendario-encontros"
+import ConfiguracoesPage from "@/pages/configuracoes"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { BackgroundShader } from "@/components/ui/background-shader"
@@ -199,6 +200,7 @@ function App() {
                     <Route path="/recursos" element={<RecursosPage session={session} />} />
                     <Route path="/calendario" element={<CalendarioEncontrosPage />} />
                     <Route path="/onboarding" element={<OnboardingPage />} />
+                    <Route path="/configuracoes" element={<ConfiguracoesPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </DashboardLayout>

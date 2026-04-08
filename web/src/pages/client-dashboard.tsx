@@ -79,6 +79,8 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
     meta_2026: 0,
     colaboradores_total: 0,
   })
+  const [quickLinks, setQuickLinks] = useState<Record<string, string>>({})
+  const [clientSc, setClientSc] = useState<string | null>(null)
 
   useEffect(() => {
     if (!resolvedClientId) return
@@ -86,7 +88,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
       try {
         const { data: clientEntry, error: clientError } = await supabase
           .from('clientes_entrada_new')
-          .select('id_cliente, nome_empresa_formatado, nivel_multiplicador')
+          .select('id_cliente, nome_empresa_formatado, nivel_multiplicador, sc')
           .eq('id_cliente', resolvedClientId)
           .maybeSingle()
 
@@ -125,6 +127,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
           })
           setFormMetas(resolvedMetas)
           setFormNivel(clientEntry.nivel_multiplicador ?? null)
+          setClientSc(clientEntry.sc ?? null)
         } else {
           setData((prev: any) => ({
             ...prev,
@@ -147,7 +150,24 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
     }
 
     fetchClientData()
+
+    // Fetch configurable links
+    supabase
+      .from('configuracoes_links')
+      .select('chave, url')
+      .eq('ativo', true)
+      .then(({ data: links }) => {
+        if (links) {
+          const map: Record<string, string> = {}
+          links.forEach(l => { map[l.chave] = l.url })
+          setQuickLinks(map)
+        }
+      })
   }, [resolvedClientId])
+
+  const suporteUrl = clientSc
+    ? quickLinks[`suporte_${clientSc.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`] || ''
+    : ''
 
   const progress = Math.round((data.faturamento_anual / data.meta_2026) * 100) || 0
   const chartData = [
@@ -407,28 +427,31 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
             </CardHeader>
             <CardContent className="pt-6 space-y-4 px-6">
               {[
-                { label: "Área de Membros", icon: BookOpen, desc: "Aulas e Consultorias" },
-                { label: "Agendar Reunião", icon: Calendar, desc: "Fale com seu Consultor" },
-                { label: "Suporte", icon: MessageCircle, desc: "WhatsApp Exclusivo" }
-              ].map((btn, i) => (
+                { label: "Área de Membros", icon: BookOpen, desc: "Aulas e Consultorias", url: quickLinks.area_membros },
+                { label: "Agendar Reunião", icon: Calendar, desc: "Fale com seu Consultor", url: quickLinks.agendar_reuniao },
+                { label: "Suporte", icon: MessageCircle, desc: "WhatsApp Exclusivo", url: suporteUrl },
+                { label: "Grupo de Avisos", icon: Users, desc: "WhatsApp do Programa", url: quickLinks.grupo_avisos },
+              ].filter(btn => btn.url).map((btn, i) => (
                 <motion.div
                   key={btn.label}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.8 + (i * 0.1) }}
                 >
-                  <Button variant="outline" className="w-full justify-between h-[72px] rounded-xl hover:border-primary/30 hover:bg-primary/5 group">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-primary/10 p-2.5 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                        <btn.icon className="size-5" />
+                  <a href={btn.url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="w-full justify-between h-[72px] rounded-xl hover:border-primary/30 hover:bg-primary/5 group">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-primary/10 p-2.5 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                          <btn.icon className="size-5" />
+                        </div>
+                        <div className="flex flex-col items-start gap-0.5">
+                          <span className="font-bold text-sm tracking-tight">{btn.label}</span>
+                          <span className="text-[11px] text-muted-foreground font-medium">{btn.desc}</span>
+                        </div>
                       </div>
-                      <div className="flex flex-col items-start gap-0.5">
-                        <span className="font-bold text-sm tracking-tight">{btn.label}</span>
-                        <span className="text-[11px] text-muted-foreground font-medium">{btn.desc}</span>
-                      </div>
-                    </div>
-                    <ExternalLink className="size-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
-                  </Button>
+                      <ExternalLink className="size-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
+                    </Button>
+                  </a>
                 </motion.div>
               ))}
             </CardContent>
