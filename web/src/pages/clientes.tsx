@@ -683,8 +683,8 @@ export default function ClientesPage() {
                   aria-label="Selecionar todos"
                 />
               </TableHead>
-              <TableHead className="w-[70px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Código</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Cliente / Empresa</TableHead>
+              <TableHead className="w-[70px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">ID</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Empresa / Cliente</TableHead>
               <TableHead className="w-[180px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Status Atual</TableHead>
               <TableHead className="w-[140px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">CS Responsável</TableHead>
               <TableHead className="w-[120px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Engajamento</TableHead>
@@ -709,10 +709,10 @@ export default function ClientesPage() {
                 </TableCell>
                 <TableCell className="py-5 px-3">
                   <div className="flex flex-col gap-1">
-                    <span className="font-bold text-sm text-foreground tracking-tight truncate">{client.nome_cliente_formatado}</span>
+                    <span className="font-bold text-sm text-foreground tracking-tight truncate">{client.nome_empresa_formatado}</span>
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium truncate">
                       <Briefcase className="size-3 shrink-0 text-primary/60" />
-                      <span className="truncate">{client.nome_empresa_formatado}</span>
+                      <span className="truncate">{client.nome_cliente_formatado}</span>
                     </div>
                   </div>
                 </TableCell>
