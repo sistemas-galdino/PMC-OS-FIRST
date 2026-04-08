@@ -5,36 +5,34 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  CheckSquareIcon as CheckSquare,
-  SquareIcon as Square,
   CalendarIcon as Calendar,
   SearchIcon as Search,
   CheckCircle2Icon as CheckCircle2,
-  ClockIcon as Clock,
-  AlertCircleIcon as AlertCircle
+  AlertCircleIcon as AlertCircle,
+  ChevronRightIcon as ChevronRight,
 } from "@/components/ui/icons"
 import { Input } from "@/components/ui/input"
 import type { Session } from "@supabase/supabase-js"
 import { motion, AnimatePresence } from "framer-motion"
 
-interface Action {
-  text: string
-  done: boolean
-  meeting_date: string
-  mentor: string
+interface MeetingWithActions {
   id_unico: string
+  data_reuniao: string
+  mentor: string
+  ganho: string | null
+  acoes_count: number
 }
 
 export default function AcoesPage({ session, clientId }: { session?: Session, clientId?: string }) {
   const navigate = useNavigate()
   const resolvedClientId = clientId || session?.user?.id
-  const [actions, setActions] = useState<Action[]>([])
+  const [meetings, setMeetings] = useState<MeetingWithActions[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
 
   useEffect(() => {
     if (!resolvedClientId) return
-    async function fetchActions() {
+    async function fetchMeetings() {
       const { data: clientEntry } = await supabase
         .from('clientes_entrada_new')
         .select('id_cliente')
@@ -42,51 +40,47 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
         .maybeSingle()
 
       if (clientEntry) {
-        const { data: meetings } = await supabase
+        const { data: rawMeetings } = await supabase
           .from('reunioes_mentoria_new')
-          .select('id_unico, acoes_cliente, data_reuniao, mentor')
+          .select('id_unico, data_reuniao, mentor, acoes_cliente, ganho')
           .eq('id_cliente', clientEntry.id_cliente)
           .order('data_reuniao', { ascending: false })
 
-        const flatActions = meetings?.flatMap(m => {
-          const acoes = Array.isArray(m.acoes_cliente) ? m.acoes_cliente : []
-          return acoes.map((a: any) => ({
-            text: typeof a === 'string' ? a : a.text,
-            done: typeof a === 'object' ? !!a.done : false,
-            meeting_date: m.data_reuniao,
+        const withActions = (rawMeetings || [])
+          .filter(m => Array.isArray(m.acoes_cliente) && m.acoes_cliente.length > 0)
+          .map(m => ({
+            id_unico: m.id_unico,
+            data_reuniao: m.data_reuniao,
             mentor: m.mentor,
-            id_unico: m.id_unico
+            ganho: m.ganho,
+            acoes_count: Array.isArray(m.acoes_cliente) ? m.acoes_cliente.length : 0,
           }))
-        }) || []
 
-        setActions(flatActions)
+        setMeetings(withActions)
       }
-      
+
       setLoading(false)
     }
 
-    fetchActions()
+    fetchMeetings()
   }, [resolvedClientId])
 
-  const filteredActions = actions.filter(a => 
-    a.text?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.mentor?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered = meetings.filter(m =>
+    searchTerm === "" ||
+    m.mentor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    m.ganho?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const pending = actions.filter(a => !a.done).length
-  const completed = actions.filter(a => a.done).length
+  const totalAcoes = meetings.reduce((sum, m) => sum + m.acoes_count, 0)
 
   const container = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
+    show: { opacity: 1, transition: { staggerChildren: 0.08 } }
   }
 
   const item = {
-    hidden: { y: 20, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" as any } }
+    hidden: { y: 15, opacity: 0 },
+    show: { y: 0, opacity: 1, transition: { duration: 0.4, ease: "easeOut" as const } }
   }
 
   if (loading) {
@@ -97,7 +91,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
 
   return (
     <div className="space-y-10 pb-10">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6 }}
@@ -109,12 +103,12 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
         </div>
         <div className="flex gap-4">
           <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary px-4 py-2 rounded-xl flex items-center gap-2">
-            <Clock className="size-4" />
-            <span className="font-bold uppercase text-[10px] tracking-wider">{pending} Pendentes</span>
+            <CheckCircle2 className="size-4" />
+            <span className="font-bold uppercase text-[10px] tracking-wider">{meetings.length} Reuniões</span>
           </Badge>
           <Badge variant="outline" className="bg-muted/10 border-border text-muted-foreground px-4 py-2 rounded-xl flex items-center gap-2">
-            <CheckCircle2 className="size-4" />
-            <span className="font-bold uppercase text-[10px] tracking-wider">{completed} Concluídas</span>
+            <Calendar className="size-4" />
+            <span className="font-bold uppercase text-[10px] tracking-wider">{totalAcoes} Ações</span>
           </Badge>
         </div>
       </motion.div>
@@ -123,7 +117,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar tarefas ou consultores..."
+            placeholder="Buscar por consultor ou ganho..."
             className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -131,15 +125,15 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
         </div>
       </div>
 
-      <motion.div 
+      <motion.div
         variants={container}
         initial="hidden"
         animate="show"
         className="space-y-4"
       >
         <AnimatePresence mode="popLayout">
-          {filteredActions.length === 0 ? (
-            <motion.div 
+          {filtered.length === 0 ? (
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="rounded-2xl border-2 border-dashed border-border p-16 text-center bg-muted/5"
@@ -148,48 +142,42 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
               <p className="font-bold text-muted-foreground uppercase tracking-widest text-sm">Nenhuma ação encontrada</p>
             </motion.div>
           ) : (
-            filteredActions.map((action, index) => (
-              <motion.div key={index} variants={item} layout>
+            filtered.map((meeting) => (
+              <motion.div key={meeting.id_unico} variants={item} layout>
                 <Card
-                  className={`group hover:border-primary/30 transition-all duration-300 cursor-pointer ${action.done ? 'opacity-60 bg-muted/5' : ''}`}
-                  onClick={() => navigate(`/reuniao/${action.id_unico}`)}
+                  className="group hover:border-primary/30 transition-all duration-300 cursor-pointer"
+                  onClick={() => navigate(`/reuniao/${meeting.id_unico}`)}
                 >
                   <CardContent className="p-0 flex flex-col md:flex-row md:items-center">
-                    <div className="p-6 flex-1 flex items-start gap-5">
-                      <div className="mt-1">
-                        {action.done ? (
-                          <div className="bg-primary/10 rounded-full p-1.5">
-                            <CheckSquare className="size-5 text-primary" />
-                          </div>
-                        ) : (
-                          <div className="rounded-full p-1.5">
-                            <Square className="size-5 text-muted-foreground/30 group-hover:text-primary/50 transition-colors" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <p className={`text-lg font-bold tracking-tight text-foreground leading-snug ${action.done ? 'line-through text-muted-foreground/60' : ''}`}>
-                          {action.text}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="size-3.5 text-primary/60" />
-                            {new Date(action.meeting_date + 'T00:00:00').toLocaleDateString('pt-BR')}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="size-1.5 rounded-full bg-primary/40" />
-                            Consultor: <span className="text-foreground">{action.mentor}</span>
-                          </div>
+                    <div className="p-6 flex-1 space-y-3">
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="size-3.5 text-primary/60" />
+                          {new Date(meeting.data_reuniao + 'T00:00:00').toLocaleDateString('pt-BR')}
                         </div>
+                        <div className="flex items-center gap-2">
+                          <div className="size-1.5 rounded-full bg-primary/40" />
+                          Consultor: <span className="text-foreground">{meeting.mentor}</span>
+                        </div>
+                        <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg">
+                          {meeting.acoes_count} {meeting.acoes_count === 1 ? 'ação' : 'ações'}
+                        </Badge>
                       </div>
+                      {meeting.ganho && (
+                        <p className="text-sm text-foreground/80 leading-relaxed line-clamp-2">
+                          {meeting.ganho}
+                        </p>
+                      )}
                     </div>
-                    <div className="md:border-l border-border/50 p-6 md:w-56 flex items-center justify-center bg-muted/5">
+                    <div className="md:border-l border-border/50 p-6 md:w-48 flex items-center justify-center bg-muted/5">
                       <Button
                         variant="outline"
-                        className="w-full h-11 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:border-primary/30"
-                        onClick={(e) => { e.stopPropagation(); navigate(`/reuniao/${action.id_unico}`) }}
+                        size="sm"
+                        className="w-full h-10 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:border-primary/30 gap-2"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/reuniao/${meeting.id_unico}`) }}
                       >
-                        Ver Reunião
+                        Ver Ações
+                        <ChevronRight className="size-4" />
                       </Button>
                     </div>
                   </CardContent>
@@ -202,4 +190,3 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
     </div>
   )
 }
-
