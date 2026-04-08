@@ -390,14 +390,35 @@ function TabAcoes({ meeting }: { meeting: Meeting }) {
 }
 
 function TabTranscricao({ meeting }: { meeting: Meeting }) {
+  const [copied, setCopied] = useState(false)
+
   if (!meeting.transcricao) {
     return <EmptyState text="Sem transcricao disponivel para esta reuniao." />
   }
 
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(meeting.transcricao!)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   return (
     <Card className="border-border bg-card/50 backdrop-blur-md">
-      <CardContent className="p-6 md:p-8">
-        <FormattedContent text={meeting.transcricao} />
+      <CardContent className="p-6 md:p-8 space-y-4">
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopy}
+            className="font-bold text-xs uppercase tracking-wider gap-2"
+          >
+            {copied ? <ClipboardList className="size-4" /> : <FileTextIcon className="size-4" />}
+            {copied ? "Copiado!" : "Copiar Transcricao"}
+          </Button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto rounded-lg">
+          <FormattedContent text={meeting.transcricao} />
+        </div>
       </CardContent>
     </Card>
   )

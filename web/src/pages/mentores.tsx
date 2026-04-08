@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from "framer-motion"
 interface Meeting {
   id_unico: string
   mentor: string
+  pessoa: string | null
   nome_cliente_formatado: string
   nome_empresa_formatado: string
   data_reuniao: string
@@ -93,6 +94,7 @@ export default function MentoresPage() {
   const filteredMeetings = allMeetings.filter(m => {
     const matchesSearch = searchTerm === "" ||
       m.mentor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.pessoa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.nome_cliente_formatado?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.nome_empresa_formatado?.toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -284,7 +286,7 @@ export default function MentoresPage() {
                             <CardContent className="p-6 space-y-5">
                               <div className="flex justify-between items-start gap-4">
                                 <div className="space-y-1.5 flex-1">
-                                  <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">{meeting.nome_cliente_formatado}</h3>
+                                  <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">{meeting.pessoa || meeting.nome_cliente_formatado}</h3>
                                   <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{meeting.nome_empresa_formatado}</p>
                                 </div>
                                 <Badge
