@@ -65,8 +65,8 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
   }, [resolvedClientId])
 
   const filteredActions = actions.filter(a => 
-    a.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.mentor.toLowerCase().includes(searchTerm.toLowerCase())
+    a.text?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    a.mentor?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const pending = actions.filter(a => !a.done).length
