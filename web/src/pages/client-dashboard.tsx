@@ -407,8 +407,8 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
             </CardHeader>
             <CardContent className="pt-6 space-y-4 px-6">
               {[
-                { label: "Área de Membros", icon: BookOpen, desc: "Aulas e Mentorias" },
-                { label: "Agendar Reunião", icon: Calendar, desc: "Fale com seu Mentor" },
+                { label: "Área de Membros", icon: BookOpen, desc: "Aulas e Consultorias" },
+                { label: "Agendar Reunião", icon: Calendar, desc: "Fale com seu Consultor" },
                 { label: "Suporte", icon: MessageCircle, desc: "WhatsApp Exclusivo" }
               ].map((btn, i) => (
                 <motion.div

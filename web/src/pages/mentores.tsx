@@ -156,14 +156,14 @@ export default function MentoresPage() {
         className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
       >
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Time de Mentores</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Time de Consultores</h1>
           <p className="text-muted-foreground font-medium text-sm">Histórico de sessões estratégicas e acompanhamento.</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar mentor ou empresa..."
+              placeholder="Buscar consultor ou empresa..."
               className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -183,10 +183,10 @@ export default function MentoresPage() {
           </Select>
           <Select value={mentorFilter} onValueChange={setMentorFilter}>
             <SelectTrigger className="w-full sm:w-44 h-12 bg-muted/10 border-border rounded-xl">
-              <SelectValue placeholder="Mentor" />
+              <SelectValue placeholder="Consultor" />
             </SelectTrigger>
             <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
-              <SelectItem value="all" className="rounded-lg font-medium">Todos Mentores</SelectItem>
+              <SelectItem value="all" className="rounded-lg font-medium">Todos Consultores</SelectItem>
               {uniqueMentors.map(m => (
                 <SelectItem key={m} value={m} className="rounded-lg font-medium">{m}</SelectItem>
               ))}
@@ -258,7 +258,7 @@ export default function MentoresPage() {
                       {mentorMeetings.length} Sessões
                     </Badge>
                     <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
-                      <MessageSquare className="size-3" /> Mentor Especialista
+                      <MessageSquare className="size-3" /> Consultor Especialista
                     </span>
                   </div>
                 </div>

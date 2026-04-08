@@ -101,7 +101,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
       >
         <div className="flex flex-col gap-2">
           <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Plano de Ação</h1>
-          <p className="text-muted-foreground font-medium text-sm">Tarefas e direcionamentos estratégicos das suas mentorias.</p>
+          <p className="text-muted-foreground font-medium text-sm">Tarefas e direcionamentos estratégicos das suas consultorias.</p>
         </div>
         <div className="flex gap-4">
           <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary px-4 py-2 rounded-xl flex items-center gap-2">
@@ -119,7 +119,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar tarefas ou mentores..."
+            placeholder="Buscar tarefas ou consultores..."
             className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -171,7 +171,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="size-1.5 rounded-full bg-primary/40" />
-                            Mentor: <span className="text-foreground">{action.mentor}</span>
+                            Consultor: <span className="text-foreground">{action.mentor}</span>
                           </div>
                         </div>
                       </div>

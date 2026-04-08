@@ -123,7 +123,7 @@ export default function ReuniaoDetalhePage() {
                 <span className="font-medium">{new Date(meeting.data_reuniao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
               </div>
               <span className="text-border">|</span>
-              <span className="font-medium">Mentor: {meeting.mentor}</span>
+              <span className="font-medium">Consultor: {meeting.mentor}</span>
               {meeting.nps != null && (
                 <>
                   <span className="text-border">|</span>

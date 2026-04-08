@@ -148,13 +148,13 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
       >
         <div className="flex flex-col gap-2">
           <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Minhas Reuniões</h1>
-          <p className="text-muted-foreground font-medium text-sm">Histórico de sessões com seus mentores.</p>
+          <p className="text-muted-foreground font-medium text-sm">Histórico de sessões com seus consultores.</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar mentor..."
+              placeholder="Buscar consultor..."
               className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -174,10 +174,10 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
           </Select>
           <Select value={mentorFilter} onValueChange={setMentorFilter}>
             <SelectTrigger className="w-full sm:w-44 h-12 bg-muted/10 border-border rounded-xl">
-              <SelectValue placeholder="Mentor" />
+              <SelectValue placeholder="Consultor" />
             </SelectTrigger>
             <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
-              <SelectItem value="all" className="rounded-lg font-medium">Todos Mentores</SelectItem>
+              <SelectItem value="all" className="rounded-lg font-medium">Todos Consultores</SelectItem>
               {uniqueMentors.map(m => (
                 <SelectItem key={m} value={m} className="rounded-lg font-medium">{m}</SelectItem>
               ))}
@@ -244,7 +244,7 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
                       <div className="flex justify-between items-start gap-4">
                         <div className="space-y-1.5 flex-1">
                           <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">{meeting.mentor}</h3>
-                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Mentor</p>
+                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Consultor</p>
                         </div>
                         <Badge
                           variant="outline"

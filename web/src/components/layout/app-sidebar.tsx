@@ -43,7 +43,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
     { title: "Clientes", icon: Users, url: "/clientes" },
     { title: "Pendentes Onboarding", icon: Clock, url: "/onboarding" },
-    { title: "Mentores", icon: MessageSquare, url: "/mentores" },
+    { title: "Consultores", icon: MessageSquare, url: "/mentores" },
     { title: "Reunioes Galdino", icon: Calendar, url: "/reunioes-galdino" },
     { title: "Reunioes Black CRM", icon: Settings, url: "/reunioes-blackcrm" },
     { title: "Recursos", icon: BookOpen, url: "/recursos" },
