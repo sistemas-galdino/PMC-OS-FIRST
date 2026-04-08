@@ -146,7 +146,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
               <motion.div key={meeting.id_unico} variants={item} layout>
                 <Card
                   className="group hover:border-primary/30 transition-all duration-300 cursor-pointer"
-                  onClick={() => navigate(`/reuniao/${meeting.id_unico}`)}
+                  onClick={() => navigate(`/reuniao/${meeting.id_unico}?tab=acoes`)}
                 >
                   <CardContent className="p-0 flex flex-col md:flex-row md:items-center">
                     <div className="p-6 flex-1 space-y-3">
@@ -174,7 +174,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
                         variant="outline"
                         size="sm"
                         className="w-full h-10 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:border-primary/30 gap-2"
-                        onClick={(e) => { e.stopPropagation(); navigate(`/reuniao/${meeting.id_unico}`) }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/reuniao/${meeting.id_unico}?tab=acoes`) }}
                       >
                         Ver Ações
                         <ChevronRight className="size-4" />

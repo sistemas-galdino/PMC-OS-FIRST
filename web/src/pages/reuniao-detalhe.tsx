@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useParams, useNavigate, useSearchParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -38,9 +38,11 @@ type Tab = "resumo" | "acoes" | "transcricao" | "gravacao"
 export default function ReuniaoDetalhePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [meeting, setMeeting] = useState<Meeting | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<Tab>("resumo")
+  const initialTab = (searchParams.get('tab') as Tab) || "resumo"
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
