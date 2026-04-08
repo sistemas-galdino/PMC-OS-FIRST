@@ -20,7 +20,7 @@ const TABS = [
   { key: "reunioes-galdino", label: "Reuniões Galdino" },
   { key: "reunioes-blackcrm", label: "Reuniões BlackCRM" },
   { key: "acoes", label: "Ações" },
-  { key: "recursos", label: "Recursos" },
+  { key: "recursos", label: "Links Importantes" },
   { key: "calendario", label: "Calendário" },
 ] as const
 

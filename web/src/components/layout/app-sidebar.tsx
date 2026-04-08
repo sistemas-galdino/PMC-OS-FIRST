@@ -46,7 +46,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Consultores", icon: MessageSquare, url: "/mentores" },
     { title: "Reunioes Galdino", icon: Calendar, url: "/reunioes-galdino" },
     { title: "Reunioes Black CRM", icon: Settings, url: "/reunioes-blackcrm" },
-    { title: "Recursos", icon: BookOpen, url: "/recursos" },
+    { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
     { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
     { title: "Configurações", icon: Settings, url: "/configuracoes" },
   ]
@@ -61,7 +61,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Reuniões BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },
     { title: "Ações", icon: CheckSquare, url: "/acoes" },
     { title: "Jornada", icon: Compass, url: "/jornada" },
-    { title: "Recursos", icon: BookOpen, url: "/recursos" },
+    { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
     { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
   ]
 

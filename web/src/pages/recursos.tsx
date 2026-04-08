@@ -180,7 +180,7 @@ export default function RecursosPage({ session, forceAdmin }: RecursosPageProps)
         className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
       >
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Recursos do Programa</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Links Importantes</h1>
           <p className="text-muted-foreground font-medium text-sm">Ferramentas e acessos disponíveis para sua operação.</p>
         </div>
         {isAdmin && (
