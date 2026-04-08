@@ -26,7 +26,7 @@ interface AgendaGroup {
 
 const AGENDA_GROUPS: AgendaGroup[] = [
   {
-    title: "Agenda Mentor",
+    title: "Agenda Galdino",
     icon: "📅",
     keys: ["agenda_galdino"],
   },
