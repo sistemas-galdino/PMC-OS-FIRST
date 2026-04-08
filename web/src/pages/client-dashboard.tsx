@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -61,6 +62,7 @@ function CountUp({ value, prefix = "", suffix = "" }: { value: number, prefix?: 
 }
 
 export default function ClientDashboard({ session, clientId }: ClientDashboardProps) {
+  const navigate = useNavigate()
   const resolvedClientId = clientId || session?.user?.id
   const [data, setData] = useState<any>({
     faturamento_anual: 0,
@@ -427,10 +429,10 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
             </CardHeader>
             <CardContent className="pt-6 space-y-4 px-6">
               {[
-                { label: "Área de Membros", icon: BookOpen, desc: "Aulas e Consultorias", url: quickLinks.area_membros },
-                { label: "Agendar Reunião", icon: Calendar, desc: "Fale com seu Consultor", url: quickLinks.agendar_reuniao },
-                { label: "Suporte", icon: MessageCircle, desc: "WhatsApp Exclusivo", url: suporteUrl },
-                { label: "Grupo de Avisos", icon: Users, desc: "WhatsApp do Programa", url: quickLinks.grupo_avisos },
+                { label: "Área de Membros", icon: BookOpen, desc: "Aulas e Consultorias", url: quickLinks.area_membros, internal: false },
+                { label: "Agendar Reunião", icon: Calendar, desc: "Fale com seu Consultor", url: '/agendar', internal: true },
+                { label: "Suporte", icon: MessageCircle, desc: "WhatsApp Exclusivo", url: suporteUrl, internal: false },
+                { label: "Grupo de Avisos", icon: Users, desc: "WhatsApp do Programa", url: quickLinks.grupo_avisos, internal: false },
               ].filter(btn => btn.url).map((btn, i) => (
                 <motion.div
                   key={btn.label}
@@ -438,20 +440,22 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.8 + (i * 0.1) }}
                 >
-                  <a href={btn.url} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" className="w-full justify-between h-[72px] rounded-xl hover:border-primary/30 hover:bg-primary/5 group">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 p-2.5 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                          <btn.icon className="size-5" />
-                        </div>
-                        <div className="flex flex-col items-start gap-0.5">
-                          <span className="font-bold text-sm tracking-tight">{btn.label}</span>
-                          <span className="text-[11px] text-muted-foreground font-medium">{btn.desc}</span>
-                        </div>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between h-[72px] rounded-xl hover:border-primary/30 hover:bg-primary/5 group"
+                    onClick={() => btn.internal ? navigate(btn.url) : window.open(btn.url, '_blank')}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="bg-primary/10 p-2.5 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                        <btn.icon className="size-5" />
                       </div>
-                      <ExternalLink className="size-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
-                    </Button>
-                  </a>
+                      <div className="flex flex-col items-start gap-0.5">
+                        <span className="font-bold text-sm tracking-tight">{btn.label}</span>
+                        <span className="text-[11px] text-muted-foreground font-medium">{btn.desc}</span>
+                      </div>
+                    </div>
+                    <ExternalLink className="size-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
+                  </Button>
                 </motion.div>
               ))}
             </CardContent>
