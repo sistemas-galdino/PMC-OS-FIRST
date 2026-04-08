@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -21,9 +22,11 @@ interface Action {
   done: boolean
   meeting_date: string
   mentor: string
+  id_unico: string
 }
 
 export default function AcoesPage({ session, clientId }: { session?: Session, clientId?: string }) {
+  const navigate = useNavigate()
   const resolvedClientId = clientId || session?.user?.id
   const [actions, setActions] = useState<Action[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,7 +44,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
       if (clientEntry) {
         const { data: meetings } = await supabase
           .from('reunioes_mentoria_new')
-          .select('acoes_cliente, data_reuniao, mentor')
+          .select('id_unico, acoes_cliente, data_reuniao, mentor')
           .eq('id_cliente', clientEntry.id_cliente)
           .order('data_reuniao', { ascending: false })
 
@@ -51,7 +54,8 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
             text: typeof a === 'string' ? a : a.text,
             done: typeof a === 'object' ? !!a.done : false,
             meeting_date: m.data_reuniao,
-            mentor: m.mentor
+            mentor: m.mentor,
+            id_unico: m.id_unico
           }))
         }) || []
 
@@ -146,7 +150,10 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
           ) : (
             filteredActions.map((action, index) => (
               <motion.div key={index} variants={item} layout>
-                <Card className={`group hover:border-primary/30 transition-all duration-300 ${action.done ? 'opacity-60 bg-muted/5' : ''}`}>
+                <Card
+                  className={`group hover:border-primary/30 transition-all duration-300 cursor-pointer ${action.done ? 'opacity-60 bg-muted/5' : ''}`}
+                  onClick={() => navigate(`/reuniao/${action.id_unico}`)}
+                >
                   <CardContent className="p-0 flex flex-col md:flex-row md:items-center">
                     <div className="p-6 flex-1 flex items-start gap-5">
                       <div className="mt-1">
@@ -167,7 +174,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
                         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
                           <div className="flex items-center gap-2">
                             <Calendar className="size-3.5 text-primary/60" />
-                            {new Date(action.meeting_date).toLocaleDateString('pt-BR')}
+                            {new Date(action.meeting_date + 'T00:00:00').toLocaleDateString('pt-BR')}
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="size-1.5 rounded-full bg-primary/40" />
@@ -177,11 +184,12 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
                       </div>
                     </div>
                     <div className="md:border-l border-border/50 p-6 md:w-56 flex items-center justify-center bg-muted/5">
-                      <Button 
-                        variant={action.done ? "ghost" : "outline"} 
-                        className={`w-full h-11 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all duration-300 ${!action.done ? 'hover:bg-primary/10 hover:text-primary hover:border-primary/30' : ''}`}
+                      <Button
+                        variant="outline"
+                        className="w-full h-11 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/reuniao/${action.id_unico}`) }}
                       >
-                        {action.done ? "Reabrir Tarefa" : "Concluir Agora"}
+                        Ver Reunião
                       </Button>
                     </div>
                   </CardContent>
