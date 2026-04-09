@@ -24,7 +24,6 @@ import {
   PackageIcon as Package,
   MegaphoneIcon as Megaphone,
   CheckSquareIcon as CheckSquare,
-  CompassIcon as Compass,
   BookOpenIcon as BookOpen,
 } from "@/components/ui/icons"
 import { supabase } from "@/lib/supabase"
