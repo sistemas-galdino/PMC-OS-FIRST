@@ -191,6 +191,8 @@ export default function ClientesPage() {
   const [editClient, setEditClient] = useState<Client | null>(null)
   const [saving, setSaving] = useState(false)
 
+  const [formNomeCliente, setFormNomeCliente] = useState("")
+  const [formNomeEmpresa, setFormNomeEmpresa] = useState("")
   const [formStatus, setFormStatus] = useState("")
   const [formSc, setFormSc] = useState("")
   const [formEngajamento, setFormEngajamento] = useState<NivelEngajamento | "">("")
@@ -250,6 +252,8 @@ export default function ClientesPage() {
 
   function openEdit(client: Client) {
     setEditClient(client)
+    setFormNomeCliente(client.nome_cliente_formatado ?? "")
+    setFormNomeEmpresa(client.nome_empresa_formatado ?? "")
     setFormStatus(client.status_atual ?? "")
     setFormSc(client.sc ?? "")
     setFormEngajamento(client.nivel_engajamento ?? "")
@@ -263,6 +267,8 @@ export default function ClientesPage() {
     const { error } = await supabase
       .from('clientes_entrada_new')
       .update({
+        nome_cliente_formatado: formNomeCliente || null,
+        nome_empresa_formatado: formNomeEmpresa || null,
         status_atual: formStatus || null,
         sc: formSc || null,
         nivel_engajamento: formEngajamento || null,
@@ -274,7 +280,7 @@ export default function ClientesPage() {
     if (!error) {
       setClients(prev => prev.map(c =>
         c.id_entrada === editClient.id_entrada
-          ? { ...c, status_atual: formStatus, sc: formSc, nivel_engajamento: (formEngajamento as NivelEngajamento) || null, tem_crm: formCrm, observacoes_cs: formObs || null }
+          ? { ...c, nome_cliente_formatado: formNomeCliente, nome_empresa_formatado: formNomeEmpresa, status_atual: formStatus, sc: formSc, nivel_engajamento: (formEngajamento as NivelEngajamento) || null, tem_crm: formCrm, observacoes_cs: formObs || null }
           : c
       ))
       setEditClient(null)
@@ -791,16 +797,30 @@ export default function ClientesPage() {
       <Sheet open={!!editClient} onOpenChange={(open) => { if (!open) setEditClient(null) }}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-background border-l border-border">
           <SheetHeader className="p-6 border-b border-border">
-            <SheetTitle className="text-lg font-bold text-foreground">Editar Engajamento (CS)</SheetTitle>
-            {editClient && (
-              <div className="mt-1">
-                <p className="font-semibold text-sm text-foreground">{editClient.nome_cliente_formatado}</p>
-                <p className="text-xs text-muted-foreground">{editClient.nome_empresa_formatado}</p>
-              </div>
-            )}
+            <SheetTitle className="text-lg font-bold text-foreground">Editar Cliente</SheetTitle>
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nome do Cliente</Label>
+              <Input
+                className="h-11 rounded-xl border-border bg-background"
+                value={formNomeCliente}
+                onChange={(e) => setFormNomeCliente(e.target.value)}
+                placeholder="Nome do cliente..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nome da Empresa</Label>
+              <Input
+                className="h-11 rounded-xl border-border bg-background"
+                value={formNomeEmpresa}
+                onChange={(e) => setFormNomeEmpresa(e.target.value)}
+                placeholder="Nome da empresa..."
+              />
+            </div>
+
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status Atual</Label>
               <Select value={formStatus} onValueChange={setFormStatus}>
