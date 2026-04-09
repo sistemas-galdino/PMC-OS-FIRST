@@ -773,7 +773,7 @@ export default function ClientesPage() {
                         className="rounded-lg text-xs font-semibold py-2 cursor-pointer focus:bg-primary/10 focus:text-primary"
                         onClick={() => openEdit(client)}
                       >
-                        <Edit3 className="mr-2 size-4" /> Editar Engajamento (CS)
+                        <Edit3 className="mr-2 size-4" /> Editar Dados
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="bg-border/50" />
                       <DropdownMenuItem className="rounded-lg text-xs font-semibold py-2 text-destructive cursor-pointer focus:bg-destructive/10 focus:text-destructive">
