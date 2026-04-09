@@ -16,7 +16,7 @@ const TABS = [
   { key: "dashboard", label: "Dashboard" },
   { key: "produtos", label: "Produtos" },
   { key: "canais", label: "Canais" },
-  { key: "reunioes", label: "Reuniões" },
+  { key: "reunioes", label: "Reuniões Consultores" },
   { key: "reunioes-galdino", label: "Reuniões Galdino" },
   { key: "reunioes-blackcrm", label: "Reuniões BlackCRM" },
   { key: "acoes", label: "Ações" },

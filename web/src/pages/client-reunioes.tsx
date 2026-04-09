@@ -156,7 +156,7 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
         className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
       >
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Minhas Reuniões</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Reuniões Consultores</h1>
           <p className="text-muted-foreground font-medium text-sm">Histórico de sessões com seus consultores.</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
