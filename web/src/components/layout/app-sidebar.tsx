@@ -53,14 +53,12 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
 
   const clientItems = [
     { title: "Dashboard", icon: LayoutDashboard, url: "/" },
-    { title: "Time", icon: Users, url: "/time" },
     { title: "Produtos", icon: Package, url: "/produtos" },
     { title: "Canais", icon: Megaphone, url: "/canais" },
     { title: "Reuniões Consultores", icon: Calendar, url: "/reunioes" },
     { title: "Reuniões Galdino", icon: Calendar, url: "/reunioes-galdino" },
     { title: "Reuniões BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },
     { title: "Ações", icon: CheckSquare, url: "/acoes" },
-    { title: "Jornada", icon: Compass, url: "/jornada" },
     { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
     { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
   ]
