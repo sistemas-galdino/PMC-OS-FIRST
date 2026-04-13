@@ -4,12 +4,17 @@ import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   CalendarIcon as Calendar,
   VideoIcon,
   FileTextIcon,
   ArrowLeftIcon as ArrowLeft,
   CheckIcon as ClipboardList,
+  PlusIcon as Plus,
+  Trash2Icon as Trash2,
+  ChevronDownIcon as ChevronDown,
 } from "@/components/ui/icons"
 import { motion } from "framer-motion"
 
@@ -27,8 +32,8 @@ interface Meeting {
   resumo: string | null
   resumo_json: string | null
   acoes: string | null
-  acoes_cliente: string | Array<{ acao: string; prazo: string; status: string }> | null
-  acoes_mentor: string | Array<{ acao: string; prazo: string; status: string }> | null
+  acoes_cliente: string | Array<{ acao: string; prazo?: string; status?: string; observacao?: string }> | null
+  acoes_mentor: string | Array<{ acao: string; prazo?: string; status?: string; observacao?: string }> | null
   link_gravacao: string | null
   link_geminidoc: string | null
   observacoes: string | null
@@ -265,7 +270,7 @@ export default function ReuniaoBlackCRMDetalhePage({ isAdmin = false }: { isAdmi
         transition={{ duration: 0.3 }}
       >
         {activeTab === "resumo" && <TabResumo meeting={meeting} />}
-        {activeTab === "acoes" && <TabAcoes meeting={meeting} isAdmin={isAdmin} />}
+        {activeTab === "acoes" && <TabAcoes meeting={meeting} isAdmin={isAdmin} onUpdate={setMeeting} />}
         {activeTab === "transcricao" && <TabTranscricao meeting={meeting} />}
         {activeTab === "gravacao" && <TabGravacao meeting={meeting} />}
       </motion.div>
@@ -316,101 +321,241 @@ function TabResumo({ meeting }: { meeting: Meeting }) {
   )
 }
 
-function AcoesCards({ acoes, label }: { acoes: Array<{ acao: string; prazo: string; status: string }>, label?: string }) {
-  return (
-    <div className="space-y-3">
-      {label && (
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">{label}</h3>
-      )}
-      {acoes.map((item, i) => {
-        const acao = typeof item === 'string' ? item : item.acao
-        const prazo = typeof item === 'string' ? null : item.prazo
-        const status = typeof item === 'string' ? null : item.status
-        const isDone = status?.toLowerCase() === 'concluída' || status?.toLowerCase() === 'concluida' || status?.toLowerCase() === 'done'
+const STATUS_OPTIONS = [
+  { value: 'nao_iniciado', label: 'Não Iniciado', color: 'bg-muted/20 border-border text-muted-foreground' },
+  { value: 'em_andamento', label: 'Em Andamento', color: 'bg-blue-500/10 border-blue-500/20 text-blue-400' },
+  { value: 'concluido', label: 'Concluído', color: 'bg-primary/10 border-primary/20 text-primary' },
+  { value: 'impedido', label: 'Impedido', color: 'bg-destructive/10 border-destructive/20 text-destructive' },
+] as const
 
-        return (
-          <Card key={i} className="border-border bg-card/50 backdrop-blur-md hover:border-primary/20 transition-colors">
-            <CardContent className="p-5 flex items-start gap-4">
-              <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isDone ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground'}`}>
-                <span className="text-sm font-bold">{i + 1}</span>
-              </div>
-              <div className="flex-1 space-y-1">
-                <p className="text-sm font-medium text-foreground">{acao}</p>
-                <div className="flex items-center gap-3">
-                  {prazo && (
-                    <span className="text-xs text-muted-foreground">
-                      <Calendar className="size-3 inline mr-1" />
-                      Prazo: {prazo}
-                    </span>
-                  )}
-                  {status && (
-                    <Badge
-                      variant="outline"
-                      className={`text-[9px] font-bold uppercase ${
-                        isDone
-                          ? 'bg-primary/10 border-primary/20 text-primary'
-                          : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
-                      }`}
-                    >
-                      {status}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )
-      })}
-    </div>
-  )
+function normalizeStatus(s: string | null | undefined): string {
+  if (!s) return 'nao_iniciado'
+  const lower = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  if (lower.includes('conclu') || lower === 'done') return 'concluido'
+  if (lower.includes('andamento') || lower.includes('progress')) return 'em_andamento'
+  if (lower.includes('impedid') || lower.includes('block')) return 'impedido'
+  if (lower.includes('a fazer') || lower.includes('nao inic') || lower.includes('pendente')) return 'nao_iniciado'
+  return 'nao_iniciado'
 }
 
-function AcoesContent({ acoes }: { acoes: string | Array<{ acao: string; prazo: string; status: string }> }) {
-  if (Array.isArray(acoes)) {
-    return <AcoesCards acoes={acoes} />
-  }
-  return (
-    <Card className="border-border bg-card/50 backdrop-blur-md">
-      <CardContent className="p-6 md:p-8">
-        <FormattedContent text={acoes} />
-      </CardContent>
-    </Card>
-  )
+function getStatusStyle(value: string) {
+  return STATUS_OPTIONS.find(s => s.value === value)?.color || STATUS_OPTIONS[0].color
 }
 
-function TabAcoes({ meeting, isAdmin }: { meeting: Meeting; isAdmin: boolean }) {
-  const [acoesView, setAcoesView] = useState<'cliente' | 'especialista'>('cliente')
-  const hasAcoesCliente = !!meeting.acoes_cliente
-  const hasAcoesMentor = !!meeting.acoes_mentor
-  const hasAcoesTexto = !!meeting.acoes
+type AcaoItem = { acao: string; prazo?: string; status?: string; observacao?: string }
 
-  if (!hasAcoesCliente && !hasAcoesMentor && !hasAcoesTexto) {
-    return <EmptyState text="Sem acoes registradas para esta reuniao." />
+function EditableAcoesList({
+  meeting,
+  field,
+  isAdmin,
+  onUpdate,
+}: {
+  meeting: Meeting
+  field: 'acoes_cliente' | 'acoes_mentor'
+  isAdmin: boolean
+  onUpdate: (m: Meeting) => void
+}) {
+  const raw = meeting[field]
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [newAcao, setNewAcao] = useState("")
+
+  const acoes: AcaoItem[] = Array.isArray(raw)
+    ? raw.map((item: any) =>
+        typeof item === 'string'
+          ? { acao: item, status: 'nao_iniciado', observacao: '' }
+          : { ...item, status: normalizeStatus(item.status), observacao: item.observacao || '' }
+      )
+    : []
+
+  async function saveAcoes(updated: AcaoItem[]) {
+    setSaving(true)
+    const { error } = await supabase
+      .from('reunioes_blackcrm')
+      .update({ [field]: updated })
+      .eq('id_unico', meeting.id_unico)
+
+    if (!error) {
+      onUpdate({ ...meeting, [field]: updated })
+    }
+    setSaving(false)
   }
 
-  // Cliente: só mostra ações do cliente
-  if (!isAdmin) {
-    if (!hasAcoesCliente && !hasAcoesTexto) {
-      return <EmptyState text="Sem acoes registradas para esta reuniao." />
-    }
-    if (hasAcoesCliente) {
-      return <AcoesContent acoes={meeting.acoes_cliente!} />
-    }
+  function handleStatusChange(index: number, newStatus: string) {
+    const updated = [...acoes]
+    updated[index] = { ...updated[index], status: newStatus }
+    saveAcoes(updated)
+  }
+
+  function handleObsChange(index: number, obs: string) {
+    const updated = [...acoes]
+    updated[index] = { ...updated[index], observacao: obs }
+    saveAcoes(updated)
+  }
+
+  function handleDelete(index: number) {
+    const updated = acoes.filter((_, i) => i !== index)
+    saveAcoes(updated)
+    setExpandedIndex(null)
+  }
+
+  function handleAdd() {
+    if (!newAcao.trim()) return
+    const updated = [...acoes, { acao: newAcao.trim(), status: 'nao_iniciado', observacao: '' }]
+    saveAcoes(updated)
+    setNewAcao("")
+  }
+
+  // Fallback: if raw is a string, render as plain text
+  if (!Array.isArray(raw) && typeof raw === 'string') {
     return (
       <Card className="border-border bg-card/50 backdrop-blur-md">
         <CardContent className="p-6 md:p-8">
-          <FormattedContent text={meeting.acoes!} />
+          <FormattedContent text={raw} />
         </CardContent>
       </Card>
     )
   }
 
-  // Admin: toggle entre cliente e especialista
-  const currentAcoes = acoesView === 'cliente' ? meeting.acoes_cliente : meeting.acoes_mentor
+  if (acoes.length === 0 && !isAdmin) {
+    return <EmptyState text="Sem ações registradas para esta reunião." />
+  }
+
+  return (
+    <div className="space-y-3">
+      {acoes.map((item, i) => {
+        const statusValue = normalizeStatus(item.status)
+        const isExpanded = expandedIndex === i
+
+        return (
+          <Card key={i} className="border-border bg-card/50 backdrop-blur-md hover:border-primary/20 transition-colors">
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-start gap-4">
+                <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${statusValue === 'concluido' ? 'bg-primary/10 text-primary' : 'bg-muted/20 text-muted-foreground'}`}>
+                  <span className="text-sm font-bold">{i + 1}</span>
+                </div>
+                <div className="flex-1 space-y-2">
+                  <p className={`text-sm font-medium text-foreground ${statusValue === 'concluido' ? 'line-through opacity-60' : ''}`}>{item.acao}</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {item.prazo && (
+                      <span className="text-xs text-muted-foreground">
+                        <Calendar className="size-3 inline mr-1" />
+                        Prazo: {item.prazo}
+                      </span>
+                    )}
+                    <Select value={statusValue} onValueChange={(v) => handleStatusChange(i, v)} disabled={saving}>
+                      <SelectTrigger className={`h-7 w-auto min-w-[140px] rounded-lg border text-[10px] font-bold uppercase tracking-wider px-2.5 ${getStatusStyle(statusValue)}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
+                        {STATUS_OPTIONS.map(s => (
+                          <SelectItem key={s.value} value={s.value} className="rounded-lg text-xs font-bold uppercase tracking-wider">
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setExpandedIndex(isExpanded ? null : i)}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                >
+                  <ChevronDown className={`size-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {isExpanded && (
+                <div className="pl-12 space-y-3 pt-2 border-t border-border/30">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Observações</label>
+                    <textarea
+                      value={item.observacao || ''}
+                      onChange={(e) => {
+                        const updated = [...acoes]
+                        updated[i] = { ...updated[i], observacao: e.target.value }
+                        onUpdate({ ...meeting, [field]: updated })
+                      }}
+                      onBlur={(e) => handleObsChange(i, e.target.value)}
+                      placeholder="Adicionar observação..."
+                      rows={2}
+                      className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
+                    />
+                  </div>
+                  {isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs font-bold uppercase tracking-wider gap-2"
+                      onClick={() => handleDelete(i)}
+                      disabled={saving}
+                    >
+                      <Trash2 className="size-3.5" />
+                      Excluir Ação
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )
+      })}
+
+      {isAdmin && (
+        <Card className="border-dashed border-2 border-border/50 bg-card/30">
+          <CardContent className="p-4 flex gap-3">
+            <Input
+              value={newAcao}
+              onChange={(e) => setNewAcao(e.target.value)}
+              placeholder="Adicionar nova ação..."
+              className="h-10 rounded-xl border-border bg-background flex-1"
+              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            />
+            <Button
+              onClick={handleAdd}
+              disabled={saving || !newAcao.trim()}
+              size="sm"
+              className="h-10 rounded-xl px-4 font-bold text-xs uppercase tracking-wider gap-2"
+            >
+              <Plus className="size-4" />
+              Adicionar
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+function TabAcoes({ meeting, isAdmin, onUpdate }: { meeting: Meeting; isAdmin: boolean; onUpdate: (m: Meeting) => void }) {
+  const [acoesView, setAcoesView] = useState<'cliente' | 'especialista'>('cliente')
+  const hasAcoesCliente = !!meeting.acoes_cliente
+  const hasAcoesMentor = !!meeting.acoes_mentor
+  const hasAcoesTexto = !!meeting.acoes
+
+  if (!hasAcoesCliente && !hasAcoesMentor && !hasAcoesTexto && !isAdmin) {
+    return <EmptyState text="Sem ações registradas para esta reunião." />
+  }
+
+  if (!isAdmin) {
+    if (hasAcoesCliente) {
+      return <EditableAcoesList meeting={meeting} field="acoes_cliente" isAdmin={false} onUpdate={onUpdate} />
+    }
+    if (hasAcoesTexto) {
+      return (
+        <Card className="border-border bg-card/50 backdrop-blur-md">
+          <CardContent className="p-6 md:p-8">
+            <FormattedContent text={meeting.acoes!} />
+          </CardContent>
+        </Card>
+      )
+    }
+    return <EmptyState text="Sem ações registradas para esta reunião." />
+  }
 
   return (
     <div className="space-y-6">
-      {hasAcoesCliente && hasAcoesMentor && (
+      {(hasAcoesCliente || hasAcoesMentor) && (
         <div className="flex gap-2">
           <Button
             variant={acoesView === 'cliente' ? 'default' : 'outline'}
@@ -418,7 +563,7 @@ function TabAcoes({ meeting, isAdmin }: { meeting: Meeting; isAdmin: boolean }) 
             className="h-9 px-5 rounded-xl font-bold text-[11px] uppercase tracking-wider"
             onClick={() => setAcoesView('cliente')}
           >
-            Acoes do Cliente
+            Ações do Cliente
           </Button>
           <Button
             variant={acoesView === 'especialista' ? 'default' : 'outline'}
@@ -426,21 +571,24 @@ function TabAcoes({ meeting, isAdmin }: { meeting: Meeting; isAdmin: boolean }) 
             className="h-9 px-5 rounded-xl font-bold text-[11px] uppercase tracking-wider"
             onClick={() => setAcoesView('especialista')}
           >
-            Acoes do Especialista
+            Ações do Especialista
           </Button>
         </div>
       )}
 
-      {currentAcoes ? (
-        <AcoesContent acoes={currentAcoes} />
-      ) : hasAcoesTexto && !hasAcoesCliente && !hasAcoesMentor ? (
+      <EditableAcoesList
+        meeting={meeting}
+        field={acoesView === 'cliente' ? 'acoes_cliente' : 'acoes_mentor'}
+        isAdmin={isAdmin}
+        onUpdate={onUpdate}
+      />
+
+      {hasAcoesTexto && !hasAcoesCliente && !hasAcoesMentor && (
         <Card className="border-border bg-card/50 backdrop-blur-md">
           <CardContent className="p-6 md:p-8">
             <FormattedContent text={meeting.acoes!} />
           </CardContent>
         </Card>
-      ) : (
-        <EmptyState text={`Sem acoes do ${acoesView === 'cliente' ? 'cliente' : 'especialista'} para esta reuniao.`} />
       )}
     </div>
   )
