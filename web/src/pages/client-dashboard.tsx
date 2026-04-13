@@ -400,14 +400,14 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
         </motion.div>
 
         <motion.div variants={item}>
-          <Card className="lg:col-span-1 min-h-[500px]">
-            <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between">
+          <Card className="lg:col-span-1 h-[500px] flex flex-col">
+            <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between shrink-0">
               <div className="space-y-1">
                 <CardTitle className="text-base font-semibold">Plano de Ação</CardTitle>
                 <CardDescription className="text-[11px] font-medium">{data.acoes.filter((a: any) => a.done).length}/{data.acoes.length} Tarefas Concluídas</CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 space-y-3 px-6">
+            <CardContent className="pt-6 space-y-3 px-6 flex-1 overflow-y-auto">
               {data.acoes.slice(0, 5).map((acao: any, index: number) => (
                 <motion.div
                   key={index}
