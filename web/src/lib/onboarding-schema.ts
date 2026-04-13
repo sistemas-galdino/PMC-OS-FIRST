@@ -23,9 +23,9 @@ export const step2Schema = z.object({
 })
 
 export const step3Schema = z.object({
-  faturamento_anual: z.string().min(1, 'Selecione o faturamento'),
-  numero_funcionarios: z.string().min(1, 'Selecione a quantidade'),
-  numero_gestores: z.string().min(1, 'Selecione a quantidade'),
+  faturamento_anual: z.coerce.number({ message: 'Informe o faturamento anual' }).min(0, 'Informe um valor válido'),
+  numero_funcionarios: z.coerce.number({ message: 'Informe a quantidade' }).int('Use um número inteiro').min(0, 'Informe um valor válido'),
+  numero_gestores: z.coerce.number({ message: 'Informe a quantidade' }).int('Use um número inteiro').min(0, 'Informe um valor válido'),
 })
 
 export const step4Schema = z.object({

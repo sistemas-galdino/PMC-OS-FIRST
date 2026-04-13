@@ -172,6 +172,21 @@ export default function CadastroPage({ session }: Props) {
       .update({ status_atual: 'Ativo no Programa' })
       .eq('id_cliente', userId)
 
+    // Seed dashboard metrics from onboarding answers
+    const faturamento = Number(values.faturamento_anual) || 0
+    const funcionarios = Number(values.numero_funcionarios) || 0
+    const gestores = Number(values.numero_gestores) || 0
+    await supabase
+      .from('cliente_metas')
+      .upsert(
+        {
+          id_cliente: userId,
+          faturamento_anual_objetivo: faturamento,
+          colaboradores_total: funcionarios + gestores,
+        },
+        { onConflict: 'id_cliente' }
+      )
+
     setSaving(false)
     setSubmitted(true)
   }
