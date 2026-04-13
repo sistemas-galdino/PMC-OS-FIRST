@@ -275,7 +275,7 @@ function TarefaEvidenciaCard({
       transition={{ duration: 0.3 }}
       className={`rounded-2xl border p-5 transition-all ${concluida ? "border-primary/30 bg-primary/[0.03]" : "border-border bg-card/20 hover:border-primary/20"}`}
     >
-      <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+      <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-base text-foreground">{tarefa.titulo}</h3>
           {tarefa.descricao && <p className="text-xs text-muted-foreground mt-1">{tarefa.descricao}</p>}
@@ -286,49 +286,78 @@ function TarefaEvidenciaCard({
         </Badge>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Comentário</Label>
-          <Textarea
-            placeholder="Descreva o que você fez nesta tarefa..."
-            value={comentario}
-            onChange={(e) => onComentarioChange(e.target.value)}
-          />
-          <p className="text-[10px] text-muted-foreground italic">Autosalva ao parar de digitar.</p>
+      <div className="grid gap-5 md:grid-cols-2">
+        {/* Left: O que você fará */}
+        <div className="rounded-xl bg-muted/10 border border-border/50 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="size-4 text-primary" />
+            <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">O que você fará</Label>
+          </div>
+          {tarefa.subTarefas && tarefa.subTarefas.length > 0 ? (
+            <ul className="space-y-2">
+              {tarefa.subTarefas.map((item, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-foreground/90 leading-relaxed">
+                  <Circle className="size-3.5 mt-0.5 text-primary shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">Sem instruções predefinidas para esta tarefa.</p>
+          )}
+          {tarefa.linkPadrao && (
+            <a
+              href={tarefa.linkPadrao}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 mt-2 text-[11px] font-bold uppercase tracking-wider text-primary hover:underline"
+            >
+              <ExternalLink className="size-3" /> Acessar material
+            </a>
+          )}
         </div>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Evidência (link)</Label>
-            <div className="relative">
-              <LinkI className="absolute left-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
-              <Input
-                className="h-10 rounded-xl pl-10"
-                placeholder="Cole um link (vídeo, doc, planilha...)"
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-              />
-            </div>
+        {/* Right: Evidência */}
+        <div className="rounded-xl bg-muted/10 border border-border/50 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <LinkI className="size-4 text-primary" />
+            <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">Evidência</Label>
           </div>
-          <div className="space-y-2">
-            <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Anexar arquivo</Label>
-            <label className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-dashed border-border bg-muted/10 hover:bg-muted/20 hover:border-primary/30 transition-all cursor-pointer text-xs text-muted-foreground">
-              <Upload className="size-4" />
-              <span className="font-semibold truncate">{file ? file.name : "Imagem, PDF ou documento"}</span>
-              <input
-                type="file"
-                className="hidden"
-                accept="image/*,application/pdf,.doc,.docx"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
-            </label>
-            {row?.evidencia_url && !file && (
-              <a href={row.evidencia_url} target="_blank" rel="noreferrer" className="text-[11px] text-primary hover:underline inline-flex items-center gap-1">
-                <ExternalLink className="size-3" /> Arquivo enviado
-              </a>
-            )}
-            {uploadError && <p className="text-[11px] text-destructive">{uploadError}</p>}
+
+          <Textarea
+            placeholder={tarefa.exemploEvidencia || "Descreva como você executou esta tarefa e cole os links/evidências relevantes..."}
+            value={comentario}
+            onChange={(e) => onComentarioChange(e.target.value)}
+            className="min-h-[110px]"
+          />
+          <p className="text-[10px] text-muted-foreground italic">Autosalva ao parar de digitar.</p>
+
+          <div className="relative">
+            <LinkI className="absolute left-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
+            <Input
+              className="h-10 rounded-xl pl-10"
+              placeholder="Cole um link principal (opcional)"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+            />
           </div>
+
+          <label className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-dashed border-border bg-background hover:bg-muted/20 hover:border-primary/30 transition-all cursor-pointer text-xs text-muted-foreground">
+            <Upload className="size-4" />
+            <span className="font-semibold truncate">{file ? file.name : "Anexar arquivo (opcional)"}</span>
+            <input
+              type="file"
+              className="hidden"
+              accept="image/*,application/pdf,.doc,.docx"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          {row?.evidencia_url && !file && (
+            <a href={row.evidencia_url} target="_blank" rel="noreferrer" className="text-[11px] text-primary hover:underline inline-flex items-center gap-1">
+              <ExternalLink className="size-3" /> Arquivo enviado
+            </a>
+          )}
+          {uploadError && <p className="text-[11px] text-destructive">{uploadError}</p>}
         </div>
       </div>
 
