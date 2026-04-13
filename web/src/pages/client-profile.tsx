@@ -12,6 +12,7 @@ import ReunioesBlackCRMPage from "@/pages/reunioes-blackcrm"
 import RecursosPage from "@/pages/recursos"
 import CalendarioEncontrosPage from "@/pages/calendario-encontros"
 import VitoriasPage from "@/pages/vitorias"
+import TrilhasPage from "@/pages/trilhas"
 
 const TABS = [
   { key: "dashboard", label: "Dashboard" },
@@ -22,6 +23,7 @@ const TABS = [
   { key: "reunioes-blackcrm", label: "Reuniões BlackCRM" },
   { key: "acoes", label: "Ações" },
   { key: "vitorias", label: "Vitórias" },
+  { key: "trilhas", label: "Trilha" },
   { key: "recursos", label: "Links Importantes" },
   { key: "calendario", label: "Calendário" },
 ] as const
@@ -71,6 +73,7 @@ export default function ClientProfilePage() {
       {activeTab === "reunioes-blackcrm" && <ReunioesBlackCRMPage clientId={id} />}
       {activeTab === "acoes" && <AcoesPage clientId={id} />}
       {activeTab === "vitorias" && <VitoriasPage clientId={id} />}
+      {activeTab === "trilhas" && <TrilhasPage clientId={id} embedded />}
       {activeTab === "recursos" && <RecursosPage forceAdmin />}
       {activeTab === "calendario" && <CalendarioEncontrosPage />}
     </div>

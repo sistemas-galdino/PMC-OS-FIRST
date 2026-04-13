@@ -25,6 +25,8 @@ import CalendarioEncontrosPage from "@/pages/calendario-encontros"
 import ConfiguracoesPage from "@/pages/configuracoes"
 import AgendarPage from "@/pages/agendar"
 import VitoriasPage from "@/pages/vitorias"
+import TrilhasPage from "@/pages/trilhas"
+import TrilhaEvidenciasPage from "@/pages/trilha-evidencias"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { BackgroundShader } from "@/components/ui/background-shader"
@@ -205,6 +207,8 @@ function App() {
                     <Route path="/configuracoes" element={<ConfiguracoesPage />} />
                     <Route path="/agendar" element={<AgendarPage />} />
                     <Route path="/vitorias" element={<VitoriasPage session={session} />} />
+                    <Route path="/trilhas" element={<TrilhasPage session={session} />} />
+                    <Route path="/trilhas/evidencias" element={<TrilhaEvidenciasPage session={session} />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </DashboardLayout>
