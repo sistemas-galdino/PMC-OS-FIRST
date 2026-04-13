@@ -430,14 +430,16 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                   </span>
                 </motion.div>
               ))}
+            </CardContent>
+            <div className="border-t border-border/50 p-4 shrink-0">
               <Button
                 variant="ghost"
-                className="w-full text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5 mt-4"
+                className="w-full text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5"
                 onClick={() => navigate('/acoes')}
               >
                 Ver Todas as Ações
               </Button>
-            </CardContent>
+            </div>
           </Card>
         </motion.div>
 
