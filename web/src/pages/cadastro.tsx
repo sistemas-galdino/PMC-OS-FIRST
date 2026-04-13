@@ -228,7 +228,7 @@ export default function CadastroPage({ session }: Props) {
                 Recebemos suas informações com sucesso. Nosso time irá analisar os dados para dar sequência ao seu onboarding no PMC.
               </p>
               <Button
-                onClick={() => navigate('/', { replace: true })}
+                onClick={() => { window.location.href = '/' }}
                 className="mt-4 font-bold shadow-xl shadow-primary/20"
                 size="lg"
               >
