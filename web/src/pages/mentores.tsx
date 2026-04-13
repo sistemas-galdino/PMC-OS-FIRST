@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/icons"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DatePicker } from "@/components/ui/date-picker"
 import { motion, AnimatePresence } from "framer-motion"
 
 interface Meeting {
@@ -215,18 +216,20 @@ export default function MentoresPage() {
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2">
-            <Input
-              type="date"
-              className="h-12 w-36 bg-muted/10 border-border"
+            <DatePicker
+              compact
+              placeholder="De"
+              className="w-40"
               value={dateRange.from}
-              onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+              onChange={(v) => setDateRange(prev => ({ ...prev, from: v }))}
             />
             <span className="text-muted-foreground text-xs font-medium">a</span>
-            <Input
-              type="date"
-              className="h-12 w-36 bg-muted/10 border-border"
+            <DatePicker
+              compact
+              placeholder="Até"
+              className="w-40"
               value={dateRange.to}
-              onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+              onChange={(v) => setDateRange(prev => ({ ...prev, to: v }))}
             />
           </div>
         </div>

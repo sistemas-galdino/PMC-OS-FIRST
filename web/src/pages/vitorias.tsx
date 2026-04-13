@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -29,8 +29,8 @@ import {
   UploadIcon as Upload,
   TrendingUpIcon as TrendingUp,
   ExternalLinkIcon as ExternalLink,
-  ChevronRightIcon as ChevronRight,
 } from "@/components/ui/icons"
+import { DatePicker } from "@/components/ui/date-picker"
 import type { Session } from "@supabase/supabase-js"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -467,157 +467,6 @@ function NumField({ label, value, onChange }: { label: string; value: string; on
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
-    </div>
-  )
-}
-
-const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
-const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
-
-function DatePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const selected = value ? new Date(value + "T00:00:00") : null
-  const [viewMonth, setViewMonth] = useState(() => {
-    const base = selected ?? new Date()
-    return new Date(base.getFullYear(), base.getMonth(), 1)
-  })
-  const wrapRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  const year = viewMonth.getFullYear()
-  const month = viewMonth.getMonth()
-  const firstDayOfWeek = new Date(year, month, 1).getDay()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const daysInPrevMonth = new Date(year, month, 0).getDate()
-
-  const cells: { date: Date; outside: boolean }[] = []
-  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-    cells.push({ date: new Date(year, month - 1, daysInPrevMonth - i), outside: true })
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ date: new Date(year, month, d), outside: false })
-  }
-  while (cells.length % 7 !== 0 || cells.length < 42) {
-    const next = cells.length - (firstDayOfWeek + daysInMonth) + 1
-    cells.push({ date: new Date(year, month + 1, next), outside: true })
-    if (cells.length >= 42) break
-  }
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  function isSameDay(a: Date, b: Date) {
-    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-  }
-
-  function fmt(d: Date): string {
-    const mm = String(d.getMonth() + 1).padStart(2, "0")
-    const dd = String(d.getDate()).padStart(2, "0")
-    return `${d.getFullYear()}-${mm}-${dd}`
-  }
-
-  const displayLabel = selected
-    ? selected.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
-    : "Selecionar data"
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-2 h-11 w-full px-4 rounded-xl border border-border bg-background text-sm font-medium transition-all hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${selected ? "text-foreground" : "text-muted-foreground"}`}
-      >
-        <Calendar className="size-4 text-primary" />
-        <span className="flex-1 text-left capitalize">{displayLabel}</span>
-      </button>
-
-      {open && (
-        <motion.div
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.15 }}
-          className="absolute z-50 mt-2 left-0 w-[320px] p-4 rounded-2xl border border-border bg-background/95 backdrop-blur-xl shadow-2xl"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <button
-              type="button"
-              onClick={() => setViewMonth(new Date(year, month - 1, 1))}
-              className="size-8 rounded-lg border border-border hover:bg-muted/30 flex items-center justify-center transition-colors"
-              aria-label="Mês anterior"
-            >
-              <ChevronRight className="size-4 rotate-180 text-muted-foreground" />
-            </button>
-            <div className="font-bold text-sm text-foreground capitalize">
-              {MONTHS[month]} {year}
-            </div>
-            <button
-              type="button"
-              onClick={() => setViewMonth(new Date(year, month + 1, 1))}
-              className="size-8 rounded-lg border border-border hover:bg-muted/30 flex items-center justify-center transition-colors"
-              aria-label="Próximo mês"
-            >
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </button>
-          </div>
-          <div className="grid grid-cols-7 gap-1 mb-1">
-            {WEEKDAYS.map(w => (
-              <div key={w} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center py-1.5">
-                {w}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map(({ date, outside }, i) => {
-              const isSelected = selected ? isSameDay(date, selected) : false
-              const isToday = isSameDay(date, today)
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => { onChange(fmt(date)); setOpen(false) }}
-                  className={`size-10 rounded-lg text-sm font-medium transition-all flex items-center justify-center ${
-                    isSelected
-                      ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/30"
-                      : outside
-                        ? "text-muted-foreground/30 hover:bg-muted/20"
-                        : isToday
-                          ? "border border-primary/40 text-primary hover:bg-primary/10"
-                          : "text-foreground hover:bg-muted/30"
-                  }`}
-                >
-                  {date.getDate()}
-                </button>
-              )
-            })}
-          </div>
-          <div className="flex items-center justify-between pt-3 mt-3 border-t border-border">
-            <button
-              type="button"
-              onClick={() => { onChange(fmt(today)); setViewMonth(new Date(today.getFullYear(), today.getMonth(), 1)); setOpen(false) }}
-              className="text-[11px] font-bold uppercase tracking-wider text-primary hover:underline"
-            >
-              Hoje
-            </button>
-            {selected && (
-              <button
-                type="button"
-                onClick={() => { onChange(""); setOpen(false) }}
-                className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:text-destructive"
-              >
-                Limpar
-              </button>
-            )}
-          </div>
-        </motion.div>
-      )}
     </div>
   )
 }
