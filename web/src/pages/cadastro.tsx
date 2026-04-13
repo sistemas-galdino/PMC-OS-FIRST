@@ -176,6 +176,7 @@ export default function CadastroPage({ session }: Props) {
     const faturamento = Number(values.faturamento_anual) || 0
     const funcionarios = Number(values.numero_funcionarios) || 0
     const gestores = Number(values.numero_gestores) || 0
+    const meta12m = Number(values.meta_12_meses) || 0
     await supabase
       .from('cliente_metas')
       .upsert(
@@ -183,6 +184,7 @@ export default function CadastroPage({ session }: Props) {
           id_cliente: userId,
           faturamento_anual_objetivo: faturamento,
           colaboradores_total: funcionarios + gestores,
+          meta_2026: meta12m,
         },
         { onConflict: 'id_cliente' }
       )

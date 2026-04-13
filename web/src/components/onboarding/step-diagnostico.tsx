@@ -38,7 +38,16 @@ export function StepDiagnostico({ register, errors }: Props) {
 
       <div className="space-y-2">
         <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Meta de faturamento para os próximos 12 meses *</Label>
-        <Input {...register('meta_12_meses')} placeholder="Ex: R$ 2.000.000" className="bg-muted/10 border-border" />
+        <Input
+          type="number"
+          min={0}
+          step="any"
+          inputMode="numeric"
+          {...register('meta_12_meses')}
+          placeholder="Ex: 2000000"
+          className="bg-muted/10 border-border"
+        />
+        <p className="text-[11px] text-muted-foreground font-medium">Valor em reais, sem pontos ou vírgulas. Ex: 2000000 para R$ 2 milhões.</p>
         {errors.meta_12_meses && <p className="text-xs text-destructive font-medium">{errors.meta_12_meses.message}</p>}
       </div>
     </div>

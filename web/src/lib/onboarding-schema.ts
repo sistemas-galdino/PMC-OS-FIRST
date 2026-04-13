@@ -32,7 +32,7 @@ export const step4Schema = z.object({
   desafios: z.string().min(10, 'Descreva os desafios'),
   motivo_nao_superou: z.string().min(10, 'Descreva o motivo'),
   referencias_posicionamento: z.string().optional(),
-  meta_12_meses: z.string().min(1, 'Informe a meta'),
+  meta_12_meses: z.coerce.number({ message: 'Informe a meta' }).min(0, 'Informe um valor válido'),
 })
 
 export const step5Schema = z.object({
