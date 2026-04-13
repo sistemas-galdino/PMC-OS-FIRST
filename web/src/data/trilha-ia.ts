@@ -20,147 +20,166 @@ export interface Trilha {
   passos: Passo[]
 }
 
-// NOTE: This is placeholder content derived from the reference image
-// `evidencias/trilha.png`. Tweak copy freely — tarefa IDs are stable so
-// evidence rows in the DB stay linked across edits. Do NOT rename IDs.
+// Copy e links vindos de `evidencias/trilha.png` + `evidencias/links-etapas.txt`.
+// Mantenha os IDs intactos — evidências salvas no banco são chaveadas por eles.
 export const TRILHA_IA: Trilha = {
   id: "trilha-ia-pmc",
   titulo: "Trilha de Implementação de Inteligência Artificial da PMC",
   subtitulo: "Programa Multiplicador de Crescimento",
   passos: [
     {
-      id: "passo-1-organizacao",
+      id: "passo-1-organizacao-estrutura-ia",
       numero: 1,
       titulo: "Organização e Definição da Estrutura de IA",
-      descricao:
-        "Ponto inicial da trilha: organize sua empresa e defina a estrutura em que a IA será aplicada.",
       tarefas: [
         {
-          id: "p1-t1-definir-estrutura",
-          titulo: "Definir estrutura e macro-áreas da empresa",
-          descricao:
-            "Mapeie as áreas onde IA terá maior impacto: vendas, marketing, operações, gestão.",
+          id: "p1-t1-organizacao-processo-guardiao",
+          titulo: "Organização e Processo — O Guardião da IA",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5205146-organizacao-e-processo-o-guardiao-da-ia",
         },
         {
-          id: "p1-t2-mapear-processos",
-          titulo: "Mapear processos críticos atuais",
-          descricao:
-            "Liste os processos operacionais repetitivos candidatos a automação com IA.",
+          id: "p1-t2-encontro-multiplica-time-28-11",
+          titulo: "Encontro Multiplica Time Ao Vivo — dia 28/11",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5136623-encontro-multiplica-time-ao-vivo-dia-28-11",
         },
       ],
     },
     {
-      id: "passo-2-analise-ferramentas",
+      id: "passo-2-analise-ferramentas-ia",
       numero: 2,
       titulo: "Análise de ferramentas com IA",
-      descricao: "Avalie as ferramentas disponíveis no mercado e escolha a pilha base.",
       tarefas: [
         {
-          id: "p2-t1-benchmark",
-          titulo: "Fazer benchmark das principais ferramentas",
-          descricao: "Compare ChatGPT, Claude, Gemini, NotebookLM e outras conforme o caso de uso.",
+          id: "p2-t1-diagnostico-ia-dashboards",
+          titulo: "Diagnóstico de IA e Dashboards",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5289634-diagnostico-de-ia-e-dashboards",
         },
         {
-          id: "p2-t2-escolher-stack",
-          titulo: "Escolher o stack principal",
-          descricao: "Decida quais ferramentas serão utilizadas como base para sua operação.",
+          id: "p2-t2-decisao-com-dados-5-analises",
+          titulo: "Decisão com Dados — 5 Análises Rotina 4h00",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5284709-decisao-com-dados-5-analises-rotina-4h00",
         },
         {
-          id: "p2-t3-cadastrar-contas",
-          titulo: "Cadastrar contas e licenças",
-          descricao: "Crie contas corporativas e assine as licenças necessárias.",
+          id: "p2-t3-planejamento-2026-galdino",
+          titulo: "Planejamento Estratégico 2026 e Instituto de Pesquisa Galdino",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5087331-planejamento-estrategico-2026-e-instituto-de-pesquisa-galdino",
+        },
+        {
+          id: "p2-t4-planejamento-2026-manus-okr",
+          titulo: "Planejamento Estratégico 2026 com IA, Manus.IM e OKR",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5087551-planejamento-estrategico-2026-com-ia-manus-im-e-okr",
         },
       ],
     },
     {
-      id: "passo-3-notebooklm",
+      id: "passo-3-criacao-notebooklm",
       numero: 3,
       titulo: "Criação de NotebookLM com IA",
-      descricao: "Estruture sua base de conhecimento no NotebookLM como fonte para os agentes.",
       tarefas: [
         {
-          id: "p3-t1-estruturar-base",
-          titulo: "Estruturar a base de conhecimento",
-          descricao: "Reúna materiais, SOPs, scripts e documentos de apoio.",
+          id: "p3-t1-diagnostico-ia-dashboards",
+          titulo: "Diagnóstico de IA e Dashboards",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5289634-diagnostico-de-ia-e-dashboards",
         },
         {
-          id: "p3-t2-criar-notebook",
-          titulo: "Criar NotebookLM da empresa",
-          descricao: "Importe os materiais e configure fontes confiáveis.",
+          id: "p3-t2-estrategia-plano-sistemas-ia",
+          titulo: "Estratégia, Plano de Ação e Sistemas com IA",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5289639-estrategia-plano-de-acao-e-sistemas-com-ia",
         },
       ],
     },
     {
-      id: "passo-4-adaptacao-processos",
+      id: "passo-4-adaptacao-processos-ia",
       numero: 4,
       titulo: "Preparação e Adaptação de processos com IA",
-      descricao: "Adapte processos existentes para trabalharem com IA no fluxo.",
       tarefas: [
         {
-          id: "p4-t1-redesenhar-vendas",
-          titulo: "Redesenhar o processo de vendas com IA",
-          descricao: "Insira IA no funil: prospecção, qualificação, follow-up.",
+          id: "p4-t1-estruturar-processos-pops-notebooklm",
+          titulo: "Como estruturar processos com IA, POPs e organização no NotebookLM",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/4969687-como-estruturar-processos-com-ia-pops-e-organizacao-no-notebook-lm",
         },
         {
-          id: "p4-t2-redesenhar-marketing",
-          titulo: "Redesenhar o processo de marketing com IA",
-          descricao: "Use IA para copy, segmentação e produção de conteúdo.",
+          id: "p4-t2-diagnostico-caos-processos",
+          titulo: "Diagnóstico do Caos — Processos que libertam",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5284704-diagnostico-do-caos-processos-que-libertam",
         },
         {
-          id: "p4-t3-redesenhar-operacao",
-          titulo: "Redesenhar processos operacionais com IA",
-          descricao: "Identifique etapas que IA pode executar ou acelerar.",
+          id: "p4-t3-funis-processos-comerciais-ia",
+          titulo: "Construindo funis e processos comerciais com IA na prática",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/4944656-construindo-funis-e-processos-comerciais-com-ia-na-pratica",
         },
         {
-          id: "p4-t4-redesenhar-financeiro",
-          titulo: "Redesenhar processos financeiros com IA",
-          descricao: "Automatize análises e relatórios recorrentes.",
+          id: "p4-t4-criando-projetos-manus",
+          titulo: "Criando projetos no Manus",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/4801808-criando-projetos-no-manus",
+        },
+        {
+          id: "p4-t5-desenvolvimento-projetos-manus",
+          titulo: "Desenvolvimento de projetos com o Manus",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/4901180-3-desenvolvimento-de-projetos-com-o-manus",
+        },
+        {
+          id: "p4-t6-produtividade-plano-30-60-90",
+          titulo: "Produtividade, Sistemas e Plano 30, 60 e 90 dias",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5205155-produtividade-sistemas-e-plano-30-60-e-90-dias",
         },
       ],
     },
     {
-      id: "passo-5-criar-agentes",
+      id: "passo-5-criacao-agentes-ia",
       numero: 5,
       titulo: "Criação de agentes com IA",
-      descricao: "Crie agentes especializados para tarefas específicas da sua operação.",
       tarefas: [
         {
-          id: "p5-t1-agente-vendas",
-          titulo: "Criar agente de vendas",
-          descricao: "Agente para qualificar leads e fazer follow-up.",
+          id: "p5-t1-agentes-claude-automacao",
+          titulo: "Agentes de IA com Claude e Automação de Processos",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5305739-agentes-de-ia-com-claude-e-automacao-de-processos",
         },
         {
-          id: "p5-t2-agente-suporte",
-          titulo: "Criar agente de suporte ao cliente",
-          descricao: "Agente para responder dúvidas frequentes.",
-        },
-        {
-          id: "p5-t3-agente-conteudo",
-          titulo: "Criar agente de conteúdo",
-          descricao: "Agente para produção de copy, posts e roteiros.",
+          id: "p5-t2-arquiteto-campanhas-ia",
+          titulo: "Arquiteto de Campanhas — Engenharia com IA",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5254084-arquiteto-de-campanhas-engenharia-com-ia",
         },
       ],
     },
     {
-      id: "passo-6-implementacao",
+      id: "passo-6-implementacao-sistemas-ia",
       numero: 6,
       titulo: "Implementação de sistemas com IA",
-      descricao: "Rode a IA em produção com monitoramento e ajustes contínuos.",
       tarefas: [
         {
-          id: "p6-t1-deploy",
-          titulo: "Colocar agentes em produção",
-          descricao: "Integre os agentes aos canais em uso (site, WhatsApp, CRM).",
+          id: "p6-t1-produtividade-plano-30-60-90",
+          titulo: "Produtividade, Sistemas e Plano 30, 60 e 90 dias",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5205155-produtividade-sistemas-e-plano-30-60-e-90-dias",
         },
         {
-          id: "p6-t2-metricas",
-          titulo: "Definir métricas de acompanhamento",
-          descricao: "Estabeleça KPIs para validar o impacto da IA.",
+          id: "p6-t2-estrategia-plano-sistemas-ia",
+          titulo: "Estratégia, Plano de Ação e Sistemas com IA",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5289639-estrategia-plano-de-acao-e-sistemas-com-ia",
         },
         {
-          id: "p6-t3-iterar",
-          titulo: "Iterar e otimizar",
-          descricao: "Ajuste prompts, fluxos e ferramentas com base nos resultados.",
+          id: "p6-t3-stitch-telas-apps-prototipos-ia",
+          titulo: "Stitch — Telas, apps e protótipos com IA",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5253871-stitch-telas-apps-e-prototipos-com-ia",
         },
       ],
     },
