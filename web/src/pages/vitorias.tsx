@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -294,141 +294,157 @@ export default function VitoriasPage({ session, clientId }: VitoriasPageProps) {
         )}
       </AnimatePresence>
 
-      <Sheet open={showSheet} onOpenChange={(open) => { if (!open) setShowSheet(false) }}>
-        <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col bg-background border-l border-border">
-          <SheetHeader className="p-6 border-b border-border">
+      <Dialog open={showSheet} onOpenChange={(open) => { if (!open) setShowSheet(false) }}>
+        <DialogContent className="p-0 flex flex-col bg-background border border-border sm:max-w-4xl max-h-[90vh]">
+          <DialogHeader className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
               <div className="bg-primary/10 p-2 rounded-lg">
                 <Trophy className="size-5 text-primary" />
               </div>
-              <SheetTitle className="text-lg font-bold text-foreground">
+              <DialogTitle className="text-lg font-bold text-foreground">
                 {editing ? "Editar Vitória" : "Registrar Nova Vitória"}
-              </SheetTitle>
+              </DialogTitle>
             </div>
-          </SheetHeader>
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            <Field label="Qual foi a sua vitória?" required>
-              <Input
-                className="h-11 rounded-xl"
-                placeholder="Ex: Fechei 5 novos clientes essa semana"
-                value={form.titulo}
-                onChange={(e) => setForm(p => ({ ...p, titulo: e.target.value }))}
-              />
-            </Field>
+          </DialogHeader>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Área" required>
-                <Select value={form.area} onValueChange={(v) => setForm(p => ({ ...p, area: v }))}>
-                  <SelectTrigger className="h-11 rounded-xl border-border bg-background">
-                    <SelectValue placeholder="Selecione uma área" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AREAS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="De onde veio essa vitória?" required>
-                <Select value={form.origem} onValueChange={(v) => setForm(p => ({ ...p, origem: v }))}>
-                  <SelectTrigger className="h-11 rounded-xl border-border bg-background">
-                    <SelectValue placeholder="Selecione a origem" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Column 1: identification + narrative */}
+              <div className="space-y-5">
+                <Field label="Qual foi a sua vitória?" required>
+                  <Input
+                    className="h-11 rounded-xl"
+                    placeholder="Ex: Fechei 5 novos clientes essa semana"
+                    value={form.titulo}
+                    onChange={(e) => setForm(p => ({ ...p, titulo: e.target.value }))}
+                  />
+                </Field>
 
-            <Field label="Qual era o gargalo antes?" required>
-              <Textarea
-                placeholder="Ex: Não tinha vendas previsíveis"
-                value={form.gargalo_antes}
-                onChange={(e) => setForm(p => ({ ...p, gargalo_antes: e.target.value }))}
-              />
-            </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Área" required>
+                    <Select value={form.area} onValueChange={(v) => setForm(p => ({ ...p, area: v }))}>
+                      <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AREAS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Origem" required>
+                    <Select value={form.origem} onValueChange={(v) => setForm(p => ({ ...p, origem: v }))}>
+                      <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
 
-            <Field label="O que você fez para chegar nesse resultado?" required>
-              <Textarea
-                placeholder="Ex: Estruturei um funil de vendas"
-                value={form.o_que_fez}
-                onChange={(e) => setForm(p => ({ ...p, o_que_fez: e.target.value }))}
-              />
-            </Field>
+                <Field label="Qual era o gargalo antes?" required>
+                  <Textarea
+                    placeholder="Ex: Não tinha vendas previsíveis"
+                    value={form.gargalo_antes}
+                    onChange={(e) => setForm(p => ({ ...p, gargalo_antes: e.target.value }))}
+                  />
+                </Field>
 
-            <Field label="Como está agora?" required>
-              <Textarea
-                placeholder="Ex: Estou fechando vendas toda semana"
-                value={form.como_esta_agora}
-                onChange={(e) => setForm(p => ({ ...p, como_esta_agora: e.target.value }))}
-              />
-            </Field>
+                <Field label="O que você fez para chegar nesse resultado?" required>
+                  <Textarea
+                    placeholder="Ex: Estruturei um funil de vendas"
+                    value={form.o_que_fez}
+                    onChange={(e) => setForm(p => ({ ...p, o_que_fez: e.target.value }))}
+                  />
+                </Field>
 
-            <div className="space-y-3">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Adicionar números (opcional)</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <NumField label="Valor antes (R$)" value={form.valor_antes} onChange={(v) => setForm(p => ({ ...p, valor_antes: v }))} />
-                <NumField label="Valor depois (R$)" value={form.valor_depois} onChange={(v) => setForm(p => ({ ...p, valor_depois: v }))} />
-                <NumField label="Qtd antes" value={form.qtd_antes} onChange={(v) => setForm(p => ({ ...p, qtd_antes: v }))} />
-                <NumField label="Qtd depois" value={form.qtd_depois} onChange={(v) => setForm(p => ({ ...p, qtd_depois: v }))} />
+                <Field label="Como está agora?" required>
+                  <Textarea
+                    placeholder="Ex: Estou fechando vendas toda semana"
+                    value={form.como_esta_agora}
+                    onChange={(e) => setForm(p => ({ ...p, como_esta_agora: e.target.value }))}
+                  />
+                </Field>
+              </div>
+
+              {/* Column 2: numbers + meta + evidence */}
+              <div className="space-y-5">
+                <div className="p-5 rounded-2xl bg-muted/10 border border-border/50 space-y-4">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Adicionar números (opcional)</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <NumField label="Valor antes (R$)" value={form.valor_antes} onChange={(v) => setForm(p => ({ ...p, valor_antes: v }))} />
+                    <NumField label="Valor depois (R$)" value={form.valor_depois} onChange={(v) => setForm(p => ({ ...p, valor_depois: v }))} />
+                    <NumField label="Qtd antes" value={form.qtd_antes} onChange={(v) => setForm(p => ({ ...p, qtd_antes: v }))} />
+                    <NumField label="Qtd depois" value={form.qtd_depois} onChange={(v) => setForm(p => ({ ...p, qtd_depois: v }))} />
+                  </div>
+                </div>
+
+                <Field label="Data da vitória" required>
+                  <div className="relative">
+                    <Calendar className="absolute left-3.5 top-3.5 size-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      type="date"
+                      className="h-11 rounded-xl pl-10"
+                      value={form.data_vitoria}
+                      onChange={(e) => setForm(p => ({ ...p, data_vitoria: e.target.value }))}
+                    />
+                  </div>
+                </Field>
+
+                <Field label="Evidência (opcional)">
+                  <div className="relative">
+                    <LinkI className="absolute left-3.5 top-3.5 size-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      className="h-11 rounded-xl pl-10"
+                      placeholder="Cole um link ou descreva a evidência"
+                      value={form.evidencia_link}
+                      onChange={(e) => setForm(p => ({ ...p, evidencia_link: e.target.value }))}
+                    />
+                  </div>
+                </Field>
+
+                <div className="space-y-2">
+                  <label className="flex items-center justify-center gap-2 h-11 px-4 rounded-xl border border-dashed border-border bg-muted/10 hover:bg-muted/20 hover:border-primary/30 transition-all cursor-pointer text-sm text-muted-foreground">
+                    <Upload className="size-4" />
+                    <span className="font-semibold truncate">{file ? file.name : "Anexar arquivo (imagem, PDF, documento...)"}</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*,application/pdf,.doc,.docx"
+                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  {editing?.evidencia_url && !file && (
+                    <a href={editing.evidencia_url} target="_blank" rel="noreferrer" className="text-[11px] text-primary hover:underline flex items-center gap-1">
+                      <ExternalLink className="size-3" /> Arquivo atual
+                    </a>
+                  )}
+                  {uploadError && <p className="text-[11px] text-destructive">{uploadError}</p>}
+                </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Data da vitória" required>
-                <div className="relative">
-                  <Calendar className="absolute left-3.5 top-3.5 size-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    type="date"
-                    className="h-11 rounded-xl pl-10"
-                    value={form.data_vitoria}
-                    onChange={(e) => setForm(p => ({ ...p, data_vitoria: e.target.value }))}
-                  />
-                </div>
-              </Field>
-              <Field label="Evidência (opcional)">
-                <div className="relative">
-                  <LinkI className="absolute left-3.5 top-3.5 size-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    className="h-11 rounded-xl pl-10"
-                    placeholder="Cole um link ou descreva a evidência"
-                    value={form.evidencia_link}
-                    onChange={(e) => setForm(p => ({ ...p, evidencia_link: e.target.value }))}
-                  />
-                </div>
-              </Field>
-            </div>
-
-            <div className="space-y-2">
-              <label className="flex items-center justify-center gap-2 h-11 px-4 rounded-xl border border-dashed border-border bg-muted/10 hover:bg-muted/20 hover:border-primary/30 transition-all cursor-pointer text-sm text-muted-foreground">
-                <Upload className="size-4" />
-                <span className="font-semibold">{file ? file.name : "Anexar arquivo (imagem, PDF, documento...)"}</span>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*,application/pdf,.doc,.docx"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                />
-              </label>
-              {editing?.evidencia_url && !file && (
-                <a href={editing.evidencia_url} target="_blank" rel="noreferrer" className="text-[11px] text-primary hover:underline flex items-center gap-1">
-                  <ExternalLink className="size-3" /> Arquivo atual
-                </a>
-              )}
-              {uploadError && <p className="text-[11px] text-destructive">{uploadError}</p>}
-            </div>
           </div>
-          <SheetFooter className="p-6 border-t border-border">
+
+          <DialogFooter className="p-6 border-t border-border flex-row justify-end gap-3">
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl font-bold uppercase tracking-wider text-xs px-6"
+              onClick={() => setShowSheet(false)}
+            >
+              Cancelar
+            </Button>
             <Button
               disabled={saving || !isValid()}
-              className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs gap-2"
+              className="h-11 rounded-xl font-bold uppercase tracking-wider text-xs gap-2 px-8"
               onClick={handleSave}
             >
               <Trophy className="size-4" />
               {saving ? "Salvando..." : (editing ? "Salvar Alterações" : "Registrar Vitória")}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
