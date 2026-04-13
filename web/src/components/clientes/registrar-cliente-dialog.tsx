@@ -109,27 +109,31 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
     setLoading(true)
 
     try {
-      // 1. Insert direto na tabela
-      const { error: insertError } = await supabase
-        .from('clientes_entrada_new')
-        .insert({
-          nome_cliente: form.nome_cliente.trim(),
-          nome_empresa: form.nome_empresa.trim() || null,
-          nome_cliente_formatado: titleCase(form.nome_cliente.trim()),
-          nome_empresa_formatado: form.nome_empresa.trim() ? titleCase(form.nome_empresa.trim()) : null,
-          estado_uf: form.estado_uf || null,
-          sc: form.sc || null,
-          status_atual: form.status_atual || null,
-          unidade_treinamento: form.unidade_treinamento.trim() || null,
-          produto: form.produto.trim() || null,
-          nicho: form.nicho || null,
-          subnicho: form.subnicho.trim() || null,
-          canal_de_venda: form.canal_de_venda.trim() || null,
-          mes_treinamento: form.mes_treinamento || null,
-          ano_treinamento: form.ano_treinamento ? parseInt(form.ano_treinamento) : null,
-        })
+      // 1. Insert direto na tabela (apenas quando NAO for gerar link —
+      //    a edge function invite-client cria o registro inteiro quando
+      //    gerarLink=true, entao inserir aqui duplicaria a linha).
+      if (!gerarLink) {
+        const { error: insertError } = await supabase
+          .from('clientes_entrada_new')
+          .insert({
+            nome_cliente: form.nome_cliente.trim(),
+            nome_empresa: form.nome_empresa.trim() || null,
+            nome_cliente_formatado: titleCase(form.nome_cliente.trim()),
+            nome_empresa_formatado: form.nome_empresa.trim() ? titleCase(form.nome_empresa.trim()) : null,
+            estado_uf: form.estado_uf || null,
+            sc: form.sc || null,
+            status_atual: form.status_atual || null,
+            unidade_treinamento: form.unidade_treinamento.trim() || null,
+            produto: form.produto.trim() || null,
+            nicho: form.nicho || null,
+            subnicho: form.subnicho.trim() || null,
+            canal_de_venda: form.canal_de_venda.trim() || null,
+            mes_treinamento: form.mes_treinamento || null,
+            ano_treinamento: form.ano_treinamento ? parseInt(form.ano_treinamento) : null,
+          })
 
-      if (insertError) throw new Error(insertError.message)
+        if (insertError) throw new Error(insertError.message)
+      }
 
       // 2. Se gerar link, chamar edge function
       if (gerarLink && form.email.trim()) {
