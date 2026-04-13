@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
   MapIcon as Map,
@@ -13,27 +12,16 @@ import {
   Edit3Icon as Edit3,
   CheckIcon as Check,
   XIcon as X,
-  CheckCircle2Icon as CheckCircle2,
-  ClockIcon as Clock,
-  CircleIcon as Circle,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion, AnimatePresence } from "framer-motion"
-import { TRILHA_IA, type Passo, type Tarefa } from "@/data/trilha-ia"
+import { TRILHA_IA, PILARES, type Passo, type Tarefa } from "@/data/trilha-ia"
 import TrilhaEvidenciasPage from "@/pages/trilha-evidencias"
 
 interface TrilhasPageProps {
   session?: Session
   clientId?: string
   embedded?: boolean
-}
-
-interface EvidenciaRow {
-  tarefa_id: string
-  concluida: boolean
-  comentario: string | null
-  evidencia_link: string | null
-  evidencia_url: string | null
 }
 
 interface LinkRow { tarefa_id: string; link_url: string }
@@ -43,9 +31,9 @@ export default function TrilhasPage({ session, clientId, embedded }: TrilhasPage
   const [resolvedClientId, setResolvedClientId] = useState<string | undefined>(clientId || session?.user?.id)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [evidencias, setEvidencias] = useState<Record<string, EvidenciaRow>>({})
+  const [pilaresComEvidencia, setPilaresComEvidencia] = useState<Set<string>>(new Set())
   const [links, setLinks] = useState<Record<string, string>>({})
-  const [openPassoId, setOpenPassoId] = useState<string | null>(null)
+  const [openPassoId, setOpenPassoId] = useState<string | null>(TRILHA_IA.passos[0]?.id ?? null)
   const [showEvidencias, setShowEvidencias] = useState(false)
 
   useEffect(() => {
@@ -62,14 +50,13 @@ export default function TrilhasPage({ session, clientId, embedded }: TrilhasPage
     let cancelled = false
     async function fetchAll() {
       const [{ data: evData }, { data: linkData }, { data: { session: s } }] = await Promise.all([
-        supabase.from("cliente_trilha_evidencias").select("tarefa_id,concluida,comentario,evidencia_link,evidencia_url").eq("id_cliente", resolvedClientId),
+        supabase.from("cliente_pilar_evidencias").select("pilar_id").eq("id_cliente", resolvedClientId),
         supabase.from("trilha_links").select("tarefa_id,link_url"),
         supabase.auth.getSession(),
       ])
       if (cancelled) return
-      const evMap: Record<string, EvidenciaRow> = {}
-      ;(evData || []).forEach((r: EvidenciaRow) => { evMap[r.tarefa_id] = r })
-      setEvidencias(evMap)
+      const set = new Set<string>((evData || []).map((r: { pilar_id: string }) => r.pilar_id))
+      setPilaresComEvidencia(set)
       const linkMap: Record<string, string> = {}
       ;(linkData || []).forEach((r: LinkRow) => { linkMap[r.tarefa_id] = r.link_url })
       setLinks(linkMap)
@@ -84,25 +71,10 @@ export default function TrilhasPage({ session, clientId, embedded }: TrilhasPage
   }, [resolvedClientId])
 
   const totals = useMemo(() => {
-    let total = 0
-    let done = 0
-    TRILHA_IA.passos.forEach(p => {
-      p.tarefas.forEach(t => {
-        total++
-        if (evidencias[t.id]?.concluida) done++
-      })
-    })
+    const done = PILARES.filter(p => pilaresComEvidencia.has(p.id)).length
+    const total = PILARES.length
     return { total, done, pct: total > 0 ? Math.round((done / total) * 100) : 0 }
-  }, [evidencias])
-
-  // Auto-open the first passo that isn't fully complete
-  useEffect(() => {
-    if (openPassoId) return
-    const firstIncomplete = TRILHA_IA.passos.find(p =>
-      p.tarefas.some(t => !evidencias[t.id]?.concluida)
-    )
-    setOpenPassoId(firstIncomplete?.id ?? TRILHA_IA.passos[0].id)
-  }, [evidencias, openPassoId])
+  }, [pilaresComEvidencia])
 
   function handleOpenEvidencias() {
     if (embedded) setShowEvidencias(true)
@@ -175,12 +147,12 @@ export default function TrilhasPage({ session, clientId, embedded }: TrilhasPage
         </Button>
       </motion.div>
 
-      {/* Progress pill */}
+      {/* Pilares progress */}
       <div className="flex items-center gap-4 p-5 rounded-2xl border border-border bg-muted/10">
         <div className="flex-1">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Progresso da Trilha</span>
-            <span className="text-sm font-bold text-foreground">{totals.done} de {totals.total} tarefas concluídas</span>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Pilares de Evidência</span>
+            <span className="text-sm font-bold text-foreground">{totals.done} de {totals.total} enviados</span>
           </div>
           <div className="h-2 rounded-full bg-muted overflow-hidden">
             <motion.div
@@ -202,7 +174,6 @@ export default function TrilhasPage({ session, clientId, embedded }: TrilhasPage
             passo={passo}
             open={openPassoId === passo.id}
             onToggle={() => setOpenPassoId(openPassoId === passo.id ? null : passo.id)}
-            evidencias={evidencias}
             links={links}
             isAdmin={isAdmin}
             onSaveLink={saveLink}
@@ -217,26 +188,21 @@ interface PassoCardProps {
   passo: Passo
   open: boolean
   onToggle: () => void
-  evidencias: Record<string, EvidenciaRow>
   links: Record<string, string>
   isAdmin: boolean
   onSaveLink: (id: string, url: string) => Promise<void>
 }
 
-function PassoCard({ passo, open, onToggle, evidencias, links, isAdmin, onSaveLink }: PassoCardProps) {
-  const doneCount = passo.tarefas.filter(t => evidencias[t.id]?.concluida).length
-  const total = passo.tarefas.length
-  const allDone = doneCount === total && total > 0
-
+function PassoCard({ passo, open, onToggle, links, isAdmin, onSaveLink }: PassoCardProps) {
   return (
-    <div className={`rounded-2xl border transition-all ${allDone ? "border-primary/40 bg-primary/[0.03]" : "border-border bg-card/20"}`}>
+    <div className="rounded-2xl border border-border bg-card/20 transition-all">
       <button
         type="button"
         onClick={onToggle}
         className="w-full flex items-center gap-4 p-5 text-left hover:bg-muted/10 transition-colors rounded-2xl"
       >
-        <div className={`size-11 rounded-xl flex items-center justify-center font-bold text-lg shrink-0 ${allDone ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary border border-primary/20"}`}>
-          {allDone ? <CheckCircle2 className="size-6" /> : passo.numero}
+        <div className="size-11 rounded-xl flex items-center justify-center font-bold text-lg shrink-0 bg-primary/10 text-primary border border-primary/20">
+          {passo.numero}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -246,7 +212,7 @@ function PassoCard({ passo, open, onToggle, evidencias, links, isAdmin, onSaveLi
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            {doneCount}/{total}
+            {passo.tarefas.length} {passo.tarefas.length === 1 ? "aula" : "aulas"}
           </span>
           {open ? <ChevronUp className="size-5 text-muted-foreground" /> : <ChevronDown className="size-5 text-muted-foreground" />}
         </div>
@@ -271,7 +237,6 @@ function PassoCard({ passo, open, onToggle, evidencias, links, isAdmin, onSaveLi
                 <TarefaRow
                   key={t.id}
                   tarefa={t}
-                  ev={evidencias[t.id]}
                   linkOverride={links[t.id]}
                   isAdmin={isAdmin}
                   onSaveLink={onSaveLink}
@@ -287,27 +252,17 @@ function PassoCard({ passo, open, onToggle, evidencias, links, isAdmin, onSaveLi
 
 interface TarefaRowProps {
   tarefa: Tarefa
-  ev?: EvidenciaRow
   linkOverride?: string
   isAdmin: boolean
   onSaveLink: (id: string, url: string) => Promise<void>
 }
 
-function TarefaRow({ tarefa, ev, linkOverride, isAdmin, onSaveLink }: TarefaRowProps) {
+function TarefaRow({ tarefa, linkOverride, isAdmin, onSaveLink }: TarefaRowProps) {
   const [editingLink, setEditingLink] = useState(false)
   const [linkDraft, setLinkDraft] = useState(linkOverride ?? tarefa.linkPadrao ?? "")
   const [savingLink, setSavingLink] = useState(false)
 
   const effectiveLink = linkOverride ?? tarefa.linkPadrao ?? ""
-  const concluida = ev?.concluida ?? false
-  const started = !!ev && (ev.comentario || ev.evidencia_link || ev.evidencia_url)
-
-  const status = concluida ? "concluida" : started ? "em_andamento" : "nao_iniciada"
-  const statusConfig = {
-    concluida: { label: "Concluída", icon: CheckCircle2, className: "bg-primary/10 text-primary border-primary/30" },
-    em_andamento: { label: "Em andamento", icon: Clock, className: "bg-amber-500/10 text-amber-400 border-amber-500/30" },
-    nao_iniciada: { label: "Não iniciada", icon: Circle, className: "bg-muted/30 text-muted-foreground border-border" },
-  }[status]
 
   async function handleSave() {
     setSavingLink(true)
@@ -320,14 +275,8 @@ function TarefaRow({ tarefa, ev, linkOverride, isAdmin, onSaveLink }: TarefaRowP
     <div className="p-4 rounded-xl bg-muted/10 border border-border/50 hover:border-primary/20 transition-all">
       <div className="flex items-start gap-3 flex-wrap md:flex-nowrap">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <h4 className="font-semibold text-sm text-foreground">{tarefa.titulo}</h4>
-            <Badge variant="outline" className={`text-[9px] font-bold uppercase tracking-wider rounded-md px-2 py-0.5 border ${statusConfig.className}`}>
-              <statusConfig.icon className="size-3 mr-1" />
-              {statusConfig.label}
-            </Badge>
-          </div>
-          {tarefa.descricao && <p className="text-xs text-muted-foreground leading-relaxed">{tarefa.descricao}</p>}
+          <h4 className="font-semibold text-sm text-foreground">{tarefa.titulo}</h4>
+          {tarefa.descricao && <p className="text-xs text-muted-foreground leading-relaxed mt-1">{tarefa.descricao}</p>}
         </div>
 
         <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">

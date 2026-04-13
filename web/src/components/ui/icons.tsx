@@ -226,6 +226,10 @@ export const MapIcon = (props: IconProps) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"><path d="M3 7v13l6-3l6 3l6-3V4l-6 3l-6-3l-6 3"/><path d="M9 4v13m6-10v13"/></g></svg>
 );
 
+export const AlertTriangleIcon = (props: IconProps) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v4m0 4v.01M10.24 3.957L1.515 19a2 2 0 0 0 1.73 3h17.51a2 2 0 0 0 1.73-3L13.76 3.957a2 2 0 0 0-3.52 0"/></svg>
+);
+
 export const ChevronUp2Icon = (props: IconProps) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m6 15l6-6l6 6"/></svg>
 );

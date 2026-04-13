@@ -1,25 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   ArrowLeftIcon as ArrowLeft,
-  LinkIcon as LinkI,
   UploadIcon as Upload,
   ExternalLinkIcon as ExternalLink,
   CheckCircle2Icon as CheckCircle2,
-  ClockIcon as Clock,
-  CircleIcon as Circle,
+  CheckIcon as Check,
+  Trash2Icon as Trash2,
+  AlertTriangleIcon as AlertTriangle,
   MapIcon as Map,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
-import { TRILHA_IA, type Passo, type Tarefa } from "@/data/trilha-ia"
+import { PILARES, type Pilar, type Campo } from "@/data/trilha-ia"
 
 const STORAGE_BUCKET = "trilha-evidencias"
 
@@ -30,18 +28,20 @@ interface TrilhaEvidenciasPageProps {
 }
 
 interface EvidenciaRow {
-  tarefa_id: string
+  id: string
+  id_cliente: string
+  pilar_id: string
+  campos: Record<string, string>
+  arquivos: Array<{ field_key: string; url: string; name: string }>
   comentario: string | null
-  evidencia_link: string | null
-  evidencia_url: string | null
-  concluida: boolean
+  created_at: string
 }
 
 export default function TrilhaEvidenciasPage({ session, clientId, embedded }: TrilhaEvidenciasPageProps) {
   const navigate = useNavigate()
   const [resolvedClientId, setResolvedClientId] = useState<string | undefined>(clientId || session?.user?.id)
   const [loading, setLoading] = useState(true)
-  const [rows, setRows] = useState<Record<string, EvidenciaRow>>({})
+  const [rows, setRows] = useState<EvidenciaRow[]>([])
 
   useEffect(() => {
     if (resolvedClientId) return
@@ -57,49 +57,51 @@ export default function TrilhaEvidenciasPage({ session, clientId, embedded }: Tr
     let cancelled = false
     async function fetchRows() {
       const { data } = await supabase
-        .from("cliente_trilha_evidencias")
-        .select("tarefa_id,comentario,evidencia_link,evidencia_url,concluida")
+        .from("cliente_pilar_evidencias")
+        .select("*")
         .eq("id_cliente", resolvedClientId)
-      if (cancelled) return
-      const map: Record<string, EvidenciaRow> = {}
-      ;(data || []).forEach((r: EvidenciaRow) => { map[r.tarefa_id] = r })
-      setRows(map)
-      setLoading(false)
+        .order("created_at", { ascending: true })
+      if (!cancelled) {
+        setRows((data || []) as EvidenciaRow[])
+        setLoading(false)
+      }
     }
     fetchRows()
     return () => { cancelled = true }
   }, [resolvedClientId])
 
-  const totals = useMemo(() => {
-    let total = 0
-    let done = 0
-    TRILHA_IA.passos.forEach(p => p.tarefas.forEach(t => {
-      total++
-      if (rows[t.id]?.concluida) done++
-    }))
-    return { total, done, pct: total > 0 ? Math.round((done / total) * 100) : 0 }
+  const rowsByPilar = useMemo(() => {
+    const map: Record<string, EvidenciaRow[]> = {}
+    rows.forEach(r => {
+      if (!map[r.pilar_id]) map[r.pilar_id] = []
+      map[r.pilar_id].push(r)
+    })
+    return map
   }, [rows])
 
-  async function upsertRow(tarefaId: string, patch: Partial<EvidenciaRow>) {
-    if (!resolvedClientId) return
-    const current = rows[tarefaId] ?? { tarefa_id: tarefaId, comentario: null, evidencia_link: null, evidencia_url: null, concluida: false }
-    const next: EvidenciaRow = { ...current, ...patch }
-    setRows(prev => ({ ...prev, [tarefaId]: next }))
-    await supabase.from("cliente_trilha_evidencias").upsert({
-      id_cliente: resolvedClientId,
-      tarefa_id: tarefaId,
-      comentario: next.comentario,
-      evidencia_link: next.evidencia_link,
-      evidencia_url: next.evidencia_url,
-      concluida: next.concluida,
-      updated_at: new Date().toISOString(),
-    })
+  const totals = useMemo(() => {
+    const pilaresComEvidencia = PILARES.filter(p => (rowsByPilar[p.id]?.length ?? 0) > 0).length
+    return {
+      total: PILARES.length,
+      done: pilaresComEvidencia,
+      pct: Math.round((pilaresComEvidencia / PILARES.length) * 100),
+    }
+  }, [rowsByPilar])
+
+  function handleSaved(newRow: EvidenciaRow) {
+    setRows(prev => [...prev, newRow])
+  }
+
+  async function handleDelete(row: EvidenciaRow) {
+    if (!confirm("Remover esta evidência?")) return
+    await supabase.from("cliente_pilar_evidencias").delete().eq("id", row.id)
+    setRows(prev => prev.filter(r => r.id !== row.id))
   }
 
   if (loading) {
     return (
       <div className="space-y-4">
-        {[1, 2, 3].map(i => <div key={i} className="h-40 rounded-2xl bg-card/40 animate-pulse" />)}
+        {[1, 2, 3].map(i => <div key={i} className="h-60 rounded-2xl bg-card/40 animate-pulse" />)}
       </div>
     )
   }
@@ -129,7 +131,7 @@ export default function TrilhaEvidenciasPage({ session, clientId, embedded }: Tr
           </div>
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground">Evidências</h1>
-            <p className="text-muted-foreground font-medium text-sm">{TRILHA_IA.titulo}</p>
+            <p className="text-muted-foreground font-medium text-sm">Envie as evidências de implementação por pilar</p>
           </div>
         </div>
       </motion.div>
@@ -138,7 +140,7 @@ export default function TrilhaEvidenciasPage({ session, clientId, embedded }: Tr
         <div className="flex-1">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Progresso Atual</span>
-            <span className="text-sm font-bold text-foreground">{totals.done} de {totals.total}</span>
+            <span className="text-sm font-bold text-foreground">{totals.done} de {totals.total} pilares enviados</span>
           </div>
           <div className="h-2 rounded-full bg-muted overflow-hidden">
             <motion.div
@@ -151,233 +153,357 @@ export default function TrilhaEvidenciasPage({ session, clientId, embedded }: Tr
         <div className="text-3xl font-bold tracking-tight text-primary shrink-0">{totals.pct}%</div>
       </div>
 
-      <div className="space-y-8">
-        {TRILHA_IA.passos.map(passo => (
-          <PassoSection key={passo.id} passo={passo} rows={rows} onUpsert={upsertRow} clientId={resolvedClientId} />
+      <div className="space-y-6">
+        {PILARES.map(pilar => (
+          <PilarCard
+            key={pilar.id}
+            pilar={pilar}
+            rows={rowsByPilar[pilar.id] ?? []}
+            clientId={resolvedClientId}
+            onSaved={handleSaved}
+            onDelete={handleDelete}
+          />
         ))}
       </div>
     </div>
   )
 }
 
-function PassoSection({
-  passo,
+function PilarCard({
+  pilar,
   rows,
-  onUpsert,
   clientId,
+  onSaved,
+  onDelete,
 }: {
-  passo: Passo
-  rows: Record<string, EvidenciaRow>
-  onUpsert: (id: string, patch: Partial<EvidenciaRow>) => Promise<void>
+  pilar: Pilar
+  rows: EvidenciaRow[]
   clientId: string | undefined
+  onSaved: (row: EvidenciaRow) => void
+  onDelete: (row: EvidenciaRow) => void
 }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="size-8 rounded-lg bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-sm shrink-0">
-          {passo.numero}
-        </div>
-        <h2 className="text-lg font-bold text-foreground">Passo {passo.numero} — {passo.titulo}</h2>
-      </div>
-      <div className="space-y-3 pl-11">
-        {passo.tarefas.map(t => (
-          <TarefaEvidenciaCard key={t.id} tarefa={t} row={rows[t.id]} onUpsert={onUpsert} clientId={clientId} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function TarefaEvidenciaCard({
-  tarefa,
-  row,
-  onUpsert,
-  clientId,
-}: {
-  tarefa: Tarefa
-  row?: EvidenciaRow
-  onUpsert: (id: string, patch: Partial<EvidenciaRow>) => Promise<void>
-  clientId: string | undefined
-}) {
-  const [comentario, setComentario] = useState(row?.comentario ?? "")
-  const [link, setLink] = useState(row?.evidencia_link ?? "")
-  const [file, setFile] = useState<File | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Sync local state when the row changes from parent (e.g. after upsert on another tarefa)
-  useEffect(() => {
-    setComentario(row?.comentario ?? "")
-    setLink(row?.evidencia_link ?? "")
-  }, [row?.tarefa_id, row?.comentario, row?.evidencia_link])
-
-  // Debounced comentário autosave
-  function onComentarioChange(v: string) {
-    setComentario(v)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      onUpsert(tarefa.id, { comentario: v || null })
-    }, 1200)
-  }
-
-  async function uploadFile(): Promise<string | null> {
-    if (!file || !clientId) return null
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
-    const path = `${clientId}/${Date.now()}-${crypto.randomUUID()}-${safeName}`
-    const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
-      contentType: file.type || undefined,
-      upsert: false,
-    })
-    if (error) {
-      setUploadError(`Falha no upload: ${error.message}`)
-      return null
-    }
-    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path)
-    return data.publicUrl
-  }
-
-  async function handleSubmit() {
-    setSaving(true)
-    setUploadError(null)
-    let evidenciaUrl = row?.evidencia_url ?? null
-    if (file) {
-      const uploaded = await uploadFile()
-      if (uploaded) evidenciaUrl = uploaded
-    }
-    await onUpsert(tarefa.id, {
-      comentario: comentario || null,
-      evidencia_link: link.trim() || null,
-      evidencia_url: evidenciaUrl,
-      concluida: true,
-    })
-    setFile(null)
-    setSaving(false)
-  }
-
-  async function toggleConcluida(v: boolean) {
-    await onUpsert(tarefa.id, { concluida: v })
-  }
-
-  const concluida = row?.concluida ?? false
-  const started = !!row && (row.comentario || row.evidencia_link || row.evidencia_url)
-  const status = concluida ? "concluida" : started ? "em_andamento" : "nao_iniciada"
-  const statusConfig = {
-    concluida: { label: "Concluída", icon: CheckCircle2, className: "bg-primary/10 text-primary border-primary/30" },
-    em_andamento: { label: "Em andamento", icon: Clock, className: "bg-amber-500/10 text-amber-400 border-amber-500/30" },
-    nao_iniciada: { label: "Não iniciada", icon: Circle, className: "bg-muted/30 text-muted-foreground border-border" },
-  }[status]
+  const hasRows = rows.length > 0
+  const disabled = !pilar.permiteMultiplas && hasRows
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`rounded-2xl border p-5 transition-all ${concluida ? "border-primary/30 bg-primary/[0.03]" : "border-border bg-card/20 hover:border-primary/20"}`}
+      className={`rounded-2xl border overflow-hidden transition-all ${hasRows ? "border-primary/30 bg-primary/[0.02]" : "border-border bg-card/20"}`}
     >
-      <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-base text-foreground">{tarefa.titulo}</h3>
-          {tarefa.descricao && <p className="text-xs text-muted-foreground mt-1">{tarefa.descricao}</p>}
+      {/* Header */}
+      <div className="p-5 border-b border-border/50 bg-muted/5">
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 p-2 rounded-lg">
+            <Map className="size-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-bold text-lg text-foreground">{pilar.titulo}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">{pilar.subtitulo}</p>
+          </div>
+          {hasRows && (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 border border-primary/30 text-primary text-[10px] font-bold uppercase tracking-wider">
+              <CheckCircle2 className="size-3" />
+              {rows.length} enviada{rows.length > 1 ? "s" : ""}
+            </div>
+          )}
         </div>
-        <Badge variant="outline" className={`text-[9px] font-bold uppercase tracking-wider rounded-md px-2 py-0.5 border ${statusConfig.className} shrink-0`}>
-          <statusConfig.icon className="size-3 mr-1" />
-          {statusConfig.label}
-        </Badge>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-2">
-        {/* Left: O que você fará */}
-        <div className="rounded-xl bg-muted/10 border border-border/50 p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="size-4 text-primary" />
-            <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">O que você fará</Label>
-          </div>
-          {tarefa.subTarefas && tarefa.subTarefas.length > 0 ? (
+      <div className="grid md:grid-cols-[380px_1fr] gap-0">
+        {/* LEFT — O que enviar + exemplo */}
+        <div className="p-5 bg-muted/5 border-r border-border/50 space-y-4">
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground mb-3">O que enviar:</h4>
             <ul className="space-y-2">
-              {tarefa.subTarefas.map((item, i) => (
+              {pilar.oQueEnviar.map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-xs text-foreground/90 leading-relaxed">
-                  <Circle className="size-3.5 mt-0.5 text-primary shrink-0" />
+                  <CheckCircle2 className="size-3.5 mt-0.5 text-primary shrink-0" />
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="text-xs text-muted-foreground italic">Sem instruções predefinidas para esta tarefa.</p>
-          )}
-          {tarefa.linkPadrao && (
-            <a
-              href={tarefa.linkPadrao}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 mt-2 text-[11px] font-bold uppercase tracking-wider text-primary hover:underline"
-            >
-              <ExternalLink className="size-3" /> Acessar material
-            </a>
-          )}
-        </div>
-
-        {/* Right: Evidência */}
-        <div className="rounded-xl bg-muted/10 border border-border/50 p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <LinkI className="size-4 text-primary" />
-            <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">Evidência</Label>
           </div>
 
-          <Textarea
-            placeholder={tarefa.exemploEvidencia || "Descreva como você executou esta tarefa e cole os links/evidências relevantes..."}
-            value={comentario}
-            onChange={(e) => onComentarioChange(e.target.value)}
-            className="min-h-[110px]"
-          />
-          <p className="text-[10px] text-muted-foreground italic">Autosalva ao parar de digitar.</p>
+          {pilar.permiteMultiplas && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/30 border border-border text-[11px] text-muted-foreground">
+              <span>📌 Você pode enviar mais de uma evidência para este pilar.</span>
+            </div>
+          )}
 
-          <div className="relative">
-            <LinkI className="absolute left-3.5 top-3 size-4 text-muted-foreground pointer-events-none" />
-            <Input
-              className="h-10 rounded-xl pl-10"
-              placeholder="Cole um link principal (opcional)"
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-            />
+          <div className="rounded-lg bg-muted/20 border border-border p-3 space-y-1">
+            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <span>💡</span> Exemplo de comentário:
+            </div>
+            <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+              {pilar.exemploComentario}
+            </p>
           </div>
 
-          <label className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-dashed border-border bg-background hover:bg-muted/20 hover:border-primary/30 transition-all cursor-pointer text-xs text-muted-foreground">
-            <Upload className="size-4" />
-            <span className="font-semibold truncate">{file ? file.name : "Anexar arquivo (opcional)"}</span>
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*,application/pdf,.doc,.docx"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          {row?.evidencia_url && !file && (
-            <a href={row.evidencia_url} target="_blank" rel="noreferrer" className="text-[11px] text-primary hover:underline inline-flex items-center gap-1">
-              <ExternalLink className="size-3" /> Arquivo enviado
-            </a>
-          )}
-          {uploadError && <p className="text-[11px] text-destructive">{uploadError}</p>}
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400">
+            <AlertTriangle className="size-3" />
+            Todos os campos são obrigatórios.
+          </div>
         </div>
-      </div>
 
-      <div className="flex items-center justify-between gap-3 mt-5 pt-4 border-t border-border/50 flex-wrap">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={concluida}
-            onCheckedChange={(v) => toggleConcluida(!!v)}
-          />
-          <span className="text-xs font-bold uppercase tracking-wider text-foreground">Marcar como concluída</span>
-        </label>
-        <Button
-          className="h-10 gap-2 rounded-xl px-5"
-          onClick={handleSubmit}
-          disabled={saving || (!comentario.trim() && !link.trim() && !file && !row?.evidencia_url)}
-        >
-          <CheckCircle2 className="size-4" />
-          <span className="font-bold uppercase tracking-wider text-[11px]">{saving ? "Enviando..." : "Enviar Evidência"}</span>
-        </Button>
+        {/* RIGHT — Form + lista */}
+        <div className="p-5 space-y-5">
+          {hasRows && (
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Evidências enviadas</Label>
+              <div className="space-y-2">
+                {rows.map((row, i) => (
+                  <EvidenciaListItem key={row.id} row={row} pilar={pilar} index={i + 1} onDelete={onDelete} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!disabled && (
+            <PilarForm pilar={pilar} clientId={clientId} onSaved={onSaved} showHeader={hasRows} />
+          )}
+        </div>
       </div>
     </motion.div>
+  )
+}
+
+function EvidenciaListItem({
+  row,
+  pilar,
+  index,
+  onDelete,
+}: {
+  row: EvidenciaRow
+  pilar: Pilar
+  index: number
+  onDelete: (row: EvidenciaRow) => void
+}) {
+  const primeiroCampoText = pilar.campos.find(c => c.tipo === "text")?.key
+  const titulo = primeiroCampoText ? row.campos[primeiroCampoText] : `Evidência #${index}`
+  return (
+    <div className="flex items-center justify-between gap-2 p-3 rounded-xl border border-primary/20 bg-primary/[0.03]">
+      <div className="flex items-center gap-2 min-w-0">
+        <div className="size-7 rounded-md bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">
+          {index}
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-foreground truncate">{titulo || `Evidência #${index}`}</p>
+          {row.arquivos?.[0]?.url && (
+            <a href={row.arquivos[0].url} target="_blank" rel="noreferrer" className="text-[10px] text-primary hover:underline inline-flex items-center gap-0.5">
+              <ExternalLink className="size-2.5" /> arquivo
+            </a>
+          )}
+        </div>
+      </div>
+      <Button variant="ghost" size="icon" className="size-8 rounded-lg hover:bg-destructive/10 hover:text-destructive shrink-0" onClick={() => onDelete(row)}>
+        <Trash2 className="size-3.5" />
+      </Button>
+    </div>
+  )
+}
+
+function PilarForm({
+  pilar,
+  clientId,
+  onSaved,
+  showHeader,
+}: {
+  pilar: Pilar
+  clientId: string | undefined
+  onSaved: (row: EvidenciaRow) => void
+  showHeader: boolean
+}) {
+  const initialValues = useMemo(() => {
+    const v: Record<string, string> = {}
+    pilar.campos.forEach(c => { v[c.key] = "" })
+    return v
+  }, [pilar.campos])
+
+  const [values, setValues] = useState<Record<string, string>>(initialValues)
+  const [files, setFiles] = useState<Record<string, File | null>>({})
+  const [comentario, setComentario] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function isValid(): boolean {
+    for (const c of pilar.campos) {
+      if (c.obrigatorio) {
+        if (c.tipo === "file") {
+          if (!files[c.key]) return false
+        } else {
+          if (!values[c.key]?.trim()) return false
+        }
+      }
+    }
+    return !!comentario.trim()
+  }
+
+  async function uploadOne(key: string, file: File): Promise<{ field_key: string; url: string; name: string } | null> {
+    if (!clientId) return null
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
+    const path = `${clientId}/${Date.now()}-${crypto.randomUUID()}-${safeName}`
+    const { error: upErr } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
+      contentType: file.type || undefined,
+      upsert: false,
+    })
+    if (upErr) {
+      setError(`Falha no upload de ${file.name}: ${upErr.message}`)
+      return null
+    }
+    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path)
+    return { field_key: key, url: data.publicUrl, name: file.name }
+  }
+
+  async function handleSubmit() {
+    if (!clientId || !isValid()) return
+    setSaving(true)
+    setError(null)
+
+    const uploaded: Array<{ field_key: string; url: string; name: string }> = []
+    for (const [key, file] of Object.entries(files)) {
+      if (!file) continue
+      const res = await uploadOne(key, file)
+      if (res) uploaded.push(res)
+      else { setSaving(false); return }
+    }
+
+    const payload = {
+      id_cliente: clientId,
+      pilar_id: pilar.id,
+      campos: values,
+      arquivos: uploaded,
+      comentario: comentario.trim(),
+    }
+
+    const { data, error: dbErr } = await supabase
+      .from("cliente_pilar_evidencias")
+      .insert(payload)
+      .select()
+      .single()
+
+    if (dbErr || !data) {
+      setError(dbErr?.message || "Falha ao salvar evidência")
+      setSaving(false)
+      return
+    }
+
+    onSaved(data as EvidenciaRow)
+    setValues(initialValues)
+    setFiles({})
+    setComentario("")
+    setSaving(false)
+  }
+
+  return (
+    <div className="space-y-4">
+      {showHeader && (
+        <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          {pilar.permiteMultiplas ? "Adicionar nova evidência" : "Nova evidência"}
+        </Label>
+      )}
+
+      {pilar.campos.map(campo => (
+        <CampoField
+          key={campo.key}
+          campo={campo}
+          value={values[campo.key] || ""}
+          file={files[campo.key] || null}
+          onValueChange={(v) => setValues(prev => ({ ...prev, [campo.key]: v }))}
+          onFileChange={(f) => setFiles(prev => ({ ...prev, [campo.key]: f }))}
+        />
+      ))}
+
+      <div className="space-y-2">
+        <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          Comentário / Depoimento <span className="text-primary">*</span>
+        </Label>
+        <Textarea
+          placeholder={pilar.exemploComentario}
+          value={comentario}
+          onChange={(e) => setComentario(e.target.value)}
+          className="min-h-[110px]"
+        />
+        {pilar.comentarioHelp && (
+          <p className="text-[10px] text-muted-foreground italic">{pilar.comentarioHelp}</p>
+        )}
+      </div>
+
+      {error && <p className="text-[11px] text-destructive">{error}</p>}
+
+      <Button
+        className="w-full h-11 gap-2 rounded-xl"
+        onClick={handleSubmit}
+        disabled={saving || !isValid()}
+      >
+        <Check className="size-4" />
+        <span className="font-bold uppercase tracking-wider text-[11px]">
+          {saving ? "Enviando..." : "Enviar Evidência"}
+        </span>
+      </Button>
+    </div>
+  )
+}
+
+function CampoField({
+  campo,
+  value,
+  file,
+  onValueChange,
+  onFileChange,
+}: {
+  campo: Campo
+  value: string
+  file: File | null
+  onValueChange: (v: string) => void
+  onFileChange: (f: File | null) => void
+}) {
+  const labelNode = (
+    <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+      {campo.label}
+      {campo.opcional && <span className="text-muted-foreground/70 font-normal normal-case ml-1">(opcional)</span>}
+      {campo.obrigatorio && <span className="text-primary ml-1">*</span>}
+    </Label>
+  )
+
+  if (campo.tipo === "textarea") {
+    return (
+      <div className="space-y-2">
+        {labelNode}
+        <Textarea placeholder={campo.placeholder} value={value} onChange={(e) => onValueChange(e.target.value)} />
+      </div>
+    )
+  }
+
+  if (campo.tipo === "file") {
+    return (
+      <div className="space-y-2">
+        {labelNode}
+        <label className="flex items-center justify-center gap-2 h-11 px-4 rounded-xl border border-dashed border-border bg-muted/10 hover:bg-muted/20 hover:border-primary/30 transition-all cursor-pointer text-xs text-muted-foreground">
+          <Upload className="size-4" />
+          <span className="font-semibold truncate">{file ? file.name : "Escolher arquivo"}</span>
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*,application/pdf,.doc,.docx"
+            onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
+          />
+        </label>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {labelNode}
+      <Input
+        type={campo.tipo === "url" ? "url" : "text"}
+        className="h-11 rounded-xl"
+        placeholder={campo.placeholder}
+        value={value}
+        onChange={(e) => onValueChange(e.target.value)}
+      />
+    </div>
   )
 }
