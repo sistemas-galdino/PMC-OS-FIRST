@@ -112,10 +112,16 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
             .from('reunioes_mentoria_new')
             .select('acoes_cliente')
             .eq('id_cliente', clientEntry.id_cliente)
-            .order('data_reunioes', { ascending: false })
+            .order('data_reuniao', { ascending: false })
             .limit(5)
 
           const flatActions = meetings?.flatMap(m => Array.isArray(m.acoes_cliente) ? m.acoes_cliente : []) || []
+          const normalized = flatActions.map((a: any) => {
+            const raw = typeof a === 'string' ? { acao: a } : a
+            const statusLower = (raw.status || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            const done = raw.done === true || statusLower.includes('conclu') || statusLower === 'done'
+            return { text: raw.acao || raw.text || '', done }
+          }).filter((a: { text: string }) => a.text.length > 0)
 
           const resolvedMetas = {
             faturamento_anual_objetivo: goals?.faturamento_anual_objetivo ?? 0,
@@ -129,7 +135,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
             meta_2026: resolvedMetas.meta_2026,
             receita_mensal: resolvedMetas.faturamento_mensal_objetivo,
             colaboradores: resolvedMetas.colaboradores_total,
-            acoes: flatActions,
+            acoes: normalized,
             nivel_multiplicador: clientEntry.nivel_multiplicador ?? null,
           })
           setFormMetas(resolvedMetas)
@@ -402,9 +408,9 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
               </div>
             </CardHeader>
             <CardContent className="pt-6 space-y-3 px-6">
-              {data.acoes.map((acao: any, index: number) => (
-                <motion.div 
-                  key={index} 
+              {data.acoes.slice(0, 5).map((acao: any, index: number) => (
+                <motion.div
+                  key={index}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 + (index * 0.1) }}
@@ -419,12 +425,16 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                       <Circle className="size-4 text-muted-foreground/30 shrink-0" />
                     </div>
                   )}
-                  <span className={`text-[13px] font-medium leading-snug ${acao.done ? 'line-through text-muted-foreground/60' : 'text-foreground'}`}>
+                  <span className={`text-[13px] font-medium leading-snug line-clamp-2 ${acao.done ? 'line-through text-muted-foreground/60' : 'text-foreground'}`}>
                     {acao.text}
                   </span>
                 </motion.div>
               ))}
-              <Button variant="ghost" className="w-full text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5 mt-4">
+              <Button
+                variant="ghost"
+                className="w-full text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5 mt-4"
+                onClick={() => navigate('/acoes')}
+              >
                 Ver Todas as Ações
               </Button>
             </CardContent>
