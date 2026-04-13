@@ -206,7 +206,7 @@ function PassoCard({ passo, open, onToggle, links, isAdmin, onSaveLink }: PassoC
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-bold text-base text-foreground">Passo {passo.numero} — {passo.titulo}</h3>
+            <h3 className="font-bold text-base text-foreground">Etapa {passo.numero} — {passo.titulo}</h3>
           </div>
           {passo.descricao && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{passo.descricao}</p>}
         </div>
@@ -230,7 +230,7 @@ function PassoCard({ passo, open, onToggle, links, isAdmin, onSaveLink }: PassoC
             <div className="p-5 pt-0 space-y-3">
               {passo.descricao && (
                 <p className="text-sm text-muted-foreground pb-2 border-b border-border/50">
-                  {passo.descricao}
+                  <span className="font-bold text-foreground">Objetivo:</span> {passo.descricao}
                 </p>
               )}
               {passo.tarefas.map(t => (
@@ -290,7 +290,7 @@ function TarefaRow({ tarefa, linkOverride, isAdmin, onSaveLink }: TarefaRowProps
                   className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors"
                 >
                   <ExternalLink className="size-3.5" />
-                  Começar
+                  Assistir Aula
                 </a>
               ) : (
                 !isAdmin && <span className="text-[10px] text-muted-foreground italic">Sem link disponível</span>
