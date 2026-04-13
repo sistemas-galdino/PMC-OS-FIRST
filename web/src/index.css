@@ -115,3 +115,11 @@
     @apply text-3xl md:text-4xl lg:text-5xl;
   }
 }
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

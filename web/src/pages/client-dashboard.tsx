@@ -407,7 +407,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                 <CardDescription className="text-[11px] font-medium">{data.acoes.filter((a: any) => a.done).length}/{data.acoes.length} Tarefas Concluídas</CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 space-y-3 px-6 flex-1 overflow-y-auto">
+            <CardContent className="pt-6 space-y-3 px-6 flex-1 overflow-y-auto scrollbar-hide">
               {data.acoes.slice(0, 5).map((acao: any, index: number) => (
                 <motion.div
                   key={index}
