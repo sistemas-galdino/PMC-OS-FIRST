@@ -54,7 +54,7 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
   const [showSheet, setShowSheet] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ nome: '', preco: 0, ticket_medio: 0, tipo: 'Recorrente' as 'Recorrente' | 'Avulso', vendas_mes: 0 })
+  const [form, setForm] = useState({ nome: '', preco: '', ticket_medio: '', tipo: 'Recorrente' as 'Recorrente' | 'Avulso', vendas_mes: '' })
 
   useEffect(() => {
     if (!resolvedClientId) {
@@ -79,13 +79,13 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
 
   function openNew() {
     setEditingProduct(null)
-    setForm({ nome: '', preco: 0, ticket_medio: 0, tipo: 'Recorrente', vendas_mes: 0 })
+    setForm({ nome: '', preco: '', ticket_medio: '', tipo: 'Recorrente', vendas_mes: '' })
     setShowSheet(true)
   }
 
   function openEdit(product: Product) {
     setEditingProduct(product)
-    setForm({ nome: product.nome, preco: product.preco, ticket_medio: product.ticket_medio ?? 0, tipo: product.tipo, vendas_mes: product.vendas_mes })
+    setForm({ nome: product.nome, preco: String(product.preco ?? ''), ticket_medio: product.ticket_medio != null ? String(product.ticket_medio) : '', tipo: product.tipo, vendas_mes: String(product.vendas_mes ?? '') })
     setShowSheet(true)
   }
 
@@ -97,10 +97,17 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
   async function handleSave() {
     if (!resolvedClientId) return
     setSaving(true)
+    const payload = {
+      nome: form.nome,
+      preco: Number(form.preco) || 0,
+      ticket_medio: form.ticket_medio === '' ? null : Number(form.ticket_medio),
+      tipo: form.tipo,
+      vendas_mes: Number(form.vendas_mes) || 0,
+    }
     if (editingProduct) {
       const { data, error } = await supabase
         .from('cliente_produtos')
-        .update(form)
+        .update(payload)
         .eq('id', editingProduct.id)
         .select()
         .single()
@@ -111,7 +118,7 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
     } else {
       const { data, error } = await supabase
         .from('cliente_produtos')
-        .insert([{ id_cliente: resolvedClientId, ...form }])
+        .insert([{ id_cliente: resolvedClientId, ...payload }])
         .select()
         .single()
       if (!error && data) {
@@ -292,7 +299,8 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
                 type="number"
                 className="h-11 rounded-xl"
                 value={form.preco}
-                onChange={(e) => setForm(prev => ({ ...prev, preco: Number(e.target.value) }))}
+                placeholder="0"
+                onChange={(e) => setForm(prev => ({ ...prev, preco: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
@@ -301,7 +309,8 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
                 type="number"
                 className="h-11 rounded-xl"
                 value={form.ticket_medio}
-                onChange={(e) => setForm(prev => ({ ...prev, ticket_medio: Number(e.target.value) }))}
+                placeholder="0"
+                onChange={(e) => setForm(prev => ({ ...prev, ticket_medio: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
@@ -322,7 +331,8 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
                 type="number"
                 className="h-11 rounded-xl"
                 value={form.vendas_mes}
-                onChange={(e) => setForm(prev => ({ ...prev, vendas_mes: Number(e.target.value) }))}
+                placeholder="0"
+                onChange={(e) => setForm(prev => ({ ...prev, vendas_mes: e.target.value }))}
               />
             </div>
           </div>
