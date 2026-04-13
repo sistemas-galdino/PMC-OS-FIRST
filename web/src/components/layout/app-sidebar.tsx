@@ -25,6 +25,7 @@ import {
   MegaphoneIcon as Megaphone,
   CheckSquareIcon as CheckSquare,
   BookOpenIcon as BookOpen,
+  TrophyIcon as Trophy,
 } from "@/components/ui/icons"
 import { supabase } from "@/lib/supabase"
 import { useLocation, useNavigate } from "react-router-dom"
@@ -58,6 +59,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Reuniões Galdino", icon: Calendar, url: "/reunioes-galdino" },
     { title: "Reuniões BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },
     { title: "Ações", icon: CheckSquare, url: "/acoes" },
+    { title: "Central de Vitórias", icon: Trophy, url: "/vitorias" },
     { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
     { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
   ]
