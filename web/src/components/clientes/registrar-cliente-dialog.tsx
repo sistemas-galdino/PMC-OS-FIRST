@@ -71,6 +71,8 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [emailDebug, setEmailDebug] = useState<string | null>(null)
+  const [emailSent, setEmailSent] = useState(false)
 
   const [produtoOptions, setProdutoOptions] = useState<string[]>([])
   const [canalOptions, setCanalOptions] = useState<string[]>([])
@@ -160,6 +162,8 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
 
         const data = await resp.json()
         if (!resp.ok) throw new Error(data.error || `Erro ${resp.status}`)
+        setEmailSent(!!data.email_sent)
+        setEmailDebug(data.email_debug ?? null)
         if (data.invite_link) setInviteLink(data.invite_link)
       }
 
@@ -181,6 +185,8 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
     setGerarLink(false)
     setSuccess(false)
     setInviteLink(null)
+    setEmailDebug(null)
+    setEmailSent(false)
     setError(null)
     onOpenChange(false)
     onSuccess()
@@ -203,8 +209,19 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
                 </svg>
               </div>
               <p className="font-bold text-foreground">Cliente cadastrado!</p>
-              {inviteLink ? (
+              {emailSent && !inviteLink ? (
                 <>
+                  <p className="text-sm text-muted-foreground">Convite enviado por e-mail.</p>
+                  <Button variant="outline" size="sm" onClick={resetAndClose}>Fechar</Button>
+                </>
+              ) : inviteLink ? (
+                <>
+                  {emailDebug && (
+                    <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-xl p-3 text-[11px] text-left">
+                      <p className="font-bold uppercase tracking-wider mb-1">E-mail não enviado</p>
+                      <p className="text-[11px] font-mono break-all">{emailDebug}</p>
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">Copie e envie o link abaixo para o cliente:</p>
                   <div
                     className="bg-muted/20 border border-border rounded-xl p-3 text-xs text-foreground break-all text-left select-all cursor-pointer"
@@ -213,9 +230,7 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
                     {inviteLink}
                   </div>
                   <p className="text-[10px] text-muted-foreground">Clique no link acima para copiar</p>
-                  <Button variant="outline" size="sm" onClick={resetAndClose}>
-                    Fechar
-                  </Button>
+                  <Button variant="outline" size="sm" onClick={resetAndClose}>Fechar</Button>
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">O cliente foi adicionado à lista.</p>
