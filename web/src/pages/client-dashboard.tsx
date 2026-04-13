@@ -61,6 +61,11 @@ function CountUp({ value, prefix = "", suffix = "" }: { value: number, prefix?: 
   return <span>{prefix}{displayValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{suffix}</span>
 }
 
+function scaleCurrency(value: number): { value: number; suffix: string } {
+  if (value >= 1_000_000) return { value: value / 1_000_000, suffix: ' mi' }
+  return { value: value / 1000, suffix: ' K' }
+}
+
 export default function ClientDashboard({ session, clientId }: ClientDashboardProps) {
   const navigate = useNavigate()
   const resolvedClientId = clientId || session?.user?.id
@@ -236,7 +241,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold tracking-tight mb-2">
-                <CountUp value={data.faturamento_anual / 1000000} prefix="R$ " suffix=" mi" />
+                {(() => { const s = scaleCurrency(data.faturamento_anual); return <CountUp value={s.value} prefix="R$ " suffix={s.suffix} /> })()}
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">Status Atual do Negócio</p>
             </CardContent>
@@ -253,7 +258,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold tracking-tight mb-2">
-                <CountUp value={data.meta_2026 / 1000000} prefix="R$ " suffix=" mi" />
+                {(() => { const s = scaleCurrency(data.meta_2026); return <CountUp value={s.value} prefix="R$ " suffix={s.suffix} /> })()}
               </div>
               <Badge variant="ghost" className="px-2 py-0.5 rounded-lg text-primary font-bold text-[10px]">
                 Faltam {(100-progress).toFixed(1)}% para o objetivo
@@ -272,7 +277,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold tracking-tight mb-2">
-                <CountUp value={data.receita_mensal / 1000} prefix="R$ " suffix=" mil" />
+                {(() => { const s = scaleCurrency(data.receita_mensal); return <CountUp value={s.value} prefix="R$ " suffix={s.suffix} /> })()}
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">Produtos & Recorrência</p>
             </CardContent>
@@ -377,7 +382,11 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                   )
                 })()}
                 <p className="text-[11px] font-medium text-muted-foreground leading-relaxed">
-                  Faltam <span className="text-foreground font-bold">R$ {((data.meta_2026 - data.faturamento_anual)/1000).toLocaleString('pt-BR')} mil</span> para<br/>atingir o próximo nível de escala.
+                  {(() => {
+                    const diff = Math.max(0, data.meta_2026 - data.faturamento_anual)
+                    const s = scaleCurrency(diff)
+                    return <>Faltam <span className="text-foreground font-bold">R$ {s.value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{s.suffix}</span> para<br/>atingir o próximo nível de escala.</>
+                  })()}
                 </p>
               </div>
             </CardContent>
