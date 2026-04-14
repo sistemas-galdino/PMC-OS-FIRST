@@ -156,6 +156,7 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
               nome: form.nome_cliente.trim(),
               nome_empresa: form.nome_empresa.trim(),
               email: form.email.trim(),
+              app_url: window.location.origin,
             }),
           }
         )
