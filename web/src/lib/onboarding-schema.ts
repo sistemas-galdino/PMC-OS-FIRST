@@ -46,29 +46,6 @@ export const step5Schema = z.object({
 })
 
 export const step6Schema = z.object({
-  tipo_pessoa: z.enum(['PF', 'PJ'], { message: 'Selecione PF ou PJ' }),
-  razao_social: z.string().optional(),
-  nacionalidade: z.string().min(2, 'Nacionalidade é obrigatória'),
-  email_representante: z.string().email('E-mail inválido'),
-  telefone_representante: z.string().min(14, 'Telefone é obrigatório'),
-  profissao: z.string().min(2, 'Profissão é obrigatória'),
-  cpf: z.string().optional(),
-  cnpj: z.string().optional(),
-}).superRefine((data, ctx) => {
-  if (data.tipo_pessoa === 'PF' && (!data.cpf || data.cpf.length < 14)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'CPF é obrigatório para Pessoa Física', path: ['cpf'] })
-  }
-  if (data.tipo_pessoa === 'PJ') {
-    if (!data.cnpj || data.cnpj.length < 18) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'CNPJ é obrigatório para Pessoa Jurídica', path: ['cnpj'] })
-    }
-    if (!data.razao_social || data.razao_social.length < 2) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Razão Social é obrigatória para Pessoa Jurídica', path: ['razao_social'] })
-    }
-  }
-})
-
-export const step7Schema = z.object({
   ia_kpis: z.boolean({ message: 'Responda esta pergunta' }),
   ia_dashboard: z.boolean({ message: 'Responda esta pergunta' }),
   ia_processos: z.boolean({ message: 'Responda esta pergunta' }),
@@ -78,7 +55,7 @@ export const step7Schema = z.object({
   ia_outro: z.string().optional(),
 })
 
-export const stepSchemas = [step1Schema, step2Schema, step3Schema, step4Schema, step5Schema, step6Schema, step7Schema] as const
+export const stepSchemas = [step1Schema, step2Schema, step3Schema, step4Schema, step5Schema, step6Schema] as const
 
 export const STEP_TITLES = [
   'Dados do Responsável',
@@ -86,7 +63,6 @@ export const STEP_TITLES = [
   'Estrutura da Empresa',
   'Diagnóstico Empresarial',
   'Expectativas no PMC',
-  'Dados para Contrato',
   'Maturidade em IA',
 ] as const
 
@@ -127,15 +103,6 @@ export type OnboardingFormData = {
   resultado_final: string
   expectativa_galdino: string
   // Step 6
-  tipo_pessoa: 'PF' | 'PJ'
-  razao_social: string
-  nacionalidade: string
-  email_representante: string
-  telefone_representante: string
-  profissao: string
-  cpf: string
-  cnpj: string
-  // Step 7
   ia_kpis: boolean
   ia_dashboard: boolean
   ia_processos: boolean

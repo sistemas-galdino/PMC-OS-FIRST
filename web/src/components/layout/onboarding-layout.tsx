@@ -9,7 +9,7 @@ interface OnboardingLayoutProps {
   totalSteps?: number
 }
 
-export function OnboardingLayout({ children, currentStep, totalSteps = 7 }: OnboardingLayoutProps) {
+export function OnboardingLayout({ children, currentStep, totalSteps = 6 }: OnboardingLayoutProps) {
   const progress = (currentStep / totalSteps) * 100
 
   return (

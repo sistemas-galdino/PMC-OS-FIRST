@@ -10,7 +10,6 @@ import { StepDadosNegocio } from "@/components/onboarding/step-dados-negocio"
 import { StepEstruturaEmpresa } from "@/components/onboarding/step-estrutura-empresa"
 import { StepDiagnostico } from "@/components/onboarding/step-diagnostico"
 import { StepExpectativas } from "@/components/onboarding/step-expectativas"
-import { StepDadosContrato } from "@/components/onboarding/step-dados-contrato"
 import { StepMaturidadeIA } from "@/components/onboarding/step-maturidade-ia"
 import { stepSchemas, type OnboardingFormData } from "@/lib/onboarding-schema"
 import { motion, AnimatePresence } from "framer-motion"
@@ -95,34 +94,10 @@ export default function CadastroPage({ session }: Props) {
   const handleNext = async () => {
     const schema = stepSchemas[currentStep - 1]
     const fields = Object.keys(schema.shape || {}) as (keyof OnboardingFormData)[]
+    const valid = await trigger(fields)
+    if (!valid) return
 
-    // For step 6 with superRefine, validate differently
     if (currentStep === 6) {
-      const values = getValues()
-      const step6Data = {
-        tipo_pessoa: values.tipo_pessoa,
-        razao_social: values.razao_social,
-        nacionalidade: values.nacionalidade,
-        email_representante: values.email_representante,
-        telefone_representante: values.telefone_representante,
-        profissao: values.profissao,
-        cpf: values.cpf,
-        cnpj: values.cnpj,
-      }
-      const result = stepSchemas[5].safeParse(step6Data)
-      if (!result.success) {
-        for (const issue of result.error.issues) {
-          const path = issue.path[0] as keyof OnboardingFormData
-          form.setError(path, { message: issue.message })
-        }
-        return
-      }
-    } else {
-      const valid = await trigger(fields)
-      if (!valid) return
-    }
-
-    if (currentStep === 7) {
       await handleSubmit()
       return
     }
@@ -205,7 +180,7 @@ export default function CadastroPage({ session }: Props) {
 
   if (submitted) {
     return (
-      <OnboardingLayout currentStep={7}>
+      <OnboardingLayout currentStep={6}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -258,8 +233,7 @@ export default function CadastroPage({ session }: Props) {
               {currentStep === 3 && <StepEstruturaEmpresa errors={errors} setValue={setValue} watch={watch} />}
               {currentStep === 4 && <StepDiagnostico register={register} errors={errors} />}
               {currentStep === 5 && <StepExpectativas register={register} errors={errors} setValue={setValue} watch={watch} />}
-              {currentStep === 6 && <StepDadosContrato register={register} errors={errors} setValue={setValue} watch={watch} />}
-              {currentStep === 7 && <StepMaturidadeIA errors={errors} setValue={setValue} watch={watch} />}
+              {currentStep === 6 && <StepMaturidadeIA errors={errors} setValue={setValue} watch={watch} />}
             </CardContent>
           </Card>
 
@@ -283,7 +257,7 @@ export default function CadastroPage({ session }: Props) {
                   <div className="size-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                   Salvando...
                 </div>
-              ) : currentStep === 7 ? 'Finalizar Cadastro' : 'Salvar e Continuar'}
+              ) : currentStep === 6 ? 'Finalizar Cadastro' : 'Salvar e Continuar'}
             </Button>
           </div>
         </motion.div>
