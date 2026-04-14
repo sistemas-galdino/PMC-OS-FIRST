@@ -62,6 +62,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Ações", icon: CheckSquare, url: "/acoes" },
     { title: "Trilhas", icon: MapTrilha, url: "/trilhas" },
     { title: "Central de Vitórias", icon: Trophy, url: "/vitorias" },
+    { title: "Meu Time", icon: Users, url: "/meu-time" },
     { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
     { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
   ]

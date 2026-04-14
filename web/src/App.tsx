@@ -25,6 +25,7 @@ import CalendarioEncontrosPage from "@/pages/calendario-encontros"
 import ConfiguracoesPage from "@/pages/configuracoes"
 import AgendarPage from "@/pages/agendar"
 import VitoriasPage from "@/pages/vitorias"
+import MeuTimePage from "@/pages/meu-time"
 import TrilhasPage from "@/pages/trilhas"
 import TrilhaEvidenciasPage from "@/pages/trilha-evidencias"
 import type { Session } from "@supabase/supabase-js"
@@ -207,6 +208,7 @@ function App() {
                     <Route path="/configuracoes" element={<ConfiguracoesPage />} />
                     <Route path="/agendar" element={<AgendarPage />} />
                     <Route path="/vitorias" element={<VitoriasPage session={session} />} />
+                    <Route path="/meu-time" element={<MeuTimePage session={session} />} />
                     <Route path="/trilhas" element={<TrilhasPage session={session} />} />
                     <Route path="/trilhas/evidencias" element={<TrilhaEvidenciasPage session={session} />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
