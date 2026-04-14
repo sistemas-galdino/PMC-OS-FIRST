@@ -180,7 +180,7 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
     setShowDialog(true)
   }
 
-  const isValid = () => form.nome.trim() && form.cargo.trim() && form.setor
+  const isValid = () => form.nome.trim() && form.cargo.trim() && form.whatsapp.trim() && form.setor
 
   async function handleSave() {
     if (!resolvedClientId || !isValid()) return
@@ -404,26 +404,26 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
           </DialogHeader>
           <div className="space-y-3 pt-2">
             <Input
-              placeholder="Nome completo"
+              placeholder="Nome completo *"
               value={form.nome}
               onChange={(e) => setForm(p => ({ ...p, nome: e.target.value }))}
               className="h-11 rounded-xl bg-muted/10"
             />
             <Input
-              placeholder="Cargo"
+              placeholder="Cargo *"
               value={form.cargo}
               onChange={(e) => setForm(p => ({ ...p, cargo: e.target.value }))}
               className="h-11 rounded-xl bg-muted/10"
             />
             <Input
-              placeholder="Contato WhatsApp — (85) 99999-9999"
+              placeholder="Contato WhatsApp * — (85) 99999-9999"
               value={form.whatsapp}
               onChange={(e) => setForm(p => ({ ...p, whatsapp: maskWhatsapp(e.target.value) }))}
               className="h-11 rounded-xl bg-muted/10"
             />
             <Select value={form.setor} onValueChange={(v) => setForm(p => ({ ...p, setor: v }))}>
               <SelectTrigger className="h-11 rounded-xl bg-muted/10">
-                <SelectValue placeholder="Selecione o setor" />
+                <SelectValue placeholder="Selecione o setor *" />
               </SelectTrigger>
               <SelectContent>
                 {SETORES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
