@@ -28,6 +28,7 @@ import {
   SettingsIcon as Cog,
   Building2Icon as Building,
   FilterIcon as Filter,
+  MessageCircleIcon as MessageCircle,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion, AnimatePresence } from "framer-motion"
@@ -599,10 +600,29 @@ function ColaboradorCard({ c, onEdit, onDelete }: { c: Colaborador; onEdit: (c: 
               )}
             </div>
           )}
+          {c.whatsapp && (
+            <a
+              href={whatsappLink(c.whatsapp)}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="mt-2 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-[#25D36640] bg-[#25D36615] text-[#25D366] hover:bg-[#25D36625] transition-colors"
+              title={`Chamar ${c.nome} no WhatsApp`}
+            >
+              <MessageCircle className="size-3" />
+              WhatsApp
+            </a>
+          )}
         </div>
       </div>
     </motion.div>
   )
+}
+
+function whatsappLink(raw: string): string {
+  const digits = raw.replace(/\D/g, "")
+  const withCountry = digits.startsWith("55") ? digits : `55${digits}`
+  return `https://wa.me/${withCountry}`
 }
 
 // suppress unused import warning for X if unused
