@@ -79,6 +79,7 @@ const emptyForm = {
   titulo: "",
   area: "",
   origem: "",
+  origem_outro: "",
   gargalo_antes: "",
   o_que_fez: "",
   como_esta_agora: "",
@@ -137,7 +138,8 @@ export default function VitoriasPage({ session, clientId }: VitoriasPageProps) {
     setForm({
       titulo: v.titulo,
       area: v.area,
-      origem: v.origem,
+      origem: ORIGENS.includes(v.origem) ? v.origem : "Outro",
+      origem_outro: ORIGENS.includes(v.origem) ? "" : v.origem,
       gargalo_antes: v.gargalo_antes,
       o_que_fez: v.o_que_fez,
       como_esta_agora: v.como_esta_agora,
@@ -160,7 +162,8 @@ export default function VitoriasPage({ session, clientId }: VitoriasPageProps) {
   }
 
   function isValid(): boolean {
-    return !!(form.titulo && form.area && form.origem && form.gargalo_antes && form.o_que_fez && form.como_esta_agora && form.data_vitoria)
+    const origemOk = form.origem && (form.origem !== "Outro" || form.origem_outro.trim().length > 0)
+    return !!(form.titulo && form.area && origemOk && form.gargalo_antes && form.o_que_fez && form.como_esta_agora && form.data_vitoria)
   }
 
   async function uploadFile(): Promise<string | null> {
@@ -193,7 +196,7 @@ export default function VitoriasPage({ session, clientId }: VitoriasPageProps) {
     const payload = {
       titulo: form.titulo.trim(),
       area: form.area,
-      origem: form.origem,
+      origem: form.origem === "Outro" ? form.origem_outro.trim() : form.origem,
       gargalo_antes: form.gargalo_antes.trim(),
       o_que_fez: form.o_que_fez.trim(),
       como_esta_agora: form.como_esta_agora.trim(),
@@ -355,6 +358,18 @@ export default function VitoriasPage({ session, clientId }: VitoriasPageProps) {
                     </Select>
                   </Field>
                 </div>
+
+                {form.origem === "Outro" && (
+                  <Field label="Qual foi a origem?" required>
+                    <Input
+                      className="h-11 rounded-xl"
+                      placeholder="Descreva a origem da vitória"
+                      value={form.origem_outro}
+                      onChange={(e) => setForm(p => ({ ...p, origem_outro: e.target.value }))}
+                      autoFocus
+                    />
+                  </Field>
+                )}
 
                 <Field label="Qual era o gargalo antes?" required>
                   <Textarea
