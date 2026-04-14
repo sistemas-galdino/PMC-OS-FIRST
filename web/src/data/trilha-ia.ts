@@ -63,7 +63,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Aula sobre o papel do Guardião da IA na empresa e como estruturar processos e a adoção de inteligência artificial.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5205146-organizacao-e-processo-o-guardiao-da-ia",
+            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5359814-como-estruturar-o-guardiao-da-ia-e-transformar-inteligencia-artificial-e",
         },
         {
           id: "p1-t2-encontro-multiplica-time-28-11",
