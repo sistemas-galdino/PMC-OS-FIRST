@@ -60,7 +60,18 @@ interface VitoriasPageProps {
 }
 
 const AREAS = ["Vendas", "Marketing", "Gestão", "Financeiro", "Produto", "Operações", "Pessoas", "Outros"]
-const ORIGENS = ["Mentoria", "Reunião com consultor", "Material do programa", "Networking", "Execução própria", "Outros"]
+const ORIGENS = [
+  "Reunião com Galdino",
+  "Reunião com Consultor",
+  "Multiplica Time",
+  "Multiplica Dono",
+  "Multiplica Case",
+  "Reunião com sua Sucesso do cliente",
+  "Black CRM",
+  "Aplicação com Inteligência Artificial",
+  "Conteúdos da área de membros",
+  "Outro",
+]
 
 const STORAGE_BUCKET = "vitorias-evidencias"
 
