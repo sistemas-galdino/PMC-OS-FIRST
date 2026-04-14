@@ -521,10 +521,18 @@ function VitoriaCard({ v, onEdit, onDelete, itemV }: { v: Vitoria; onEdit: (v: V
           </div>
         </CardHeader>
         <CardContent className="pt-5 space-y-4 flex-1 flex flex-col">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Resultado</p>
-          <p className="text-sm text-foreground/80 leading-relaxed line-clamp-3">
-            {v.como_esta_agora}
-          </p>
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gargalo antes</p>
+            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{v.gargalo_antes}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">O que você fez</p>
+            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{v.o_que_fez}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Resultado</p>
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{v.como_esta_agora}</p>
+          </div>
 
           {(valorDelta !== null || qtdDelta !== null) && (
             <div className="grid grid-cols-2 gap-2">
