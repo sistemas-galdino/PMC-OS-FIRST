@@ -118,6 +118,7 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
         const { error: insertError } = await supabase
           .from('clientes_entrada_new')
           .insert({
+            id_cliente: crypto.randomUUID(),
             nome_cliente: form.nome_cliente.trim(),
             nome_empresa: form.nome_empresa.trim() || null,
             nome_cliente_formatado: titleCase(form.nome_cliente.trim()),
