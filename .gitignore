@@ -3,3 +3,11 @@ scripts/.env
 scripts/.blackcrm-token.json
 scripts/.dono-token.json
 scripts/.dono-enrich-token.json
+scripts/.mentor-token.json
+scripts/.mentores-token.json
+scripts/.mentor-enrich-token.json
+scripts/.mentor-docs-token.json
+scripts/mentor-events.json
+scripts/mentores-events.json
+scripts/reconciliacao-preview.json
+scripts/enrich-semana-rls.sql
