@@ -175,7 +175,7 @@ function App() {
             element={!session ? <LoginPage /> : <Navigate to="/" replace />}
           />
           <Route
-            path="/definir-senha/:email?"
+            path="/definir-senha"
             element={<DefinirSenhaPage />}
           />
           <Route

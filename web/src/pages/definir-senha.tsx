@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,28 +9,14 @@ import { BackgroundShader } from "@/components/ui/background-shader"
 import { TrendingUpIcon as TrendingUp } from "@/components/ui/icons"
 import { motion } from "framer-motion"
 
-function base64urlDecode(input: string): string | null {
-  try {
-    const pad = input.length % 4 === 0 ? '' : '='.repeat(4 - (input.length % 4))
-    const b64 = (input + pad).replace(/-/g, '+').replace(/_/g, '/')
-    return atob(b64)
-  } catch {
-    return null
-  }
-}
-
 export default function DefinirSenhaPage() {
   const navigate = useNavigate()
-  const { email: emailParam } = useParams<{ email?: string }>()
-  const emailFromUrl = emailParam ? base64urlDecode(emailParam) : null
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sessionReady, setSessionReady] = useState(false)
   const [checking, setChecking] = useState(true)
-  const [expiredEmail, setExpiredEmail] = useState<string | null>(null)
-  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -43,35 +29,12 @@ export default function DefinirSenhaPage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setSessionReady(true)
-      } else if (!emailFromUrl) {
-        navigate('/login', { replace: true })
-        return
-      } else {
-        setExpiredEmail(emailFromUrl)
       }
       setChecking(false)
     })
 
     return () => subscription.unsubscribe()
-  }, [navigate, emailFromUrl])
-
-  const handleResend = async () => {
-    if (!expiredEmail) return
-    setResendStatus('sending')
-    try {
-      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resend-invite-legacy`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ email: expiredEmail, app_url: window.location.origin }),
-      })
-    } catch {
-      // Fail silently — mesma UX pra sucesso/erro (não vazamos estado)
-    }
-    setResendStatus('sent')
-  }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,27 +89,14 @@ export default function DefinirSenhaPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <BackgroundShader />
-        <div className="relative z-10 text-center space-y-6 max-w-md px-4">
-          <h1 className="text-2xl font-bold text-foreground">Link expirado</h1>
-          {resendStatus === 'sent' ? (
-            <>
-              <p className="text-muted-foreground font-medium">
-                Se <strong className="text-foreground">{expiredEmail}</strong> tiver conta ativa, um novo link foi enviado. Confira sua caixa em até 2 minutos (e a pasta de spam).
-              </p>
-              <Button variant="outline" onClick={() => navigate('/login', { replace: true })}>
-                Ir para Login
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-muted-foreground font-medium">
-                Seu link de acesso já expirou. Clique abaixo para receber um novo link em <strong className="text-foreground">{expiredEmail}</strong>.
-              </p>
-              <Button onClick={handleResend} disabled={resendStatus === 'sending'} className="h-12 shadow-xl shadow-primary/20">
-                {resendStatus === 'sending' ? 'Enviando...' : 'Reenviar novo link'}
-              </Button>
-            </>
-          )}
+        <div className="relative z-10 text-center space-y-4 max-w-md px-4">
+          <h1 className="text-2xl font-bold text-foreground">Link inválido ou expirado</h1>
+          <p className="text-muted-foreground font-medium">
+            Este link de convite não é mais válido. Solicite um novo convite ao time de Sucesso do Cliente.
+          </p>
+          <Button variant="outline" onClick={() => navigate('/login', { replace: true })}>
+            Ir para Login
+          </Button>
         </div>
       </div>
     )
