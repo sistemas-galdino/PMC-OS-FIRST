@@ -17,10 +17,13 @@ export default function DefinirSenhaPage() {
   const [error, setError] = useState<string | null>(null)
   const [sessionReady, setSessionReady] = useState(false)
   const [checking, setChecking] = useState(true)
+  const [expiredEmail, setExpiredEmail] = useState<string | null>(null)
+  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
 
   useEffect(() => {
-    // The invite/magic link token is in the URL hash.
-    // Supabase JS auto-exchanges it for a session via onAuthStateChange.
+    const params = new URLSearchParams(window.location.search)
+    const emailFromUrl = params.get('email')
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session && (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY' || event === 'TOKEN_REFRESHED')) {
         setSessionReady(true)
@@ -28,16 +31,39 @@ export default function DefinirSenhaPage() {
       }
     })
 
-    // Also check if already has session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setSessionReady(true)
+      } else if (!emailFromUrl) {
+        // Sem email na URL e sem session -> acesso direto, manda pro login
+        navigate('/login', { replace: true })
+        return
+      } else {
+        setExpiredEmail(emailFromUrl)
       }
       setChecking(false)
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [navigate])
+
+  const handleResend = async () => {
+    if (!expiredEmail) return
+    setResendStatus('sending')
+    try {
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resend-invite-legacy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ email: expiredEmail, app_url: window.location.origin }),
+      })
+    } catch {
+      // Fail silently — mesma UX pra sucesso/erro (não vazamos estado)
+    }
+    setResendStatus('sent')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,14 +118,27 @@ export default function DefinirSenhaPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <BackgroundShader />
-        <div className="relative z-10 text-center space-y-4 max-w-md px-4">
-          <h1 className="text-2xl font-bold text-foreground">Link inválido ou expirado</h1>
-          <p className="text-muted-foreground font-medium">
-            Este link de convite não é mais válido. Solicite um novo convite ao time de Sucesso do Cliente.
-          </p>
-          <Button variant="outline" onClick={() => navigate('/login', { replace: true })}>
-            Ir para Login
-          </Button>
+        <div className="relative z-10 text-center space-y-6 max-w-md px-4">
+          <h1 className="text-2xl font-bold text-foreground">Link expirado</h1>
+          {resendStatus === 'sent' ? (
+            <>
+              <p className="text-muted-foreground font-medium">
+                Se <strong className="text-foreground">{expiredEmail}</strong> tiver conta ativa, um novo link foi enviado. Confira sua caixa em até 2 minutos (e a pasta de spam).
+              </p>
+              <Button variant="outline" onClick={() => navigate('/login', { replace: true })}>
+                Ir para Login
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground font-medium">
+                Seu link de acesso já expirou. Clique abaixo para receber um novo link em <strong className="text-foreground">{expiredEmail}</strong>.
+              </p>
+              <Button onClick={handleResend} disabled={resendStatus === 'sending'} className="h-12 shadow-xl shadow-primary/20">
+                {resendStatus === 'sending' ? 'Enviando...' : 'Reenviar novo link'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     )
