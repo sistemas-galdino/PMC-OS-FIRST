@@ -9,10 +9,20 @@ import { BackgroundShader } from "@/components/ui/background-shader"
 import { TrendingUpIcon as TrendingUp } from "@/components/ui/icons"
 import { motion } from "framer-motion"
 
+function base64urlDecode(input: string): string | null {
+  try {
+    const pad = input.length % 4 === 0 ? '' : '='.repeat(4 - (input.length % 4))
+    const b64 = (input + pad).replace(/-/g, '+').replace(/_/g, '/')
+    return atob(b64)
+  } catch {
+    return null
+  }
+}
+
 export default function DefinirSenhaPage() {
   const navigate = useNavigate()
   const { email: emailParam } = useParams<{ email?: string }>()
-  const emailFromUrl = emailParam ? decodeURIComponent(emailParam) : null
+  const emailFromUrl = emailParam ? base64urlDecode(emailParam) : null
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
