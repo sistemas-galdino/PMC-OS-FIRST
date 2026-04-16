@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,8 @@ import { motion } from "framer-motion"
 
 export default function DefinirSenhaPage() {
   const navigate = useNavigate()
+  const { email: emailParam } = useParams<{ email?: string }>()
+  const emailFromUrl = emailParam ? decodeURIComponent(emailParam) : null
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -21,9 +23,6 @@ export default function DefinirSenhaPage() {
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const emailFromUrl = params.get('email')
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session && (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY' || event === 'TOKEN_REFRESHED')) {
         setSessionReady(true)
@@ -35,7 +34,6 @@ export default function DefinirSenhaPage() {
       if (session) {
         setSessionReady(true)
       } else if (!emailFromUrl) {
-        // Sem email na URL e sem session -> acesso direto, manda pro login
         navigate('/login', { replace: true })
         return
       } else {
@@ -45,7 +43,7 @@ export default function DefinirSenhaPage() {
     })
 
     return () => subscription.unsubscribe()
-  }, [navigate])
+  }, [navigate, emailFromUrl])
 
   const handleResend = async () => {
     if (!expiredEmail) return
