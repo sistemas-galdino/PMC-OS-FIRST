@@ -87,6 +87,7 @@ interface Client {
   unidade_treinamento: string | null
   mes_treinamento: string | null
   ano_treinamento: number | null
+  email: string | null
 }
 
 const STATUS_OPTIONS = [
@@ -199,6 +200,10 @@ export default function ClientesPage() {
   const [formCrm, setFormCrm] = useState(false)
 
   const [formObs, setFormObs] = useState("")
+  const [formEmail, setFormEmail] = useState("")
+  const [resending, setResending] = useState(false)
+  const [resendResult, setResendResult] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [hasAuthUser, setHasAuthUser] = useState(false)
   const [showRegistrar, setShowRegistrar] = useState(false)
 
   // Bulk edit state
@@ -236,13 +241,25 @@ export default function ClientesPage() {
 
   useEffect(() => {
     async function fetchClients() {
-      const { data, error } = await supabase
-        .from('clientes_entrada_new')
-        .select('*')
-        .order('nome_cliente_formatado', { ascending: true })
+      const [{ data: entradaData, error: entradaErr }, { data: emailsData }] = await Promise.all([
+        supabase
+          .from('clientes_entrada_new')
+          .select('*')
+          .order('nome_cliente_formatado', { ascending: true }),
+        supabase
+          .from('clientes_formulario')
+          .select('id_cliente, email'),
+      ])
 
-      if (data && !error) {
-        setClients(data)
+      if (entradaData && !entradaErr) {
+        const emailByCliente = new Map<string, string | null>(
+          (emailsData ?? []).map(r => [r.id_cliente as string, (r.email as string | null) ?? null])
+        )
+        const merged: Client[] = entradaData.map((c: any) => ({
+          ...c,
+          email: emailByCliente.get(c.id_cliente) ?? null,
+        }))
+        setClients(merged)
       }
       setLoading(false)
     }
@@ -250,7 +267,7 @@ export default function ClientesPage() {
     fetchClients()
   }, [])
 
-  function openEdit(client: Client) {
+  async function openEdit(client: Client) {
     setEditClient(client)
     setFormNomeCliente(client.nome_cliente_formatado ?? "")
     setFormNomeEmpresa(client.nome_empresa_formatado ?? "")
@@ -259,6 +276,11 @@ export default function ClientesPage() {
     setFormEngajamento(client.nivel_engajamento ?? "")
     setFormCrm(client.tem_crm ?? false)
     setFormObs(client.observacoes_cs ?? "")
+    setFormEmail(client.email ?? "")
+    setResendResult(null)
+    setHasAuthUser(false)
+    const { data: hasUser } = await supabase.rpc('has_auth_user', { p_id_cliente: client.id_cliente })
+    setHasAuthUser(!!hasUser)
   }
 
   async function handleSave() {
@@ -277,15 +299,68 @@ export default function ClientesPage() {
       })
       .eq('id_entrada', editClient.id_entrada)
 
+    const emailTrim = formEmail.trim()
+    const emailChanged = (editClient.email ?? "") !== emailTrim
+    if (!error && emailChanged) {
+      await supabase.from('clientes_formulario').upsert({
+        id_cliente: editClient.id_cliente,
+        email: emailTrim || null,
+        codigo_cliente: editClient.codigo_cliente,
+        nome: formNomeCliente || null,
+        empresa_nome: formNomeEmpresa || null,
+      }, { onConflict: 'id_cliente' })
+    }
+
     if (!error) {
       setClients(prev => prev.map(c =>
         c.id_entrada === editClient.id_entrada
-          ? { ...c, nome_cliente_formatado: formNomeCliente, nome_empresa_formatado: formNomeEmpresa, status_atual: formStatus, sc: formSc, nivel_engajamento: (formEngajamento as NivelEngajamento) || null, tem_crm: formCrm, observacoes_cs: formObs || null }
+          ? { ...c, nome_cliente_formatado: formNomeCliente, nome_empresa_formatado: formNomeEmpresa, status_atual: formStatus, sc: formSc, nivel_engajamento: (formEngajamento as NivelEngajamento) || null, tem_crm: formCrm, observacoes_cs: formObs || null, email: emailTrim || null }
           : c
       ))
       setEditClient(null)
     }
     setSaving(false)
+  }
+
+  async function handleResend() {
+    if (!editClient || !formEmail.trim()) return
+    setResending(true)
+    setResendResult(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      if (!accessToken) throw new Error('Sessão expirada. Faça login novamente.')
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-legacy`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            id_cliente: editClient.id_cliente,
+            email_destino: formEmail.trim(),
+            app_url: window.location.origin,
+          }),
+        }
+      )
+      const data = await resp.json()
+      if (!resp.ok) throw new Error(data.error || `Erro ${resp.status}`)
+
+      setResendResult({ type: 'ok', msg: data.message || 'Link enviado com sucesso' })
+      setHasAuthUser(true)
+      const emailTrim = formEmail.trim()
+      setClients(prev => prev.map(c =>
+        c.id_cliente === editClient.id_cliente ? { ...c, email: emailTrim } : c
+      ))
+    } catch (e: any) {
+      setResendResult({ type: 'err', msg: e.message || 'Erro ao enviar link' })
+    } finally {
+      setResending(false)
+    }
   }
 
   const filteredClients = clients.filter(client => {
@@ -883,6 +958,40 @@ export default function ClientesPage() {
                 rows={5}
                 className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
               />
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-border/50">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email de acesso</Label>
+              <Input
+                type="email"
+                className="h-11 rounded-xl border-border bg-background"
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                placeholder="cliente@email.com"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {hasAuthUser
+                  ? 'Este cliente já tem conta. Alterar o email e reenviar sincroniza com o login.'
+                  : 'Cliente ainda não tem conta. Enviar o convite cria o acesso.'}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!formEmail.trim() || resending}
+                onClick={handleResend}
+                className="w-full h-11 rounded-xl mt-2"
+              >
+                {resending
+                  ? 'Enviando...'
+                  : hasAuthUser
+                    ? 'Reenviar link de definição de senha'
+                    : 'Enviar convite de acesso'}
+              </Button>
+              {resendResult && (
+                <p className={`text-xs font-semibold mt-1 ${resendResult.type === 'ok' ? 'text-primary' : 'text-destructive'}`}>
+                  {resendResult.msg}
+                </p>
+              )}
             </div>
           </div>
 
