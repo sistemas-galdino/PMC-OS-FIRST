@@ -68,7 +68,7 @@ export default function DefinirSenhaPage() {
           .eq('id_cliente', s.user.id)
       }
 
-      window.location.href = '/cadastro'
+      window.location.href = '/'
     } catch (err: any) {
       setError(err.message || "Erro ao definir senha")
     } finally {
