@@ -52,6 +52,20 @@ export default function CanaisPage({ session, clientId }: { session?: Session, c
   const [editingCanal, setEditingCanal] = useState<Channel | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ nome: '', tipo: 'Pago' as 'Pago' | 'Orgânico', investimento: 0, leads_mes: 0 })
+  const [canalPreset, setCanalPreset] = useState<string>('')
+
+  const CANAIS_PRESETS = [
+    'Meta Ads',
+    'Google Ads',
+    'Instagram',
+    'WhatsApp',
+    'TikTok',
+    'YouTube',
+    'LinkedIn',
+    'Facebook',
+    'Email Marketing',
+    'Indicação',
+  ]
 
   useEffect(() => {
     if (!resolvedClientId) {
@@ -77,12 +91,14 @@ export default function CanaisPage({ session, clientId }: { session?: Session, c
   function openNew() {
     setEditingCanal(null)
     setForm({ nome: '', tipo: 'Pago', investimento: 0, leads_mes: 0 })
+    setCanalPreset('')
     setShowSheet(true)
   }
 
   function openEdit(canal: Channel) {
     setEditingCanal(canal)
     setForm({ nome: canal.nome, tipo: canal.tipo, investimento: canal.investimento, leads_mes: canal.leads_mes })
+    setCanalPreset(CANAIS_PRESETS.includes(canal.nome) ? canal.nome : 'outro')
     setShowSheet(true)
   }
 
@@ -329,12 +345,32 @@ export default function CanaisPage({ session, clientId }: { session?: Session, c
           </SheetHeader>
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nome</Label>
-              <Input
-                className="h-11 rounded-xl"
-                value={form.nome}
-                onChange={(e) => setForm(prev => ({ ...prev, nome: e.target.value }))}
-              />
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Canal</Label>
+              <Select
+                value={canalPreset}
+                onValueChange={(v) => {
+                  setCanalPreset(v)
+                  setForm(prev => ({ ...prev, nome: v === 'outro' ? '' : v }))
+                }}
+              >
+                <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                  <SelectValue placeholder="Selecionar canal..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {CANAIS_PRESETS.map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                  <SelectItem value="outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+              {canalPreset === 'outro' && (
+                <Input
+                  className="h-11 rounded-xl mt-2"
+                  placeholder="Digite o nome do canal"
+                  value={form.nome}
+                  onChange={(e) => setForm(prev => ({ ...prev, nome: e.target.value }))}
+                />
+              )}
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tipo</Label>
@@ -369,7 +405,7 @@ export default function CanaisPage({ session, clientId }: { session?: Session, c
           </div>
           <SheetFooter className="p-6 border-t border-border">
             <Button
-              disabled={saving}
+              disabled={saving || !form.nome.trim()}
               className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs"
               onClick={handleSave}
             >

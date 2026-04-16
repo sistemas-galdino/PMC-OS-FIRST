@@ -32,6 +32,8 @@ import {
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 
+type ClassificacaoTicket = 'low' | 'middle' | 'high'
+
 interface Product {
   id: string
   nome: string
@@ -39,6 +41,13 @@ interface Product {
   ticket_medio: number | null
   tipo: 'Recorrente' | 'Avulso'
   vendas_mes: number
+  classificacao_ticket: ClassificacaoTicket | null
+}
+
+const CLASSIFICACAO_LABELS: Record<ClassificacaoTicket, string> = {
+  low: 'Low Ticket',
+  middle: 'Middle Ticket',
+  high: 'High Ticket',
 }
 
 interface ProdutosPageProps {
@@ -54,7 +63,7 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
   const [showSheet, setShowSheet] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ nome: '', preco: '', ticket_medio: '', tipo: 'Recorrente' as 'Recorrente' | 'Avulso', vendas_mes: '' })
+  const [form, setForm] = useState({ nome: '', preco: '', ticket_medio: '', tipo: 'Recorrente' as 'Recorrente' | 'Avulso', vendas_mes: '', classificacao_ticket: '' as '' | ClassificacaoTicket })
 
   useEffect(() => {
     if (!resolvedClientId) {
@@ -79,13 +88,20 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
 
   function openNew() {
     setEditingProduct(null)
-    setForm({ nome: '', preco: '', ticket_medio: '', tipo: 'Recorrente', vendas_mes: '' })
+    setForm({ nome: '', preco: '', ticket_medio: '', tipo: 'Recorrente', vendas_mes: '', classificacao_ticket: '' })
     setShowSheet(true)
   }
 
   function openEdit(product: Product) {
     setEditingProduct(product)
-    setForm({ nome: product.nome, preco: String(product.preco ?? ''), ticket_medio: product.ticket_medio != null ? String(product.ticket_medio) : '', tipo: product.tipo, vendas_mes: String(product.vendas_mes ?? '') })
+    setForm({
+      nome: product.nome,
+      preco: String(product.preco ?? ''),
+      ticket_medio: product.ticket_medio != null ? String(product.ticket_medio) : '',
+      tipo: product.tipo,
+      vendas_mes: String(product.vendas_mes ?? ''),
+      classificacao_ticket: (product.classificacao_ticket ?? '') as '' | ClassificacaoTicket,
+    })
     setShowSheet(true)
   }
 
@@ -103,6 +119,7 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
       ticket_medio: form.ticket_medio === '' ? null : Number(form.ticket_medio),
       tipo: form.tipo,
       vendas_mes: Number(form.vendas_mes) || 0,
+      classificacao_ticket: form.classificacao_ticket === '' ? null : form.classificacao_ticket,
     }
     if (editingProduct) {
       const { data, error } = await supabase
@@ -223,16 +240,26 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
             <Card className="group overflow-hidden hover:border-primary/30 transition-all duration-300">
               <CardHeader className="bg-muted/10 pb-6 border-b border-border/50">
                 <div className="flex justify-between items-start">
-                  <Badge
-                    variant="outline"
-                    className={`rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                      product.tipo === 'Recorrente'
-                        ? 'bg-primary/10 border-primary/20 text-primary'
-                        : 'bg-muted/20 border-border text-muted-foreground'
-                    }`}
-                  >
-                    {product.tipo}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge
+                      variant="outline"
+                      className={`rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                        product.tipo === 'Recorrente'
+                          ? 'bg-primary/10 border-primary/20 text-primary'
+                          : 'bg-muted/20 border-border text-muted-foreground'
+                      }`}
+                    >
+                      {product.tipo}
+                    </Badge>
+                    {product.classificacao_ticket && (
+                      <Badge
+                        variant="outline"
+                        className="rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-muted/20 border-border text-muted-foreground"
+                      >
+                        {CLASSIFICACAO_LABELS[product.classificacao_ticket]}
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" className="size-8 rounded-lg hover:bg-muted/50" onClick={() => openEdit(product)}>
                       <Edit3 className="size-3.5 text-muted-foreground" />
@@ -312,6 +339,22 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
                 placeholder="0"
                 onChange={(e) => setForm(prev => ({ ...prev, ticket_medio: e.target.value }))}
               />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Classificação</Label>
+              <Select
+                value={form.classificacao_ticket}
+                onValueChange={(v) => setForm(prev => ({ ...prev, classificacao_ticket: v as ClassificacaoTicket }))}
+              >
+                <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                  <SelectValue placeholder="Selecionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low Ticket</SelectItem>
+                  <SelectItem value="middle">Middle Ticket</SelectItem>
+                  <SelectItem value="high">High Ticket</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tipo</Label>
