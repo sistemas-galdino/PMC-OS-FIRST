@@ -14,6 +14,7 @@ import OnboardingPage from "@/pages/onboarding"
 import ClientProfilePage from "@/pages/client-profile"
 import ClientReunioesPage from "@/pages/client-reunioes"
 import DefinirSenhaPage from "@/pages/definir-senha"
+import AtivarContaPage from "@/pages/ativar-conta"
 import CadastroPage from "@/pages/cadastro"
 import ReuniaoDetalhePage from "@/pages/reuniao-detalhe"
 import ReunioesGaldinoPage from "@/pages/reunioes-galdino"
@@ -177,6 +178,10 @@ function App() {
           <Route
             path="/definir-senha"
             element={<DefinirSenhaPage />}
+          />
+          <Route
+            path="/ativar-conta"
+            element={<AtivarContaPage />}
           />
           <Route
             path="/cadastro"
