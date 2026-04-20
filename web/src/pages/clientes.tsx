@@ -203,6 +203,7 @@ export default function ClientesPage() {
   const [formEmail, setFormEmail] = useState("")
   const [resending, setResending] = useState(false)
   const [resendResult, setResendResult] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [resendInviteLink, setResendInviteLink] = useState<string | null>(null)
   const [hasAuthUser, setHasAuthUser] = useState(false)
   const [showRegistrar, setShowRegistrar] = useState(false)
 
@@ -278,6 +279,7 @@ export default function ClientesPage() {
     setFormObs(client.observacoes_cs ?? "")
     setFormEmail(client.email ?? "")
     setResendResult(null)
+    setResendInviteLink(null)
     setHasAuthUser(false)
     const { data: hasUser } = await supabase.rpc('has_auth_user', { p_id_cliente: client.id_cliente })
     setHasAuthUser(!!hasUser)
@@ -326,6 +328,7 @@ export default function ClientesPage() {
     if (!editClient || !formEmail.trim()) return
     setResending(true)
     setResendResult(null)
+    setResendInviteLink(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const accessToken = session?.access_token
@@ -351,6 +354,7 @@ export default function ClientesPage() {
       if (!resp.ok) throw new Error(data.error || `Erro ${resp.status}`)
 
       setResendResult({ type: 'ok', msg: data.message || 'Link enviado com sucesso' })
+      setResendInviteLink(data.invite_link || null)
       setHasAuthUser(true)
       const emailTrim = formEmail.trim()
       setClients(prev => prev.map(c =>
@@ -991,6 +995,18 @@ export default function ClientesPage() {
                 <p className={`text-xs font-semibold mt-1 ${resendResult.type === 'ok' ? 'text-primary' : 'text-destructive'}`}>
                   {resendResult.msg}
                 </p>
+              )}
+              {resendInviteLink && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-[11px] text-muted-foreground">Copie o link abaixo para enviar pelo WhatsApp:</p>
+                  <div
+                    className="bg-muted/20 border border-border rounded-xl p-2.5 text-[11px] text-foreground break-all text-left select-all cursor-pointer hover:bg-muted/30 transition-colors"
+                    onClick={() => navigator.clipboard.writeText(resendInviteLink)}
+                  >
+                    {resendInviteLink}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Clique no link para copiar</p>
+                </div>
               )}
             </div>
           </div>

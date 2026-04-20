@@ -211,20 +211,21 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
                 </svg>
               </div>
               <p className="font-bold text-foreground">Cliente cadastrado!</p>
-              {emailSent && !inviteLink ? (
+
+              {emailSent ? (
+                <p className="text-sm text-muted-foreground">Convite enviado por e-mail para {form.email}.</p>
+              ) : emailDebug && emailDebug !== 'not attempted' ? (
+                <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-xl p-3 text-[11px] text-left">
+                  <p className="font-bold uppercase tracking-wider mb-1">E-mail não enviado</p>
+                  <p className="text-[11px] font-mono break-all">{emailDebug}</p>
+                </div>
+              ) : null}
+
+              {inviteLink && (
                 <>
-                  <p className="text-sm text-muted-foreground">Convite enviado por e-mail.</p>
-                  <Button variant="outline" size="sm" onClick={resetAndClose}>Fechar</Button>
-                </>
-              ) : inviteLink ? (
-                <>
-                  {emailDebug && (
-                    <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-xl p-3 text-[11px] text-left">
-                      <p className="font-bold uppercase tracking-wider mb-1">E-mail não enviado</p>
-                      <p className="text-[11px] font-mono break-all">{emailDebug}</p>
-                    </div>
-                  )}
-                  <p className="text-sm text-muted-foreground">Copie e envie o link abaixo para o cliente:</p>
+                  <p className="text-sm text-muted-foreground">
+                    {emailSent ? 'Ou copie o link para enviar pelo WhatsApp:' : 'Copie e envie o link para o cliente:'}
+                  </p>
                   <div
                     className="bg-muted/20 border border-border rounded-xl p-3 text-xs text-foreground break-all text-left select-all cursor-pointer"
                     onClick={() => navigator.clipboard.writeText(inviteLink)}
@@ -232,11 +233,14 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
                     {inviteLink}
                   </div>
                   <p className="text-[10px] text-muted-foreground">Clique no link acima para copiar</p>
-                  <Button variant="outline" size="sm" onClick={resetAndClose}>Fechar</Button>
                 </>
-              ) : (
+              )}
+
+              {!inviteLink && !emailSent && !emailDebug && (
                 <p className="text-sm text-muted-foreground">O cliente foi adicionado à lista.</p>
               )}
+
+              <Button variant="outline" size="sm" onClick={resetAndClose}>Fechar</Button>
             </div>
           </div>
         ) : (
