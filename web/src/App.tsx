@@ -15,6 +15,8 @@ import ClientProfilePage from "@/pages/client-profile"
 import ClientReunioesPage from "@/pages/client-reunioes"
 import DefinirSenhaPage from "@/pages/definir-senha"
 import AtivarContaPage from "@/pages/ativar-conta"
+import RecuperarSenhaPage from "@/pages/recuperar-senha"
+import TrocarSenhaPage from "@/pages/trocar-senha"
 import CadastroPage from "@/pages/cadastro"
 import ReuniaoDetalhePage from "@/pages/reuniao-detalhe"
 import ReunioesGaldinoPage from "@/pages/reunioes-galdino"
@@ -184,6 +186,10 @@ function App() {
             element={<AtivarContaPage />}
           />
           <Route
+            path="/recuperar-senha"
+            element={<RecuperarSenhaPage />}
+          />
+          <Route
             path="/cadastro"
             element={session ? <CadastroPage session={session} /> : <Navigate to="/login" replace />}
           />
@@ -211,6 +217,7 @@ function App() {
                     <Route path="/calendario" element={<CalendarioEncontrosPage />} />
                     <Route path="/onboarding" element={<OnboardingPage />} />
                     <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+                    <Route path="/trocar-senha" element={<TrocarSenhaPage />} />
                     <Route path="/agendar" element={<AgendarPage />} />
                     <Route path="/vitorias" element={<VitoriasPage session={session} />} />
                     <Route path="/meu-time" element={<MeuTimePage session={session} />} />

@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +11,7 @@ import {
 import { motion } from "framer-motion"
 
 export default function LoginPage() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -98,7 +100,7 @@ export default function LoginPage() {
                 />
               </div>
             </CardContent>
-            <CardFooter className="px-8 pb-10 pt-4">
+            <CardFooter className="px-8 pb-10 pt-4 flex flex-col gap-4">
               <Button className="w-full text-base font-bold h-12 shadow-xl shadow-primary/20" type="submit" disabled={loading}>
                 {loading ? (
                   <div className="flex items-center gap-2">
@@ -107,6 +109,13 @@ export default function LoginPage() {
                   </div>
                 ) : "Acessar Sistema"}
               </Button>
+              <button
+                type="button"
+                onClick={() => navigate('/recuperar-senha')}
+                className="text-xs text-muted-foreground hover:text-primary font-semibold uppercase tracking-widest transition-colors"
+              >
+                Esqueci minha senha
+              </button>
             </CardFooter>
           </form>
         </Card>

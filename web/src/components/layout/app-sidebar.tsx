@@ -11,12 +11,12 @@ import {
   SidebarGroupContent,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { 
-  LayoutDashboardIcon as LayoutDashboard, 
-  UsersIcon as Users, 
-  CalendarIcon as Calendar, 
-  ClockIcon as Clock, 
-  SettingsIcon as Settings, 
+import {
+  LayoutDashboardIcon as LayoutDashboard,
+  UsersIcon as Users,
+  CalendarIcon as Calendar,
+  ClockIcon as Clock,
+  SettingsIcon as Settings,
   MessageSquareIcon as MessageSquare,
   LogOutIcon as LogOut,
   ChevronRightIcon as ChevronRight,
@@ -27,7 +27,14 @@ import {
   BookOpenIcon as BookOpen,
   TrophyIcon as Trophy,
   MapIcon as MapTrilha,
+  ShieldCheckIcon as ShieldCheck,
 } from "@/components/ui/icons"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { useLocation, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
@@ -132,7 +139,27 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       <SidebarFooter className="p-4 border-t border-border bg-sidebar/20">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton 
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  tooltip="Configurações"
+                  className="rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-300 font-medium h-11 px-4"
+                >
+                  <Settings className="size-5" />
+                  <span>Configurações</span>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" align="start" className="min-w-[180px]">
+                <DropdownMenuItem onClick={() => navigate('/trocar-senha')} className="cursor-pointer font-medium">
+                  <ShieldCheck className="size-4" />
+                  Trocar senha
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Sair"
               onClick={() => supabase.auth.signOut()}
               className="rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all duration-300 font-medium h-11 px-4"
             >
