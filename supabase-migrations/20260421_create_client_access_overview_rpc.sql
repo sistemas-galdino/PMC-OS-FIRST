@@ -5,10 +5,12 @@
 -- SECURITY DEFINER porque precisa ler auth.users (bloqueado por RLS para anon/authenticated).
 -- Guard interno verifica que o caller está em public.mentores (admin do painel).
 
+DROP FUNCTION IF EXISTS public.get_client_access_overview();
+
 CREATE OR REPLACE FUNCTION public.get_client_access_overview()
 RETURNS TABLE (
   id_entrada integer,
-  id_cliente text,
+  id_cliente uuid,
   nome_cliente text,
   nome_empresa text,
   email text,
@@ -57,7 +59,7 @@ BEGIN
     COALESCE(ir.qtd, 0)::integer      AS qtd_convites_reenviados
   FROM clientes_entrada_new e
   LEFT JOIN clientes_formulario f ON f.id_cliente = e.id_cliente
-  LEFT JOIN auth.users         u ON u.id::text   = e.id_cliente
+  LEFT JOIN auth.users         u ON u.id          = e.id_cliente
   LEFT JOIN cliente_onboarding o ON o.id_cliente = e.id_cliente
   LEFT JOIN (
     SELECT email, COUNT(*)::integer AS qtd

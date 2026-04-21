@@ -116,23 +116,23 @@ export default function AcessosPage() {
   const metrics = useMemo(() => {
     const now = Date.now()
     const total = rows.length
-    let ativaram = 0
+    let jaAcessaram = 0
     let nunca = 0
     let ativos = 0
     let inativos = 0
     let aguardando = 0
     for (const r of rows) {
-      if (r.tem_auth_user && r.senha_definida) ativaram++
-      if (r.tem_auth_user && !r.senha_definida) aguardando++
-      if (!r.last_sign_in_at) {
-        nunca++
-      } else {
+      if (r.last_sign_in_at) {
+        jaAcessaram++
         const diff = now - new Date(r.last_sign_in_at).getTime()
         if (diff <= THRESHOLD_ATIVO) ativos++
         else inativos++
+      } else {
+        nunca++
+        if (r.tem_auth_user) aguardando++
       }
     }
-    return { total, ativaram, nunca, ativos, inativos, aguardando }
+    return { total, jaAcessaram, nunca, ativos, inativos, aguardando }
   }, [rows])
 
   const filtered = useMemo(() => {
@@ -141,7 +141,7 @@ export default function AcessosPage() {
     if (activeTab === "nunca") list = list.filter(r => !r.last_sign_in_at)
     else if (activeTab === "ativos") list = list.filter(r => r.last_sign_in_at && (now - new Date(r.last_sign_in_at).getTime()) <= THRESHOLD_ATIVO)
     else if (activeTab === "inativos") list = list.filter(r => r.last_sign_in_at && (now - new Date(r.last_sign_in_at).getTime()) > THRESHOLD_ATIVO)
-    else if (activeTab === "aguardando") list = list.filter(r => r.tem_auth_user && !r.senha_definida)
+    else if (activeTab === "aguardando") list = list.filter(r => r.tem_auth_user && !r.last_sign_in_at)
 
     const q = search.trim().toLowerCase()
     if (q) {
@@ -211,11 +211,11 @@ export default function AcessosPage() {
 
   const cards = [
     { title: "Total de Membros", value: metrics.total, icon: Users, cls: "text-primary bg-primary/10", desc: "Cadastrados no sistema" },
-    { title: "Ativaram Conta", value: metrics.ativaram, icon: ShieldCheck, cls: "text-emerald-400 bg-emerald-500/10", desc: "Definiram a senha" },
+    { title: "Já Acessaram", value: metrics.jaAcessaram, icon: ShieldCheck, cls: "text-emerald-400 bg-emerald-500/10", desc: "Logaram ao menos 1 vez" },
     { title: "Nunca Acessaram", value: metrics.nunca, icon: AlertCircle, cls: "text-red-400 bg-red-500/10", desc: "Sem registro de login" },
     { title: "Ativos (14 dias)", value: metrics.ativos, icon: TrendingUp, cls: "text-emerald-400 bg-emerald-500/10", desc: "Logaram recentemente" },
     { title: "Inativos (>14 dias)", value: metrics.inativos, icon: Clock, cls: "text-orange-400 bg-orange-500/10", desc: "Sumiram do sistema" },
-    { title: "Aguardando Ativação", value: metrics.aguardando, icon: Mail, cls: "text-yellow-400 bg-yellow-500/10", desc: "Convite enviado, sem senha" },
+    { title: "Aguardando Acesso", value: metrics.aguardando, icon: Mail, cls: "text-yellow-400 bg-yellow-500/10", desc: "Convite enviado, sem acesso" },
   ]
 
   const tabs: { key: TabKey; label: string; count: number }[] = [
