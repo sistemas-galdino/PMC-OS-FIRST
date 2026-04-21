@@ -7,6 +7,7 @@ import AdminDashboard from "@/pages/admin-dashboard"
 import ClientDashboard from "@/pages/client-dashboard"
 import MentoresPage from "@/pages/mentores"
 import ClientesPage from "@/pages/clientes"
+import AcessosPage from "@/pages/acessos"
 import MapeamentoPage from "@/pages/mapeamento"
 import AcoesPage from "@/pages/acoes"
 import OnboardingPage from "@/pages/onboarding"
@@ -202,6 +203,7 @@ function App() {
                     <Route path="/" element={isAdmin ? <AdminDashboard /> : <ClientDashboard session={session} />} />
                     <Route path="/mentores" element={<MentoresPage />} />
                     <Route path="/clientes" element={<ClientesPage />} />
+                    <Route path="/acessos" element={<AcessosPage />} />
                     <Route path="/mapeamento" element={<MapeamentoPage session={session} />} />
                     <Route path="/produtos" element={<Navigate to="/mapeamento?tab=produtos" replace />} />
                     <Route path="/canais" element={<Navigate to="/mapeamento?tab=canais" replace />} />

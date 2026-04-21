@@ -49,6 +49,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
   const adminItems = [
     { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
     { title: "Clientes", icon: Users, url: "/clientes" },
+    { title: "Acessos", icon: ShieldCheck, url: "/acessos" },
     { title: "Pendentes Onboarding", icon: Clock, url: "/onboarding" },
     { title: "Consultores", icon: MessageSquare, url: "/mentores" },
     { title: "Reunioes Galdino", icon: Calendar, url: "/reunioes-galdino" },
