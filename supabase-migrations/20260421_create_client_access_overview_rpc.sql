@@ -62,9 +62,11 @@ BEGIN
   LEFT JOIN auth.users         u ON u.id          = e.id_cliente
   LEFT JOIN cliente_onboarding o ON o.id_cliente = e.id_cliente
   LEFT JOIN (
-    SELECT email, COUNT(*)::integer AS qtd
-    FROM invite_resend_attempts
-    GROUP BY email
+    -- alias ira. qualifica o `email` pra não colidir com a OUT var `email`
+    -- da RETURNS TABLE (que tornaria o identificador ambíguo).
+    SELECT ira.email, COUNT(*)::integer AS qtd
+    FROM invite_resend_attempts ira
+    GROUP BY ira.email
   ) ir ON ir.email = f.email;
 END;
 $$;
