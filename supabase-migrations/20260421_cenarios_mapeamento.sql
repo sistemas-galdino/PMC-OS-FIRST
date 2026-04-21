@@ -12,7 +12,7 @@ ALTER TABLE public.cliente_metas
 
 -- 2. Tabela de Objetivos do Programa (um registro por (cliente, objetivo))
 CREATE TABLE IF NOT EXISTS public.cliente_objetivos_programa (
-  id_cliente uuid NOT NULL REFERENCES public.clientes_entrada_new(id_cliente) ON DELETE CASCADE,
+  id_cliente uuid NOT NULL REFERENCES public.clientes_formulario(id_cliente) ON DELETE CASCADE,
   objetivo_key text NOT NULL,
   prioridade text NOT NULL DEFAULT 'nao_prioridade'
     CHECK (prioridade IN ('alta','media','baixa','nao_prioridade')),
