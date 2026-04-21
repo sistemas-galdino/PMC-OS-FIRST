@@ -50,12 +50,12 @@ const CLASSIFICACAO_LABELS: Record<ClassificacaoTicket, string> = {
   high: 'High Ticket',
 }
 
-interface ProdutosPageProps {
+interface ProdutosViewProps {
   session?: Session
   clientId?: string
 }
 
-export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
+export default function ProdutosView({ session, clientId }: ProdutosViewProps) {
   const resolvedClientId = clientId || session?.user?.id
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -174,22 +174,22 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
   }
 
   return (
-    <div className="space-y-10 pb-10">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
-      >
-        <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Catálogo de Produtos</h1>
-          <p className="text-muted-foreground font-medium text-sm">Gestão de ofertas e performance de vendas mensais.</p>
+    <div className="space-y-8 pb-4">
+      <div className="flex items-center justify-between">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar no catálogo..."
+            className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
         <Button className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10" onClick={openNew}>
           <Plus className="size-5" />
           <span className="font-bold uppercase tracking-wider text-[11px]">Novo Produto</span>
         </Button>
-      </motion.div>
+      </div>
 
       <motion.div
         variants={container}
@@ -218,16 +218,6 @@ export default function ProdutosPage({ session, clientId }: ProdutosPageProps) {
           </motion.div>
         ))}
       </motion.div>
-
-      <div className="relative max-w-md">
-        <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar no catálogo..."
-          className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
 
       <motion.div
         variants={container}

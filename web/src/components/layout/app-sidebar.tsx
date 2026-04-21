@@ -21,8 +21,7 @@ import {
   LogOutIcon as LogOut,
   ChevronRightIcon as ChevronRight,
   TrendingUpIcon as TrendingUp,
-  PackageIcon as Package,
-  MegaphoneIcon as Megaphone,
+  Share2Icon as Share2,
   CheckSquareIcon as CheckSquare,
   BookOpenIcon as BookOpen,
   TrophyIcon as Trophy,
@@ -61,8 +60,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
 
   const clientItems = [
     { title: "Dashboard", icon: LayoutDashboard, url: "/" },
-    { title: "Produtos", icon: Package, url: "/produtos" },
-    { title: "Canais", icon: Megaphone, url: "/canais" },
+    { title: "Mapeamento", icon: Share2, url: "/mapeamento" },
     { title: "Reuniões Consultores", icon: Calendar, url: "/reunioes" },
     { title: "Reuniões Galdino", icon: Calendar, url: "/reunioes-galdino" },
     { title: "Reuniões BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },

@@ -3,8 +3,10 @@ import { useParams, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ArrowLeftIcon as ArrowLeft } from "@/components/ui/icons"
 import ClientDashboard from "@/pages/client-dashboard"
-import ProdutosPage from "@/pages/produtos"
-import CanaisPage from "@/pages/canais"
+import ProdutosView from "@/components/mapeamento/produtos-view"
+import CanaisView from "@/components/mapeamento/canais-view"
+import CenariosTab from "@/components/mapeamento/cenarios-tab"
+import ObjetivosTab from "@/components/mapeamento/objetivos-tab"
 import AcoesPage from "@/pages/acoes"
 import ClientReunioesPage from "@/pages/client-reunioes"
 import ReunioesGaldinoPage from "@/pages/reunioes-galdino"
@@ -16,8 +18,10 @@ import TrilhasPage from "@/pages/trilhas"
 
 const TABS = [
   { key: "dashboard", label: "Dashboard" },
+  { key: "cenarios", label: "Cenários" },
   { key: "produtos", label: "Produtos" },
   { key: "canais", label: "Canais" },
+  { key: "objetivos", label: "Objetivos" },
   { key: "reunioes", label: "Reuniões Consultores" },
   { key: "reunioes-galdino", label: "Reuniões Galdino" },
   { key: "reunioes-blackcrm", label: "Reuniões BlackCRM" },
@@ -66,8 +70,10 @@ export default function ClientProfilePage() {
       </div>
 
       {activeTab === "dashboard" && <ClientDashboard clientId={id} />}
-      {activeTab === "produtos" && <ProdutosPage clientId={id} />}
-      {activeTab === "canais" && <CanaisPage clientId={id} />}
+      {activeTab === "cenarios" && <CenariosTab clientId={id} />}
+      {activeTab === "produtos" && <ProdutosView clientId={id} />}
+      {activeTab === "canais" && <CanaisView clientId={id} />}
+      {activeTab === "objetivos" && <ObjetivosTab clientId={id} />}
       {activeTab === "reunioes" && <ClientReunioesPage clientId={id} />}
       {activeTab === "reunioes-galdino" && <ReunioesGaldinoPage clientId={id} />}
       {activeTab === "reunioes-blackcrm" && <ReunioesBlackCRMPage clientId={id} />}

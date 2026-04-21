@@ -43,7 +43,7 @@ interface Channel {
   leads_mes: number
 }
 
-export default function CanaisPage({ session, clientId }: { session?: Session, clientId?: string }) {
+export default function CanaisView({ session, clientId }: { session?: Session, clientId?: string }) {
   const resolvedClientId = clientId || session?.user?.id
   const [channels, setCanais] = useState<Channel[]>([])
   const [loading, setLoading] = useState(true)
@@ -177,22 +177,13 @@ export default function CanaisPage({ session, clientId }: { session?: Session, c
   }
 
   return (
-    <div className="space-y-10 pb-10">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
-      >
-        <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Canais de Aquisição</h1>
-          <p className="text-muted-foreground font-medium text-sm">Fontes de tráfego e investimento estratégico do seu negócio.</p>
-        </div>
+    <div className="space-y-8 pb-4">
+      <div className="flex justify-end">
         <Button className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10" onClick={openNew}>
           <Plus className="size-5" />
           <span className="font-bold uppercase tracking-wider text-[11px]">Adicionar Canal</span>
         </Button>
-      </motion.div>
+      </div>
 
       <motion.div
         variants={container}

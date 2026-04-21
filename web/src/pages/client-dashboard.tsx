@@ -84,7 +84,8 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
     faturamento_anual_objetivo: 0,
     faturamento_mensal_objetivo: 0,
     meta_2026: 0,
-    colaboradores_total: 0,
+    numero_funcionarios: 0,
+    numero_gestores: 0,
   })
   const [quickLinks, setQuickLinks] = useState<Record<string, string>>({})
   const [clientSc, setClientSc] = useState<string | null>(null)
@@ -123,18 +124,25 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
             return { text: raw.acao || raw.text || '', done }
           }).filter((a: { text: string }) => a.text.length > 0)
 
+          const numero_funcionarios = goals?.numero_funcionarios ?? 0
+          const numero_gestores = goals?.numero_gestores ?? 0
+          const colaboradoresDerived =
+            (numero_funcionarios || numero_gestores)
+              ? numero_funcionarios + numero_gestores
+              : goals?.colaboradores_total ?? 0
           const resolvedMetas = {
             faturamento_anual_objetivo: goals?.faturamento_anual_objetivo ?? 0,
             faturamento_mensal_objetivo: goals?.faturamento_mensal_objetivo ?? 0,
             meta_2026: goals?.meta_2026 ?? 0,
-            colaboradores_total: goals?.colaboradores_total ?? 0,
+            numero_funcionarios,
+            numero_gestores,
           }
           setData({
             empresa: clientEntry.nome_empresa_formatado,
             faturamento_anual: resolvedMetas.faturamento_anual_objetivo,
             meta_2026: resolvedMetas.meta_2026,
             receita_mensal: resolvedMetas.faturamento_mensal_objetivo,
-            colaboradores: resolvedMetas.colaboradores_total,
+            colaboradores: colaboradoresDerived,
             acoes: normalized,
             nivel_multiplicador: clientEntry.nivel_multiplicador ?? null,
           })
@@ -164,6 +172,10 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
 
     fetchClientData()
 
+    // Refetch quando Cenários salvar
+    const onMetasUpdated = () => fetchClientData()
+    window.addEventListener('cliente-metas-updated', onMetasUpdated)
+
     // Fetch configurable links
     supabase
       .from('configuracoes_links')
@@ -176,6 +188,10 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
           setQuickLinks(map)
         }
       })
+
+    return () => {
+      window.removeEventListener('cliente-metas-updated', onMetasUpdated)
+    }
   }, [resolvedClientId])
 
   const suporteUrl = clientSc
@@ -517,14 +533,25 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                 onChange={(e) => setFormMetas(prev => ({ ...prev, meta_2026: Number(e.target.value) }))}
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Colaboradores</Label>
-              <Input
-                type="number"
-                className="h-11 rounded-xl"
-                value={formMetas.colaboradores_total}
-                onChange={(e) => setFormMetas(prev => ({ ...prev, colaboradores_total: Number(e.target.value) }))}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Funcionários</Label>
+                <Input
+                  type="number"
+                  className="h-11 rounded-xl"
+                  value={formMetas.numero_funcionarios}
+                  onChange={(e) => setFormMetas(prev => ({ ...prev, numero_funcionarios: Number(e.target.value) }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Gestores</Label>
+                <Input
+                  type="number"
+                  className="h-11 rounded-xl"
+                  value={formMetas.numero_gestores}
+                  onChange={(e) => setFormMetas(prev => ({ ...prev, numero_gestores: Number(e.target.value) }))}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nível Multiplicador</Label>
@@ -547,9 +574,13 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
               onClick={async () => {
                 if (!resolvedClientId) return
                 setSavingMetas(true)
+                const colaboradores_total = (formMetas.numero_funcionarios || 0) + (formMetas.numero_gestores || 0)
                 const { error } = await supabase
                   .from('cliente_metas')
-                  .upsert({ id_cliente: resolvedClientId, ...formMetas }, { onConflict: 'id_cliente' })
+                  .upsert(
+                    { id_cliente: resolvedClientId, ...formMetas, colaboradores_total },
+                    { onConflict: 'id_cliente' }
+                  )
                 if (!error) {
                   await supabase
                     .from('clientes_entrada_new')
@@ -563,9 +594,10 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
                     faturamento_anual: formMetas.faturamento_anual_objetivo,
                     receita_mensal: formMetas.faturamento_mensal_objetivo,
                     meta_2026: formMetas.meta_2026,
-                    colaboradores: formMetas.colaboradores_total,
+                    colaboradores: colaboradores_total,
                     nivel_multiplicador: formNivel,
                   }))
+                  window.dispatchEvent(new CustomEvent('cliente-metas-updated'))
                   setShowMetasSheet(false)
                 }
               }}

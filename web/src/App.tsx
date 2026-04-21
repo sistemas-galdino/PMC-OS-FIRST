@@ -7,8 +7,7 @@ import AdminDashboard from "@/pages/admin-dashboard"
 import ClientDashboard from "@/pages/client-dashboard"
 import MentoresPage from "@/pages/mentores"
 import ClientesPage from "@/pages/clientes"
-import ProdutosPage from "@/pages/produtos"
-import CanaisPage from "@/pages/canais"
+import MapeamentoPage from "@/pages/mapeamento"
 import AcoesPage from "@/pages/acoes"
 import OnboardingPage from "@/pages/onboarding"
 import ClientProfilePage from "@/pages/client-profile"
@@ -203,8 +202,9 @@ function App() {
                     <Route path="/" element={isAdmin ? <AdminDashboard /> : <ClientDashboard session={session} />} />
                     <Route path="/mentores" element={<MentoresPage />} />
                     <Route path="/clientes" element={<ClientesPage />} />
-                    <Route path="/produtos" element={<ProdutosPage session={session} />} />
-                    <Route path="/canais" element={<CanaisPage session={session} />} />
+                    <Route path="/mapeamento" element={<MapeamentoPage session={session} />} />
+                    <Route path="/produtos" element={<Navigate to="/mapeamento?tab=produtos" replace />} />
+                    <Route path="/canais" element={<Navigate to="/mapeamento?tab=canais" replace />} />
                     <Route path="/acoes" element={<AcoesPage session={session} />} />
                     <Route path="/reunioes" element={<ClientReunioesPage session={session} />} />
                     <Route path="/cliente/:id" element={<ClientProfilePage />} />
