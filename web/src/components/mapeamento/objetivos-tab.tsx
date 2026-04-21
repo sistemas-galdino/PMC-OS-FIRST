@@ -16,7 +16,6 @@ import {
   ZapIcon as Zap,
   TrendingDownIcon as TrendingDown,
   AwardIcon as Award,
-  SproutIcon as Sprout,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
@@ -72,13 +71,6 @@ const OBJETIVOS: ObjetivoDef[] = [
     descricao: 'Construa transformações culturais na sua empresa, alinhando time e cultura ao posicionamento.',
     icon: Award,
     accent: 'text-violet-400',
-  },
-  {
-    key: 'consolidacao',
-    titulo: 'Consolidação',
-    descricao: 'Estabilize a operação atual e crie bases sólidas pra crescer de forma sustentável.',
-    icon: Sprout,
-    accent: 'text-teal-400',
   },
 ]
 
