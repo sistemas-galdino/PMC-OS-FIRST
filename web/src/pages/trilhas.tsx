@@ -12,6 +12,11 @@ import {
   Edit3Icon as Edit3,
   CheckIcon as Check,
   XIcon as X,
+  TargetIcon as Target,
+  TrendingUpIcon as TrendingUp,
+  ZapIcon as Zap,
+  Sparkles2Icon as Sparkles,
+  TrophyIcon as Trophy,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion, AnimatePresence } from "framer-motion"
@@ -147,24 +152,8 @@ export default function TrilhasPage({ session, clientId, embedded }: TrilhasPage
         </Button>
       </motion.div>
 
-      {/* Pilares progress */}
-      <div className="flex items-center gap-4 p-5 rounded-2xl border border-border bg-muted/10">
-        <div className="flex-1">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Pilares de Evidência</span>
-            <span className="text-sm font-bold text-foreground">{totals.done} de {totals.total} enviados</span>
-          </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${totals.pct}%` }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-              className="h-full bg-primary rounded-full"
-            />
-          </div>
-        </div>
-        <div className="text-3xl font-bold tracking-tight text-primary shrink-0">{totals.pct}%</div>
-      </div>
+      {/* Progresso na jornada — gamificado */}
+      <ProgressoJornadaCard done={totals.done} total={totals.total} pct={totals.pct} />
 
       {/* Passos */}
       <div className="space-y-4">
@@ -324,6 +313,117 @@ function TarefaRow({ tarefa, linkOverride, isAdmin, onSaveLink }: TarefaRowProps
               </Button>
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface Conquista {
+  id: string
+  label: string
+  descricao: string
+  icon: (props: React.SVGProps<SVGSVGElement>) => JSX.Element
+  unlock: (done: number, total: number, pct: number) => boolean
+}
+
+const CONQUISTAS: Conquista[] = [
+  { id: "inicio",   label: "Primeiros Passos",    descricao: "1ª evidência enviada",    icon: Target,      unlock: (done) => done >= 1 },
+  { id: "caminho",  label: "A Caminho",           descricao: "25% da jornada concluída", icon: TrendingUp, unlock: (_d, _t, pct) => pct >= 25 },
+  { id: "meio",     label: "Meio Caminho",        descricao: "50% da jornada concluída", icon: Zap,        unlock: (_d, _t, pct) => pct >= 50 },
+  { id: "reta",     label: "Reta Final",          descricao: "75% da jornada concluída", icon: Sparkles,   unlock: (_d, _t, pct) => pct >= 75 },
+  { id: "completo", label: "Jornada Completa",    descricao: "Todas as evidências enviadas", icon: Trophy, unlock: (done, total) => total > 0 && done >= total },
+]
+
+function LockIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  )
+}
+
+interface ProgressoJornadaCardProps {
+  done: number
+  total: number
+  pct: number
+}
+
+function ProgressoJornadaCard({ done, total, pct }: ProgressoJornadaCardProps) {
+  const conquistasComStatus = CONQUISTAS.map(c => ({ ...c, desbloqueada: c.unlock(done, total, pct) }))
+  const desbloqueadas = conquistasComStatus.filter(c => c.desbloqueada).length
+  return (
+    <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-sm p-6 md:p-8 space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 p-2.5 rounded-xl">
+            <Sparkles className="size-6 text-primary" />
+          </div>
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">Seu Progresso na Jornada</h2>
+        </div>
+        <div className="inline-flex items-center self-start md:self-auto rounded-full bg-primary/10 border border-primary/20 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-primary">
+          {done} de {total} etapas
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-muted-foreground">Progresso geral</span>
+          <span className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">{pct}%</span>
+        </div>
+        <div className="h-3 rounded-full bg-muted/50 overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full relative"
+          >
+            {pct > 0 && pct < 100 && (
+              <motion.div
+                className="absolute inset-0 bg-white/15 rounded-full"
+                animate={{ opacity: [0.15, 0.35, 0.15] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+              />
+            )}
+          </motion.div>
+        </div>
+      </div>
+
+      <div className="space-y-4 pt-2 border-t border-border/50">
+        <div className="flex items-center justify-between pt-4">
+          <h3 className="text-sm font-bold tracking-tight text-foreground">Conquistas</h3>
+          <span className="text-[11px] font-semibold text-muted-foreground">{desbloqueadas}/{CONQUISTAS.length} desbloqueadas</span>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          {conquistasComStatus.map((c, i) => (
+            <motion.div
+              key={c.id}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3, delay: i * 0.08, ease: "easeOut" }}
+              className="relative group"
+              title={`${c.label}: ${c.descricao}`}
+            >
+              <div
+                className={`size-14 rounded-full flex items-center justify-center transition-all ${
+                  c.desbloqueada
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-2 ring-primary/40"
+                    : "bg-muted/40 text-muted-foreground/60 border border-border"
+                }`}
+              >
+                {c.desbloqueada ? <c.icon className="size-6" /> : <LockIcon className="size-5" />}
+              </div>
+              {c.desbloqueada && (
+                <div className="absolute -top-1 -right-1 size-5 rounded-full bg-emerald-500 border-2 border-background flex items-center justify-center">
+                  <Check className="size-3 text-white stroke-[3]" />
+                </div>
+              )}
+              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-2.5 py-1.5 rounded-lg bg-foreground text-background text-[10px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-xl">
+                {c.label}
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </div>
