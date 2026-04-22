@@ -8,6 +8,21 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import {
   Table,
   TableBody,
   TableCell,
@@ -24,6 +39,8 @@ import {
   MailIcon as Mail,
   SearchIcon as Search,
   UserCheckIcon as UserCheck,
+  CopyIcon as Copy,
+  MessageCircleIcon as MessageCircle,
 } from "@/components/ui/icons"
 
 interface AccessRow {
@@ -86,8 +103,12 @@ export default function AcessosPage() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [activeTab, setActiveTab] = useState<TabKey>("todos")
+  const [csFilter, setCsFilter] = useState<string>("all")
   const [resendingId, setResendingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null)
+  const [confirmRow, setConfirmRow] = useState<AccessRow | null>(null)
+  const [inviteResult, setInviteResult] = useState<{ row: AccessRow; link: string } | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -135,6 +156,17 @@ export default function AcessosPage() {
     return { total, jaAcessaram, nunca, ativos, inativos, aguardando }
   }, [rows])
 
+  const csOptions = useMemo(() => {
+    const set = new Set<string>()
+    let temSemCs = false
+    for (const r of rows) {
+      if (r.sc && r.sc.trim()) set.add(r.sc.trim())
+      else temSemCs = true
+    }
+    const arr = Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"))
+    return { lista: arr, temSemCs }
+  }, [rows])
+
   const filtered = useMemo(() => {
     const now = Date.now()
     let list = rows
@@ -142,6 +174,11 @@ export default function AcessosPage() {
     else if (activeTab === "ativos") list = list.filter(r => r.last_sign_in_at && (now - new Date(r.last_sign_in_at).getTime()) <= THRESHOLD_ATIVO)
     else if (activeTab === "inativos") list = list.filter(r => r.last_sign_in_at && (now - new Date(r.last_sign_in_at).getTime()) > THRESHOLD_ATIVO)
     else if (activeTab === "aguardando") list = list.filter(r => r.tem_auth_user && !r.last_sign_in_at)
+
+    if (csFilter !== "all") {
+      if (csFilter === "__sem") list = list.filter(r => !r.sc || !r.sc.trim())
+      else list = list.filter(r => r.sc === csFilter)
+    }
 
     const q = search.trim().toLowerCase()
     if (q) {
@@ -155,11 +192,14 @@ export default function AcessosPage() {
       const bT = b.last_sign_in_at ? new Date(b.last_sign_in_at).getTime() : 0
       return bT - aT
     })
-  }, [rows, activeTab, search])
+  }, [rows, activeTab, search, csFilter])
 
-  async function handleResend(row: AccessRow) {
+  async function confirmResend() {
+    const row = confirmRow
+    if (!row) return
     if (!row.email) {
       setToast({ type: "err", msg: "Cliente sem email cadastrado" })
+      setConfirmRow(null)
       return
     }
     setResendingId(row.id_cliente)
@@ -192,13 +232,10 @@ export default function AcessosPage() {
           ? { ...r, qtd_convites_reenviados: r.qtd_convites_reenviados + 1, tem_auth_user: true }
           : r
       ))
+      setConfirmRow(null)
       if (data.invite_link) {
-        try {
-          await navigator.clipboard.writeText(data.invite_link)
-          setToast({ type: "ok", msg: "Link reenviado + copiado para clipboard" })
-        } catch {
-          setToast({ type: "ok", msg: "Link reenviado com sucesso" })
-        }
+        setInviteResult({ row, link: data.invite_link })
+        setLinkCopied(false)
       } else {
         setToast({ type: "ok", msg: data.message || "Link reenviado com sucesso" })
       }
@@ -207,6 +244,23 @@ export default function AcessosPage() {
     } finally {
       setResendingId(null)
     }
+  }
+
+  async function copyLinkToClipboard(link: string) {
+    try {
+      await navigator.clipboard.writeText(link)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2500)
+    } catch {
+      setToast({ type: "err", msg: "Não foi possível copiar o link" })
+    }
+  }
+
+  function shareOnWhatsApp(row: AccessRow, link: string) {
+    const nome = (row.nome_cliente || "").split(" ")[0] || "Olá"
+    const msg = `${nome}, aqui está o link pra você acessar o sistema PMC OS: ${link}`
+    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`
+    window.open(url, "_blank", "noopener,noreferrer")
   }
 
   const cards = [
@@ -297,6 +351,20 @@ export default function AcessosPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+          </div>
+          <div className="w-full md:w-auto md:min-w-[200px]">
+            <Select value={csFilter} onValueChange={setCsFilter}>
+              <SelectTrigger className="h-12 bg-background border-border focus:border-primary/50">
+                <SelectValue placeholder="Filtrar por CS" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os CS</SelectItem>
+                {csOptions.lista.map(cs => (
+                  <SelectItem key={cs} value={cs}>{cs}</SelectItem>
+                ))}
+                {csOptions.temSemCs && <SelectItem value="__sem">Sem CS atribuído</SelectItem>}
+              </SelectContent>
+            </Select>
           </div>
           <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground md:ml-auto">
             Mostrando <span className="text-foreground">{filtered.length}</span> de <span className="text-foreground">{metrics.total}</span>
@@ -422,7 +490,7 @@ export default function AcessosPage() {
                       variant="outline"
                       size="sm"
                       disabled={!row.email || resendingId === row.id_cliente}
-                      onClick={() => handleResend(row)}
+                      onClick={() => setConfirmRow(row)}
                       className="h-8 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider gap-1.5"
                       title={row.email ? "Reenviar link de definição de senha" : "Cliente sem email cadastrado"}
                     >
@@ -446,6 +514,76 @@ export default function AcessosPage() {
           </TableBody>
         </Table>
       </motion.div>
+
+      <Dialog open={!!confirmRow} onOpenChange={(o) => { if (!o) setConfirmRow(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reenviar link de acesso?</DialogTitle>
+            <DialogDescription>
+              Um novo link de definição de senha será gerado e enviado para{" "}
+              <span className="font-semibold text-foreground">{confirmRow?.email || "—"}</span>.
+              {confirmRow?.nome_cliente && (
+                <>
+                  {" "}Cliente: <span className="font-semibold text-foreground">{confirmRow.nome_cliente}</span>.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setConfirmRow(null)} disabled={resendingId === confirmRow?.id_cliente}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmResend} disabled={resendingId === confirmRow?.id_cliente} className="gap-2">
+              <Mail className="size-4" />
+              {resendingId === confirmRow?.id_cliente ? "Enviando..." : "Confirmar e reenviar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!inviteResult} onOpenChange={(o) => { if (!o) setInviteResult(null) }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="size-5 text-primary" />
+              Link gerado com sucesso
+            </DialogTitle>
+            <DialogDescription>
+              Envie o link abaixo para{" "}
+              <span className="font-semibold text-foreground">{inviteResult?.row.nome_cliente || inviteResult?.row.email}</span>{" "}
+              definir a senha e acessar o sistema.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="rounded-xl border border-border bg-muted/30 p-3 break-all text-xs font-mono text-foreground">
+              {inviteResult?.link}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 gap-2"
+                onClick={() => inviteResult && copyLinkToClipboard(inviteResult.link)}
+              >
+                <Copy className="size-4" />
+                {linkCopied ? "Copiado!" : "Copiar link"}
+              </Button>
+              <Button
+                className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white"
+                onClick={() => inviteResult && shareOnWhatsApp(inviteResult.row, inviteResult.link)}
+              >
+                <MessageCircle className="size-4" />
+                Enviar no WhatsApp
+              </Button>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setInviteResult(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
