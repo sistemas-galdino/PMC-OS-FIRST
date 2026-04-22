@@ -216,6 +216,13 @@ function extractTitleCliente(summary) {
   return m ? m[1].trim() : null
 }
 
+// Para eventos blackcrm: extrai o responsável do padrão [PMC Nome] ou [PMC - Nome]
+function extractResponsavel(summary) {
+  if (!summary) return null
+  const m = summary.match(/\[PMC\s*[-–]?\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ ]{1,25}?)\s*\]/)
+  return m ? m[1].trim() : null
+}
+
 function findMentor(title, mentoresNomes) {
   const t = normalize(title)
   for (const nome of mentoresNomes) {
@@ -375,6 +382,7 @@ async function main() {
       payload = {
         ...base,
         tipo_reuniao: entry.tipo || null,
+        responsavel: extractResponsavel(event.summary),
         status_match: cliente ? 'Identificado' : 'Nao identificado',
         metodo_match: metodo || null,
       }
