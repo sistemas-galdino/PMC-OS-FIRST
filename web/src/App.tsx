@@ -24,6 +24,7 @@ import ReuniaoGaldinoDetalhePage from "@/pages/reuniao-galdino-detalhe"
 import ReunioesBlackCRMPage from "@/pages/reunioes-blackcrm"
 import ReuniaoBlackCRMDetalhePage from "@/pages/reuniao-blackcrm-detalhe"
 import RecursosPage from "@/pages/recursos"
+import FerramentasPage from "@/pages/ferramentas"
 import CalendarioEncontrosPage from "@/pages/calendario-encontros"
 import ConfiguracoesPage from "@/pages/configuracoes"
 import AgendarPage from "@/pages/agendar"
@@ -216,6 +217,7 @@ function App() {
                     <Route path="/reunioes-blackcrm" element={<ReunioesBlackCRMPage session={session} />} />
                     <Route path="/reuniao-blackcrm/:id" element={<ReuniaoBlackCRMDetalhePage isAdmin={isAdmin} />} />
                     <Route path="/recursos" element={<RecursosPage session={session} />} />
+                    <Route path="/ferramentas" element={<FerramentasPage session={session} forceAdmin={isAdmin} />} />
                     <Route path="/calendario" element={<CalendarioEncontrosPage />} />
                     <Route path="/onboarding" element={<OnboardingPage />} />
                     <Route path="/configuracoes" element={<ConfiguracoesPage />} />

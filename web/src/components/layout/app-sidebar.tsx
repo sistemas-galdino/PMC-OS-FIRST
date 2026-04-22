@@ -27,6 +27,7 @@ import {
   TrophyIcon as Trophy,
   MapIcon as MapTrilha,
   ShieldCheckIcon as ShieldCheck,
+  Sparkles2Icon as Sparkles,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -55,6 +56,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Reunioes Galdino", icon: Calendar, url: "/reunioes-galdino" },
     { title: "Reunioes Black CRM", icon: Settings, url: "/reunioes-blackcrm" },
     { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
+    { title: "Ferramentas IA", icon: Sparkles, url: "/ferramentas" },
     { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
     { title: "Configurações", icon: Settings, url: "/configuracoes" },
   ]
@@ -70,6 +72,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Central de Vitórias", icon: Trophy, url: "/vitorias" },
     { title: "Meu Time", icon: Users, url: "/meu-time" },
     { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
+    { title: "Ferramentas IA", icon: Sparkles, url: "/ferramentas" },
     { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
   ]
 
