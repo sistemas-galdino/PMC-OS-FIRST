@@ -375,7 +375,7 @@ export default function ClientesPage() {
       (client.codigo_cliente != null && String(client.codigo_cliente).includes(searchTerm))
 
     const matchesFilters =
-      (!filters.cs || client.sc === filters.cs) &&
+      (!filters.cs || (filters.cs === 'Sem CS' ? !client.sc || !client.sc.trim() : client.sc === filters.cs)) &&
       (!filters.status || client.status_atual === filters.status) &&
       (!filters.engajamento || client.nivel_engajamento === filters.engajamento) &&
       (!filters.produto || client.produto === filters.produto) &&
@@ -389,13 +389,16 @@ export default function ClientesPage() {
   })
 
   const uniqueScs = Array.from(new Set(clients.map(c => c.sc).filter(Boolean)))
+  const hasClientesSemCs = clients.some(c => !c.sc || !c.sc.trim())
   const produtoOptions = [...new Set(clients.map(c => c.produto).filter(Boolean) as string[])].sort()
   const canalOptions = [...new Set(clients.map(c => c.canal_de_venda).filter(Boolean) as string[])].sort()
   const unidadeOptions = [...new Set(clients.map(c => c.unidade_treinamento).filter(Boolean) as string[])].sort()
 
+  const csFilterOptions = hasClientesSemCs ? [...uniqueScs, 'Sem CS'] : uniqueScs
+
   const filterCategories: { key: string; label: string; options: string[] }[] = [
     { key: 'status', label: 'Status', options: STATUS_OPTIONS },
-    { key: 'cs', label: 'CS Responsável', options: uniqueScs },
+    { key: 'cs', label: 'CS Responsável', options: csFilterOptions },
     { key: 'engajamento', label: 'Engajamento', options: Object.values(ENGAGEMENT_LABELS) },
     { key: 'produto', label: 'Produto', options: produtoOptions },
     { key: 'unidade', label: 'Unidade', options: unidadeOptions },
