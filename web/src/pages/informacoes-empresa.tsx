@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { DatePicker } from "@/components/ui/date-picker"
 import {
   Building2Icon as Building,
   SaveIcon as Save,
@@ -170,25 +171,21 @@ export default function InformacoesEmpresaPage({ session }: InformacoesEmpresaPa
                   </div>
 
                   <div className="space-y-2.5">
-                    <Label htmlFor="data_entrada" className="text-xs font-bold uppercase tracking-widest ml-1 text-muted-foreground">Data de Entrada</Label>
-                    <Input
-                      id="data_entrada"
-                      type="date"
+                    <Label className="text-xs font-bold uppercase tracking-widest ml-1 text-muted-foreground">Data de Entrada</Label>
+                    <DatePicker
                       value={form.data_entrada}
-                      onChange={(e) => update("data_entrada", e.target.value)}
-                      className="bg-muted/10 border-border focus-visible:border-primary/50"
+                      onChange={(v) => update("data_entrada", v)}
+                      placeholder="Selecionar data"
                       disabled={saving}
                     />
                   </div>
 
                   <div className="space-y-2.5">
-                    <Label htmlFor="data_boas_vindas" className="text-xs font-bold uppercase tracking-widest ml-1 text-muted-foreground">Data Boas Vindas</Label>
-                    <Input
-                      id="data_boas_vindas"
-                      type="date"
+                    <Label className="text-xs font-bold uppercase tracking-widest ml-1 text-muted-foreground">Data Boas Vindas</Label>
+                    <DatePicker
                       value={form.data_boas_vindas}
-                      onChange={(e) => update("data_boas_vindas", e.target.value)}
-                      className="bg-muted/10 border-border focus-visible:border-primary/50"
+                      onChange={(v) => update("data_boas_vindas", v)}
+                      placeholder="Selecionar data"
                       disabled={saving}
                     />
                   </div>
