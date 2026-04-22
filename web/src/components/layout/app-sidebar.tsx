@@ -28,6 +28,7 @@ import {
   MapIcon as MapTrilha,
   ShieldCheckIcon as ShieldCheck,
   Sparkles2Icon as Sparkles,
+  Building2Icon as Building,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -63,6 +64,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
 
   const clientItems = [
     { title: "Dashboard", icon: LayoutDashboard, url: "/" },
+    { title: "Informações da Empresa", icon: Building, url: "/informacoes-empresa" },
     { title: "Mapeamento", icon: Share2, url: "/mapeamento" },
     { title: "Reuniões Consultores", icon: Calendar, url: "/reunioes" },
     { title: "Reuniões Galdino", icon: Calendar, url: "/reunioes-galdino" },
