@@ -341,19 +341,15 @@ export default function AcessosPage() {
           <TableHeader className="bg-muted/30">
             <TableRow className="border-b border-border/50 hover:bg-transparent">
               <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-4">Membro</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 hidden md:table-cell">Email</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 hidden lg:table-cell w-[140px]">CS</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 hidden xl:table-cell w-[180px]">Status</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 hidden lg:table-cell w-[120px]">Data Cadastro</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 w-[160px]">Último Acesso</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 w-[100px] text-center hidden md:table-cell">Convites</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 text-right pr-4 w-[220px]">Ações</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 w-[200px] hidden md:table-cell">CS / Status</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 w-[180px] hidden lg:table-cell">Datas</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 text-right pr-4 w-[240px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-16 text-muted-foreground text-sm">
+                <TableCell colSpan={4} className="text-center py-16 text-muted-foreground text-sm">
                   Nenhum membro encontrado com esses filtros.
                 </TableCell>
               </TableRow>
@@ -361,65 +357,67 @@ export default function AcessosPage() {
             {filtered.map(row => (
               <TableRow key={row.id_entrada} className="hover:bg-primary/5 border-b border-border/30 transition-colors">
                 <TableCell className="py-4 px-4">
-                  <div className="flex flex-col gap-1 min-w-0">
+                  <div className="flex flex-col gap-0.5 min-w-0">
                     <span className="font-bold text-sm text-foreground truncate">{row.nome_cliente || "—"}</span>
                     <span className="text-[11px] text-muted-foreground truncate">{row.nome_empresa || "—"}</span>
+                    {row.email ? (
+                      <a href={`mailto:${row.email}`} className="text-[11px] text-muted-foreground/80 hover:text-primary transition-colors truncate mt-0.5">
+                        {row.email}
+                      </a>
+                    ) : null}
                   </div>
                 </TableCell>
                 <TableCell className="px-3 hidden md:table-cell">
-                  {row.email ? (
-                    <a href={`mailto:${row.email}`} className="text-xs text-foreground hover:text-primary transition-colors break-all">
-                      {row.email}
-                    </a>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="px-3 hidden lg:table-cell">
-                  {row.sc ? (
-                    <div className="flex items-center gap-2">
-                      <div className="size-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
-                        {row.sc.substring(0, 1)}
+                  <div className="flex flex-col gap-1.5 min-w-0">
+                    {row.sc ? (
+                      <div className="flex items-center gap-2">
+                        <div className="size-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                          {row.sc.substring(0, 1)}
+                        </div>
+                        <span className="text-[11px] font-semibold text-foreground truncate">{row.sc}</span>
                       </div>
-                      <span className="text-[11px] font-semibold text-foreground truncate">{row.sc}</span>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="px-3 hidden xl:table-cell">
-                  {row.status_atual ? (
-                    <Badge
-                      variant="outline"
-                      className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider max-w-full truncate inline-block ${
-                        row.status_atual.toLowerCase().includes("ativo")
-                          ? "border-primary/30 text-primary bg-primary/10"
-                          : "border-border text-muted-foreground bg-muted/20"
-                      }`}
-                    >
-                      {row.status_atual}
-                    </Badge>
-                  ) : <span className="text-xs text-muted-foreground">—</span>}
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                    {row.status_atual ? (
+                      <Badge
+                        variant="outline"
+                        className={`rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider max-w-full truncate inline-block w-fit ${
+                          row.status_atual.toLowerCase().includes("ativo")
+                            ? "border-primary/30 text-primary bg-primary/10"
+                            : "border-border text-muted-foreground bg-muted/20"
+                        }`}
+                      >
+                        {row.status_atual}
+                      </Badge>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className="px-3 hidden lg:table-cell">
-                  <span className="text-xs text-muted-foreground">{formatDate(row.data_cadastro_formulario)}</span>
-                </TableCell>
-                <TableCell className="px-3">
-                  <span className={`text-xs font-semibold ${lastAccessClass(row.last_sign_in_at)}`}>
-                    {formatRelativeTime(row.last_sign_in_at)}
-                  </span>
-                </TableCell>
-                <TableCell className="px-3 text-center hidden md:table-cell">
-                  {row.qtd_convites_reenviados > 0 ? (
-                    <Badge variant="outline" className="rounded-lg px-2 py-0.5 text-[10px] font-bold bg-muted/30">
-                      {row.qtd_convites_reenviados}
-                    </Badge>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
+                  <div className="flex flex-col gap-0.5 text-[11px]">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-muted-foreground/70 font-semibold uppercase tracking-wider text-[9px]">Cadastro</span>
+                      <span className="text-muted-foreground">{formatDate(row.data_cadastro_formulario)}</span>
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-muted-foreground/70 font-semibold uppercase tracking-wider text-[9px]">Acesso</span>
+                      <span className={`font-semibold ${lastAccessClass(row.last_sign_in_at)}`}>
+                        {formatRelativeTime(row.last_sign_in_at)}
+                      </span>
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell className="px-3 text-right pr-4">
                   <div className="flex items-center justify-end gap-2">
+                    {row.qtd_convites_reenviados > 0 && (
+                      <Badge
+                        variant="outline"
+                        className="rounded-md px-2 py-0.5 text-[10px] font-bold bg-muted/30"
+                        title={`${row.qtd_convites_reenviados} convite(s) reenviado(s)`}
+                      >
+                        {row.qtd_convites_reenviados}×
+                      </Badge>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
