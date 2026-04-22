@@ -118,7 +118,7 @@ export default function InformacoesEmpresaPage({ session }: InformacoesEmpresaPa
         <p className="text-sm text-muted-foreground font-medium">Informações básicas do seu negócio</p>
       </div>
 
-      <Card className="border-border bg-card/50 backdrop-blur-xl shadow-xl">
+      <Card className="border-border bg-card/50 backdrop-blur-xl shadow-xl overflow-visible">
         <CardHeader className="pb-6">
           <div className="flex items-start gap-3">
             <div className="bg-primary/10 p-2.5 rounded-xl shrink-0">
