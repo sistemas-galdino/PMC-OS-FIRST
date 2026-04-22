@@ -340,10 +340,10 @@ export default function AcessosPage() {
         <Table className="w-full">
           <TableHeader className="bg-muted/30">
             <TableRow className="border-b border-border/50 hover:bg-transparent">
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-4">Membro</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 w-[200px] hidden md:table-cell">CS / Status</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 w-[180px] hidden lg:table-cell">Datas</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 text-right pr-4 w-[240px]">Ações</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-4 w-[40%]">Membro</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 w-[22%] hidden md:table-cell">CS / Status</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 w-[20%] hidden lg:table-cell">Datas</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3 text-right pr-4 w-[18%]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
