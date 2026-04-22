@@ -89,9 +89,20 @@ export function GraficoFaturamentoMensal({ clientId }: Props) {
         ) : (
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+              <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 28 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.3} />
-                <XAxis dataKey="label" stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} interval={0} />
+                <XAxis
+                  dataKey="label"
+                  stroke="var(--color-muted-foreground)"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={0}
+                  angle={-45}
+                  textAnchor="end"
+                  height={52}
+                  dy={4}
+                />
                 <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickFormatter={fmtAxis} tickLine={false} axisLine={false} width={70} />
                 <Tooltip
                   cursor={{ fill: "var(--color-muted)", opacity: 0.2 }}
