@@ -46,17 +46,25 @@ export function GraficoFaturamentoMensal({ clientId }: Props) {
         .eq("id_cliente", clientId)
         .order("ano", { ascending: true })
         .order("mes", { ascending: true })
-      const all = (data as Row[]) || []
-      setRows(all.slice(-12))
+      setRows((data as Row[]) || [])
       setLoading(false)
     }
     fetchData()
   }, [clientId])
 
-  const chartData = rows.map(r => ({
-    label: `${MES_ABREV[r.mes - 1]}/${String(r.ano).slice(-2)}`,
-    faturamento: Number(r.faturamento) || 0,
-  }))
+  const byKey = new Map(rows.map(r => [`${r.ano}-${r.mes}`, Number(r.faturamento) || 0]))
+  const now = new Date()
+  const chartData: { label: string; faturamento: number }[] = []
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const ano = d.getFullYear()
+    const mes = d.getMonth() + 1
+    chartData.push({
+      label: `${MES_ABREV[mes - 1]}/${String(ano).slice(-2)}`,
+      faturamento: byKey.get(`${ano}-${mes}`) ?? 0,
+    })
+  }
+  const temDados = rows.length > 0
 
   return (
     <Card>
@@ -74,7 +82,7 @@ export function GraficoFaturamentoMensal({ clientId }: Props) {
       <CardContent className="pt-6">
         {loading ? (
           <div className="h-64 animate-pulse bg-card/40 rounded-lg" />
-        ) : chartData.length === 0 ? (
+        ) : !temDados ? (
           <div className="py-12 text-center text-sm text-muted-foreground">
             Cadastre indicadores em <span className="font-semibold text-foreground">/indicadores</span> para visualizar a evolução.
           </div>
@@ -83,7 +91,7 @@ export function GraficoFaturamentoMensal({ clientId }: Props) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.3} />
-                <XAxis dataKey="label" stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                <XAxis dataKey="label" stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} interval={0} />
                 <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickFormatter={fmtAxis} tickLine={false} axisLine={false} width={70} />
                 <Tooltip
                   cursor={{ fill: "var(--color-muted)", opacity: 0.2 }}
@@ -93,9 +101,9 @@ export function GraficoFaturamentoMensal({ clientId }: Props) {
                     borderRadius: 12,
                     fontSize: 12,
                   }}
-                  formatter={(v) => [fmtBRL(Number(v)), "Faturamento"]}
+                  formatter={(v: any) => [fmtBRL(Number(v)), "Faturamento"] as [string, string]}
                 />
-                <Bar dataKey="faturamento" fill="var(--color-primary)" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="faturamento" fill="var(--color-primary)" radius={[8, 8, 0, 0]} maxBarSize={64} />
               </BarChart>
             </ResponsiveContainer>
           </div>
