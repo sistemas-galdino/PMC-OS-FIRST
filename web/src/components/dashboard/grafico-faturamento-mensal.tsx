@@ -84,7 +84,7 @@ export function GraficoFaturamentoMensal({ clientId }: Props) {
           <div className="h-64 animate-pulse bg-card/40 rounded-lg" />
         ) : !temDados ? (
           <div className="py-12 text-center text-sm text-muted-foreground">
-            Cadastre indicadores em <span className="font-semibold text-foreground">/indicadores</span> para visualizar a evolução.
+            Cadastre indicadores para visualizar sua evolução.
           </div>
         ) : (
           <div className="h-64 w-full">
