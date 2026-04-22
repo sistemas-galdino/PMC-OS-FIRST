@@ -29,6 +29,7 @@ import {
   ShieldCheckIcon as ShieldCheck,
   Sparkles2Icon as Sparkles,
   Building2Icon as Building,
+  BarChart3Icon as BarChart3,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -66,6 +67,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Dashboard", icon: LayoutDashboard, url: "/" },
     { title: "Informações da Empresa", icon: Building, url: "/informacoes-empresa" },
     { title: "Mapeamento", icon: Share2, url: "/mapeamento" },
+    { title: "Indicadores", icon: BarChart3, url: "/indicadores" },
     { title: "Reuniões Consultores", icon: Calendar, url: "/reunioes" },
     { title: "Reuniões Galdino", icon: Calendar, url: "/reunioes-galdino" },
     { title: "Reuniões BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },

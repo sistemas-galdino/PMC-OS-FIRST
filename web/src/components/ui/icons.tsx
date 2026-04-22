@@ -266,3 +266,15 @@ export const SproutIcon = (props: IconProps) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"><path d="M7 20h10M10 20c5.5-2.5 8-6 8-11V4h-4c-4.5 0-7 2.5-7 7v9"/><path d="M12 15c0-6-4-8-8-8v2c0 6 4 8 8 8"/></g></svg>
 );
 
+export const BarChart3Icon = (props: IconProps) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3v18h18M7 16V9m5 7V5m5 11v-7"/></svg>
+);
+
+export const PercentIcon = (props: IconProps) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"><path d="M19 5L5 19"/><path d="M6.5 9a2.5 2.5 0 1 0 0-5a2.5 2.5 0 0 0 0 5m11 11a2.5 2.5 0 1 0 0-5a2.5 2.5 0 0 0 0 5"/></g></svg>
+);
+
+export const RefreshCwIcon = (props: IconProps) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4m-4 4a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>
+);
+

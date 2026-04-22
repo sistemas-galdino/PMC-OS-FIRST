@@ -9,6 +9,7 @@ import MentoresPage from "@/pages/mentores"
 import ClientesPage from "@/pages/clientes"
 import AcessosPage from "@/pages/acessos"
 import MapeamentoPage from "@/pages/mapeamento"
+import IndicadoresPage from "@/pages/indicadores"
 import AcoesPage from "@/pages/acoes"
 import OnboardingPage from "@/pages/onboarding"
 import ClientProfilePage from "@/pages/client-profile"
@@ -209,6 +210,7 @@ function App() {
                     <Route path="/mapeamento" element={<MapeamentoPage session={session} />} />
                     <Route path="/produtos" element={<Navigate to="/mapeamento?tab=produtos" replace />} />
                     <Route path="/canais" element={<Navigate to="/mapeamento?tab=canais" replace />} />
+                    <Route path="/indicadores" element={<IndicadoresPage session={session} />} />
                     <Route path="/acoes" element={<AcoesPage session={session} />} />
                     <Route path="/reunioes" element={<ClientReunioesPage session={session} />} />
                     <Route path="/cliente/:id" element={<ClientProfilePage />} />
