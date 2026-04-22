@@ -356,13 +356,16 @@ function ProgressoJornadaCard({ done, total, pct }: ProgressoJornadaCardProps) {
   return (
     <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-sm p-6 md:p-8 space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2.5 rounded-xl">
+        <div className="flex items-start gap-3">
+          <div className="bg-primary/10 p-2.5 rounded-xl shrink-0">
             <Sparkles className="size-6 text-primary" />
           </div>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">Seu Progresso na Jornada</h2>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground leading-tight">Seu Progresso na Jornada</h2>
+            <p className="text-xs md:text-sm text-muted-foreground font-medium">Assista às aulas e envie as evidências para avançar.</p>
+          </div>
         </div>
-        <div className="inline-flex items-center self-start md:self-auto rounded-full bg-primary/10 border border-primary/20 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-primary">
+        <div className="inline-flex items-center self-start md:self-auto rounded-full bg-primary/10 border border-primary/20 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-primary shrink-0">
           {done} de {total} etapas
         </div>
       </div>
