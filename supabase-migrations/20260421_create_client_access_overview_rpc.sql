@@ -9,7 +9,7 @@ DROP FUNCTION IF EXISTS public.get_client_access_overview();
 
 CREATE OR REPLACE FUNCTION public.get_client_access_overview()
 RETURNS TABLE (
-  id_entrada integer,
+  id_entrada bigint,
   id_cliente uuid,
   nome_cliente text,
   nome_empresa text,
