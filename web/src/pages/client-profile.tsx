@@ -15,9 +15,13 @@ import RecursosPage from "@/pages/recursos"
 import CalendarioEncontrosPage from "@/pages/calendario-encontros"
 import VitoriasPage from "@/pages/vitorias"
 import TrilhasPage from "@/pages/trilhas"
+import MeuTimePage from "@/pages/meu-time"
+import FerramentasPage from "@/pages/ferramentas"
+import InformacoesEmpresaPage from "@/pages/informacoes-empresa"
 
 const TABS = [
   { key: "dashboard", label: "Dashboard" },
+  { key: "informacoes-empresa", label: "Informações da Empresa" },
   { key: "cenarios", label: "Cenários" },
   { key: "produtos", label: "Produtos" },
   { key: "canais", label: "Canais" },
@@ -28,7 +32,9 @@ const TABS = [
   { key: "acoes", label: "Ações" },
   { key: "vitorias", label: "Vitórias" },
   { key: "trilhas", label: "Trilha" },
+  { key: "meu-time", label: "Meu Time" },
   { key: "recursos", label: "Links Importantes" },
+  { key: "ferramentas", label: "Ferramentas IA" },
   { key: "calendario", label: "Calendário" },
 ] as const
 
@@ -43,24 +49,24 @@ export default function ClientProfilePage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4">
         <Button
           variant="outline"
           size="sm"
-          className="h-9 gap-2 rounded-xl"
+          className="h-9 w-fit gap-2 rounded-xl"
           onClick={() => navigate("/clientes")}
         >
           <ArrowLeft className="size-4" />
           <span className="font-bold text-xs uppercase tracking-wider">Voltar</span>
         </Button>
 
-        <div className="flex gap-2 ml-4">
+        <div className="flex flex-wrap gap-2">
           {TABS.map((tab) => (
             <Button
               key={tab.key}
               variant={activeTab === tab.key ? "default" : "outline"}
               size="sm"
-              className="h-9 px-5 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all"
+              className="h-9 px-4 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all"
               onClick={() => setActiveTab(tab.key)}
             >
               {tab.label}
@@ -70,6 +76,7 @@ export default function ClientProfilePage() {
       </div>
 
       {activeTab === "dashboard" && <ClientDashboard clientId={id} />}
+      {activeTab === "informacoes-empresa" && <InformacoesEmpresaPage clientId={id} />}
       {activeTab === "cenarios" && <CenariosTab clientId={id} />}
       {activeTab === "produtos" && <ProdutosView clientId={id} />}
       {activeTab === "canais" && <CanaisView clientId={id} />}
@@ -80,7 +87,9 @@ export default function ClientProfilePage() {
       {activeTab === "acoes" && <AcoesPage clientId={id} />}
       {activeTab === "vitorias" && <VitoriasPage clientId={id} />}
       {activeTab === "trilhas" && <TrilhasPage clientId={id} embedded />}
+      {activeTab === "meu-time" && <MeuTimePage clientId={id} />}
       {activeTab === "recursos" && <RecursosPage forceAdmin />}
+      {activeTab === "ferramentas" && <FerramentasPage forceAdmin />}
       {activeTab === "calendario" && <CalendarioEncontrosPage />}
     </div>
   )

@@ -13,7 +13,8 @@ import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 
 interface InformacoesEmpresaPageProps {
-  session: Session
+  session?: Session
+  clientId?: string
 }
 
 interface InformacoesEmpresa {
@@ -32,8 +33,8 @@ const emptyForm: InformacoesEmpresa = {
   instagram: "",
 }
 
-export default function InformacoesEmpresaPage({ session }: InformacoesEmpresaPageProps) {
-  const clientId = session.user.id
+export default function InformacoesEmpresaPage({ session, clientId: clientIdProp }: InformacoesEmpresaPageProps) {
+  const clientId = clientIdProp ?? session?.user.id ?? ""
   const [form, setForm] = useState<InformacoesEmpresa>(emptyForm)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
