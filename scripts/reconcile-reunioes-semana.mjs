@@ -87,6 +87,7 @@ function classifyMentorEvent(event) {
   const t = event.summary || ''
   const patterns = [
     /\[PMC\]\s*Acompanhamento com Mentor/i,
+    /\[PMC\]\s*Acompanhamento com Consultor/i,
     /\[PMC\]\s*Mentor Tr[aá]fego Pago/i,
   ]
   if (!patterns.some(p => p.test(t))) return null
