@@ -29,6 +29,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Label as RechartsLabel } from "recharts"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
+import { GraficoFaturamentoMensal } from "@/components/dashboard/grafico-faturamento-mensal"
 
 const MULTIPLICADOR_LEVELS = ['30K', '70K', '100K', '300K', '500K', '1MM', '5MM', '10MM', '30MM', '100MM']
 
@@ -324,7 +325,15 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
         </motion.div>
       </motion.div>
 
-      <motion.div 
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+      >
+        <GraficoFaturamentoMensal clientId={resolvedClientId} />
+      </motion.div>
+
+      <motion.div
         variants={container}
         initial="hidden"
         animate="show"
