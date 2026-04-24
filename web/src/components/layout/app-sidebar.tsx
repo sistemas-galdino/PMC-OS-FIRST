@@ -84,13 +84,13 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
 
   return (
     <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border bg-sidebar/40 text-sidebar-foreground backdrop-blur-xl">
-      <SidebarHeader className="p-6 border-b border-border bg-sidebar/20 backdrop-blur-sm">
+      <SidebarHeader className="p-4 border-b border-border bg-sidebar/20 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <motion.div 
+          <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+            className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
           >
             <TrendingUp className="size-5" />
           </motion.div>
@@ -102,11 +102,11 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       </SidebarHeader>
       <SidebarContent className="px-2">
         <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold uppercase text-muted-foreground tracking-widest mt-6 px-4">
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold uppercase text-muted-foreground tracking-widest mt-3 px-4">
             {isAdmin ? "Visão Geral" : "Gestão"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="mt-4 space-y-1">
+            <SidebarMenu className="mt-2 space-y-0.5">
               {items.map((item, index) => (
                 <SidebarMenuItem key={item.title}>
                   <motion.div
@@ -114,17 +114,17 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
                   >
-                    <SidebarMenuButton 
+                    <SidebarMenuButton
                       tooltip={item.title}
                       isActive={location.pathname === item.url}
                       onClick={() => navigate(item.url)}
-                      className={`rounded-lg transition-all duration-300 font-medium h-11 px-4 ${
-                        location.pathname === item.url 
-                          ? "bg-primary/10 text-primary hover:bg-primary/20" 
+                      className={`rounded-lg transition-all duration-300 font-medium h-9 px-3 ${
+                        location.pathname === item.url
+                          ? "bg-primary/10 text-primary hover:bg-primary/20"
                           : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       }`}
                     >
-                      <item.icon className={`size-5 transition-transform duration-300 ${location.pathname === item.url ? "scale-110" : "group-hover:scale-110"}`} />
+                      <item.icon className={`size-4 transition-transform duration-300 ${location.pathname === item.url ? "scale-110" : "group-hover:scale-110"}`} />
                       <span className="ml-2">{item.title}</span>
                       {location.pathname === item.url && (
                         <motion.div
@@ -142,16 +142,16 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-border bg-sidebar/20">
+      <SidebarFooter className="p-3 border-t border-border bg-sidebar/20">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   tooltip="Configurações"
-                  className="rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-300 font-medium h-11 px-4"
+                  className="rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-300 font-medium h-9 px-3"
                 >
-                  <Settings className="size-5" />
+                  <Settings className="size-4" />
                   <span>Configurações</span>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -167,9 +167,9 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
             <SidebarMenuButton
               tooltip="Sair"
               onClick={() => supabase.auth.signOut()}
-              className="rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all duration-300 font-medium h-11 px-4"
+              className="rounded-lg hover:bg-destructive/10 hover:text-destructive transition-all duration-300 font-medium h-9 px-3"
             >
-              <LogOut className="size-5" />
+              <LogOut className="size-4" />
               <span>Sair</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
