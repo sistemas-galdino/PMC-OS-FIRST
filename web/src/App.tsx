@@ -204,16 +204,16 @@ function App() {
                 <DashboardLayout isAdmin={isAdmin}>
                   <Routes>
                     <Route path="/" element={isAdmin ? <AdminDashboard /> : <ClientDashboard session={session} />} />
-                    <Route path="/mentores" element={<MentoresPage />} />
-                    <Route path="/clientes" element={<ClientesPage />} />
-                    <Route path="/acessos" element={<AcessosPage />} />
+                    <Route path="/mentores" element={isAdmin ? <MentoresPage /> : <Navigate to="/" replace />} />
+                    <Route path="/clientes" element={isAdmin ? <ClientesPage /> : <Navigate to="/" replace />} />
+                    <Route path="/acessos" element={isAdmin ? <AcessosPage /> : <Navigate to="/" replace />} />
                     <Route path="/mapeamento" element={<MapeamentoPage session={session} />} />
                     <Route path="/produtos" element={<Navigate to="/mapeamento?tab=produtos" replace />} />
                     <Route path="/canais" element={<Navigate to="/mapeamento?tab=canais" replace />} />
                     <Route path="/indicadores" element={<IndicadoresPage session={session} />} />
                     <Route path="/acoes" element={<AcoesPage session={session} />} />
                     <Route path="/reunioes" element={<ClientReunioesPage session={session} />} />
-                    <Route path="/cliente/:id" element={<ClientProfilePage />} />
+                    <Route path="/cliente/:id" element={isAdmin ? <ClientProfilePage /> : <Navigate to="/" replace />} />
                     <Route path="/reuniao/:id" element={<ReuniaoDetalhePage />} />
                     <Route path="/reunioes-galdino" element={<ReunioesGaldinoPage session={session} />} />
                     <Route path="/reuniao-galdino/:id" element={<ReuniaoGaldinoDetalhePage />} />
@@ -222,8 +222,8 @@ function App() {
                     <Route path="/recursos" element={<RecursosPage session={session} />} />
                     <Route path="/ferramentas" element={<FerramentasPage session={session} forceAdmin={isAdmin} />} />
                     <Route path="/calendario" element={<CalendarioEncontrosPage />} />
-                    <Route path="/onboarding" element={<OnboardingPage />} />
-                    <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+                    <Route path="/onboarding" element={isAdmin ? <OnboardingPage /> : <Navigate to="/" replace />} />
+                    <Route path="/configuracoes" element={isAdmin ? <ConfiguracoesPage /> : <Navigate to="/" replace />} />
                     <Route path="/trocar-senha" element={<TrocarSenhaPage />} />
                     <Route path="/agendar" element={<AgendarPage />} />
                     <Route path="/vitorias" element={<VitoriasPage session={session} />} />
