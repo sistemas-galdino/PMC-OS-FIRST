@@ -10,6 +10,7 @@ import { motion } from "framer-motion"
 
 export default function TrocarSenhaPage() {
   const navigate = useNavigate()
+  const [currentPassword, setCurrentPassword] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -20,8 +21,13 @@ export default function TrocarSenhaPage() {
     e.preventDefault()
     setError(null)
 
+    if (!currentPassword) {
+      setError("Informe sua senha atual")
+      return
+    }
+
     if (password.length < 6) {
-      setError("A senha deve ter no mínimo 6 caracteres")
+      setError("A nova senha deve ter no mínimo 6 caracteres")
       return
     }
 
@@ -30,11 +36,30 @@ export default function TrocarSenhaPage() {
       return
     }
 
+    if (password === currentPassword) {
+      setError("A nova senha deve ser diferente da atual")
+      return
+    }
+
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.updateUser({ password })
-      if (error) throw error
+      const { data: { session } } = await supabase.auth.getSession()
+      const email = session?.user?.email
+      if (!email) throw new Error("Sessão expirada. Faça login novamente.")
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      })
+      if (signInError) {
+        setError("Senha atual incorreta")
+        setLoading(false)
+        return
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({ password })
+      if (updateError) throw updateError
 
       setSuccess(true)
       setTimeout(() => navigate('/', { replace: true }), 1800)
@@ -91,6 +116,20 @@ export default function TrocarSenhaPage() {
               </motion.div>
             )}
             <div className="space-y-2.5">
+              <Label htmlFor="current-password" className="text-xs font-bold uppercase tracking-widest ml-1 text-muted-foreground">Senha Atual</Label>
+              <Input
+                id="current-password"
+                type="password"
+                required
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Sua senha atual"
+                autoComplete="current-password"
+                className="bg-muted/10 border-border focus-visible:border-primary/50"
+                disabled={loading || success}
+              />
+            </div>
+            <div className="space-y-2.5">
               <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest ml-1 text-muted-foreground">Nova Senha</Label>
               <Input
                 id="password"
@@ -100,6 +139,7 @@ export default function TrocarSenhaPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Mínimo 6 caracteres"
+                autoComplete="new-password"
                 className="bg-muted/10 border-border focus-visible:border-primary/50"
                 disabled={loading || success}
               />
