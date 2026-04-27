@@ -109,22 +109,27 @@ function parseGeminiDoc(doc) {
   const FOOTER = /^(A transcri[çc][aã]o foi encerrada|Esta transcri[çc][aã]o edit[aá]vel)/i
   const text = (b) => (b.paragraph?.elements || []).map(e => e.textRun?.content || '').join('').replace(/[\n\u000b]+/g, ' ').trim()
 
-  let resumo = '', detalhes = '', transcricao = ''
+  let resumo = '', detalhes = '', transcricao = '', conteudoCompleto = ''
   const tObs = tabs.find(t => /observa[çc][oõ]es/i.test(t.tabProperties?.title || ''))
   if (tObs) {
     let sec = ''
+    const conteudoLines = []
+    let hitStop = false
     for (const b of (tObs.documentTab?.body?.content || [])) {
       if (!b.paragraph) continue
       const t = text(b)
       if (!t) continue
-      if (STOP.test(t)) break
       if (DATE.test(t) || SKIP.test(t)) continue
       const st = b.paragraph?.paragraphStyle?.namedStyleType || ''
       if (st === 'HEADING_2') continue
+      conteudoLines.push(t)
+      if (STOP.test(t)) { hitStop = true; continue }
+      if (hitStop) continue
       if (st.startsWith('HEADING') && SECTION.test(t)) { sec = t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); continue }
       if (sec.startsWith('resum') || sec.startsWith('sum')) resumo += (resumo ? '\n' : '') + t
       else if (sec.startsWith('detalhe') || sec.startsWith('discuss') || sec.startsWith('topic')) detalhes += (detalhes ? '\n' : '') + t
     }
+    conteudoCompleto = conteudoLines.join('\n').trim()
   }
   const tTr = tabs.find(t => /transcri[çc][aã]o/i.test(t.tabProperties?.title || ''))
   if (tTr) {
@@ -138,7 +143,7 @@ function parseGeminiDoc(doc) {
     }
     transcricao = lines.join('\n').trim()
   }
-  return { resumo: resumo || null, detalhes: detalhes || null, transcricao: transcricao || null }
+  return { resumo: resumo || null, detalhes: detalhes || null, transcricao: transcricao || null, conteudoCompleto: conteudoCompleto || null }
 }
 
 // ---------- Matching ----------
@@ -364,7 +369,7 @@ async function main() {
         ...base,
         pessoa: cliente?.nome_cliente || null,
         nome_cliente_formatado: cliente?.nome_cliente_formatado || null,
-        detalhes_reuniao: parsed.detalhes,
+        detalhes_reuniao: parsed.conteudoCompleto || parsed.detalhes,
         status_match: cliente ? 'Identificado' : 'Nao identificado',
         metodo_match: metodo || null,
       }
