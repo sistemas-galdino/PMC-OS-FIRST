@@ -204,7 +204,7 @@ function App() {
                 <DashboardLayout isAdmin={isAdmin}>
                   <Routes>
                     <Route path="/" element={isAdmin ? <AdminDashboard /> : <ClientDashboard session={session} />} />
-                    <Route path="/mentores" element={isAdmin ? <MentoresPage /> : <Navigate to="/" replace />} />
+                    <Route path="/mentores" element={isAdmin ? <MentoresPage isAdmin={isAdmin} /> : <Navigate to="/" replace />} />
                     <Route path="/clientes" element={isAdmin ? <ClientesPage /> : <Navigate to="/" replace />} />
                     <Route path="/acessos" element={isAdmin ? <AcessosPage /> : <Navigate to="/" replace />} />
                     <Route path="/mapeamento" element={<MapeamentoPage session={session} />} />
@@ -214,10 +214,10 @@ function App() {
                     <Route path="/acoes" element={<AcoesPage session={session} />} />
                     <Route path="/reunioes" element={<ClientReunioesPage session={session} />} />
                     <Route path="/cliente/:id" element={isAdmin ? <ClientProfilePage /> : <Navigate to="/" replace />} />
-                    <Route path="/reuniao/:id" element={<ReuniaoDetalhePage />} />
-                    <Route path="/reunioes-galdino" element={<ReunioesGaldinoPage session={session} />} />
-                    <Route path="/reuniao-galdino/:id" element={<ReuniaoGaldinoDetalhePage />} />
-                    <Route path="/reunioes-blackcrm" element={<ReunioesBlackCRMPage session={session} />} />
+                    <Route path="/reuniao/:id" element={<ReuniaoDetalhePage isAdmin={isAdmin} />} />
+                    <Route path="/reunioes-galdino" element={<ReunioesGaldinoPage session={session} isAdmin={isAdmin} />} />
+                    <Route path="/reuniao-galdino/:id" element={<ReuniaoGaldinoDetalhePage isAdmin={isAdmin} />} />
+                    <Route path="/reunioes-blackcrm" element={<ReunioesBlackCRMPage session={session} isAdmin={isAdmin} />} />
                     <Route path="/reuniao-blackcrm/:id" element={<ReuniaoBlackCRMDetalhePage isAdmin={isAdmin} />} />
                     <Route path="/recursos" element={<RecursosPage session={session} />} />
                     <Route path="/ferramentas" element={<FerramentasPage session={session} forceAdmin={isAdmin} />} />

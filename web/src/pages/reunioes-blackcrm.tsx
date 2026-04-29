@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import { motion, AnimatePresence } from "framer-motion"
+import { StatusBadgeToggle } from "@/components/status-badge-toggle"
 
 interface Meeting {
   id_unico: string
@@ -42,6 +43,7 @@ interface Meeting {
   link_geminidoc: string | null
   status_match: string | null
   observacoes: string | null
+  cliente_compareceu: boolean | null
 }
 
 import type { Session } from "@supabase/supabase-js"
@@ -49,9 +51,10 @@ import type { Session } from "@supabase/supabase-js"
 interface ReunioesBlackCRMProps {
   session?: Session
   clientId?: string
+  isAdmin?: boolean
 }
 
-export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlackCRMProps) {
+export default function ReunioesBlackCRMPage({ session, clientId, isAdmin = false }: ReunioesBlackCRMProps) {
   const navigate = useNavigate()
   const [meetings, setMeetings] = useState<Record<string, Meeting[]>>({})
   const [loading, setLoading] = useState(true)
@@ -340,16 +343,32 @@ export default function ReunioesBlackCRMPage({ session, clientId }: ReunioesBlac
                                     </p>
                                   )}
                                 </div>
-                                <Badge
-                                  variant="outline"
-                                  className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
-                                    meeting.tipo_reuniao === 'tutoria'
-                                      ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
-                                      : "bg-primary/10 border-primary/20 text-primary"
-                                  }`}
-                                >
-                                  {meeting.tipo_reuniao === 'tutoria' ? 'Tutoria' : 'Implementacao'}
-                                </Badge>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Badge
+                                    variant="outline"
+                                    className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg ${
+                                      meeting.tipo_reuniao === 'tutoria'
+                                        ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                                        : "bg-primary/10 border-primary/20 text-primary"
+                                    }`}
+                                  >
+                                    {meeting.tipo_reuniao === 'tutoria' ? 'Tutoria' : 'Implementacao'}
+                                  </Badge>
+                                  <StatusBadgeToggle
+                                    compareceu={meeting.cliente_compareceu}
+                                    dataReuniao={meeting.data_reuniao}
+                                    idUnico={meeting.id_unico}
+                                    tabela="reunioes_blackcrm"
+                                    isAdmin={isAdmin}
+                                    onChange={(novo) => setMeetings(prev => {
+                                      const next: Record<string, Meeting[]> = {}
+                                      for (const [k, list] of Object.entries(prev)) {
+                                        next[k] = list.map(m => m.id_unico === meeting.id_unico ? { ...m, cliente_compareceu: novo } : m)
+                                      }
+                                      return next
+                                    })}
+                                  />
+                                </div>
                               </div>
 
                               <div className="flex items-center justify-between border-t border-border/50 pt-4">

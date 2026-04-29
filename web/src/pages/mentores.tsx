@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import { motion, AnimatePresence } from "framer-motion"
+import { StatusBadgeToggle } from "@/components/status-badge-toggle"
 
 interface Meeting {
   id_unico: string
@@ -40,7 +41,11 @@ interface Meeting {
   link_geminidoc: string | null
 }
 
-export default function MentoresPage() {
+interface MentoresPageProps {
+  isAdmin?: boolean
+}
+
+export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
   const navigate = useNavigate()
   const [meetings, setMeetings] = useState<Record<string, Meeting[]>>({})
   const [loading, setLoading] = useState(true)
@@ -292,18 +297,20 @@ export default function MentoresPage() {
                                   <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">{meeting.pessoa || meeting.nome_cliente_formatado}</h3>
                                   <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{meeting.nome_empresa_formatado}</p>
                                 </div>
-                                <Badge
-                                  variant="outline"
-                                  className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
-                                    new Date(meeting.data_reuniao + 'T00:00:00') > new Date()
-                                      ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
-                                      : meeting.cliente_compareceu === false
-                                        ? "bg-destructive/10 border-destructive/20 text-destructive"
-                                        : "bg-primary/10 border-primary/20 text-primary"
-                                  }`}
-                                >
-                                  {new Date(meeting.data_reuniao + 'T00:00:00') > new Date() ? "Agendada" : meeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
-                                </Badge>
+                                <StatusBadgeToggle
+                                  compareceu={meeting.cliente_compareceu}
+                                  dataReuniao={meeting.data_reuniao}
+                                  idUnico={meeting.id_unico}
+                                  tabela="reunioes_mentoria_new"
+                                  isAdmin={isAdmin}
+                                  onChange={(novo) => setMeetings(prev => {
+                                    const next: Record<string, Meeting[]> = {}
+                                    for (const [k, list] of Object.entries(prev)) {
+                                      next[k] = list.map(m => m.id_unico === meeting.id_unico ? { ...m, cliente_compareceu: novo } : m)
+                                    }
+                                    return next
+                                  })}
+                                />
                               </div>
 
                               <div className="flex items-center justify-between border-t border-border/50 pt-4">

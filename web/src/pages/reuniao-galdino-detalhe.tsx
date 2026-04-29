@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -17,6 +16,7 @@ import {
   ChevronDownIcon as ChevronDown,
 } from "@/components/ui/icons"
 import { motion } from "framer-motion"
+import { StatusBadgeToggle } from "@/components/status-badge-toggle"
 
 interface Meeting {
   id_unico: string
@@ -38,13 +38,14 @@ interface Meeting {
 
 type Tab = "resumo" | "detalhes" | "acoes" | "transcricao" | "gravacao"
 
-export default function ReuniaoGaldinoDetalhePage() {
+export default function ReuniaoGaldinoDetalhePage({ isAdmin: isAdminProp = false }: { isAdmin?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [meeting, setMeeting] = useState<Meeting | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>("resumo")
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [isAdminLocal, setIsAdminLocal] = useState(false)
+  const isAdmin = isAdminProp || isAdminLocal
 
   useEffect(() => {
     async function fetchMeeting() {
@@ -63,7 +64,7 @@ export default function ReuniaoGaldinoDetalhePage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user?.email) {
         supabase.from('mentores').select('id').eq('email', session.user.email).maybeSingle()
-          .then(({ data }) => setIsAdmin(!!data))
+          .then(({ data }) => setIsAdminLocal(!!data))
       }
     })
   }, [id])
@@ -120,16 +121,15 @@ export default function ReuniaoGaldinoDetalhePage() {
               <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
                 {clientName}
               </h1>
-              <Badge
-                variant="outline"
-                className={`uppercase font-bold text-[9px] px-2.5 py-1 rounded-lg shrink-0 ${
-                  meeting.cliente_compareceu === false
-                    ? "bg-destructive/10 border-destructive/20 text-destructive"
-                    : "bg-primary/10 border-primary/20 text-primary"
-                }`}
-              >
-                {meeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
-              </Badge>
+              <StatusBadgeToggle
+                compareceu={meeting.cliente_compareceu}
+                dataReuniao={meeting.data_reuniao}
+                idUnico={meeting.id_unico}
+                tabela="reunioes_galdino"
+                isAdmin={isAdmin}
+                size="md"
+                onChange={(novo) => setMeeting(prev => prev ? { ...prev, cliente_compareceu: novo } : prev)}
+              />
             </div>
             {meeting.nome_empresa_formatado && (
               <p className="text-sm text-muted-foreground font-medium">{meeting.nome_empresa_formatado}</p>

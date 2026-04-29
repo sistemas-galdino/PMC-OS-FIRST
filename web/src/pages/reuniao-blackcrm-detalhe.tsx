@@ -17,6 +17,7 @@ import {
   ChevronDownIcon as ChevronDown,
 } from "@/components/ui/icons"
 import { motion } from "framer-motion"
+import { StatusBadgeToggle } from "@/components/status-badge-toggle"
 
 interface Meeting {
   id_unico: string
@@ -37,6 +38,7 @@ interface Meeting {
   link_gravacao: string | null
   link_geminidoc: string | null
   observacoes: string | null
+  cliente_compareceu: boolean | null
 }
 
 type Tab = "resumo" | "acoes" | "transcricao" | "gravacao"
@@ -205,6 +207,15 @@ export default function ReuniaoBlackCRMDetalhePage({ isAdmin = false }: { isAdmi
               >
                 {meeting.tipo_reuniao === 'tutoria' ? 'Tutoria' : 'Implementacao'}
               </Badge>
+              <StatusBadgeToggle
+                compareceu={meeting.cliente_compareceu}
+                dataReuniao={meeting.data_reuniao}
+                idUnico={meeting.id_unico}
+                tabela="reunioes_blackcrm"
+                isAdmin={isAdmin}
+                size="md"
+                onChange={(novo) => setMeeting(prev => prev ? { ...prev, cliente_compareceu: novo } : prev)}
+              />
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { StatusBadgeToggle } from "@/components/status-badge-toggle"
 import {
   CalendarIcon as Calendar,
   SearchIcon as Search,
@@ -43,9 +44,10 @@ import type { Session } from "@supabase/supabase-js"
 interface ReunioesGaldinoProps {
   session?: Session
   clientId?: string
+  isAdmin?: boolean
 }
 
-export default function ReunioesGaldinoPage({ session, clientId }: ReunioesGaldinoProps) {
+export default function ReunioesGaldinoPage({ session, clientId, isAdmin = false }: ReunioesGaldinoProps) {
   const navigate = useNavigate()
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
@@ -262,18 +264,14 @@ export default function ReunioesGaldinoPage({ session, clientId }: ReunioesGaldi
                           {meeting.nome_empresa_formatado || meeting.empresa || ""}
                         </p>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={`uppercase font-bold text-[9px] px-2 py-0.5 rounded-lg shrink-0 ${
-                          new Date(meeting.data_reuniao + 'T00:00:00') > new Date()
-                            ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
-                            : meeting.cliente_compareceu === false
-                              ? "bg-destructive/10 border-destructive/20 text-destructive"
-                              : "bg-primary/10 border-primary/20 text-primary"
-                        }`}
-                      >
-                        {new Date(meeting.data_reuniao + 'T00:00:00') > new Date() ? "Agendada" : meeting.cliente_compareceu === false ? "Faltou" : "Realizada"}
-                      </Badge>
+                      <StatusBadgeToggle
+                        compareceu={meeting.cliente_compareceu}
+                        dataReuniao={meeting.data_reuniao}
+                        idUnico={meeting.id_unico}
+                        tabela="reunioes_galdino"
+                        isAdmin={isAdmin}
+                        onChange={(novo) => setMeetings(prev => prev.map(m => m.id_unico === meeting.id_unico ? { ...m, cliente_compareceu: novo } : m))}
+                      />
                     </div>
 
                     <div className="flex items-center justify-between border-t border-border/50 pt-4">
