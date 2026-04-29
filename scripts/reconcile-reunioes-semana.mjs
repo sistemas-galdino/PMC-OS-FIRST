@@ -89,6 +89,7 @@ function classifyMentorEvent(event) {
     /\[PMC\]\s*Acompanhamento com Mentor/i,
     /\[PMC\]\s*Acompanhamento com Consultor/i,
     /\[PMC\]\s*Mentor Tr[aá]fego Pago/i,
+    /\[PMC\]\s*Consultor\s*-/i,
   ]
   if (!patterns.some(p => p.test(t))) return null
   return 'reunioes_mentoria_new'
