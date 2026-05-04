@@ -36,7 +36,10 @@ const env = Object.fromEntries(
     return [l.slice(0, idx).trim(), l.slice(idx + 1).trim()]
   })
 )
-const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY)
+const SECRET = env.SECRET_KEY || env.SUPABASE_SERVICE_ROLE
+const SUPABASE_KEY = SECRET || env.VITE_SUPABASE_ANON_KEY
+if (SECRET) console.log('🔑 Usando secret_key (passa do RLS)')
+const supabase = createClient(env.VITE_SUPABASE_URL, SUPABASE_KEY)
 
 const DRY_RUN = process.argv.includes('--dry-run')
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID

@@ -1,83 +1,102 @@
-# Reconciliação Reuniões — 2026-04-06 a 2026-04-12
+# Reconciliação Reuniões — 2026-04-27 a 2026-05-04
 
-Gerado em 2026-04-15T04:21:27.384Z
+Gerado em 2026-05-04T15:32:27.659Z
 
 
 ## reunioes_galdino
 
-- OK: **3**
+- OK: **9**
 - Incompletas: **4**
 - Faltantes: **0**
 - Órfãs no banco (sem evento no calendar): **0**
 
 ### ⚠️ Incompletas (precisam enrichment)
 
-- **PMC - Reunião Individual - Rafael Galdino (MARCELO GOLIN GOLIN)** — 2026-04-09T09:30 — faltam: ganho, acoes_cliente, acoes_mentor — `lcli5iika4tsfvat4ge4opbobk`
-- **PMC - Reunião Individual - Rafael Galdino (Simone Senes Thomas)** — 2026-04-09T11:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `qbqt6t3oquepavfpout5lfd5mc`
-- **PMC - Reunião Individual - Rafael Galdino (Rodrigo Cristiano Konrad)** — 2026-04-10T11:00 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `bm9pf18ff0bm8cjhreoaostmms`
-- **PMC - Reunião Individual - Rafael Galdino (karina ancioto)** — 2026-04-11T10:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `qhavhrog4d8qeb9sah4bp40g0o`
+- **PMC - Reunião Individual - Rafael Galdino (Ricardo Cruvinel)** — 2026-04-28T09:30 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `67708ssphij6dsqru7r2e9otd8`
+- **PMC - Reunião Individual - Rafael Galdino (Silmo Lourenço de Avila)** — 2026-04-28T15:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `ucc1pklvvt78i3q7o98j80hja8`
+- **PMC - Reunião Individual - Rafael Galdino (Pedro Ruas)** — 2026-04-29T09:30 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `2934vhpf8dnqlc2uamq9nnib8o`
+- **PMC - Reunião Individual - Rafael Galdino (Manoela Corrêa)** — 2026-05-04T08:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `u5nq9othm5o9rb3lhg3l7omf38`
 
 ### ✅ OK
 
-- **PMC - Reunião Individual Galdino - Tiago Capatto | VR VISION | PMC ** — 2026-04-06T11:00 — `tcvs5h28i4dvf0p47bt79hncfg`
-- **PMC - Reunião Individual - Rafael Galdino (Andreia  Ecker)** — 2026-04-10T14:00 — `vop7vn9icqq13io9svssb68am4`
-- **PMC - Reunião Individual - Rafael Galdino (Alexandre  Dartiballi | Maximus Hotéis )** — 2026-04-10T15:30 — `0n7oktt9j3hsstcra54n90u6d8`
+- **PMC - Reunião Individual - Rafael Galdino (Cristiano Stertz)** — 2026-04-27T08:00 — `hesckbkusnjdasde0gv67tfng8`
+- **PMC - Reunião Individual - Rafael Galdino (Nilmar  Braga)** — 2026-04-27T09:30 — `a43qvqsulb052mike56sso52v8`
+- **PMC - Reunião Individual - Rafael Galdino (Marcela  Bellenzie)** — 2026-04-27T11:00 — `j87dqn9697agjp5tprdq4ebetg`
+- **PMC - Reunião Individual - Rafael Galdino (Elisiane Cordeiro )** — 2026-04-28T08:00 — `l5gnutqfv14hho5ehdoqkkb4h0`
+- **PMC - Reunião Individual - Rafael Galdino (Celso  Santolin)** — 2026-04-28T11:00 — `9k4oi6eqjtdeqm1v6scm4i30a8`
+- **PMC - Reunião Individual - Rafael Galdino (Nasser  Yasin Ali)** — 2026-04-28T13:00 — `jkojti9rdbb9633da17ov1nmes`
+- **PMC - Reunião Individual - Rafael Galdino (Catiusia  Pereira )** — 2026-04-28T17:30 — `31b8voa1lcngq43khin1usi3ms`
+- **PMC - Reunião Individual - Rafael Galdino (Dener Rosa BMZ Reference)** — 2026-04-29T13:00 — `s1f1hvamlq4u3f5a9o591ag5ok`
+- **PMC - Reunião Individual - Rafael Galdino (Simone  Senes Thomas )** — 2026-04-29T14:00 — `i9katme5ekqatcvna6vgnv827c`
 
 ## reunioes_blackcrm
 
 - OK: **8**
-- Incompletas: **17**
+- Incompletas: **19**
 - Faltantes: **0**
 - Órfãs no banco (sem evento no calendar): **0**
 
 ### ⚠️ Incompletas (precisam enrichment)
 
-- **[PMC Leonardo] 3 Implementacao Black CRM (Agenor Vilela)** — 2026-04-06T09:00 — faltam: ganho, acoes_cliente, acoes_mentor — `09ivk9ll9oipdvt052rgjblmkg`
-- **[PMC Leonardo] 3.2 IMPLEMENTAÇÃO CRM (Jaque Luz)** — 2026-04-06T13:00 — faltam: ganho, acoes_cliente, acoes_mentor — `7rnlb1fl9sk99ounkv9pj181ob`
-- ** [PMC Ayslan ] Tutoria Black CRM  (Jaqueline Albino)** — 2026-04-06T16:00 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `tcdk5o9iabslpjd7kkiln59v30`
-- ** [PMC Ayslan ] Tutoria Black CRM  (Carolina Pitthan)** — 2026-04-06T17:00 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `026l07s15buulmejr9pt83f7c8`
-- **Implementação Arguto** — 2026-04-06T17:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `5fh7elbld5k497o3h8er5g37rb`
-- **[PMC Ayslan ] IMPLEMENTAÇÃO CRM  (Wagner Vieira)** — 2026-04-07T16:00 — faltam: ganho, acoes_cliente, acoes_mentor — `cqrmira8vbfn158ip463lea0ns`
-- **[PMC Ayslan ] IMPLEMENTAÇÃO CRM  (Simone Senes Thomas)** — 2026-04-07T17:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `ufm5iu0mp7of95v5r61k8c93po`
-- ** [PMC - Thiago ] Implementacao Black CRM  (Rafael Kossei Kato)** — 2026-04-07T18:00 — faltam: ganho, acoes_cliente, acoes_mentor — `jdkgfksfm371g0tb9kaqlj8r1o`
-- **[PMC Leonardo] 2 IMPLEMENTAÇÃO CRM (Eduardo Hector Studios)** — 2026-04-08T14:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `78c915b46gptqu2m6k8lujuv67`
-- ** [PMC - Thiago ] Implementacao Black CRM  (fernando martins)** — 2026-04-08T16:00 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `81fir6gqplnpel2gt12pd8mmeg`
-- ** [PMC - Thiago ] Implementacao Black CRM  (Celso  Santolin)** — 2026-04-08T18:00 — faltam: ganho, acoes_cliente, acoes_mentor — `iep1e0pokp14hgba87svd8ippk`
-- **[PMC Leonardo] IMPLEMENTAÇÃO CRM (MARCELO  GOLIN)** — 2026-04-09T13:00 — faltam: ganho, acoes_cliente, acoes_mentor — `g4r8fli83kbcr6ms5vpn8fcmec`
-- ** [PMC - Thiago ] Implementacao Black CRM  (Nilmar  Braga)** — 2026-04-09T16:00 — faltam: ganho, acoes_cliente, acoes_mentor — `6na62r9ifnefcme3fkrfuou3o4`
-- ** [PMC Ayslan ] Tutoria Black CRM  (Victor Arruda)** — 2026-04-09T17:00 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `ttas0dbgkvnleg5klpr0iee7m0`
-- **[PMC Leonardo] 2 IMPLEMENTAÇÃO CRM (Simara  Glauco)** — 2026-04-10T13:00 — faltam: ganho, acoes_cliente, acoes_mentor — `51108lsk25vvbtg2rh80uq1444`
-- **[PMC Leonardo] 2 IMPLEMENTAÇÃO CRM (Michelle R)** — 2026-04-10T14:00 — faltam: ganho, acoes_cliente, acoes_mentor — `2e50ehbedqam4prmo9pfabdhk3`
-- ** [PMC - Thiago ] Implementacao Black CRM  (Carlos Frederico Koube Quimicos )** — 2026-04-10T16:00 — faltam: ganho, acoes_cliente, acoes_mentor — `9sl44c0ccjgu0006lttqnqqpvc`
+- **[PMC Leonardo] IMPLEMENTAÇÃO CRM (Michelle  Rispoli)** — 2026-04-27T13:00 — faltam: link_gravacao, ganho — `phjck1ihaksho3lvlhel5ip4dk`
+- **[PMC Leonardo] Tutoria Black CRM (wilson santos)** — 2026-04-29T09:00 — faltam: ganho, acoes_cliente, acoes_mentor — `045sme7h4rkmdqqod7qv8j69pj`
+- **[PMC Leonardo] IMPLEMENTAÇÃO CRM (karina ancioto)** — 2026-04-29T13:00 — faltam: ganho, acoes_cliente, acoes_mentor — `umk0k7a9kku2hc83denfujqvdo`
+- **[PMC Leonardo] IMPLEMENTAÇÃO CRM  (Michelle Rispoli) ** — 2026-04-29T14:00 — faltam: ganho, acoes_cliente, acoes_mentor — `5p55n8icj9utb632b6donto5f3`
+- ** [PMC - Thiago ] Implementacao Black CRM  (Carine Ramos)** — 2026-04-29T14:00 — faltam: ganho, acoes_cliente, acoes_mentor — `al6hoate1ak3bnc401gt79igdc`
+- ** [PMC - Thiago ] Implementacao Black CRM  (Elisiane Ristow)** — 2026-04-29T16:00 — faltam: ganho, acoes_cliente, acoes_mentor — `ap1q4o1qqu59t027j025ek0bi8`
+- ** [PMC - Thiago ] Implementacao Black CRM  (Nicolas glaser)** — 2026-04-29T18:00 — faltam: ganho, acoes_cliente, acoes_mentor — `k2ql3kc4ggh1n363saej275qhg`
+- ** [PMC Thiago] Tutoria Black CRM (Desie Vida Plena)** — 2026-04-30T10:00 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `uiuupoggfs03i5maechqsm8cdk`
+- ** [PMC Thiago] Tutoria Black CRM (Liani Muniz)** — 2026-04-30T11:00 — faltam: ganho, acoes_cliente, acoes_mentor — `k913ur72dj4ece1c4kg3am6l1s`
+- **[PMC Leonardo] IMPLEMENTAÇÃO CRM (Leonardo Freiberger)** — 2026-04-30T13:00 — faltam: ganho, acoes_cliente, acoes_mentor — `4kqjmnqj8gskup32dgooo9rd0s`
+- ** [PMC Ayslan ] Tutoria Black CRM  (Desie Vida Plena)** — 2026-04-30T16:00 — faltam: ganho, acoes_cliente, acoes_mentor — `4d5gef8q6c2radrefcbis6lg6c`
+- **[PMC Ayslan ] IMPLEMENTAÇÃO CRM  (Vision Consultoria )** — 2026-04-30T17:00 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `4jmasumnr6nh2jld95k1fudb5o`
+- ** [PMC - Thiago ] Implementacao Black CRM  (Pedro Ruas)** — 2026-04-30T18:00 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `ac42eb4afu6lqrfelc6add28v4`
+- **[PMC Leonardo] Tutoria Black CRM (ANA PATRICIA MILLER)** — 2026-05-04T09:00 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `f2lne4dtn8td964sc6d4l4rt38`
+- **[PMC Leonardo] 2 IMPLEMENTAÇÃO CRM (Marcos Marin)** — 2026-05-04T14:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `6c279aok8bbt3tfoe0qb1363uu`
+- ** [PMC - Thiago ] Implementacao Black CRM  (Simone Senes Thomas)** — 2026-05-04T14:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `eci6j7bdjghkhvdi7e30svg3mg`
+- ** [PMC - Thiago ] Implementacao Black CRM  (Marcella Bellenzier)** — 2026-05-04T16:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `56ilfrnb4ou8dm4o94d5hadcs0`
+- ** [PMC Ayslan ] Tutoria Black CRM  (cibele borges)** — 2026-05-04T17:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `vi9fl40eb1aa7ldot1j3tv4ovc`
+- ** [PMC - Thiago ] Implementacao Black CRM  (Mitzrael Tassinari)** — 2026-05-04T18:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `p1fqb8okf1dqjaon2nfk7gld9s`
 
 ### ✅ OK
 
-- **[PMC Leonardo] 2 IMPLEMENTAÇÃO CRM (Leonardo Freiberger)** — 2026-04-07T09:00 — `0sq9j9v21l7hret69aj4l0upsc`
-- **[PMC Leonardo] IMPLEMENTAÇÃO CRM (Fernando Machado)** — 2026-04-07T13:00 — `d8qm0enhshfjufuj1cnl4a2osg`
-- **[PMC Leonardo] IMPLEMENTAÇÃO CRM (Anderson Paixão)** — 2026-04-07T14:00 — `aesq9lg01r5li3roaj6icdeouo`
-- **[PMC Leonardo] Tutoria Black CRM (wilson santos)** — 2026-04-08T09:00 — `tegusr3kl3m7q9qovfpau1br18`
-- **[PMC Leonardo] IMPLEMENTAÇÃO CRM (Raquel   Baréa )** — 2026-04-08T13:00 — `4vdjv5ehr0j10lch02cnk6007s`
-- **[PMC Leonardo] Tutoria Black CRM (Top Indenizações)** — 2026-04-09T09:00 — `1g6pcv73ae2v8e2o5f32ectief`
-- **[PMC Leonardo] IMPLEMENTAÇÃO CRM (Luciano Guerra)** — 2026-04-09T14:00 — `7dkvihfsq8vg58n04jif05itrg`
-- **[PMC Leonardo] Tutoria Black CRM (Top Indenizações)** — 2026-04-10T09:00 — `4e4iihee4anstp51dbsmimik1q`
+- ** [PMC Thiago] Tutoria Black CRM (João  Robusti)** — 2026-04-27T11:00 — `74fe0ljfc9b13gklv87tnaqfjc`
+- ** [PMC - Thiago ] Implementacao Black CRM  (Lucas Gabriel)** — 2026-04-27T14:00 — `1e3u7c70nno7lt89n3lt46c0tc`
+- ** [PMC - Thiago ] Implementacao Black CRM  (Ernani  Peres)** — 2026-04-27T16:00 — `mql3kgmi385kqjok5445gtgu0g`
+- **[PMC Leonardo] Tutoria Black CRM (Top Indenizações)** — 2026-04-28T09:00 — `25rp7v1ubeqqp030s4akhn4e13`
+- ** [PMC Thiago] Tutoria Black CRM (Jaqueline Tome)** — 2026-04-28T10:00 — `u06eiqb1nfsjvuphrqm0325igg`
+- **[PMC Leonardo] IMPLEMENTAÇÃO CRM (Renata Santos)** — 2026-04-28T13:00 — `mc44qclj3vduvup9aiqg1g99mk`
+- **[PMC Leonardo] IMPLEMENTAÇÃO CRM (Bernardo Trintin)** — 2026-04-28T14:00 — `8umb3him6ige7e7m130ilamfck`
+- ** [PMC - Thiago ] Implementacao Black CRM  (carolina brigagao)** — 2026-04-28T18:00 — `02p5hnfnbfd4dm8v61mgdf7rn0`
 
 ## reunioes_mentoria_new
 
-- OK: **0**
-- Incompletas: **0**
-- Faltantes: **11**
+- OK: **7**
+- Incompletas: **12**
+- Faltantes: **0**
 - Órfãs no banco (sem evento no calendar): **0**
 
-### 🚨 Faltantes (precisam ser criadas + enriquecidas)
+### ⚠️ Incompletas (precisam enrichment)
 
-- ** [PMC] Acompanhamento com Mentor - Rodrigo Nogueira (Kátia Nunes)** — 2026-04-06T14:00 — cod:175 — calendar:mentor@rafaelgaldino.com.br — `51s16uo96tqapoiek639h80f6n`
-- ** [PMC] Acompanhamento com Mentor - David Abner (Silvio  tAVARES)** — 2026-04-07T09:00 — cod:254 — calendar:mentor@rafaelgaldino.com.br — `j06jv6r3fn2nj88l5ao49bvjbk`
-- **[PMC] Acompanhamento com Mentor - Issao Yokoi (Jaque Luz)** — 2026-04-07T11:00 — cod:182 — calendar:mentor@rafaelgaldino.com.br — `k44bujp2tuth07nfinqeiuudac`
-- ** [PMC] Acompanhamento com Mentor - David Abner (CHINELARIA LEILANE NEVES)** — 2026-04-07T11:00 — cod:217 — calendar:mentor@rafaelgaldino.com.br — `qnfckrkvh9i5vrpk18vcqcm9m0`
-- ** [PMC] Acompanhamento com Mentor - David Abner (Daniela Santos)** — 2026-04-07T15:00 — cod:103 — calendar:mentor@rafaelgaldino.com.br — `sssfnplel1h7ei7pkudrcmlo4o`
-- **[PMC] Acompanhamento com Mentor - Rodrigo Nogueira (Leonardo Freiberger)** — 2026-04-08T09:00 — cod:257 — calendar:mentor@rafaelgaldino.com.br — `21l4ptc0iq864u3e8qaerathmk`
-- ** [PMC] Acompanhamento com Mentor - Rodrigo Nogueira (Fábio  Vidigal)** — 2026-04-08T14:00 — cod:110 — calendar:mentor@rafaelgaldino.com.br — `53au5ig36otr21bd9flo2jslei`
-- **[PMC] Acompanhamento com Mentor - Issao Yokoi (Helton Severgnini)** — 2026-04-08T16:00 — cod:210 — calendar:mentor@rafaelgaldino.com.br — `p2ja98jkfpiqon274bbi8mmldg`
-- **[PMC] Acompanhamento com Mentor - Issao + David [Miketec/Aizon]** — 2026-04-09T16:30 — cod:195 — calendar:mentor@rafaelgaldino.com.br — `2ij20249hqkopffmrqs1j9f8b5`
-- **[PMC] Mentor Tráfego Pago - Diego Silva (Dayane Telles)** — 2026-04-07T17:30 — cod:163 — calendar:mentores@rafaelgaldino.com.br — `ageics9g41gl6lp9t7h96ti5vc`
-- **[PMC] Mentor Tráfego Pago - Diego Silva (Jonathan Freitas)** — 2026-04-08T17:00 — cod:240 — calendar:mentores@rafaelgaldino.com.br — `ss1mmmf706lrvr7c3rp11ociio`
+- **[PMC] Consultor - Issao Yokoi (Maiara TESTE Gadelha)** — 2026-04-27T10:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `nh5rmeomo4boiqee8i7ldes2ac`
+- **[PMC] Consultor - Issao Yokoi (Brener Padilha)** — 2026-04-27T16:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `cgr68cb46crm4bb36gsm2b9kcph62b9ocosmab9mc9h68dpic9gjaob568`
+- ** [PMC] Consultor - David Abner (JAQUELINE TOME)** — 2026-04-28T09:00 — faltam: link_gravacao — `j5n7r0dvte0afq4p139rg6r5f8`
+- **[PMC] Consultor - Rodrigo Nogueira (carolina brigagao)** — 2026-04-29T14:00 — faltam: ganho, acoes_cliente, acoes_mentor — `ekmb5qfg2s0crq7d87ohukqric`
+- **[PMC] Consultor - Issao Yokoi (Michelle Rispoli)** — 2026-04-29T16:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `c9i38p346sqj2b9o6cr3gb9kccsj2b9oclj3ebb169hm6p9g60pm4e9g64`
+- **[PMC] Consultor - Issao Yokoi (Michelle Rispoli)** — 2026-04-29T16:00 — faltam: ganho, acoes_cliente, acoes_mentor — `uu6t80l7lmgkefec1f1rage0bo`
+- ** [PMC] Consultor - Matheus Moura (GABRIEL ECKER)** — 2026-04-30T10:00 — faltam: ganho, acoes_cliente, acoes_mentor — `q0kqplu36gjl08bhldb91okrog`
+- **[PMC] Consultor - Issao Yokoi (Liani Muniz)** — 2026-04-30T16:00 — faltam: ganho, acoes_cliente, acoes_mentor — `9vd9sdnb5c41grsbvnsbgf7vd8`
+- **[PMC] Consultor - Rodrigo Nogueira (JAQUELINE TOME)** — 2026-04-30T17:00 — faltam: ganho, acoes_cliente, acoes_mentor — `u5klak7ofmt1kobvl209logqn4`
+- **[PMC] Consultor - Rodrigo Nogueira (Simone  Senes Thomas)** — 2026-05-04T09:00 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `34adv3uqk7aq3josd2k1083p1d`
+- **[PMC] Consultor - Issao Yokoi (Neroulina Fükushima)** — 2026-05-04T10:00 — faltam: link_gravacao, ganho, acoes_cliente, acoes_mentor — `k6h9ahtpvftsbhm6nr88cla40s`
+- ** [PMC] Consultor - Matheus Moura (Ricardo  C)** — 2026-05-04T15:00 — faltam: transcricao, resumo, link_gravacao, link_geminidoc, ganho, acoes_cliente, acoes_mentor — `8mrabi0hcoahf611du1gcjojpk`
+
+### ✅ OK
+
+- ** [PMC] Consultor - Matheus Moura (Elisiane Cordeiro )** — 2026-04-27T15:00 — `jdg5mns1uoj22rj15h2vv70kis`
+- **[PMC] Consultor - Issao Yokoi (Brener Padilha)** — 2026-04-27T16:00 — `h0kk3setd6g4quk1kngiv9obt0`
+- **[PMC] Consultor - Issao Yokoi (Cleber .)** — 2026-04-28T10:00 — `9j1k7cubveneqpkalqrsh4ua1o`
+- ** [PMC] Consultor - David Abner (MATEUS ZANOTTI MARCON)** — 2026-04-28T11:00 — `rij4rvitrd71jmr9dd0hap04jk`
+- ** [PMC] Consultor - David Abner (Manuela Binhotti santos)** — 2026-04-28T15:00 — `kourf14kq0f4cs9nl7n56cjdv0`
+- ** [PMC] Consultor - David Abner (Karina Angelico)** — 2026-04-28T16:30 — `8ai2e8cqpsu29946e0anbr3ejc`
+- **[PMC] Acompanhamento com Mentor - Rodrigo Nogueira (RICARDO CACERES)** — 2026-04-30T14:00 — `g98qic8840i7tp17cfipvk81pk`
