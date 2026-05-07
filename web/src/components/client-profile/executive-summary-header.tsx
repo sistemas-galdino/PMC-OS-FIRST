@@ -69,7 +69,7 @@ export function ExecutiveSummaryHeader({ clientId }: ExecutiveSummaryHeaderProps
       ] = await Promise.all([
         supabase
           .from("reunioes_galdino")
-          .select("id", { count: "exact", head: true })
+          .select("id_cliente", { count: "exact", head: true })
           .eq("id_cliente", clientId)
           .eq("cliente_compareceu", true),
         supabase
@@ -82,7 +82,7 @@ export function ExecutiveSummaryHeader({ clientId }: ExecutiveSummaryHeaderProps
           .maybeSingle(),
         supabase
           .from("reunioes_mentoria_new")
-          .select("id", { count: "exact", head: true })
+          .select("id_cliente", { count: "exact", head: true })
           .eq("id_cliente", clientId)
           .eq("cliente_compareceu", true),
         supabase
