@@ -1,90 +1,68 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ArrowLeftIcon as ArrowLeft } from "@/components/ui/icons"
-import ClientDashboard from "@/pages/client-dashboard"
-import MapeamentoPage from "@/pages/mapeamento"
-import IndicadoresPage from "@/pages/indicadores"
-import AcoesPage from "@/pages/acoes"
-import ClientReunioesPage from "@/pages/client-reunioes"
-import ReunioesGaldinoPage from "@/pages/reunioes-galdino"
-import ReunioesBlackCRMPage from "@/pages/reunioes-blackcrm"
-import RecursosPage from "@/pages/recursos"
-import CalendarioEncontrosPage from "@/pages/calendario-encontros"
-import VitoriasPage from "@/pages/vitorias"
-import TrilhasPage from "@/pages/trilhas"
-import MeuTimePage from "@/pages/meu-time"
-import FerramentasPage from "@/pages/ferramentas"
-import InformacoesEmpresaPage from "@/pages/informacoes-empresa"
+import ClientProfileAdmin from "@/pages/client-profile-admin"
+import ClientProfileOperational from "@/pages/client-profile-operational"
 
-const TABS = [
-  { key: "dashboard", label: "Dashboard" },
-  { key: "informacoes-empresa", label: "Informações da Empresa" },
-  { key: "mapeamento", label: "Mapeamento" },
-  { key: "indicadores", label: "Indicadores" },
-  { key: "reunioes", label: "Reuniões Consultores" },
-  { key: "reunioes-galdino", label: "Reuniões Galdino" },
-  { key: "reunioes-blackcrm", label: "Reuniões BlackCRM" },
-  { key: "acoes", label: "Ações" },
-  { key: "vitorias", label: "Vitórias" },
-  { key: "trilhas", label: "Trilha" },
-  { key: "meu-time", label: "Meu Time" },
-  { key: "recursos", label: "Links Importantes" },
-  { key: "ferramentas", label: "Ferramentas IA" },
-  { key: "calendario", label: "Calendário" },
-] as const
+type View = "admin" | "operacional"
+const STORAGE_KEY = "pmc-client-profile-view"
 
-type TabKey = typeof TABS[number]["key"]
+function readInitialView(): View {
+  if (typeof localStorage === "undefined") return "admin"
+  const v = localStorage.getItem(STORAGE_KEY)
+  return v === "operacional" ? "operacional" : "admin"
+}
 
 export default function ClientProfilePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<TabKey>("dashboard")
+  const [view, setView] = useState<View>(readInitialView)
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, view)
+  }, [view])
 
   if (!id) return null
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="outline"
           size="sm"
-          className="h-9 w-fit gap-2 rounded-xl"
+          className="h-9 gap-2 rounded-xl"
           onClick={() => navigate("/clientes")}
         >
           <ArrowLeft className="size-4" />
           <span className="font-bold text-xs uppercase tracking-wider">Voltar</span>
         </Button>
 
-        <div className="flex flex-wrap gap-2">
-          {TABS.map((tab) => (
-            <Button
-              key={tab.key}
-              variant={activeTab === tab.key ? "default" : "outline"}
-              size="sm"
-              className="h-9 px-4 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all"
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </Button>
-          ))}
+        <div className="flex gap-1 rounded-xl bg-muted/20 border border-border p-1">
+          <Button
+            variant={view === "admin" ? "default" : "ghost"}
+            size="sm"
+            className="h-7 rounded-lg font-bold text-[11px] uppercase tracking-wider"
+            onClick={() => setView("admin")}
+          >
+            Visão Admin
+          </Button>
+          <Button
+            variant={view === "operacional" ? "default" : "ghost"}
+            size="sm"
+            className="h-7 rounded-lg font-bold text-[11px] uppercase tracking-wider"
+            onClick={() => setView("operacional")}
+          >
+            Visão Operacional
+          </Button>
         </div>
       </div>
 
-      {activeTab === "dashboard" && <ClientDashboard clientId={id} />}
-      {activeTab === "informacoes-empresa" && <InformacoesEmpresaPage clientId={id} />}
-      {activeTab === "mapeamento" && <MapeamentoPage clientId={id} />}
-      {activeTab === "indicadores" && <IndicadoresPage clientId={id} />}
-      {activeTab === "reunioes" && <ClientReunioesPage clientId={id} />}
-      {activeTab === "reunioes-galdino" && <ReunioesGaldinoPage clientId={id} />}
-      {activeTab === "reunioes-blackcrm" && <ReunioesBlackCRMPage clientId={id} />}
-      {activeTab === "acoes" && <AcoesPage clientId={id} />}
-      {activeTab === "vitorias" && <VitoriasPage clientId={id} />}
-      {activeTab === "trilhas" && <TrilhasPage clientId={id} embedded />}
-      {activeTab === "meu-time" && <MeuTimePage clientId={id} />}
-      {activeTab === "recursos" && <RecursosPage forceAdmin />}
-      {activeTab === "ferramentas" && <FerramentasPage forceAdmin />}
-      {activeTab === "calendario" && <CalendarioEncontrosPage />}
+      {view === "admin" ? (
+        <ClientProfileAdmin clientId={id} />
+      ) : (
+        <ClientProfileOperational clientId={id} />
+      )}
     </div>
   )
 }
