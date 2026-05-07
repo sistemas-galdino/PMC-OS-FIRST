@@ -29,16 +29,15 @@ const GALDINO_TOTAL_DEFAULT = 12 // TODO: tornar dinâmico por cliente (cliente_
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—"
-  try {
-    const d = new Date(iso)
-    if (isNaN(d.getTime())) return "—"
-    const dd = String(d.getDate()).padStart(2, "0")
-    const mm = String(d.getMonth() + 1).padStart(2, "0")
-    const yy = String(d.getFullYear()).slice(-2)
-    return `${dd}/${mm}/${yy}`
-  } catch {
-    return "—"
-  }
+  // DATE-only ("2026-04-13") parseia como UTC no JS e vira -1 dia no BR. Lê manual.
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
+  if (m) return `${m[3]}/${m[2]}/${m[1].slice(-2)}`
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return "—"
+  const dd = String(d.getDate()).padStart(2, "0")
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const yy = String(d.getFullYear()).slice(-2)
+  return `${dd}/${mm}/${yy}`
 }
 
 export function ExecutiveSummaryHeader({ clientId }: ExecutiveSummaryHeaderProps) {
