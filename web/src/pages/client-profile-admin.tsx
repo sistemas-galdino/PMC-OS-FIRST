@@ -46,15 +46,17 @@ export default function ClientProfileAdmin({ clientId }: { clientId: string }) {
       <ExecutiveSummaryHeader clientId={clientId} />
 
       <Tabs value={activeTab} onValueChange={handleChange} className="gap-6">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="h-11 w-fit min-w-full justify-start gap-1">
-            {ADMIN_TABS.map((tab) => (
-              <TabsTrigger key={tab.key} value={tab.key} className="flex-none px-4 text-xs">
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
+        <TabsList className="h-auto min-h-11 flex-wrap justify-start gap-1 p-1">
+          {ADMIN_TABS.map((tab) => (
+            <TabsTrigger
+              key={tab.key}
+              value={tab.key}
+              className="flex-none px-3 sm:px-3.5 h-9 text-[11px] sm:text-xs whitespace-nowrap"
+            >
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
         {ADMIN_TABS.map(({ key, Component }) => (
           <TabsContent key={key} value={key} className="mt-0">
