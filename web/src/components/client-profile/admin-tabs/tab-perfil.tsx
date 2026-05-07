@@ -31,13 +31,9 @@ const SAUDE_OPTIONS = [
 ] as const
 
 const ENGAJAMENTO_OPTIONS = [
-  { v: "cliente_novo", l: "Cliente Novo" },
-  { v: "ativo_alto", l: "Ativo Alto" },
-  { v: "ativo_medio", l: "Ativo Médio" },
-  { v: "desengajado", l: "Desengajado" },
-  { v: "sem_onboarding", l: "Sem Onboarding" },
-  { v: "cancelado", l: "Cancelado" },
-  { v: "congelado", l: "Congelado" },
+  { v: "quente", l: "Cliente quente" },
+  { v: "morno", l: "Cliente morno" },
+  { v: "frio", l: "Cliente frio" },
 ] as const
 
 const CS_OPTIONS = ["Geovana", "Francielly", "Gabriela", "Fernanda"] as const
@@ -54,7 +50,7 @@ interface PerfilState {
   dataEntrada: string // YYYY-MM-DD ou ""
   statusAtual: string
   saudeCliente: string
-  nivelEngajamento: string
+  temperaturaCliente: string
   emRiscoCancelamento: boolean
   observacoesCs: string
 }
@@ -69,7 +65,7 @@ const EMPTY: PerfilState = {
   dataEntrada: "",
   statusAtual: "",
   saudeCliente: "",
-  nivelEngajamento: "",
+  temperaturaCliente: "",
   emRiscoCancelamento: false,
   observacoesCs: "",
 }
@@ -91,7 +87,7 @@ export default function TabPerfil({ clientId }: { clientId: string }) {
         supabase
           .from("clientes_entrada_new")
           .select(
-            "codigo_cliente, nome_empresa_formatado, nome_cliente_formatado, nicho, subnicho, sc, status_atual, saude_cliente, nivel_engajamento, em_risco_cancelamento, observacoes_cs"
+            "codigo_cliente, nome_empresa_formatado, nome_cliente_formatado, nicho, subnicho, sc, status_atual, saude_cliente, temperatura_cliente, em_risco_cancelamento, observacoes_cs"
           )
           .eq("id_cliente", clientId)
           .maybeSingle(),
@@ -117,7 +113,7 @@ export default function TabPerfil({ clientId }: { clientId: string }) {
         dataEntrada: info?.data_entrada ?? "",
         statusAtual: entrada?.status_atual ?? "",
         saudeCliente: entrada?.saude_cliente ?? "",
-        nivelEngajamento: entrada?.nivel_engajamento ?? "",
+        temperaturaCliente: entrada?.temperatura_cliente ?? "",
         emRiscoCancelamento: !!entrada?.em_risco_cancelamento,
         observacoesCs: entrada?.observacoes_cs ?? "",
       }
@@ -162,7 +158,7 @@ export default function TabPerfil({ clientId }: { clientId: string }) {
         sc: form.sc || null,
         status_atual: form.statusAtual || null,
         saude_cliente: form.saudeCliente || null,
-        nivel_engajamento: form.nivelEngajamento || null,
+        temperatura_cliente: form.temperaturaCliente || null,
         em_risco_cancelamento: form.emRiscoCancelamento,
         observacoes_cs: form.observacoesCs || null,
       })
@@ -338,9 +334,9 @@ export default function TabPerfil({ clientId }: { clientId: string }) {
             </Field>
             <Field label="Engajamento">
               <Select
-                value={form.nivelEngajamento || SENTINEL_NONE}
+                value={form.temperaturaCliente || SENTINEL_NONE}
                 onValueChange={(v) =>
-                  set("nivelEngajamento", v === SENTINEL_NONE ? "" : v)
+                  set("temperaturaCliente", v === SENTINEL_NONE ? "" : v)
                 }
               >
                 <SelectTrigger className="w-full">
