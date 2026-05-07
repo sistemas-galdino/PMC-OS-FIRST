@@ -95,12 +95,19 @@ export function ExecutiveSummaryHeader({ clientId }: ExecutiveSummaryHeaderProps
           .maybeSingle(),
         supabase
           .from("clientes_entrada_new")
-          .select("tem_crm")
+          .select("tem_crm, tem_conta_blackcrm, quantas_contas_blackcrm")
           .eq("id_cliente", clientId)
           .maybeSingle(),
       ])
 
       if (cancelled) return
+
+      const ativaSrc = clienteRes.data?.tem_conta_blackcrm ?? null
+      const ativaFromGranular =
+        ativaSrc === "sim" ? true : ativaSrc === "nao" ? false : null
+      const blackCrmAtiva = clienteRes.error
+        ? null
+        : ativaFromGranular ?? !!clienteRes.data?.tem_crm
 
       setData({
         galdinoFeitas: galdinoFeitasRes.error ? null : galdinoFeitasRes.count ?? 0,
@@ -108,9 +115,8 @@ export function ExecutiveSummaryHeader({ clientId }: ExecutiveSummaryHeaderProps
         proxGaldino: proxGaldinoRes.error ? null : proxGaldinoRes.data?.data_reuniao ?? null,
         consultorTotal: consultorTotalRes.error ? null : consultorTotalRes.count ?? 0,
         ultimaConsultor: ultimaConsultorRes.error ? null : ultimaConsultorRes.data?.data_reuniao ?? null,
-        blackCrmAtiva: clienteRes.error ? null : !!clienteRes.data?.tem_crm,
-        // TODO: definir fonte real de "Contas Black CRM" (tabela dedicada? count em outra?). Por ora 0.
-        contasBlackCrm: 0,
+        blackCrmAtiva,
+        contasBlackCrm: clienteRes.error ? null : clienteRes.data?.quantas_contas_blackcrm ?? 0,
       })
       setLoading(false)
     }
