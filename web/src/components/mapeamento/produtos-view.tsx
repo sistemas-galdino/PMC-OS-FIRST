@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
+import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
+import { currencySymbol, formatCurrencyShort } from "@/lib/format-currency"
 
 type ClassificacaoTicket = 'low' | 'middle' | 'high'
 
@@ -57,6 +59,8 @@ interface ProdutosViewProps {
 
 export default function ProdutosView({ session, clientId }: ProdutosViewProps) {
   const resolvedClientId = clientId || session?.user?.id
+  const moeda = useClienteMoeda(resolvedClientId)
+  const moedaSym = currencySymbol(moeda)
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -199,8 +203,8 @@ export default function ProdutosView({ session, clientId }: ProdutosViewProps) {
       >
         {[
           { title: "Total Produtos", value: products.length, icon: Package },
-          { title: "Receita Prevista", value: `R$ ${(totalRevenue / 1000).toFixed(1)}k`, icon: TrendingUp },
-          { title: "Ticket Médio", value: `R$ ${avgTicket.toFixed(0)}`, icon: Banknote },
+          { title: "Receita Prevista", value: formatCurrencyShort(totalRevenue, moeda), icon: TrendingUp },
+          { title: "Ticket Médio", value: `${moedaSym} ${avgTicket.toFixed(0)}`, icon: Banknote },
           { title: "Vendas Totais", value: totalSales, icon: ShoppingCart },
         ].map((stat, i) => (
           <motion.div key={i} variants={item}>
@@ -270,12 +274,12 @@ export default function ProdutosView({ session, clientId }: ProdutosViewProps) {
                       {product.ticket_medio != null ? 'Ticket Médio' : 'Valor Unit.'}
                     </p>
                     <p className="text-2xl font-bold tracking-tight text-foreground">
-                      R$ {product.ticket_medio != null ? product.ticket_medio : product.preco}
+                      {moedaSym} {product.ticket_medio != null ? product.ticket_medio : product.preco}
                     </p>
                   </div>
                   <div className="space-y-1.5 border-l border-border/50 pl-6">
                     <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Faturamento</p>
-                    <p className="text-2xl font-bold tracking-tight text-primary">R$ {(product.preco * product.vendas_mes / 1000).toFixed(1)}k</p>
+                    <p className="text-2xl font-bold tracking-tight text-primary">{formatCurrencyShort(product.preco * product.vendas_mes, moeda)}</p>
                   </div>
                 </div>
 

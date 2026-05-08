@@ -34,6 +34,8 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Textarea } from "@/components/ui/textarea"
 import type { Session } from "@supabase/supabase-js"
 import { motion, AnimatePresence } from "framer-motion"
+import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
+import { currencySymbol } from "@/lib/format-currency"
 
 interface Vitoria {
   id: string
@@ -93,6 +95,8 @@ const emptyForm = {
 
 export default function VitoriasPage({ session, clientId }: VitoriasPageProps) {
   const [resolvedClientId, setResolvedClientId] = useState<string | undefined>(clientId || session?.user?.id)
+  const moeda = useClienteMoeda(resolvedClientId)
+  const moedaSym = currencySymbol(moeda)
   const [vitorias, setVitorias] = useState<Vitoria[]>([])
   const [loading, setLoading] = useState(true)
   const [showSheet, setShowSheet] = useState(false)
@@ -305,7 +309,7 @@ export default function VitoriasPage({ session, clientId }: VitoriasPageProps) {
             animate="show"
             className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
           >
-            {vitorias.map((v) => <VitoriaCard key={v.id} v={v} onEdit={openEdit} onDelete={handleDelete} itemV={itemV} />)}
+            {vitorias.map((v) => <VitoriaCard key={v.id} v={v} onEdit={openEdit} onDelete={handleDelete} itemV={itemV} moedaSym={moedaSym} />)}
           </motion.div>
         )}
       </AnimatePresence>
@@ -401,8 +405,8 @@ export default function VitoriasPage({ session, clientId }: VitoriasPageProps) {
                 <div className="p-5 rounded-2xl bg-muted/10 border border-border/50 space-y-4">
                   <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Adicionar números (opcional)</Label>
                   <div className="grid grid-cols-2 gap-3">
-                    <NumField label="Valor antes (R$)" value={form.valor_antes} onChange={(v) => setForm(p => ({ ...p, valor_antes: v }))} />
-                    <NumField label="Valor depois (R$)" value={form.valor_depois} onChange={(v) => setForm(p => ({ ...p, valor_depois: v }))} />
+                    <NumField label={`Valor antes (${moedaSym})`} value={form.valor_antes} onChange={(v) => setForm(p => ({ ...p, valor_antes: v }))} />
+                    <NumField label={`Valor depois (${moedaSym})`} value={form.valor_depois} onChange={(v) => setForm(p => ({ ...p, valor_depois: v }))} />
                     <NumField label="Qtd antes" value={form.qtd_antes} onChange={(v) => setForm(p => ({ ...p, qtd_antes: v }))} />
                     <NumField label="Qtd depois" value={form.qtd_depois} onChange={(v) => setForm(p => ({ ...p, qtd_depois: v }))} />
                   </div>
@@ -498,7 +502,7 @@ function NumField({ label, value, onChange }: { label: string; value: string; on
   )
 }
 
-function VitoriaCard({ v, onEdit, onDelete, itemV }: { v: Vitoria; onEdit: (v: Vitoria) => void; onDelete: (v: Vitoria) => void; itemV: any }) {
+function VitoriaCard({ v, onEdit, onDelete, itemV, moedaSym }: { v: Vitoria; onEdit: (v: Vitoria) => void; onDelete: (v: Vitoria) => void; itemV: any; moedaSym: string }) {
   const valorDelta = v.valor_antes != null && v.valor_depois != null ? v.valor_depois - v.valor_antes : null
   const valorPct = v.valor_antes != null && v.valor_antes !== 0 && v.valor_depois != null
     ? ((v.valor_depois - v.valor_antes) / Math.abs(v.valor_antes)) * 100
@@ -556,7 +560,7 @@ function VitoriaCard({ v, onEdit, onDelete, itemV }: { v: Vitoria; onEdit: (v: V
                   <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
                     <TrendingUp className="size-3 text-primary" /> Valor
                   </div>
-                  <p className="text-sm font-bold text-foreground">R$ {v.valor_antes} → R$ {v.valor_depois}</p>
+                  <p className="text-sm font-bold text-foreground">{moedaSym} {v.valor_antes} → {moedaSym} {v.valor_depois}</p>
                   {valorPct !== null && (
                     <p className="text-[10px] font-bold text-primary mt-0.5">{valorPct >= 0 ? "+" : ""}{valorPct.toFixed(0)}%</p>
                   )}

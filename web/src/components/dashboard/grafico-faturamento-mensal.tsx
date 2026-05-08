@@ -11,6 +11,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
+import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
+import { formatCurrency, formatCurrencyShort } from "@/lib/format-currency"
 
 interface Props {
   clientId?: string
@@ -24,16 +26,10 @@ interface Row {
 
 const MES_ABREV = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
-const fmtBRL = (n: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(n || 0)
-
-const fmtAxis = (n: number) => {
-  if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `R$ ${(n / 1_000).toFixed(0)}K`
-  return `R$ ${n}`
-}
-
 export function GraficoFaturamentoMensal({ clientId }: Props) {
+  const moeda = useClienteMoeda(clientId)
+  const fmtBRL = (n: number) => formatCurrency(n, moeda)
+  const fmtAxis = (n: number) => formatCurrencyShort(n, moeda)
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
 

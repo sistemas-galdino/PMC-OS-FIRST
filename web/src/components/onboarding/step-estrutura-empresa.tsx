@@ -24,7 +24,7 @@ export function StepEstruturaEmpresa({ errors, setValue, watch }: Props) {
           value={(watch('faturamento_anual') as any) ?? ''}
           onChange={(e) => setValue('faturamento_anual', e.target.value as any, { shouldValidate: true })}
         />
-        <p className="text-[11px] text-muted-foreground font-medium">Valor em reais, sem pontos ou vírgulas. Ex: 500000 para R$ 500 mil.</p>
+        <p className="text-[11px] text-muted-foreground font-medium">Valor monetário, sem pontos ou vírgulas. Ex: 500000 para 500 mil.</p>
         {errors.faturamento_anual && <p className="text-xs text-destructive font-medium">{errors.faturamento_anual.message}</p>}
       </div>
 

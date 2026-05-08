@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
+import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
+import { formatCurrency, formatCurrencyShort } from "@/lib/format-currency"
 
 interface Channel {
   id: string
@@ -45,6 +47,7 @@ interface Channel {
 
 export default function CanaisView({ session, clientId }: { session?: Session, clientId?: string }) {
   const resolvedClientId = clientId || session?.user?.id
+  const moeda = useClienteMoeda(resolvedClientId)
   const [channels, setCanais] = useState<Channel[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm] = useState("")
@@ -193,7 +196,7 @@ export default function CanaisView({ session, clientId }: { session?: Session, c
       >
         {[
           { title: "Canais Ativos", value: channels.length, icon: Megaphone },
-          { title: "Investimento/Mês", value: `R$ ${(totalInvestimento / 1000).toFixed(1)}k`, icon: DollarSign },
+          { title: "Investimento/Mês", value: formatCurrencyShort(totalInvestimento, moeda), icon: DollarSign },
           { title: "Canais Pagos", value: canaisPagos, icon: TrendingUp },
           { title: "Canais Orgânicos", value: canaisOrganicos, icon: Users },
         ].map((stat, i) => (
@@ -223,7 +226,7 @@ export default function CanaisView({ session, clientId }: { session?: Session, c
           >
             <h2 className="text-2xl font-bold tracking-tight">Canais Pagos</h2>
             <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">
-              R$ {totalInvestimento.toLocaleString('pt-BR')} investidos
+              {formatCurrency(totalInvestimento, moeda)} investidos
             </Badge>
           </motion.div>
 
@@ -251,7 +254,7 @@ export default function CanaisView({ session, clientId }: { session?: Session, c
                       <div className="flex items-center gap-8">
                         <div className="text-right">
                           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Custo/Mês</p>
-                          <p className="font-bold text-lg text-foreground">R$ {channel.investimento.toLocaleString('pt-BR')}</p>
+                          <p className="font-bold text-lg text-foreground">{formatCurrency(channel.investimento, moeda)}</p>
                         </div>
                         <div className="flex gap-1.5">
                           <Button variant="ghost" size="icon" className="size-9 rounded-lg hover:bg-muted/50" onClick={() => openEdit(channel)}>
@@ -376,7 +379,7 @@ export default function CanaisView({ session, clientId }: { session?: Session, c
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Investimento/Mês (R$)</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Investimento/Mês ({moeda === "USD" ? "$" : "R$"})</Label>
               <Input
                 type="number"
                 className="h-11 rounded-xl"

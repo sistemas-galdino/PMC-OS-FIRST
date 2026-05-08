@@ -50,6 +50,8 @@ import {
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
+import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
+import { formatCurrency } from "@/lib/format-currency"
 
 interface Indicador {
   id_cliente: string
@@ -70,9 +72,6 @@ const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ]
-
-const fmtBRL = (n: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(n || 0)
 
 const fmtROI = (inv: number, fat: number) => {
   if (!inv || inv <= 0) return "—"
@@ -104,6 +103,8 @@ const emptyForm = (): FormState => ({
 
 export default function IndicadoresPage({ session, clientId }: IndicadoresPageProps) {
   const resolvedClientId = clientId || session?.user?.id
+  const moeda = useClienteMoeda(resolvedClientId)
+  const fmtBRL = (n: number) => formatCurrency(n, moeda)
   const [indicadores, setIndicadores] = useState<Indicador[]>([])
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)

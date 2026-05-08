@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { RefreshCwIcon } from "@/components/ui/icons"
+import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
+import { currencySymbol } from "@/lib/format-currency"
 
 const STATUS_OPTIONS = [
   { v: "ainda_distante", l: "Ainda distante" },
@@ -40,6 +42,8 @@ const EMPTY: RenovacaoState = {
 }
 
 export default function TabRenovacao({ clientId }: { clientId: string }) {
+  const moeda = useClienteMoeda(clientId)
+  const moedaSym = currencySymbol(moeda)
   const [snapshot, setSnapshot] = useState<RenovacaoState>(EMPTY)
   const [form, setForm] = useState<RenovacaoState>(EMPTY)
   const [loading, setLoading] = useState(true)
@@ -170,7 +174,7 @@ export default function TabRenovacao({ clientId }: { clientId: string }) {
               />
             </Field>
 
-            <Field label="Valor (R$)">
+            <Field label={`Valor (${moedaSym})`}>
               <Input
                 type="number"
                 min={0}

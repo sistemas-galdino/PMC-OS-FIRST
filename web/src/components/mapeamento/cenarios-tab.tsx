@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
+import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
+import { currencySymbol } from "@/lib/format-currency"
 
 interface CenariosForm {
   faturamento_anual_objetivo: number
@@ -42,6 +44,8 @@ interface Props {
 
 export default function CenariosTab({ session, clientId }: Props) {
   const resolvedClientId = clientId || session?.user?.id
+  const moeda = useClienteMoeda(resolvedClientId)
+  const moedaSym = currencySymbol(moeda)
   const [form, setForm] = useState<CenariosForm>(EMPTY)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -123,7 +127,7 @@ export default function CenariosTab({ session, clientId }: Props) {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Faturamento Anual Médio (R$)</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Faturamento Anual Médio ({moedaSym})</Label>
               <Input
                 type="number"
                 className="h-11 rounded-xl"

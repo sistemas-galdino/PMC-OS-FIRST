@@ -47,7 +47,7 @@ export function StepDiagnostico({ register, errors }: Props) {
           placeholder="Ex: 2000000"
           className="bg-muted/10 border-border"
         />
-        <p className="text-[11px] text-muted-foreground font-medium">Valor em reais, sem pontos ou vírgulas. Ex: 2000000 para R$ 2 milhões.</p>
+        <p className="text-[11px] text-muted-foreground font-medium">Valor monetário, sem pontos ou vírgulas. Ex: 2000000 para 2 milhões.</p>
         {errors.meta_12_meses && <p className="text-xs text-destructive font-medium">{errors.meta_12_meses.message}</p>}
       </div>
     </div>
