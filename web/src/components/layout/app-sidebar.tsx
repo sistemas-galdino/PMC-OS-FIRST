@@ -36,10 +36,18 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { useLocation, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
+import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
+import { DollarSignIcon } from "@/components/ui/icons"
 
 interface AppSidebarProps {
   isAdmin?: boolean
@@ -48,6 +56,23 @@ interface AppSidebarProps {
 export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
+  const moedaAtual = useClienteMoeda()
+
+  async function trocarMoeda(nova: string) {
+    if (nova !== "BRL" && nova !== "USD") return
+    const { error } = await supabase.rpc("update_minha_moeda", { nova_moeda: nova })
+    if (error) {
+      console.error("Erro ao trocar moeda:", error)
+      return
+    }
+    const { data } = await supabase.auth.getSession()
+    const id = data.session?.user?.id
+    if (id) {
+      window.dispatchEvent(
+        new CustomEvent("cliente:moeda", { detail: { id, moeda: nova } })
+      )
+    }
+  }
 
   const adminItems = [
     { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
@@ -160,6 +185,27 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
                   <ShieldCheck className="size-4" />
                   Trocar senha
                 </DropdownMenuItem>
+                {!isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="cursor-pointer font-medium">
+                        <DollarSignIcon className="size-4" />
+                        Moeda
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="min-w-[160px]">
+                        <DropdownMenuRadioGroup value={moedaAtual} onValueChange={trocarMoeda}>
+                          <DropdownMenuRadioItem value="BRL" className="cursor-pointer font-medium">
+                            R$ Real (BRL)
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="USD" className="cursor-pointer font-medium">
+                            $ Dólar (USD)
+                          </DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
