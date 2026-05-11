@@ -28,6 +28,7 @@ export default function CadastroPage({ session }: Props) {
 
   const form = useForm<OnboardingFormData>({
     defaultValues: {
+      pais: 'BR',
       ia_interesses: [],
       ia_kpis: undefined,
       ia_dashboard: undefined,

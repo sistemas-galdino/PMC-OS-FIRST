@@ -2,13 +2,21 @@ import type { UseFormRegister, FieldErrors, UseFormSetValue, UseFormWatch } from
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { maskPhone, maskCEP, maskDate } from "@/lib/masks"
+import { maskPhone, maskCEP, maskDate, maskPhoneUS, maskZipUS } from "@/lib/masks"
 import type { OnboardingFormData } from "@/lib/onboarding-schema"
 
 export const UF_OPTIONS = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS',
   'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC',
   'SP', 'SE', 'TO'
+]
+
+export const US_STATES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL', 'GA', 'HI',
+  'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN',
+  'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH',
+  'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA',
+  'WV', 'WI', 'WY'
 ]
 
 const ESTADO_CIVIL_OPTIONS = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União Estável']
@@ -28,8 +36,26 @@ interface Props {
 }
 
 export function StepDadosResponsavel({ register, errors, setValue, watch }: Props) {
+  const pais = (watch('pais') as 'BR' | 'US') || 'BR'
+  const isUS = pais === 'US'
   return (
     <div className="space-y-5">
+      <div className="space-y-2">
+        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">País *</Label>
+        <Select
+          value={pais}
+          onValueChange={(v) => setValue('pais', v as 'BR' | 'US', { shouldValidate: true })}
+        >
+          <SelectTrigger className="bg-muted/10 border-border">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="BR">Brasil</SelectItem>
+            <SelectItem value="US">Estados Unidos</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="space-y-2">
         <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nome completo do responsável legal *</Label>
         <Input {...register('nome_completo')} placeholder="Nome completo" className="bg-muted/10 border-border" />
@@ -72,12 +98,12 @@ export function StepDadosResponsavel({ register, errors, setValue, watch }: Prop
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">WhatsApp com DDD *</Label>
+          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{isUS ? 'Phone *' : 'WhatsApp com DDD *'}</Label>
           <Input
             {...register('whatsapp')}
-            placeholder="(00) 00000-0000"
+            placeholder={isUS ? '(123) 456-7890' : '(00) 00000-0000'}
             className="bg-muted/10 border-border"
-            onChange={(e) => setValue('whatsapp', maskPhone(e.target.value), { shouldValidate: true })}
+            onChange={(e) => setValue('whatsapp', (isUS ? maskPhoneUS : maskPhone)(e.target.value), { shouldValidate: true })}
             value={watch('whatsapp') || ''}
           />
           {errors.whatsapp && <p className="text-xs text-destructive font-medium">{errors.whatsapp.message}</p>}
@@ -86,31 +112,35 @@ export function StepDadosResponsavel({ register, errors, setValue, watch }: Prop
 
       <div className="space-y-2">
         <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Endereço completo *</Label>
-        <Input {...register('endereco')} placeholder="Rua, número, bairro, cidade" className="bg-muted/10 border-border" />
+        <Input
+          {...register('endereco')}
+          placeholder={isUS ? 'Street, number, city, state' : 'Rua, número, bairro, cidade'}
+          className="bg-muted/10 border-border"
+        />
         {errors.endereco && <p className="text-xs text-destructive font-medium">{errors.endereco.message}</p>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2">
-          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">CEP *</Label>
+          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{isUS ? 'ZIP code *' : 'CEP *'}</Label>
           <Input
             {...register('cep')}
-            placeholder="00000-000"
+            placeholder={isUS ? '12345' : '00000-000'}
             className="bg-muted/10 border-border"
-            onChange={(e) => setValue('cep', maskCEP(e.target.value), { shouldValidate: true })}
+            onChange={(e) => setValue('cep', (isUS ? maskZipUS : maskCEP)(e.target.value), { shouldValidate: true })}
             value={watch('cep') || ''}
           />
           {errors.cep && <p className="text-xs text-destructive font-medium">{errors.cep.message}</p>}
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Estado (UF) *</Label>
+          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{isUS ? 'State *' : 'Estado (UF) *'}</Label>
           <Select value={watch('uf') || ''} onValueChange={(v) => setValue('uf', v, { shouldValidate: true })}>
             <SelectTrigger className="bg-muted/10 border-border">
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent>
-              {UF_OPTIONS.map(uf => (
+              {(isUS ? US_STATES : UF_OPTIONS).map(uf => (
                 <SelectItem key={uf} value={uf}>{uf}</SelectItem>
               ))}
             </SelectContent>

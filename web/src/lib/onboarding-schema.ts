@@ -13,19 +13,6 @@ export const step1Schema = z.object({
   faixa_etaria: z.string().min(1, 'Selecione a faixa etária'),
   formacao_academica: z.string().min(1, 'Selecione a formação'),
   uf: z.string().min(2, 'Selecione o estado'),
-}).superRefine((data, ctx) => {
-  if (data.pais === 'BR') {
-    if (!/^\d{5}-\d{3}$/.test(data.cep)) {
-      ctx.addIssue({ path: ['cep'], code: 'custom', message: 'CEP inválido (00000-000)' })
-    }
-  } else {
-    if (!/^\d{5}(-\d{4})?$/.test(data.cep)) {
-      ctx.addIssue({ path: ['cep'], code: 'custom', message: 'ZIP inválido (12345 ou 12345-6789)' })
-    }
-  }
-  if (data.whatsapp.replace(/\D/g, '').length < 10) {
-    ctx.addIssue({ path: ['whatsapp'], code: 'custom', message: 'Telefone inválido' })
-  }
 })
 
 export const step2Schema = z.object({
