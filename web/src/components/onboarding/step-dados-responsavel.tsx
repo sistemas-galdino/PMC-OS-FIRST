@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { maskPhone, maskCEP, maskDate, maskPhoneUS, maskZipUS } from "@/lib/masks"
 import type { OnboardingFormData } from "@/lib/onboarding-schema"
+import { cn } from "@/lib/utils"
 
 export const UF_OPTIONS = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS',
@@ -42,18 +43,39 @@ export function StepDadosResponsavel({ register, errors, setValue, watch }: Prop
     <div className="space-y-5">
       <div className="space-y-2">
         <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">País *</Label>
-        <Select
-          value={pais}
-          onValueChange={(v) => setValue('pais', v as 'BR' | 'US', { shouldValidate: true })}
-        >
-          <SelectTrigger className="bg-muted/10 border-border">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="BR">Brasil</SelectItem>
-            <SelectItem value="US">Estados Unidos</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            { value: 'BR' as const, flag: '🇧🇷', label: 'Brasil', sub: 'BRL · R$' },
+            { value: 'US' as const, flag: '🇺🇸', label: 'Estados Unidos', sub: 'USD · $' },
+          ]).map((opt) => {
+            const selected = pais === opt.value
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setValue('pais', opt.value, { shouldValidate: true })}
+                aria-pressed={selected}
+                className={cn(
+                  "group relative flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all",
+                  selected
+                    ? "border-primary bg-primary/10 shadow-lg shadow-primary/10"
+                    : "border-border bg-muted/10 hover:border-primary/40 hover:bg-muted/20"
+                )}
+              >
+                <span className="text-3xl leading-none" aria-hidden>{opt.flag}</span>
+                <span className="flex flex-1 flex-col">
+                  <span className={cn("text-sm font-bold", selected ? "text-foreground" : "text-muted-foreground")}>{opt.label}</span>
+                  <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{opt.sub}</span>
+                </span>
+                {selected && (
+                  <svg className="size-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <div className="space-y-2">
