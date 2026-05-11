@@ -1,17 +1,31 @@
 import { z } from 'zod'
 
 export const step1Schema = z.object({
+  pais: z.enum(['BR', 'US']).default('BR'),
   nome_completo: z.string().min(3, 'Nome completo é obrigatório'),
   genero: z.string().min(1, 'Selecione o gênero'),
   email: z.string().email('E-mail inválido'),
   data_nascimento: z.string().min(10, 'Data de nascimento é obrigatória'),
   endereco: z.string().min(5, 'Endereço é obrigatório'),
-  cep: z.string().min(9, 'CEP é obrigatório'),
-  whatsapp: z.string().min(14, 'WhatsApp é obrigatório'),
+  cep: z.string().min(5, 'CEP/ZIP é obrigatório'),
+  whatsapp: z.string().min(10, 'Telefone é obrigatório'),
   estado_civil: z.string().min(1, 'Selecione o estado civil'),
   faixa_etaria: z.string().min(1, 'Selecione a faixa etária'),
   formacao_academica: z.string().min(1, 'Selecione a formação'),
   uf: z.string().min(2, 'Selecione o estado'),
+}).superRefine((data, ctx) => {
+  if (data.pais === 'BR') {
+    if (!/^\d{5}-\d{3}$/.test(data.cep)) {
+      ctx.addIssue({ path: ['cep'], code: 'custom', message: 'CEP inválido (00000-000)' })
+    }
+  } else {
+    if (!/^\d{5}(-\d{4})?$/.test(data.cep)) {
+      ctx.addIssue({ path: ['cep'], code: 'custom', message: 'ZIP inválido (12345 ou 12345-6789)' })
+    }
+  }
+  if (data.whatsapp.replace(/\D/g, '').length < 10) {
+    ctx.addIssue({ path: ['whatsapp'], code: 'custom', message: 'Telefone inválido' })
+  }
 })
 
 export const step2Schema = z.object({
@@ -68,6 +82,7 @@ export const STEP_TITLES = [
 
 export type OnboardingFormData = {
   // Step 1
+  pais: 'BR' | 'US'
   nome_completo: string
   genero: string
   email: string
