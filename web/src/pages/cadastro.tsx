@@ -142,11 +142,15 @@ export default function CadastroPage({ session }: Props) {
       return
     }
 
-    // Update client status
+    // Update client status + país. Moeda via RPC (SECURITY DEFINER) só se US.
     await supabase
       .from('clientes_entrada_new')
-      .update({ status_atual: 'Ativo no Programa' })
+      .update({ status_atual: 'Ativo no Programa', pais: values.pais ?? 'BR' })
       .eq('id_cliente', userId)
+
+    if (values.pais === 'US') {
+      await supabase.rpc('update_minha_moeda', { nova_moeda: 'USD' })
+    }
 
     // Seed dashboard metrics from onboarding answers
     const faturamento = Number(values.faturamento_anual) || 0

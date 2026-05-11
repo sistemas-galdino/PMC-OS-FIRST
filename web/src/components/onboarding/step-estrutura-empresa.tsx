@@ -10,10 +10,11 @@ interface Props {
 }
 
 export function StepEstruturaEmpresa({ errors, setValue, watch }: Props) {
+  const sym = (watch('pais') as 'BR' | 'US') === 'US' ? '$' : 'R$'
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Faturamento anual (R$) *</Label>
+        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Faturamento anual ({sym}) *</Label>
         <Input
           type="number"
           min={0}
