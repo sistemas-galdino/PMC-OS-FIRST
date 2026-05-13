@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -49,14 +49,29 @@ interface ReunioesGaldinoProps {
 
 export default function ReunioesGaldinoPage({ session, clientId, isAdmin = false }: ReunioesGaldinoProps) {
   const navigate = useNavigate()
+  const [sp, setSp] = useSearchParams()
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [mesFilter, setMesFilter] = useState("all")
-  const [semanaFilter, setSemanaFilter] = useState("all")
-  const [anoFilter, setAnoFilter] = useState("all")
-  const [dateRange, setDateRange] = useState({ from: "", to: "" })
+
+  function updateParams(updates: Record<string, string | null>) {
+    const next = new URLSearchParams(sp)
+    for (const [k, v] of Object.entries(updates)) {
+      if (v == null || v === "" || v === "all") next.delete(k)
+      else next.set(k, v)
+    }
+    setSp(next, { replace: true })
+  }
+
+  const searchTerm = sp.get("q") ?? ""
+  const statusFilter = sp.get("status") ?? "all"
+  const mesFilter = sp.get("mes") ?? "all"
+  const semanaFilter = sp.get("semana") ?? "all"
+  const anoFilter = sp.get("ano") ?? "all"
+  const dateRange = { from: sp.get("de") ?? "", to: sp.get("ate") ?? "" }
+
+  const setSearchTerm = (v: string) => updateParams({ q: v })
+  const setStatusFilter = (v: string) => updateParams({ status: v })
+  const setSemanaFilter = (v: string) => updateParams({ semana: v })
 
   useEffect(() => {
     async function fetchMeetings() {
@@ -184,7 +199,7 @@ export default function ReunioesGaldinoPage({ session, clientId, isAdmin = false
               <SelectItem value="scheduled" className="rounded-lg font-medium">Agendadas</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={anoFilter} onValueChange={(v) => { setAnoFilter(v); setMesFilter("all"); setSemanaFilter("all") }}>
+          <Select value={anoFilter} onValueChange={(v) => updateParams({ ano: v, mes: null, semana: null })}>
             <SelectTrigger className="w-full sm:w-32 h-12 bg-muted/10 border-border rounded-xl">
               <SelectValue placeholder="Ano" />
             </SelectTrigger>
@@ -195,7 +210,7 @@ export default function ReunioesGaldinoPage({ session, clientId, isAdmin = false
               ))}
             </SelectContent>
           </Select>
-          <Select value={mesFilter} onValueChange={(v) => { setMesFilter(v); setSemanaFilter("all") }}>
+          <Select value={mesFilter} onValueChange={(v) => updateParams({ mes: v, semana: null })}>
             <SelectTrigger className="w-full sm:w-32 h-12 bg-muted/10 border-border rounded-xl">
               <SelectValue placeholder="Mês" />
             </SelectTrigger>
@@ -223,7 +238,7 @@ export default function ReunioesGaldinoPage({ session, clientId, isAdmin = false
               placeholder="De"
               className="w-40"
               value={dateRange.from}
-              onChange={(v) => setDateRange(prev => ({ ...prev, from: v }))}
+              onChange={(v) => updateParams({ de: v })}
             />
             <span className="text-muted-foreground text-xs font-medium">a</span>
             <DatePicker
@@ -231,7 +246,7 @@ export default function ReunioesGaldinoPage({ session, clientId, isAdmin = false
               placeholder="Até"
               className="w-40"
               value={dateRange.to}
-              onChange={(v) => setDateRange(prev => ({ ...prev, to: v }))}
+              onChange={(v) => updateParams({ ate: v })}
             />
           </div>
         </div>
