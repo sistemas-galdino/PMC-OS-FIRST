@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -47,15 +47,31 @@ interface MentoresPageProps {
 
 export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
   const navigate = useNavigate()
+  const [sp, setSp] = useSearchParams()
   const [meetings, setMeetings] = useState<Record<string, Meeting[]>>({})
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [mentorFilter, setMentorFilter] = useState("all")
-  const [semanaFilter, setSemanaFilter] = useState("all")
-  const [anoFilter, setAnoFilter] = useState("all")
-  const [dateRange, setDateRange] = useState({ from: "", to: "" })
   const [expandedMentors, setExpandedMentors] = useState<Set<string>>(new Set())
+
+  function updateParams(updates: Record<string, string | null>) {
+    const next = new URLSearchParams(sp)
+    for (const [k, v] of Object.entries(updates)) {
+      if (v == null || v === "" || v === "all") next.delete(k)
+      else next.set(k, v)
+    }
+    setSp(next, { replace: true })
+  }
+
+  const searchTerm = sp.get("q") ?? ""
+  const statusFilter = sp.get("status") ?? "all"
+  const mentorFilter = sp.get("mentor") ?? "all"
+  const semanaFilter = sp.get("semana") ?? "all"
+  const anoFilter = sp.get("ano") ?? "all"
+  const dateRange = { from: sp.get("de") ?? "", to: sp.get("ate") ?? "" }
+
+  const setSearchTerm = (v: string) => updateParams({ q: v })
+  const setStatusFilter = (v: string) => updateParams({ status: v })
+  const setMentorFilter = (v: string) => updateParams({ mentor: v })
+  const setSemanaFilter = (v: string) => updateParams({ semana: v })
 
   const toggleMentor = (mentor: string) => {
     setExpandedMentors(prev => {
@@ -198,7 +214,7 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
               ))}
             </SelectContent>
           </Select>
-          <Select value={anoFilter} onValueChange={(v) => { setAnoFilter(v); setSemanaFilter("all") }}>
+          <Select value={anoFilter} onValueChange={(v) => updateParams({ ano: v, semana: null })}>
             <SelectTrigger className="w-full sm:w-32 h-12 bg-muted/10 border-border rounded-xl">
               <SelectValue placeholder="Ano" />
             </SelectTrigger>
@@ -226,7 +242,7 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
               placeholder="De"
               className="w-40"
               value={dateRange.from}
-              onChange={(v) => setDateRange(prev => ({ ...prev, from: v }))}
+              onChange={(v) => updateParams({ de: v })}
             />
             <span className="text-muted-foreground text-xs font-medium">a</span>
             <DatePicker
@@ -234,7 +250,7 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
               placeholder="Até"
               className="w-40"
               value={dateRange.to}
-              onChange={(v) => setDateRange(prev => ({ ...prev, to: v }))}
+              onChange={(v) => updateParams({ ate: v })}
             />
           </div>
         </div>
