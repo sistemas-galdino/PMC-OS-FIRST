@@ -34,6 +34,7 @@ import MeuTimePage from "@/pages/meu-time"
 import TrilhasPage from "@/pages/trilhas"
 import TrilhaEvidenciasPage from "@/pages/trilha-evidencias"
 import InformacoesEmpresaPage from "@/pages/informacoes-empresa"
+import RoadmapSistemasPage from "@/pages/roadmap-sistemas"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { BackgroundShader } from "@/components/ui/background-shader"
@@ -231,6 +232,7 @@ function App() {
                     <Route path="/trilhas" element={<TrilhasPage session={session} />} />
                     <Route path="/trilhas/evidencias" element={<TrilhaEvidenciasPage session={session} />} />
                     <Route path="/informacoes-empresa" element={<InformacoesEmpresaPage session={session} />} />
+                    <Route path="/roadmap-sistemas" element={isAdmin ? <RoadmapSistemasPage /> : <Navigate to="/" replace />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </DashboardLayout>
