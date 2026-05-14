@@ -14,10 +14,11 @@ const env = Object.fromEntries(
     return [l.slice(0, idx).trim(), l.slice(idx + 1).trim()]
   })
 )
-const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY)
+// SECRET_KEY (sb_secret_...) ignora RLS — necessario pra inserir/atualizar encontros
+const supabase = createClient(env.VITE_SUPABASE_URL, env.SECRET_KEY)
 
 // --- Config ---
-const INPUT_FILE = join(__dirname, 'dono-events.json')
+const INPUT_FILE = join(__dirname, 'aovivo-events.json')
 const CALENDAR_NAME = '[PMC] AO VIVO COM GALDINO'
 const DRY_RUN = process.argv.includes('--dry-run')
 
@@ -26,6 +27,8 @@ function classifyEvent(summary) {
   if (!summary) return null
   const s = summary.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 
+  if (s.includes('implementation day')) return 'implementation_day'
+  if (s.includes('guardiao da ia') || s.includes('guardiao de ia')) return 'encontro_guardiao_ia'
   if (s.includes('case')) return 'multiplica_case'
   if (s.includes('dono')) return 'multiplica_dono'
   if (s.includes('nivel 02') || s.includes('nivel 2') || s.includes('n2')) return 'multiplica_time_nivel_2'
@@ -50,6 +53,8 @@ function formatTitle(summary, tipo) {
     multiplica_time_nivel_2: 'Multiplica Time - Nível 2',
     multiplica_dono: 'Multiplica Dono',
     multiplica_case: 'Multiplica Case',
+    implementation_day: '[ Implementation Day ] PMC',
+    encontro_guardiao_ia: 'Encontro Guardião da IA',
   }
   return labels[tipo] || summary.trim()
 }

@@ -25,7 +25,8 @@ const env = Object.fromEntries(
     return [l.slice(0, idx).trim(), l.slice(idx + 1).trim()]
   })
 )
-const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY)
+// SECRET_KEY (sb_secret_...) ignora RLS — necessario pra atualizar encontros
+const supabase = createClient(env.VITE_SUPABASE_URL, env.SECRET_KEY)
 
 // --- Config ---
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID
@@ -33,7 +34,7 @@ const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
 const REDIRECT_PORT = 3333
 const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/callback`
 const TOKEN_FILE = join(__dirname, '.dono-enrich-token.json')
-const INPUT_FILE = join(__dirname, 'dono-events.json')
+const INPUT_FILE = join(__dirname, 'aovivo-events.json')
 const CALENDAR_NAME = '[PMC] AO VIVO COM GALDINO'
 const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/documents.readonly'
 const DRY_RUN = process.argv.includes('--dry-run')

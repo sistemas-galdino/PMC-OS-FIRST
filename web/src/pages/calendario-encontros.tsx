@@ -26,6 +26,8 @@ const TIPO_COLORS: Record<string, { bg: string; text: string; border: string; do
   multiplica_time_nivel_2: { bg: "bg-blue-500/15", text: "text-blue-400", border: "border-blue-500/30", dot: "bg-blue-400" },
   multiplica_dono: { bg: "bg-amber-500/15", text: "text-amber-400", border: "border-amber-500/30", dot: "bg-amber-400" },
   multiplica_case: { bg: "bg-purple-500/15", text: "text-purple-400", border: "border-purple-500/30", dot: "bg-purple-400" },
+  implementation_day: { bg: "bg-emerald-500/15", text: "text-emerald-400", border: "border-emerald-500/30", dot: "bg-emerald-400" },
+  encontro_guardiao_ia: { bg: "bg-rose-500/15", text: "text-rose-400", border: "border-rose-500/30", dot: "bg-rose-400" },
 }
 
 const TIPO_LABELS: Record<string, string> = {
@@ -33,6 +35,8 @@ const TIPO_LABELS: Record<string, string> = {
   multiplica_time_nivel_2: "Multiplica Time – Nível 02",
   multiplica_dono: "Multiplica Dono",
   multiplica_case: "Multiplica Case",
+  implementation_day: "Implementation Day",
+  encontro_guardiao_ia: "Encontro Guardião da IA",
 }
 
 const WEEKDAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"]
