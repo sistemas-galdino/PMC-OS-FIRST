@@ -80,6 +80,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Clientes", icon: Users, url: "/clientes" },
     { title: "Acessos", icon: ShieldCheck, url: "/acessos" },
     { title: "Roadmap de Sistemas", icon: Compass, url: "/roadmap-sistemas" },
+    { title: "Central de Atendimentos", icon: MessageSquare, url: "/central-atendimentos" },
     { title: "Pendentes Onboarding", icon: Clock, url: "/onboarding" },
     { title: "Consultores", icon: MessageSquare, url: "/mentores" },
     { title: "Reunioes Galdino", icon: Calendar, url: "/reunioes-galdino" },

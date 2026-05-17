@@ -35,6 +35,8 @@ import TrilhasPage from "@/pages/trilhas"
 import TrilhaEvidenciasPage from "@/pages/trilha-evidencias"
 import InformacoesEmpresaPage from "@/pages/informacoes-empresa"
 import RoadmapSistemasPage from "@/pages/roadmap-sistemas"
+import CentralAtendimentosPage from "@/pages/central-atendimentos"
+import AtendimentoPublicoPage from "@/pages/atendimento-publico"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { BackgroundShader } from "@/components/ui/background-shader"
@@ -197,6 +199,8 @@ function App() {
             path="/cadastro"
             element={session ? <CadastroPage session={session} /> : <Navigate to="/login" replace />}
           />
+          <Route path="/atendimento" element={<AtendimentoPublicoPage />} />
+          <Route path="/atendimento/:slug" element={<AtendimentoPublicoPage />} />
           <Route
             path="/*"
             element={session ? (
@@ -233,6 +237,7 @@ function App() {
                     <Route path="/trilhas/evidencias" element={<TrilhaEvidenciasPage session={session} />} />
                     <Route path="/informacoes-empresa" element={<InformacoesEmpresaPage session={session} />} />
                     <Route path="/roadmap-sistemas" element={isAdmin ? <RoadmapSistemasPage /> : <Navigate to="/" replace />} />
+                    <Route path="/central-atendimentos" element={isAdmin ? <CentralAtendimentosPage /> : <Navigate to="/" replace />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </DashboardLayout>
