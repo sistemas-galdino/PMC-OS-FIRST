@@ -1,18 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-}
-
-function json(payload: unknown, status = 200) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  })
-}
+import { corsHeaders, jsonResponse } from "../_shared/cors.ts"
+import { criarEvento, type NovoEvento } from "../_shared/google-calendar.ts"
 
 interface Body {
   slug: string
@@ -25,12 +14,66 @@ interface Body {
   observacoes?: string | null
 }
 
+interface Consultor {
+  id: string
+  nome: string
+  slug: string
+  email: string | null
+  email_calendar: string
+  tabela_destino: "reunioes_galdino" | "reunioes_mentoria_new" | "reunioes_blackcrm"
+  tipo_reuniao: "implementacao" | "tutoria" | null
+  duracao_padrao_minutos: number
+  ativo: boolean
+}
+
+const TZ = "America/Fortaleza"
+const TZ_OFFSET = "-03:00"
+
+function addMinutos(h5: string, mins: number): string {
+  const [hh, mm] = h5.split(":").map(Number)
+  const total = hh * 60 + mm + mins
+  const nh = Math.floor(total / 60) % 24
+  const nm = total % 60
+  return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`
+}
+
+function tituloEvento(consultor: Consultor, cliente_nome: string, empresa: string | null): string {
+  const empresaTxt = empresa ? ` — ${empresa}` : ""
+  if (consultor.tabela_destino === "reunioes_galdino") {
+    return `PMC - Reunião Individual - Rafael Galdino (${cliente_nome})${empresaTxt}`
+  }
+  if (consultor.tabela_destino === "reunioes_blackcrm") {
+    const t = consultor.tipo_reuniao === "implementacao" ? "Implementação" : "Tutoria"
+    return `[PMC - ${consultor.nome}] ${t}${empresaTxt}`
+  }
+  return `[PMC] Acompanhamento com Consultor ${consultor.nome} (${cliente_nome})${empresaTxt}`
+}
+
+function descricaoEvento(opts: {
+  cliente_nome: string
+  cliente_email: string
+  cliente_telefone: string | null
+  empresa: string | null
+  observacoes: string | null
+  codigo_cliente: number | null
+}): string {
+  const linhas = [
+    `Cliente: ${opts.cliente_nome}`,
+    `Email: ${opts.cliente_email}`,
+  ]
+  if (opts.cliente_telefone) linhas.push(`Telefone: ${opts.cliente_telefone}`)
+  if (opts.empresa) linhas.push(`Empresa: ${opts.empresa}`)
+  if (opts.observacoes) linhas.push("", `Observações: ${opts.observacoes}`)
+  if (opts.codigo_cliente) linhas.push("", `Qual o seu ID?) ${opts.codigo_cliente}`)
+  return linhas.join("\n")
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
   }
   if (req.method !== "POST") {
-    return json({ error: "Método não permitido" }, 405)
+    return jsonResponse({ error: "Método não permitido" }, 405)
   }
 
   try {
@@ -47,17 +90,16 @@ Deno.serve(async (req: Request) => {
     } = body
 
     if (!slug || !data || !horario || !cliente_nome || !cliente_email) {
-      return json({ error: "Campos obrigatórios faltando" }, 400)
+      return jsonResponse({ error: "Campos obrigatórios faltando" }, 400)
     }
-
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cliente_email)) {
-      return json({ error: "Email inválido" }, 400)
+      return jsonResponse({ error: "Email inválido" }, 400)
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
-      return json({ error: "Data inválida (use YYYY-MM-DD)" }, 400)
+      return jsonResponse({ error: "Data inválida (use YYYY-MM-DD)" }, 400)
     }
     if (!/^\d{2}:\d{2}(:\d{2})?$/.test(horario)) {
-      return json({ error: "Horário inválido (use HH:MM)" }, 400)
+      return jsonResponse({ error: "Horário inválido (use HH:MM)" }, 400)
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!
@@ -66,19 +108,17 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false },
     })
 
-    // 1. Resolve consultor
     const { data: consultor, error: cErr } = await supabase
       .from("consultores_atendimento")
       .select("*")
       .eq("slug", slug)
       .eq("ativo", true)
-      .maybeSingle()
+      .maybeSingle<Consultor>()
 
     if (cErr || !consultor) {
-      return json({ error: "Consultor não encontrado ou inativo" }, 404)
+      return jsonResponse({ error: "Consultor não encontrado ou inativo" }, 404)
     }
 
-    // 2. Validar disponibilidade
     const dataDate = new Date(data + "T00:00:00")
     const diaSemana = dataDate.getDay()
     const { data: janelas } = await supabase
@@ -93,32 +133,28 @@ Deno.serve(async (req: Request) => {
       const fim = j.hora_fim.slice(0, 5)
       return h5 >= ini && h5 < fim
     })
-
     if (!dentroJanela) {
-      return json({ error: "Horário fora da janela de disponibilidade do consultor" }, 400)
+      return jsonResponse({ error: "Horário fora da janela de disponibilidade do consultor" }, 400)
     }
 
-    // 3. Double-booking via view
     const { data: existentes } = await supabase
       .from("agendamentos_central")
       .select("horario, status_agendamento")
       .eq("consultor_nome", consultor.nome)
       .eq("data_reuniao", data)
-
     const conflito = ((existentes as { horario: string | null; status_agendamento: string | null }[] | null) ?? []).some(e => {
       if (e.status_agendamento === "cancelado") return false
       return (e.horario ?? "").slice(0, 5) === h5
     })
     if (conflito) {
-      return json({ error: "Esse horário já foi reservado por outra pessoa. Escolha outro." }, 409)
+      return jsonResponse({ error: "Esse horário já foi reservado por outra pessoa. Escolha outro." }, 409)
     }
 
-    // 4. Match cliente opcional via clientes_formulario (silencioso se falhar)
-    let matchCli: { id_cliente?: string; nome_empresa?: string } | null = null
+    let matchCli: { id_cliente?: string; nome_empresa?: string; codigo_cliente?: number } | null = null
     try {
       const { data: form } = await supabase
         .from("clientes_formulario")
-        .select("id_cliente, nome_empresa")
+        .select("id_cliente, nome_empresa, codigo_cliente")
         .eq("email", cliente_email.toLowerCase())
         .maybeSingle()
       if (form) matchCli = form as typeof matchCli
@@ -126,11 +162,11 @@ Deno.serve(async (req: Request) => {
       // ignora
     }
 
-    // 5. INSERT na tabela_destino
     const id_unico = crypto.randomUUID()
     const horarioStr = h5 + ":00"
     const ano = dataDate.getFullYear()
     const mes = dataDate.getMonth() + 1
+    const empresaFinal = cliente_empresa ?? matchCli?.nome_empresa ?? null
 
     const base: Record<string, unknown> = {
       id_unico,
@@ -139,7 +175,7 @@ Deno.serve(async (req: Request) => {
       ano,
       mes,
       pessoa: cliente_nome,
-      empresa: cliente_empresa ?? matchCli?.nome_empresa ?? null,
+      empresa: empresaFinal,
       cliente_email: cliente_email.toLowerCase(),
       cliente_telefone: cliente_telefone ?? null,
       duracao_minutos: consultor.duracao_padrao_minutos,
@@ -148,9 +184,8 @@ Deno.serve(async (req: Request) => {
       observacoes: observacoes ?? null,
     }
 
-    if (matchCli?.id_cliente) {
-      base.id_cliente = matchCli.id_cliente
-    }
+    if (matchCli?.id_cliente) base.id_cliente = matchCli.id_cliente
+    if (matchCli?.codigo_cliente) base.codigo_cliente = matchCli.codigo_cliente
 
     if (consultor.tabela_destino === "reunioes_mentoria_new") {
       base.mentor = consultor.nome
@@ -164,7 +199,7 @@ Deno.serve(async (req: Request) => {
       .insert(base)
 
     if (insErr) {
-      return json({ error: "Erro ao salvar agendamento: " + insErr.message }, 500)
+      return jsonResponse({ error: "Erro ao salvar agendamento: " + insErr.message }, 500)
     }
 
     const origem =
@@ -174,17 +209,75 @@ Deno.serve(async (req: Request) => {
         ? "blackcrm"
         : "mentoria"
 
-    return json({
+    // 6. Cria evento no Google Calendar (sincronamente).
+    //    Falha aqui mantém pendente_sync — cliente sempre vê sucesso.
+    let evento_id: string | null = null
+    let link_meet: string | null = null
+    let sync_erro: string | null = null
+
+    try {
+      const startISO = `${data}T${horarioStr}${TZ_OFFSET}`
+      const endHorario = addMinutos(h5, consultor.duracao_padrao_minutos) + ":00"
+      const endISO = `${data}T${endHorario}${TZ_OFFSET}`
+
+      const payload: NovoEvento = {
+        summary: tituloEvento(consultor, cliente_nome, empresaFinal),
+        description: descricaoEvento({
+          cliente_nome,
+          cliente_email: cliente_email.toLowerCase(),
+          cliente_telefone: cliente_telefone ?? null,
+          empresa: empresaFinal,
+          observacoes: observacoes ?? null,
+          codigo_cliente: matchCli?.codigo_cliente ?? null,
+        }),
+        start: { dateTime: startISO, timeZone: TZ },
+        end: { dateTime: endISO, timeZone: TZ },
+        attendees: [
+          { email: cliente_email.toLowerCase(), displayName: cliente_nome },
+          ...(consultor.email ? [{ email: consultor.email, displayName: consultor.nome }] : []),
+        ],
+        conferenceData: {
+          createRequest: {
+            requestId: crypto.randomUUID(),
+            conferenceSolutionKey: { type: "hangoutsMeet" },
+          },
+        },
+      }
+
+      const evento = await criarEvento(consultor.email_calendar, payload)
+      evento_id = evento.id
+      link_meet =
+        evento.hangoutLink ??
+        evento.conferenceData?.entryPoints?.find(p => p.entryPointType === "video")?.uri ??
+        null
+
+      await supabase
+        .from(consultor.tabela_destino)
+        .update({
+          id_reuniao: evento_id,
+          link_meet,
+          status_agendamento: "confirmado",
+        })
+        .eq("id_unico", id_unico)
+    } catch (e) {
+      sync_erro = e instanceof Error ? e.message : String(e)
+      console.error("[criar-agendamento] Falha ao criar evento Google Calendar:", sync_erro)
+    }
+
+    return jsonResponse({
       ok: true,
       id_unico,
       origem,
       slug: consultor.slug,
       data,
       horario: h5,
-      status: "pendente_sync",
+      status: evento_id ? "confirmado" : "pendente_sync",
+      evento_id,
+      link_meet,
+      sync_erro,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    return json({ error: msg }, 500)
+    return jsonResponse({ error: msg }, 500)
   }
 })

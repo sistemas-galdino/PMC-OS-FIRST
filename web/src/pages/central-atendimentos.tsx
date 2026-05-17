@@ -8,6 +8,7 @@ import {
   CalendarIcon,
   ClockIcon,
   LinkIcon,
+  ShieldCheckIcon,
 } from "@/components/ui/icons"
 import { VisaoGeral } from "@/components/central-atendimentos/visao-geral"
 import { AgendamentosLista } from "@/components/central-atendimentos/agendamentos-lista"
@@ -15,6 +16,7 @@ import { DisponibilidadeConsultores } from "@/components/central-atendimentos/di
 import { LinkPublico } from "@/components/central-atendimentos/link-publico"
 import { ConsultorFormDialog } from "@/components/central-atendimentos/consultor-form-dialog"
 import { AgendamentoDetalhesDialog } from "@/components/central-atendimentos/agendamento-detalhes-dialog"
+import { IntegracoesGoogle } from "@/components/central-atendimentos/integracoes-google"
 import type {
   Consultor,
   Disponibilidade,
@@ -23,13 +25,14 @@ import type {
 } from "@/lib/atendimentos"
 
 type Toast = { type: "ok" | "err"; msg: string } | null
-type TabKey = "visao-geral" | "agendamentos" | "disponibilidade" | "link-publico"
+type TabKey = "visao-geral" | "agendamentos" | "disponibilidade" | "link-publico" | "integracoes"
 
 const TABS: { key: TabKey; label: string; icon: typeof LayoutDashboardIcon }[] = [
   { key: "visao-geral", label: "Visão Geral", icon: LayoutDashboardIcon },
   { key: "agendamentos", label: "Agendamentos", icon: CalendarIcon },
   { key: "disponibilidade", label: "Disponibilidade", icon: ClockIcon },
   { key: "link-publico", label: "Link Público", icon: LinkIcon },
+  { key: "integracoes", label: "Integrações", icon: ShieldCheckIcon },
 ]
 
 const TABELA_ORIGEM: Record<AgendamentoCentral["origem"], TabelaDestino> = {
@@ -243,6 +246,10 @@ export default function CentralAtendimentosPage() {
 
         <TabsContent value="link-publico" className="mt-6">
           <LinkPublico consultores={consultoresAtivos} />
+        </TabsContent>
+
+        <TabsContent value="integracoes" className="mt-6">
+          <IntegracoesGoogle />
         </TabsContent>
       </Tabs>
 
