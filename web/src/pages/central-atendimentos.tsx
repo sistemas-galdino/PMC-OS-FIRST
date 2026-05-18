@@ -8,7 +8,6 @@ import {
   CalendarIcon,
   ClockIcon,
   LinkIcon,
-  ShieldCheckIcon,
   UserCheckIcon,
 } from "@/components/ui/icons"
 import { VisaoGeral } from "@/components/central-atendimentos/visao-geral"
@@ -17,7 +16,6 @@ import { DisponibilidadeConsultores } from "@/components/central-atendimentos/di
 import { LinkPublico } from "@/components/central-atendimentos/link-publico"
 import { ConsultorFormDialog } from "@/components/central-atendimentos/consultor-form-dialog"
 import { AgendamentoDetalhesDialog } from "@/components/central-atendimentos/agendamento-detalhes-dialog"
-import { IntegracoesGoogle } from "@/components/central-atendimentos/integracoes-google"
 import { AreaConsultor } from "@/components/central-atendimentos/area-consultor"
 import type {
   Consultor,
@@ -27,14 +25,13 @@ import type {
 } from "@/lib/atendimentos"
 
 type Toast = { type: "ok" | "err"; msg: string } | null
-type TabKey = "visao-geral" | "agendamentos" | "disponibilidade" | "link-publico" | "integracoes" | "area-consultor"
+type TabKey = "visao-geral" | "agendamentos" | "disponibilidade" | "link-publico" | "area-consultor"
 
 const TABS: { key: TabKey; label: string; icon: typeof LayoutDashboardIcon }[] = [
   { key: "visao-geral", label: "Visão Geral", icon: LayoutDashboardIcon },
   { key: "agendamentos", label: "Agendamentos", icon: CalendarIcon },
   { key: "disponibilidade", label: "Disponibilidade", icon: ClockIcon },
   { key: "link-publico", label: "Link Público", icon: LinkIcon },
-  { key: "integracoes", label: "Integrações", icon: ShieldCheckIcon },
   { key: "area-consultor", label: "Área do Consultor", icon: UserCheckIcon },
 ]
 
@@ -249,10 +246,6 @@ export default function CentralAtendimentosPage() {
 
         <TabsContent value="link-publico" className="mt-6">
           <LinkPublico consultores={consultoresAtivos} />
-        </TabsContent>
-
-        <TabsContent value="integracoes" className="mt-6">
-          <IntegracoesGoogle />
         </TabsContent>
 
         <TabsContent value="area-consultor" className="mt-6">
