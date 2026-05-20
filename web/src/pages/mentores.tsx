@@ -41,6 +41,16 @@ interface Meeting {
   link_geminidoc: string | null
 }
 
+// valor "em branco": null, vazio, só espaços, ou placeholder "."
+const isBlankField = (v: string | null | undefined) =>
+  !v || !v.trim() || v.trim() === "."
+
+// reunião sem nenhum cliente identificável (ex.: booking interno de teste) — não deve aparecer na lista
+const isReuniaoSemCliente = (m: Meeting) =>
+  isBlankField(m.pessoa) &&
+  isBlankField(m.nome_cliente_formatado) &&
+  isBlankField(m.nome_empresa_formatado)
+
 interface MentoresPageProps {
   isAdmin?: boolean
 }
@@ -90,7 +100,8 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
         .order('data_reuniao', { ascending: false })
       
       if (data && !error) {
-        const grouped = data.reduce((acc: Record<string, Meeting[]>, meeting: Meeting) => {
+        const visiveis = (data as Meeting[]).filter(m => !isReuniaoSemCliente(m))
+        const grouped = visiveis.reduce((acc: Record<string, Meeting[]>, meeting: Meeting) => {
           const mentor = meeting.mentor || "Sem Mentor"
           if (!acc[mentor]) acc[mentor] = []
           acc[mentor].push(meeting)
