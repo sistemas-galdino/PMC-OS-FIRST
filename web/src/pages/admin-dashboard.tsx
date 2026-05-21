@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { 
   BarChart, 
@@ -67,6 +68,7 @@ export default function AdminDashboard() {
   const [csData, setCsData] = useState<any[]>([])
   const [canalData, setCanalData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [detalhada, setDetalhada] = useState(false)
 
   useEffect(() => {
     async function fetchStats() {
@@ -199,13 +201,15 @@ export default function AdminDashboard() {
   const cards = [
     { title: "Total Clientes", value: stats.total, icon: Users, description: "Base geral de clientes", iconClass: "text-primary bg-primary/10" },
     { title: "Clientes Ativos", value: stats.ativos, icon: TrendingUp, description: "Ativos no programa", iconClass: "text-emerald-400 bg-emerald-500/10" },
-    { title: "Churn Rate", value: stats.churnRate, icon: TrendingDown, description: "Taxa de cancelamento", iconClass: "text-red-400 bg-red-500/10", decimals: 1, suffix: "%" },
-    { title: "Cancelaram", value: stats.cancelados, icon: XIcon, description: "Clientes cancelados", iconClass: "text-red-400 bg-red-500/10" },
-    { title: "Desistência de Compra", value: stats.desistencias, icon: ShoppingCartIcon, description: "Desistiram antes de iniciar", iconClass: "text-orange-400 bg-orange-500/10" },
+    { title: "Churn Rate", value: stats.churnRate, icon: TrendingDown, description: "Taxa de cancelamento", iconClass: "text-red-400 bg-red-500/10", decimals: 1, suffix: "%", risco: true },
+    { title: "Cancelaram", value: stats.cancelados, icon: XIcon, description: "Clientes cancelados", iconClass: "text-red-400 bg-red-500/10", risco: true },
+    { title: "Desistência de Compra", value: stats.desistencias, icon: ShoppingCartIcon, description: "Desistiram antes de iniciar", iconClass: "text-orange-400 bg-orange-500/10", risco: true },
     { title: "Onboarding Marcado", value: stats.onboardingMarcado, icon: CalendarIcon, description: "Reunião de onboarding agendada", iconClass: "text-blue-400 bg-blue-500/10" },
     { title: "Pendentes Onboarding", value: stats.pendentesOnboarding, icon: ClockIcon, description: "Aguardando agendamento", iconClass: "text-yellow-400 bg-yellow-500/10" },
     { title: "Vão Iniciar", value: stats.aguardandoInicio, icon: PlayCircleIcon, description: "Aguardando início no programa", iconClass: "text-emerald-400 bg-emerald-500/10" },
   ]
+
+  const cardsVisiveis = detalhada ? cards : cards.filter(c => !c.risco)
 
   const container = {
     hidden: { opacity: 0 },
@@ -226,18 +230,39 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-10">
-      <motion.div 
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col gap-3 border-l-4 border-primary pl-8 py-2"
-      >
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Visão Geral</h1>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">PMC 2026</Badge>
-          <p className="text-muted-foreground font-medium text-sm">Programa Multiplicador de Crescimento — Black Eagle</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+          className="flex flex-col gap-3 border-l-4 border-primary pl-8 py-2"
+        >
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Visão Geral</h1>
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">PMC 2026</Badge>
+            <p className="text-muted-foreground font-medium text-sm">Programa Multiplicador de Crescimento — Black Eagle</p>
+          </div>
+        </motion.div>
+
+        <div className="flex gap-1 rounded-xl bg-muted/20 border border-border p-1 self-start">
+          <Button
+            variant={!detalhada ? "default" : "ghost"}
+            size="sm"
+            className="h-7 rounded-lg font-bold text-[11px] uppercase tracking-wider"
+            onClick={() => setDetalhada(false)}
+          >
+            Simples
+          </Button>
+          <Button
+            variant={detalhada ? "default" : "ghost"}
+            size="sm"
+            className="h-7 rounded-lg font-bold text-[11px] uppercase tracking-wider"
+            onClick={() => setDetalhada(true)}
+          >
+            Detalhada
+          </Button>
         </div>
-      </motion.div>
+      </div>
 
       <motion.div 
         variants={container}
@@ -245,7 +270,7 @@ export default function AdminDashboard() {
         animate="show"
         className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
       >
-        {cards.map((card) => (
+        {cardsVisiveis.map((card) => (
           <motion.div key={card.title} variants={item}>
             <Card className="hover:shadow-primary/10">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
