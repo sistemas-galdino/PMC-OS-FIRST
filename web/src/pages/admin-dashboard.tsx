@@ -268,7 +268,7 @@ export default function AdminDashboard() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
+        className={`grid gap-6 md:grid-cols-2 ${detalhada ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}
       >
         {cardsVisiveis.map((card) => (
           <motion.div key={card.title} variants={item}>
