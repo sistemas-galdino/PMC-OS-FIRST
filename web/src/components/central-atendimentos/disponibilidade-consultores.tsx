@@ -275,6 +275,7 @@ export function DisponibilidadeConsultores({
 
                         <CalendarioMesConsultor
                           consultorId={c.id}
+                          duracaoMinutos={c.duracao_padrao_minutos}
                           janelasSemanais={janelasAtuais}
                           excecoes={excecoesPorConsultor[c.id] ?? []}
                           feriados={feriados}

@@ -13,11 +13,14 @@ import {
   DIAS_SEMANA,
   isoData,
   formatarDataLonga,
+  diasDoMes,
+  slotsDisponiveisNaData,
 } from "@/lib/atendimentos"
 import type { Disponibilidade, ExcecaoConsultor, Feriado } from "@/lib/atendimentos"
 
 interface Props {
   consultorId: string
+  duracaoMinutos: number
   janelasSemanais: Disponibilidade[]
   excecoes: ExcecaoConsultor[]
   feriados: Feriado[]
@@ -30,7 +33,8 @@ type Faixa = { hora_inicio: string; hora_fim: string }
 type NovaExcecao = {
   tipo: "bloqueio" | "extra"
   diaInteiro: boolean
-  faixas: Faixa[]
+  slotsBloqueio: Set<string>
+  faixasExtra: Faixa[]
   motivo: string
 }
 
@@ -39,7 +43,8 @@ const FAIXA_PADRAO: Faixa = { hora_inicio: "09:00", hora_fim: "12:00" }
 const FORM_INICIAL: NovaExcecao = {
   tipo: "bloqueio",
   diaInteiro: true,
-  faixas: [{ ...FAIXA_PADRAO }],
+  slotsBloqueio: new Set<string>(),
+  faixasExtra: [{ ...FAIXA_PADRAO }],
   motivo: "",
 }
 
@@ -53,36 +58,17 @@ function addMonths(d: Date, n: number): Date {
   return new Date(d.getFullYear(), d.getMonth() + n, 1)
 }
 
-function diasDoMes(refMonth: Date): Date[] {
-  const first = startOfMonth(refMonth)
-  const firstDayOfWeek = first.getDay() // 0 = dom
-  const ultimoDia = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
-  const cells: Date[] = []
-  for (let i = 0; i < firstDayOfWeek; i++) {
-    const d = new Date(first)
-    d.setDate(d.getDate() - (firstDayOfWeek - i))
-    cells.push(d)
-  }
-  for (let d = 1; d <= ultimoDia; d++) {
-    cells.push(new Date(first.getFullYear(), first.getMonth(), d))
-  }
-  while (cells.length % 7 !== 0) {
-    const last = cells[cells.length - 1]
-    const next = new Date(last)
-    next.setDate(next.getDate() + 1)
-    cells.push(next)
-  }
-  while (cells.length < 42) {
-    const last = cells[cells.length - 1]
-    const next = new Date(last)
-    next.setDate(next.getDate() + 1)
-    cells.push(next)
-  }
-  return cells.slice(0, 42)
+function addMinutosHHMM(hhmm: string, mins: number): string {
+  const [h, m] = hhmm.split(":").map(Number)
+  const total = h * 60 + m + mins
+  const nh = Math.floor(total / 60) % 24
+  const nm = total % 60
+  return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`
 }
 
 export function CalendarioMesConsultor({
   consultorId,
+  duracaoMinutos,
   janelasSemanais,
   excecoes,
   feriados,
@@ -125,32 +111,65 @@ export function CalendarioMesConsultor({
   const feriadoSelecionado = isoSelecionada ? feriadosPorData[isoSelecionada] : undefined
   const janelasSelecionadas = dataSelecionada ? janelasPorDia[dataSelecionada.getDay()] ?? [] : []
 
+  function resetForm() {
+    setForm({
+      tipo: "bloqueio",
+      diaInteiro: true,
+      slotsBloqueio: new Set<string>(),
+      faixasExtra: [{ ...FAIXA_PADRAO }],
+      motivo: "",
+    })
+  }
+
   function abrir(data: Date) {
     setDataSelecionada(data)
-    setForm({ ...FORM_INICIAL, faixas: [{ ...FAIXA_PADRAO }] })
+    resetForm()
   }
 
   function fechar() {
     setDataSelecionada(null)
   }
 
-  function atualizarFaixa(idx: number, patch: Partial<Faixa>) {
+  function toggleSlot(slot: string) {
+    setForm(f => {
+      const next = new Set(f.slotsBloqueio)
+      if (next.has(slot)) next.delete(slot)
+      else next.add(slot)
+      return { ...f, slotsBloqueio: next }
+    })
+  }
+
+  function atualizarFaixaExtra(idx: number, patch: Partial<Faixa>) {
     setForm(f => ({
       ...f,
-      faixas: f.faixas.map((fx, i) => (i === idx ? { ...fx, ...patch } : fx)),
+      faixasExtra: f.faixasExtra.map((fx, i) => (i === idx ? { ...fx, ...patch } : fx)),
     }))
   }
 
-  function adicionarFaixa() {
-    setForm(f => ({ ...f, faixas: [...f.faixas, { ...FAIXA_PADRAO }] }))
+  function adicionarFaixaExtra() {
+    setForm(f => ({ ...f, faixasExtra: [...f.faixasExtra, { ...FAIXA_PADRAO }] }))
   }
 
-  function removerFaixa(idx: number) {
+  function removerFaixaExtra(idx: number) {
     setForm(f => ({
       ...f,
-      faixas: f.faixas.length > 1 ? f.faixas.filter((_, i) => i !== idx) : f.faixas,
+      faixasExtra: f.faixasExtra.length > 1
+        ? f.faixasExtra.filter((_, i) => i !== idx)
+        : f.faixasExtra,
     }))
   }
+
+  const slotsDisponiveis = useMemo(() => {
+    if (!dataSelecionada) return []
+    const feriadosSet = new Set(feriados.map(f => f.data))
+    return slotsDisponiveisNaData({
+      data: dataSelecionada,
+      janelas: janelasSemanais,
+      excecoes,
+      feriados: feriadosSet,
+      duracao_minutos: duracaoMinutos,
+    })
+  }, [dataSelecionada, janelasSemanais, excecoes, feriados, duracaoMinutos])
 
   async function adicionar() {
     if (!dataSelecionada) return
@@ -168,15 +187,36 @@ export function CalendarioMesConsultor({
         motivo,
       }])
       setSaving(false)
-      setForm({ ...FORM_INICIAL, faixas: [{ ...FAIXA_PADRAO }] })
+      resetForm()
       return
     }
 
-    if (form.faixas.length === 0) {
+    if (form.tipo === "bloqueio") {
+      if (form.slotsBloqueio.size === 0) {
+        alert("Selecione pelo menos um horário pra bloquear")
+        return
+      }
+      setSaving(true)
+      const payloads = Array.from(form.slotsBloqueio).map(slot => ({
+        consultor_id: consultorId,
+        data: iso,
+        tipo: "bloqueio" as const,
+        hora_inicio: slot + ":00",
+        hora_fim: addMinutosHHMM(slot, duracaoMinutos) + ":00",
+        motivo,
+      }))
+      await onAddExcecoes(payloads)
+      setSaving(false)
+      resetForm()
+      return
+    }
+
+    // tipo === "extra"
+    if (form.faixasExtra.length === 0) {
       alert("Adicione pelo menos uma faixa de horário")
       return
     }
-    for (const fx of form.faixas) {
+    for (const fx of form.faixasExtra) {
       if (fx.hora_fim <= fx.hora_inicio) {
         alert("Hora fim precisa ser maior que hora início em todas as faixas")
         return
@@ -184,16 +224,16 @@ export function CalendarioMesConsultor({
     }
 
     setSaving(true)
-    await onAddExcecoes(form.faixas.map(fx => ({
+    await onAddExcecoes(form.faixasExtra.map(fx => ({
       consultor_id: consultorId,
       data: iso,
-      tipo: form.tipo,
+      tipo: "extra" as const,
       hora_inicio: fx.hora_inicio + ":00",
       hora_fim: fx.hora_fim + ":00",
       motivo,
     })))
     setSaving(false)
-    setForm({ ...FORM_INICIAL, faixas: [{ ...FAIXA_PADRAO }] })
+    resetForm()
   }
 
   const tituloMes = mesRef
@@ -384,29 +424,62 @@ export function CalendarioMesConsultor({
               </label>
             )}
 
-            {!(form.tipo === "bloqueio" && form.diaInteiro) && (
+            {form.tipo === "bloqueio" && !form.diaInteiro && (
+              slotsDisponiveis.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-1">
+                  Sem horários disponíveis nesse dia. Marque "Dia inteiro" ou crie atendimento extra antes.
+                </p>
+              ) : (
+                <div>
+                  <div className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1.5">
+                    Selecione os horários a bloquear
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                    {slotsDisponiveis.map(slot => {
+                      const selected = form.slotsBloqueio.has(slot)
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => toggleSlot(slot)}
+                          className={`rounded-lg border-2 px-2 py-1.5 text-xs font-bold tracking-wider transition-all ${
+                            selected
+                              ? "border-destructive bg-destructive/20 text-destructive"
+                              : "border-border bg-muted/10 text-foreground hover:border-destructive/40"
+                          }`}
+                        >
+                          {slot}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            )}
+
+            {form.tipo === "extra" && (
               <div className="space-y-2">
-                {form.faixas.map((fx, idx) => (
+                {form.faixasExtra.map((fx, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <Input
                       type="time"
                       value={fx.hora_inicio}
-                      onChange={e => atualizarFaixa(idx, { hora_inicio: e.target.value })}
+                      onChange={e => atualizarFaixaExtra(idx, { hora_inicio: e.target.value })}
                       className="w-28 h-9"
                     />
                     <span className="text-muted-foreground text-xs">até</span>
                     <Input
                       type="time"
                       value={fx.hora_fim}
-                      onChange={e => atualizarFaixa(idx, { hora_fim: e.target.value })}
+                      onChange={e => atualizarFaixaExtra(idx, { hora_fim: e.target.value })}
                       className="w-28 h-9"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      disabled={form.faixas.length === 1}
-                      onClick={() => removerFaixa(idx)}
+                      disabled={form.faixasExtra.length === 1}
+                      onClick={() => removerFaixaExtra(idx)}
                       className="text-destructive hover:bg-destructive/10 ml-auto disabled:opacity-30"
                     >
                       <Trash2Icon className="size-3.5" />
@@ -417,7 +490,7 @@ export function CalendarioMesConsultor({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={adicionarFaixa}
+                  onClick={adicionarFaixaExtra}
                   className="gap-1.5"
                 >
                   <PlusIcon className="size-3.5" />
@@ -436,13 +509,14 @@ export function CalendarioMesConsultor({
               <PlusIcon className="size-3.5" />
               {(() => {
                 if (saving) return "Salvando..."
-                const isBloq = form.tipo === "bloqueio"
-                if (isBloq && form.diaInteiro) return "Bloquear dia inteiro"
-                const n = form.faixas.length
-                const noun = isBloq
-                  ? (n > 1 ? `${n} bloqueios` : "bloqueio")
-                  : (n > 1 ? `${n} atendimentos extra` : "atendimento extra")
-                return `Adicionar ${noun}`
+                if (form.tipo === "bloqueio") {
+                  if (form.diaInteiro) return "Bloquear dia inteiro"
+                  const n = form.slotsBloqueio.size
+                  if (n === 0) return "Selecione um horário"
+                  return n === 1 ? "Bloquear 1 horário" : `Bloquear ${n} horários`
+                }
+                const n = form.faixasExtra.length
+                return n > 1 ? `Adicionar ${n} atendimentos extra` : "Adicionar atendimento extra"
               })()}
             </Button>
           </div>

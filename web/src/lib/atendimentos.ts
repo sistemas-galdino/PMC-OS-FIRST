@@ -269,6 +269,30 @@ export function formatarDataLonga(d: Date): string {
   })
 }
 
+// Gera 42 células (6 semanas × 7 dias) que cobrem o mês de refMonth,
+// começando no domingo da semana onde cai o dia 1.
+export function diasDoMes(refMonth: Date): Date[] {
+  const first = new Date(refMonth.getFullYear(), refMonth.getMonth(), 1)
+  const firstDayOfWeek = first.getDay()
+  const ultimoDia = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
+  const cells: Date[] = []
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    const d = new Date(first)
+    d.setDate(d.getDate() - (firstDayOfWeek - i))
+    cells.push(d)
+  }
+  for (let d = 1; d <= ultimoDia; d++) {
+    cells.push(new Date(first.getFullYear(), first.getMonth(), d))
+  }
+  while (cells.length < 42) {
+    const last = cells[cells.length - 1]
+    const next = new Date(last)
+    next.setDate(next.getDate() + 1)
+    cells.push(next)
+  }
+  return cells.slice(0, 42)
+}
+
 export const STATUS_LABEL: Record<StatusAgendamento, string> = {
   pendente_sync: "Pendente Sync",
   confirmado: "Confirmado",
