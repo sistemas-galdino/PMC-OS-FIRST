@@ -247,10 +247,10 @@ Deno.serve(async (req: Request) => {
         start: { dateTime: startISO, timeZone: TZ },
         end: { dateTime: endISO, timeZone: TZ },
         attendees: [
-          { email: cliente_email.toLowerCase(), displayName: cliente_nome },
-          { email: consultor.email_calendar, displayName: consultor.nome },
+          { email: cliente_email.toLowerCase(), displayName: cliente_nome, responseStatus: "accepted" },
+          { email: consultor.email_calendar, displayName: consultor.nome, responseStatus: "accepted" },
           ...(consultor.email && consultor.email !== consultor.email_calendar
-            ? [{ email: consultor.email, displayName: consultor.nome }]
+            ? [{ email: consultor.email, displayName: consultor.nome, responseStatus: "accepted" as const }]
             : []),
         ],
         conferenceData: {

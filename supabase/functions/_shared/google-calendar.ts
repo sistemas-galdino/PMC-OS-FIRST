@@ -3,6 +3,7 @@ import { getAccessTokenAs, SCOPES } from "./google-auth-sa.ts"
 export interface AttendeePayload {
   email: string
   displayName?: string
+  responseStatus?: "needsAction" | "accepted" | "tentative" | "declined"
 }
 
 export interface NovoEvento {
