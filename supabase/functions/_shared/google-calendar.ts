@@ -175,6 +175,75 @@ export async function deletarEvento(emailCalendar: string, eventId: string): Pro
   return true
 }
 
+// Variantes que separam o SUBJECT (quem impersona via DWD) do CALENDAR ID
+// (calendário destino). Necessário pra calendários secundários
+// (c_xxx@group.calendar.google.com) cujo dono é uma caixa Workspace
+// (ex.: dono@rafaelgaldino.com.br).
+
+export async function criarEventoEm(opts: {
+  subject: string
+  calendarId: string
+  payload: NovoEvento
+}): Promise<EventoCriado> {
+  const token = await getAccessTokenAs(opts.subject, [SCOPES.CALENDAR_EVENTS])
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(opts.calendarId)}/events?conferenceDataVersion=1&sendUpdates=all`
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(opts.payload),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Calendar criarEventoEm (${res.status}): ${text}`)
+  }
+  return await res.json() as EventoCriado
+}
+
+export async function atualizarEventoEm(opts: {
+  subject: string
+  calendarId: string
+  eventId: string
+  payload: Partial<NovoEvento>
+}): Promise<EventoCriado> {
+  const token = await getAccessTokenAs(opts.subject, [SCOPES.CALENDAR_EVENTS])
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(opts.calendarId)}/events/${encodeURIComponent(opts.eventId)}?conferenceDataVersion=1&sendUpdates=all`
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(opts.payload),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Calendar atualizarEventoEm (${res.status}): ${text}`)
+  }
+  return await res.json() as EventoCriado
+}
+
+export async function deletarEventoEm(opts: {
+  subject: string
+  calendarId: string
+  eventId: string
+}): Promise<boolean> {
+  const token = await getAccessTokenAs(opts.subject, [SCOPES.CALENDAR_EVENTS])
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(opts.calendarId)}/events/${encodeURIComponent(opts.eventId)}?sendUpdates=all`
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (res.status === 404 || res.status === 410) return false
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Calendar deletarEventoEm (${res.status}): ${text}`)
+  }
+  return true
+}
+
 export async function buscarEvento(emailCalendar: string, eventId: string) {
   const token = await getAccessTokenAs(emailCalendar, [SCOPES.CALENDAR_EVENTS])
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(emailCalendar)}/events/${encodeURIComponent(eventId)}`

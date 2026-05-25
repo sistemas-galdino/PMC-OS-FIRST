@@ -1,15 +1,25 @@
 import { useEffect, useState, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
-import { CalendarIcon, ClockIcon, ChevronRightIcon, VideoIcon, PlayCircleIcon } from "@/components/ui/icons"
+import { CalendarIcon, ClockIcon, ChevronRightIcon, VideoIcon, PlayCircleIcon, PlusIcon, Edit3Icon, Trash2Icon } from "@/components/ui/icons"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { motion } from "framer-motion"
+import { EncontroFormDialog, type EncontroFormInicial, type EncontroFormPayload } from "@/components/calendario-encontros/encontro-form-dialog"
 
 interface Encontro {
   id_unico: string
   tipo_encontro: string
   titulo_formatado: string
   titulo_original: string
+  descricao: string | null
   data_encontro: string
   horario_inicio: string
   horario_fim: string
@@ -19,6 +29,10 @@ interface Encontro {
   link_gravacao: string | null
   status: string
   timezone: string
+}
+
+interface PageProps {
+  isAdmin?: boolean
 }
 
 const TIPO_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
@@ -35,8 +49,29 @@ const TIPO_LABELS: Record<string, string> = {
   multiplica_time_nivel_2: "Multiplica Time – Nível 02",
   multiplica_dono: "Multiplica Dono",
   multiplica_case: "Multiplica Case",
+  encontro_guardiao_ia: "Encontro dos Guardiões",
   implementation_day: "Implementation Day",
-  encontro_guardiao_ia: "Encontro Guardião da IA",
+  tutoria: "Tutoria",
+}
+
+const TIPOS_CONHECIDOS = Object.entries(TIPO_LABELS).map(([value, label]) => ({ value, label }))
+
+const CORES_FALLBACK = { bg: "bg-muted/15", text: "text-muted-foreground", border: "border-border/40", dot: "bg-muted-foreground" }
+
+function coresDoTipo(tipo: string) {
+  return TIPO_COLORS[tipo] ?? CORES_FALLBACK
+}
+
+function labelDoTipo(tipo: string): string {
+  return TIPO_LABELS[tipo] ?? tipo.replace(/_/g, " ").replace(/^./, c => c.toUpperCase())
+}
+
+// "DD/MM/YYYY" → "YYYY-MM-DD" pra preencher o <input type="date">
+function dataBrParaIso(d: string | null | undefined): string {
+  if (!d) return ""
+  const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (!m) return ""
+  return `${m[3]}-${m[2]}-${m[1]}`
 }
 
 const WEEKDAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"]
@@ -186,7 +221,7 @@ function CalendarGrid({ month, year, encontros, onNavigate }: { month: number; y
                     </span>
                     <div className="mt-1 space-y-1">
                       {dayEncontros.map(enc => {
-                        const colors = TIPO_COLORS[enc.tipo_encontro] || TIPO_COLORS.multiplica_time_nivel_1
+                        const colors = coresDoTipo(enc.tipo_encontro)
                         const isPast = new Date(enc.data_hora_inicio_iso) < new Date()
 
                         return (
@@ -250,34 +285,108 @@ function CalendarGrid({ month, year, encontros, onNavigate }: { month: number; y
   )
 }
 
-export default function CalendarioEncontrosPage() {
+export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) {
   const [encontros, setEncontros] = useState<Encontro[]>([])
   const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
 
-  useEffect(() => {
-    async function fetchEncontros() {
-      try {
-        const { data, error } = await supabase
-          .from("encontros_ao_vivo")
-          .select("id_unico, tipo_encontro, titulo_formatado, titulo_original, data_encontro, horario_inicio, horario_fim, data_hora_inicio_iso, data_hora_fim_iso, link_google_meet, link_gravacao, status, timezone")
-          .order("data_hora_inicio_iso", { ascending: true })
+  const [formOpen, setFormOpen] = useState(false)
+  const [formInicial, setFormInicial] = useState<EncontroFormInicial | null>(null)
+  const [confirmCancel, setConfirmCancel] = useState<Encontro | null>(null)
+  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null)
 
-        if (error) throw error
-        setEncontros(data || [])
-      } catch (err) {
-        console.error("Erro ao buscar encontros:", err)
-      } finally {
-        setLoading(false)
-      }
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3500)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  async function fetchEncontros() {
+    try {
+      const { data, error } = await supabase
+        .from("encontros_ao_vivo")
+        .select("id_unico, tipo_encontro, titulo_formatado, titulo_original, descricao, data_encontro, horario_inicio, horario_fim, data_hora_inicio_iso, data_hora_fim_iso, link_google_meet, link_gravacao, status, timezone")
+        .order("data_hora_inicio_iso", { ascending: true })
+
+      if (error) throw error
+      setEncontros(data || [])
+    } catch (err) {
+      console.error("Erro ao buscar encontros:", err)
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
     fetchEncontros()
   }, [])
 
+  function abrirNovo() {
+    setFormInicial(null)
+    setFormOpen(true)
+  }
+
+  function abrirEditar(enc: Encontro) {
+    setFormInicial({
+      id_unico: enc.id_unico,
+      tipo_encontro: enc.tipo_encontro,
+      titulo: enc.titulo_formatado,
+      descricao: enc.descricao ?? "",
+      data: dataBrParaIso(enc.data_encontro),
+      hora_inicio: enc.horario_inicio?.slice(0, 5) ?? "",
+      hora_fim: enc.horario_fim?.slice(0, 5) ?? "",
+    })
+    setFormOpen(true)
+  }
+
+  async function salvarEncontro(id: string | null, payload: EncontroFormPayload) {
+    const fn = id ? "atualizar-encontro-ao-vivo" : "criar-encontro-ao-vivo"
+    const body = id ? { ...payload, id_unico: id } : payload
+    const { data, error } = await supabase.functions.invoke(fn, { body })
+    if (error) {
+      const ctx = (error as { context?: Response }).context
+      let msg = error.message ?? "Erro desconhecido"
+      try {
+        if (ctx && typeof ctx.json === "function") {
+          const b = await ctx.json()
+          if (b?.error) msg = b.error
+        }
+      } catch { /* mantém msg */ }
+      setToast({ type: "err", msg: `Falha: ${msg}` })
+      return
+    }
+    if ((data as { error?: string } | null)?.error) {
+      setToast({ type: "err", msg: (data as { error: string }).error })
+      return
+    }
+    setToast({ type: "ok", msg: id ? "Encontro atualizado" : "Encontro criado" })
+    setFormOpen(false)
+    await fetchEncontros()
+  }
+
+  async function cancelarEncontro(enc: Encontro) {
+    const { data, error } = await supabase.functions.invoke("cancelar-encontro-ao-vivo", {
+      body: { id_unico: enc.id_unico },
+    })
+    if (error) {
+      setToast({ type: "err", msg: "Erro ao cancelar encontro" })
+      return
+    }
+    const gcalErro = (data as { gcal_erro?: string | null } | null)?.gcal_erro
+    setToast({
+      type: "ok",
+      msg: gcalErro
+        ? "Encontro cancelado (atenção: evento no Google Calendar pode não ter sido removido)"
+        : "Encontro cancelado",
+    })
+    setConfirmCancel(null)
+    await fetchEncontros()
+  }
+
   const proximoEncontro = useMemo(() => {
     const now = new Date()
-    return encontros.find(e => new Date(e.data_hora_inicio_iso) > now) || null
+    return encontros.find(e => e.status !== "cancelado" && new Date(e.data_hora_inicio_iso) > now) || null
   }, [encontros])
 
   function handleNavigate(direction: number) {
@@ -304,24 +413,46 @@ export default function CalendarioEncontrosPage() {
 
   return (
     <div className="space-y-8 pt-14">
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`fixed top-6 right-6 z-50 rounded-xl border px-5 py-3 text-sm font-semibold shadow-2xl ${
+            toast.type === "ok"
+              ? "border-primary/30 bg-primary/10 text-primary"
+              : "border-destructive/30 bg-destructive/10 text-destructive"
+          }`}
+        >
+          {toast.msg}
+        </motion.div>
+      )}
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="flex items-center gap-3 mb-2">
-          <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-            <CalendarIcon className="size-5 text-primary" />
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <CalendarIcon className="size-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight">
+                Calendário de Encontros
+              </h1>
+              <p className="text-sm text-muted-foreground font-medium">
+                Encontros ao vivo do Programa Multiplicador de Crescimento
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight">
-              Calendário de Encontros
-            </h1>
-            <p className="text-sm text-muted-foreground font-medium">
-              Encontros ao vivo do Programa Multiplicador de Crescimento
-            </p>
-          </div>
+          {isAdmin && (
+            <Button onClick={abrirNovo} className="gap-2" size="sm">
+              <PlusIcon className="size-4" />
+              Novo encontro
+            </Button>
+          )}
         </div>
       </motion.div>
 
@@ -423,9 +554,9 @@ export default function CalendarioEncontrosPage() {
         <h3 className="text-lg font-bold tracking-tight">Próximos Encontros</h3>
         <div className="grid gap-3">
           {encontros
-            .filter(e => new Date(e.data_hora_inicio_iso) > new Date())
+            .filter(e => e.status !== "cancelado" && new Date(e.data_hora_inicio_iso) > new Date())
             .map((enc, i) => {
-              const colors = TIPO_COLORS[enc.tipo_encontro] || TIPO_COLORS.multiplica_time_nivel_1
+              const colors = coresDoTipo(enc.tipo_encontro)
               return (
                 <motion.div
                   key={enc.id_unico}
@@ -463,6 +594,28 @@ export default function CalendarioEncontrosPage() {
                           <CalendarIcon className="size-3" />
                           <span className="hidden md:inline">Salvar</span>
                         </a>
+                        {isAdmin && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => abrirEditar(enc)}
+                              className="size-8 p-0"
+                              title="Editar"
+                            >
+                              <Edit3Icon className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setConfirmCancel(enc)}
+                              className="size-8 p-0 text-destructive hover:bg-destructive/10"
+                              title="Cancelar"
+                            >
+                              <Trash2Icon className="size-3.5" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -471,6 +624,42 @@ export default function CalendarioEncontrosPage() {
             })}
         </div>
       </motion.div>
+
+      <EncontroFormDialog
+        open={formOpen}
+        inicial={formInicial}
+        tiposConhecidos={TIPOS_CONHECIDOS}
+        onClose={() => setFormOpen(false)}
+        onSave={salvarEncontro}
+      />
+
+      <Dialog open={!!confirmCancel} onOpenChange={v => !v && setConfirmCancel(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Cancelar encontro</DialogTitle>
+          </DialogHeader>
+          {confirmCancel && (
+            <div className="space-y-2 py-2">
+              <p className="text-sm text-foreground">
+                Confirma o cancelamento de <strong>{confirmCancel.titulo_formatado}</strong>?
+              </p>
+              <p className="text-xs text-muted-foreground">
+                O evento será removido do Google Calendar e marcado como cancelado.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmCancel(null)}>Voltar</Button>
+            <Button
+              variant="outline"
+              onClick={() => confirmCancel && cancelarEncontro(confirmCancel)}
+              className="text-destructive hover:bg-destructive/10"
+            >
+              Cancelar encontro
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

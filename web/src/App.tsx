@@ -226,7 +226,7 @@ function App() {
                     <Route path="/reuniao-blackcrm/:id" element={<ReuniaoBlackCRMDetalhePage isAdmin={isAdmin} />} />
                     <Route path="/recursos" element={<RecursosPage session={session} />} />
                     <Route path="/ferramentas" element={<FerramentasPage session={session} forceAdmin={isAdmin} />} />
-                    <Route path="/calendario" element={<CalendarioEncontrosPage />} />
+                    <Route path="/calendario" element={<CalendarioEncontrosPage isAdmin={isAdmin} />} />
                     <Route path="/onboarding" element={isAdmin ? <OnboardingPage /> : <Navigate to="/" replace />} />
                     <Route path="/configuracoes" element={isAdmin ? <ConfiguracoesPage /> : <Navigate to="/" replace />} />
                     <Route path="/trocar-senha" element={<TrocarSenhaPage />} />
