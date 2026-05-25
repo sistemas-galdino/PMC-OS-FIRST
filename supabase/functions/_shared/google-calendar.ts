@@ -50,6 +50,20 @@ export async function criarEvento(
   return await res.json() as EventoCriado
 }
 
+export async function deletarEvento(emailCalendar: string, eventId: string): Promise<void> {
+  const token = await getAccessTokenAs(emailCalendar, [SCOPES.CALENDAR_EVENTS])
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(emailCalendar)}/events/${encodeURIComponent(eventId)}?sendUpdates=all`
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  // 404/410 = evento já tinha sido deletado; trata como sucesso idempotente
+  if (!res.ok && res.status !== 404 && res.status !== 410) {
+    const text = await res.text()
+    throw new Error(`Calendar deletarEvento (${res.status}): ${text}`)
+  }
+}
+
 export async function buscarEvento(emailCalendar: string, eventId: string) {
   const token = await getAccessTokenAs(emailCalendar, [SCOPES.CALENDAR_EVENTS])
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(emailCalendar)}/events/${encodeURIComponent(eventId)}`

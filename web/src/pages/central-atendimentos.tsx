@@ -140,6 +140,35 @@ export default function CentralAtendimentosPage() {
   }
 
   async function updateAgendamento(ag: AgendamentoCentral, patch: Partial<AgendamentoCentral>) {
+    const cancelando =
+      patch.status_agendamento === "cancelado" && ag.status_agendamento !== "cancelado"
+
+    if (cancelando) {
+      const { data, error: fnErr } = await supabase.functions.invoke("cancelar-agendamento", {
+        body: { origem: ag.origem, id_unico: ag.id_unico },
+      })
+      if (fnErr) {
+        setToast({ type: "err", msg: "Erro ao cancelar agendamento" })
+        return
+      }
+      const outrosUpdates: Record<string, unknown> = {}
+      if (patch.observacoes !== undefined) outrosUpdates.observacoes = patch.observacoes
+      if (patch.cliente_compareceu !== undefined) outrosUpdates.cliente_compareceu = patch.cliente_compareceu
+      if (Object.keys(outrosUpdates).length > 0) {
+        await supabase.from(TABELA_ORIGEM[ag.origem]).update(outrosUpdates).eq("id_unico", ag.id_unico)
+      }
+      const gcalErro = (data as { gcal_erro?: string | null } | null)?.gcal_erro
+      setToast({
+        type: "ok",
+        msg: gcalErro
+          ? "Agendamento cancelado (atenção: evento no Google Calendar pode não ter sido removido)"
+          : "Agendamento cancelado",
+      })
+      await refresh()
+      setAgendamentoDialogOpen(false)
+      return
+    }
+
     const tabela = TABELA_ORIGEM[ag.origem]
     const allowed: Record<string, unknown> = {}
     if (patch.status_agendamento !== undefined) allowed.status_agendamento = patch.status_agendamento
