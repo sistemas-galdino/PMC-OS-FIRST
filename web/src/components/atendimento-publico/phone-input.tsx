@@ -18,11 +18,11 @@ interface PaisDDI {
 
 export const DDI_OPCOES: PaisDDI[] = [
   { value: "BR", bandeira: "🇧🇷", nome: "Brasil",         ddi: "+55",  mascara: "(99) 99999-9999" },
-  { value: "US", bandeira: "🇺🇸", nome: "Estados Unidos", ddi: "+1" },
-  { value: "PT", bandeira: "🇵🇹", nome: "Portugal",       ddi: "+351" },
+  { value: "US", bandeira: "🇺🇸", nome: "Estados Unidos", ddi: "+1",   mascara: "(999) 999-9999" },
+  { value: "PT", bandeira: "🇵🇹", nome: "Portugal",       ddi: "+351", mascara: "999 999 999" },
   { value: "AR", bandeira: "🇦🇷", nome: "Argentina",      ddi: "+54" },
-  { value: "ES", bandeira: "🇪🇸", nome: "Espanha",        ddi: "+34" },
-  { value: "MX", bandeira: "🇲🇽", nome: "México",         ddi: "+52" },
+  { value: "ES", bandeira: "🇪🇸", nome: "Espanha",        ddi: "+34",  mascara: "999 999 999" },
+  { value: "MX", bandeira: "🇲🇽", nome: "México",         ddi: "+52",  mascara: "99 9999 9999" },
   { value: "IT", bandeira: "🇮🇹", nome: "Itália",         ddi: "+39" },
   { value: "CL", bandeira: "🇨🇱", nome: "Chile",          ddi: "+56" },
 ]

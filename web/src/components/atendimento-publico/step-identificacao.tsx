@@ -47,7 +47,7 @@ export function StepIdentificacao({ value, onChange }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Código da empresa *</Label>
+          <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Qual é o seu ID? *</Label>
           <Input
             type="number"
             inputMode="numeric"
