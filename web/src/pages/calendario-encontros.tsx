@@ -381,10 +381,15 @@ export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) 
     await fetchEncontros()
   }
 
+  const encontrosVisiveis = useMemo(
+    () => encontros.filter(e => e.status !== "cancelado"),
+    [encontros],
+  )
+
   const proximoEncontro = useMemo(() => {
     const now = new Date()
-    return encontros.find(e => e.status !== "cancelado" && new Date(e.data_hora_inicio_iso) > now) || null
-  }, [encontros])
+    return encontrosVisiveis.find(e => new Date(e.data_hora_inicio_iso) > now) || null
+  }, [encontrosVisiveis])
 
   function handleNavigate(direction: number) {
     let newMonth = currentMonth + direction
@@ -536,7 +541,7 @@ export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) 
         <CalendarGrid
           month={currentMonth}
           year={currentYear}
-          encontros={encontros}
+          encontros={encontrosVisiveis}
           onNavigate={handleNavigate}
         />
       </motion.div>
@@ -550,8 +555,8 @@ export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) 
       >
         <h3 className="text-lg font-bold tracking-tight">Próximos Encontros</h3>
         <div className="grid gap-3">
-          {encontros
-            .filter(e => e.status !== "cancelado" && new Date(e.data_hora_inicio_iso) > new Date())
+          {encontrosVisiveis
+            .filter(e => new Date(e.data_hora_inicio_iso) > new Date())
             .map((enc, i) => {
               const colors = coresDoTipo(enc.tipo_encontro)
               return (
