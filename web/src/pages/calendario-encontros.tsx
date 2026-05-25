@@ -42,6 +42,7 @@ const TIPO_COLORS: Record<string, { bg: string; text: string; border: string; do
   multiplica_case: { bg: "bg-purple-500/15", text: "text-purple-400", border: "border-purple-500/30", dot: "bg-purple-400" },
   implementation_day: { bg: "bg-emerald-500/15", text: "text-emerald-400", border: "border-emerald-500/30", dot: "bg-emerald-400" },
   encontro_guardiao_ia: { bg: "bg-rose-500/15", text: "text-rose-400", border: "border-rose-500/30", dot: "bg-rose-400" },
+  tutoria: { bg: "bg-cyan-500/15", text: "text-cyan-400", border: "border-cyan-500/30", dot: "bg-cyan-400" },
 }
 
 const TIPO_LABELS: Record<string, string> = {
@@ -520,7 +521,7 @@ export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) 
         className="flex flex-wrap items-center gap-4"
       >
         {Object.entries(TIPO_LABELS).map(([key, label]) => {
-          const colors = TIPO_COLORS[key]
+          const colors = coresDoTipo(key)
           return (
             <div key={key} className="flex items-center gap-2">
               <div className={`size-2.5 rounded-full ${colors.dot}`} />
