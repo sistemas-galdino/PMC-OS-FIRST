@@ -9,7 +9,7 @@ interface Body {
   horario: string
   cliente_nome: string
   cliente_email: string
-  cliente_empresa?: string | null
+  codigo_cliente: number
   cliente_telefone?: string | null
   observacoes?: string | null
 }
@@ -64,7 +64,7 @@ function descricaoEvento(opts: {
   if (opts.cliente_telefone) linhas.push(`Telefone: ${opts.cliente_telefone}`)
   if (opts.empresa) linhas.push(`Empresa: ${opts.empresa}`)
   if (opts.observacoes) linhas.push("", `Observações: ${opts.observacoes}`)
-  if (opts.codigo_cliente) linhas.push("", `Qual o seu ID?) ${opts.codigo_cliente}`)
+  if (opts.codigo_cliente) linhas.push("", `Código do cliente: ${opts.codigo_cliente}`)
   return linhas.join("\n")
 }
 
@@ -84,7 +84,6 @@ Deno.serve(async (req: Request) => {
       horario,
       cliente_nome,
       cliente_email,
-      cliente_empresa,
       cliente_telefone,
       observacoes,
     } = body
@@ -100,6 +99,10 @@ Deno.serve(async (req: Request) => {
     }
     if (!/^\d{2}:\d{2}(:\d{2})?$/.test(horario)) {
       return jsonResponse({ error: "Horário inválido (use HH:MM)" }, 400)
+    }
+    const codigo_cliente = Number(body.codigo_cliente)
+    if (!Number.isInteger(codigo_cliente) || codigo_cliente <= 0) {
+      return jsonResponse({ error: "Código da empresa obrigatório" }, 400)
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!
@@ -150,23 +153,21 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Esse horário já foi reservado por outra pessoa. Escolha outro." }, 409)
     }
 
-    let matchCli: { id_cliente?: string; nome_empresa?: string; codigo_cliente?: number } | null = null
-    try {
-      const { data: form } = await supabase
-        .from("clientes_formulario")
-        .select("id_cliente, nome_empresa, codigo_cliente")
-        .eq("email", cliente_email.toLowerCase())
-        .maybeSingle()
-      if (form) matchCli = form as typeof matchCli
-    } catch {
-      // ignora
+    const { data: matchCli } = await supabase
+      .from("clientes_formulario")
+      .select("id_cliente, nome_empresa, codigo_cliente")
+      .eq("codigo_cliente", codigo_cliente)
+      .maybeSingle<{ id_cliente: string; nome_empresa: string | null; codigo_cliente: number }>()
+
+    if (!matchCli) {
+      return jsonResponse({ error: "Código não encontrado" }, 404)
     }
 
     const id_unico = crypto.randomUUID()
     const horarioStr = h5 + ":00"
     const ano = dataDate.getFullYear()
     const mes = dataDate.getMonth() + 1
-    const empresaFinal = cliente_empresa ?? matchCli?.nome_empresa ?? null
+    const empresaFinal = matchCli.nome_empresa
 
     const base: Record<string, unknown> = {
       id_unico,
@@ -184,8 +185,8 @@ Deno.serve(async (req: Request) => {
       observacoes: observacoes ?? null,
     }
 
-    if (matchCli?.id_cliente) base.id_cliente = matchCli.id_cliente
-    if (matchCli?.codigo_cliente) base.codigo_cliente = matchCli.codigo_cliente
+    base.id_cliente = matchCli.id_cliente
+    base.codigo_cliente = matchCli.codigo_cliente
 
     if (consultor.tabela_destino === "reunioes_mentoria_new") {
       base.mentor = consultor.nome
@@ -215,6 +216,16 @@ Deno.serve(async (req: Request) => {
     let link_meet: string | null = null
     let sync_erro: string | null = null
 
+    const EMAIL_ORG_BLACKCRM =
+      Deno.env.get("CALENDAR_ORGANIZER_BLACKCRM") ?? "especialistablackcrm@rafaelgaldino.com.br"
+    const EMAIL_ORG_CONSULTOR =
+      Deno.env.get("CALENDAR_ORGANIZER_CONSULTOR") ?? "consultor@rafaelgaldino.com.br"
+
+    const emailOrganizador =
+      consultor.tabela_destino === "reunioes_blackcrm"
+        ? EMAIL_ORG_BLACKCRM
+        : EMAIL_ORG_CONSULTOR
+
     try {
       const startISO = `${data}T${horarioStr}${TZ_OFFSET}`
       const endHorario = addMinutos(h5, consultor.duracao_padrao_minutos) + ":00"
@@ -228,13 +239,16 @@ Deno.serve(async (req: Request) => {
           cliente_telefone: cliente_telefone ?? null,
           empresa: empresaFinal,
           observacoes: observacoes ?? null,
-          codigo_cliente: matchCli?.codigo_cliente ?? null,
+          codigo_cliente: matchCli.codigo_cliente,
         }),
         start: { dateTime: startISO, timeZone: TZ },
         end: { dateTime: endISO, timeZone: TZ },
         attendees: [
           { email: cliente_email.toLowerCase(), displayName: cliente_nome },
-          ...(consultor.email ? [{ email: consultor.email, displayName: consultor.nome }] : []),
+          { email: consultor.email_calendar, displayName: consultor.nome },
+          ...(consultor.email && consultor.email !== consultor.email_calendar
+            ? [{ email: consultor.email, displayName: consultor.nome }]
+            : []),
         ],
         conferenceData: {
           createRequest: {
@@ -244,7 +258,7 @@ Deno.serve(async (req: Request) => {
         },
       }
 
-      const evento = await criarEvento(consultor.email_calendar, payload)
+      const evento = await criarEvento(emailOrganizador, payload)
       evento_id = evento.id
       link_meet =
         evento.hangoutLink ??
