@@ -50,6 +50,114 @@ export async function criarEvento(
   return await res.json() as EventoCriado
 }
 
+export interface WatchChannelCriado {
+  id: string
+  resourceId: string
+  expiration: string // ms epoch como string (formato do Google)
+}
+
+export async function criarWatchChannel(opts: {
+  emailCalendar: string
+  channelId: string
+  address: string
+  token: string
+}): Promise<WatchChannelCriado> {
+  const access = await getAccessTokenAs(opts.emailCalendar, [SCOPES.CALENDAR_EVENTS])
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(opts.emailCalendar)}/events/watch`
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: opts.channelId,
+      type: "web_hook",
+      address: opts.address,
+      token: opts.token,
+    }),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Calendar events.watch (${res.status}): ${text}`)
+  }
+  const data = await res.json() as { id: string; resourceId: string; expiration: string }
+  return { id: data.id, resourceId: data.resourceId, expiration: data.expiration }
+}
+
+export async function pararWatchChannel(opts: {
+  emailCalendar: string
+  channelId: string
+  resourceId: string
+}): Promise<void> {
+  const access = await getAccessTokenAs(opts.emailCalendar, [SCOPES.CALENDAR_EVENTS])
+  const res = await fetch("https://www.googleapis.com/calendar/v3/channels/stop", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ id: opts.channelId, resourceId: opts.resourceId }),
+  })
+  // 404/410 = canal já tinha sido encerrado; idempotente
+  if (!res.ok && res.status !== 404 && res.status !== 410) {
+    const text = await res.text()
+    throw new Error(`Calendar channels.stop (${res.status}): ${text}`)
+  }
+}
+
+export interface EventoIncremental {
+  id: string
+  status?: string
+}
+
+export interface ListaIncremental {
+  items: EventoIncremental[]
+  nextSyncToken?: string
+  expirado: boolean // true se 410 Gone — syncToken inválido
+}
+
+export async function listarEventosIncremental(
+  emailCalendar: string,
+  syncToken: string | null,
+): Promise<ListaIncremental> {
+  const access = await getAccessTokenAs(emailCalendar, [SCOPES.CALENDAR_EVENTS])
+  const items: EventoIncremental[] = []
+  let pageToken: string | undefined
+  let nextSyncToken: string | undefined
+
+  do {
+    const params = new URLSearchParams()
+    params.set("showDeleted", "true")
+    params.set("maxResults", "250")
+    if (pageToken) {
+      params.set("pageToken", pageToken)
+    } else if (syncToken) {
+      params.set("syncToken", syncToken)
+    } else {
+      // bootstrap: pega só os próximos 60 dias pra gerar um syncToken inicial enxuto
+      const agora = new Date()
+      const fim = new Date(agora.getTime() + 60 * 24 * 60 * 60 * 1000)
+      params.set("timeMin", agora.toISOString())
+      params.set("timeMax", fim.toISOString())
+      params.set("singleEvents", "true")
+    }
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(emailCalendar)}/events?${params.toString()}`
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${access}` } })
+    if (res.status === 410) {
+      return { items: [], expirado: true }
+    }
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Calendar events.list (${res.status}): ${text}`)
+    }
+    const data = await res.json() as {
+      items?: EventoIncremental[]
+      nextPageToken?: string
+      nextSyncToken?: string
+    }
+    if (data.items) items.push(...data.items)
+    pageToken = data.nextPageToken
+    if (data.nextSyncToken) nextSyncToken = data.nextSyncToken
+  } while (pageToken)
+
+  return { items, nextSyncToken, expirado: false }
+}
+
 export async function deletarEvento(emailCalendar: string, eventId: string): Promise<void> {
   const token = await getAccessTokenAs(emailCalendar, [SCOPES.CALENDAR_EVENTS])
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(emailCalendar)}/events/${encodeURIComponent(eventId)}?sendUpdates=all`
