@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { slugify } from "@/lib/atendimentos"
+import { slugify, EMAILS_CALENDAR_VALIDOS } from "@/lib/atendimentos"
 import type { Consultor, TabelaDestino } from "@/lib/atendimentos"
 
 interface Props {
@@ -163,8 +163,17 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
               <Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="rodrigo@…" type="email" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Email do Calendar (origem)</Label>
-              <Input value={form.email_calendar} onChange={e => setForm(f => ({ ...f, email_calendar: e.target.value }))} placeholder="mentor@…" />
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Email do Calendar (organizador)</Label>
+              <Select value={form.email_calendar} onValueChange={v => setForm(f => ({ ...f, email_calendar: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha a caixa organizadora" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EMAILS_CALENDAR_VALIDOS.map(email => (
+                    <SelectItem key={email} value={email}>{email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

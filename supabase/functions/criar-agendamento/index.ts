@@ -29,6 +29,16 @@ interface Consultor {
 const TZ = "America/Fortaleza"
 const TZ_OFFSET = "-03:00"
 
+// Whitelist de caixas Workspace válidas (DWD configurada). Espelho de
+// EMAILS_CALENDAR_VALIDOS em web/src/lib/atendimentos.ts.
+const EMAILS_CALENDAR_VALIDOS = new Set([
+  "dono@rafaelgaldino.com.br",
+  "consultor@rafaelgaldino.com.br",
+  "consultores@rafaelgaldino.com.br",
+  "especialistablackcrm@rafaelgaldino.com.br",
+  "mentor@rafaelgaldino.com.br",
+])
+
 function addMinutos(h5: string, mins: number): string {
   const [hh, mm] = h5.split(":").map(Number)
   const total = hh * 60 + mm + mins
@@ -219,19 +229,12 @@ Deno.serve(async (req: Request) => {
     let link_meet: string | null = null
     let sync_erro: string | null = null
 
-    const EMAIL_ORG_BLACKCRM =
-      Deno.env.get("CALENDAR_ORGANIZER_BLACKCRM") ?? "especialistablackcrm@rafaelgaldino.com.br"
-    const EMAIL_ORG_CONSULTOR =
-      Deno.env.get("CALENDAR_ORGANIZER_CONSULTOR") ?? "consultor@rafaelgaldino.com.br"
-    const EMAIL_ORG_GALDINO =
-      Deno.env.get("CALENDAR_ORGANIZER_GALDINO") ?? "dono@rafaelgaldino.com.br"
-
-    const emailOrganizador =
-      consultor.tabela_destino === "reunioes_blackcrm"
-        ? EMAIL_ORG_BLACKCRM
-        : consultor.tabela_destino === "reunioes_galdino"
-        ? EMAIL_ORG_GALDINO
-        : EMAIL_ORG_CONSULTOR
+    const emailOrganizador = consultor.email_calendar
+    if (!EMAILS_CALENDAR_VALIDOS.has(emailOrganizador)) {
+      return jsonResponse({
+        error: `Email do calendar inválido pro consultor (${emailOrganizador}). Configure no admin com uma das caixas autorizadas.`,
+      }, 400)
+    }
 
     try {
       const startISO = `${data}T${horarioStr}${TZ_OFFSET}`

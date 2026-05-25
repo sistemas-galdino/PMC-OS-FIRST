@@ -17,6 +17,14 @@ const TABELA_ORIGEM: Record<Origem, TabelaDestino> = {
   blackcrm: "reunioes_blackcrm",
 }
 
+const EMAILS_CALENDAR_VALIDOS = [
+  "dono@rafaelgaldino.com.br",
+  "consultor@rafaelgaldino.com.br",
+  "consultores@rafaelgaldino.com.br",
+  "especialistablackcrm@rafaelgaldino.com.br",
+  "mentor@rafaelgaldino.com.br",
+] as const
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
@@ -63,30 +71,54 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Erro ao cancelar no banco: " + updErr.message }, 500)
     }
 
-    const EMAIL_ORG_BLACKCRM =
-      Deno.env.get("CALENDAR_ORGANIZER_BLACKCRM") ?? "especialistablackcrm@rafaelgaldino.com.br"
-    const EMAIL_ORG_CONSULTOR =
-      Deno.env.get("CALENDAR_ORGANIZER_CONSULTOR") ?? "consultor@rafaelgaldino.com.br"
-    const EMAIL_ORG_GALDINO =
-      Deno.env.get("CALENDAR_ORGANIZER_GALDINO") ?? "dono@rafaelgaldino.com.br"
-    const emailOrganizador =
-      origem === "blackcrm" ? EMAIL_ORG_BLACKCRM :
-      origem === "galdino" ? EMAIL_ORG_GALDINO :
-      EMAIL_ORG_CONSULTOR
+    // Descobre o organizador via consultor (usa nome que vem em agendamentos_central).
+    let emailOrganizador: string | null = null
+    const { data: agView } = await supabase
+      .from("agendamentos_central")
+      .select("consultor_nome")
+      .eq("id_unico", id_unico)
+      .maybeSingle<{ consultor_nome: string | null }>()
+
+    if (agView?.consultor_nome) {
+      const { data: cons } = await supabase
+        .from("consultores_atendimento")
+        .select("email_calendar")
+        .eq("nome", agView.consultor_nome)
+        .maybeSingle<{ email_calendar: string | null }>()
+      emailOrganizador = cons?.email_calendar ?? null
+    }
 
     let deletado_gcal = false
     let gcal_erro: string | null = null
+    let deletado_em: string | null = null
+
     if (row.id_reuniao) {
-      try {
-        await deletarEvento(emailOrganizador, row.id_reuniao)
-        deletado_gcal = true
-      } catch (e) {
-        gcal_erro = e instanceof Error ? e.message : String(e)
-        console.error("[cancelar-agendamento] Falha ao deletar evento GCal:", gcal_erro)
+      // Ordem: organizador conhecido primeiro, depois fallback nas outras caixas.
+      const candidatos: string[] = []
+      if (emailOrganizador) candidatos.push(emailOrganizador)
+      for (const e of EMAILS_CALENDAR_VALIDOS) {
+        if (!candidatos.includes(e)) candidatos.push(e)
+      }
+      const erros: string[] = []
+      for (const e of candidatos) {
+        try {
+          const deletou = await deletarEvento(e, row.id_reuniao)
+          if (deletou) {
+            deletado_gcal = true
+            deletado_em = e
+            break
+          }
+        } catch (err) {
+          erros.push(`${e}: ${err instanceof Error ? err.message : String(err)}`)
+        }
+      }
+      if (!deletado_gcal && erros.length > 0) {
+        gcal_erro = erros.join(" | ")
+        console.error("[cancelar-agendamento] Falha em todas as caixas:", gcal_erro)
       }
     }
 
-    return jsonResponse({ ok: true, deletado_gcal, gcal_erro })
+    return jsonResponse({ ok: true, deletado_gcal, deletado_em, gcal_erro })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     return jsonResponse({ error: msg }, 500)

@@ -4,6 +4,18 @@ export type TabelaDestino = (typeof TABELAS_REUNIAO)[number]
 export const STATUS_AGENDAMENTO = ["pendente_sync", "confirmado", "cancelado", "realizado"] as const
 export type StatusAgendamento = (typeof STATUS_AGENDAMENTO)[number]
 
+// Caixas Workspace válidas pra serem organizador/origem do evento Google Calendar.
+// Todas têm Domain-Wide Delegation configurada pro Service Account do PMC OS.
+// Mantido sincronizado com a whitelist da edge function criar-agendamento.
+export const EMAILS_CALENDAR_VALIDOS = [
+  "dono@rafaelgaldino.com.br",
+  "consultor@rafaelgaldino.com.br",
+  "consultores@rafaelgaldino.com.br",
+  "especialistablackcrm@rafaelgaldino.com.br",
+  "mentor@rafaelgaldino.com.br",
+] as const
+export type EmailCalendar = (typeof EMAILS_CALENDAR_VALIDOS)[number]
+
 export const DIAS_SEMANA = [
   { value: 0, label: "Domingo", curto: "Dom" },
   { value: 1, label: "Segunda", curto: "Seg" },

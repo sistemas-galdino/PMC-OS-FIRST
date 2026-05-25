@@ -17,6 +17,14 @@ const TABELA_ORIGEM: Record<Origem, TabelaDestino> = {
   blackcrm: "reunioes_blackcrm",
 }
 
+const EMAILS_CALENDAR_VALIDOS = new Set([
+  "dono@rafaelgaldino.com.br",
+  "consultor@rafaelgaldino.com.br",
+  "consultores@rafaelgaldino.com.br",
+  "especialistablackcrm@rafaelgaldino.com.br",
+  "mentor@rafaelgaldino.com.br",
+])
+
 interface ChannelRow {
   calendar_email: string
   channel_id: string
@@ -177,20 +185,21 @@ async function buscarStatusEvento(
 
 async function rodarFallback(supabase: SupabaseClient, emailCalendar: string): Promise<number> {
   const hoje = new Date().toISOString().slice(0, 10)
-  const EMAIL_ORG_BLACKCRM = Deno.env.get("CALENDAR_ORGANIZER_BLACKCRM") ?? "especialistablackcrm@rafaelgaldino.com.br"
-  const EMAIL_ORG_GALDINO = Deno.env.get("CALENDAR_ORGANIZER_GALDINO") ?? "dono@rafaelgaldino.com.br"
 
-  const origensDoCalendario: Origem[] =
-    emailCalendar === EMAIL_ORG_BLACKCRM ? ["blackcrm"] :
-    emailCalendar === EMAIL_ORG_GALDINO ? ["galdino"] :
-    ["mentoria"]
+  // Consultores que usam essa caixa
+  const { data: consultores } = await supabase
+    .from("consultores_atendimento")
+    .select("nome")
+    .eq("email_calendar", emailCalendar)
+  const nomes = ((consultores ?? []) as Array<{ nome: string }>).map(c => c.nome)
+  if (nomes.length === 0) return 0
 
   const { data: linhas } = await supabase
     .from("agendamentos_central")
     .select("origem, id_unico, id_reuniao")
     .in("status_agendamento", ["confirmado", "pendente_sync"])
     .gte("data_reuniao", hoje)
-    .in("origem", origensDoCalendario)
+    .in("consultor_nome", nomes)
     .not("id_reuniao", "is", null)
 
   let cancelados = 0
@@ -239,12 +248,17 @@ Deno.serve(async (req: Request) => {
     }
     const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
 
-    const EMAIL_ORG_BLACKCRM = Deno.env.get("CALENDAR_ORGANIZER_BLACKCRM") ?? "especialistablackcrm@rafaelgaldino.com.br"
-    const EMAIL_ORG_CONSULTOR = Deno.env.get("CALENDAR_ORGANIZER_CONSULTOR") ?? "consultor@rafaelgaldino.com.br"
-    const EMAIL_ORG_GALDINO = Deno.env.get("CALENDAR_ORGANIZER_GALDINO") ?? "dono@rafaelgaldino.com.br"
+    // Pega todas as caixas organizadoras ativas (distinct via dropdown do admin).
+    const { data: rows } = await supabase
+      .from("consultores_atendimento")
+      .select("email_calendar")
+      .eq("ativo", true)
+    const emails = Array.from(new Set(((rows ?? []) as Array<{ email_calendar: string | null }>)
+      .map(r => r.email_calendar)
+      .filter((e): e is string => !!e && EMAILS_CALENDAR_VALIDOS.has(e))))
 
     const relatorios: AcaoRelatorio[] = []
-    for (const email of [EMAIL_ORG_CONSULTOR, EMAIL_ORG_BLACKCRM, EMAIL_ORG_GALDINO]) {
+    for (const email of emails) {
       relatorios.push(await processarCalendario(supabase, email, webhookToken))
     }
 

@@ -158,18 +158,21 @@ export async function listarEventosIncremental(
   return { items, nextSyncToken, expirado: false }
 }
 
-export async function deletarEvento(emailCalendar: string, eventId: string): Promise<void> {
+// Retorna true se de fato deletou (2xx) e false se evento não existia (404/410).
+// Erros reais lançam exception.
+export async function deletarEvento(emailCalendar: string, eventId: string): Promise<boolean> {
   const token = await getAccessTokenAs(emailCalendar, [SCOPES.CALENDAR_EVENTS])
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(emailCalendar)}/events/${encodeURIComponent(eventId)}?sendUpdates=all`
   const res = await fetch(url, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   })
-  // 404/410 = evento já tinha sido deletado; trata como sucesso idempotente
-  if (!res.ok && res.status !== 404 && res.status !== 410) {
+  if (res.status === 404 || res.status === 410) return false
+  if (!res.ok) {
     const text = await res.text()
     throw new Error(`Calendar deletarEvento (${res.status}): ${text}`)
   }
+  return true
 }
 
 export async function buscarEvento(emailCalendar: string, eventId: string) {
