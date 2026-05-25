@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ArrowLeftIcon, ArrowUpRightIcon, AlertCircleIcon } from "@/components/ui/icons"
+import { Spinner } from "@/components/ui/spinner"
 import { PublicoLayout } from "@/components/atendimento-publico/publico-layout"
 import { ConsultorCard } from "@/components/atendimento-publico/consultor-card"
 import { Stepper } from "@/components/atendimento-publico/stepper"
@@ -347,7 +348,12 @@ export default function AtendimentoPublicoPage() {
             </Button>
           ) : (
             <Button onClick={submeter} disabled={submitting} size="lg" className="gap-2">
-              {submitting ? "Confirmando..." : "Confirmar agendamento"}
+              {submitting ? (
+                <>
+                  <Spinner className="size-4" />
+                  Confirmando...
+                </>
+              ) : "Confirmar agendamento"}
             </Button>
           )}
         </div>

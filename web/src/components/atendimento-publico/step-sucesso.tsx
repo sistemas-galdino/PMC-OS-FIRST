@@ -27,7 +27,7 @@ export function StepSucesso({ consultor, data, horario, email, onVoltar }: Props
 
       <h2 className="text-3xl font-bold tracking-tight mb-3">Agendamento confirmado!</h2>
       <p className="text-muted-foreground mb-10 max-w-md">
-        Sua reunião com <span className="text-foreground font-semibold">{consultor.nome}</span> foi registrada. Você vai receber o convite do Google Calendar em <span className="text-foreground font-semibold">{email}</span> assim que a integração estiver pronta.
+        Sua reunião com <span className="text-foreground font-semibold">{consultor.nome}</span> foi registrada. Você vai receber o convite do Google Calendar em <span className="text-foreground font-semibold">{email}</span>.
       </p>
 
       <Card className="w-full p-5 space-y-4 mb-8 text-left">

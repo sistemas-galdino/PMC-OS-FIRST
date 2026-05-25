@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { PhoneInput } from "./phone-input"
 
 export interface IdentificacaoForm {
   nome: string
@@ -56,16 +57,13 @@ export function StepIdentificacao({ value, onChange }: Props) {
             placeholder="Ex: 316"
             className="h-12"
           />
-          <p className="text-[11px] text-muted-foreground">Seu código de cliente no PMC OS. Se não souber, fale com seu consultor.</p>
+          <p className="text-[11px] text-muted-foreground">Digite seu ID (O ID está localizado na descrição do seu grupo de Whatsapp, são 3 dígitos, ex: 316)</p>
         </div>
         <div className="space-y-1.5">
           <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Telefone</Label>
-          <Input
-            type="tel"
+          <PhoneInput
             value={value.telefone}
-            onChange={e => set("telefone", e.target.value)}
-            placeholder="(00) 00000-0000"
-            className="h-12"
+            onChange={v => set("telefone", v)}
           />
         </div>
       </div>

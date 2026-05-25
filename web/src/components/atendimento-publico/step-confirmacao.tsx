@@ -41,10 +41,6 @@ export function StepConfirmacao({ consultor, data, horario, identificacao }: Pro
           <p className="text-sm text-foreground">{identificacao.observacoes}</p>
         </div>
       )}
-
-      <p className="text-xs text-muted-foreground">
-        Ao confirmar, o evento é criado no Google Calendar do consultor e do cliente, com convite por email contendo o link do Meet.
-      </p>
     </Card>
   )
 }
