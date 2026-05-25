@@ -1,0 +1,17 @@
+project_id = "hqczwextifessaztyyyk"
+
+# Funções públicas que NÃO usam JWT do Supabase pra autenticar.
+# Cada uma valida o caller via header próprio:
+#   - sincronizar-reunioes / watchdog-gcal → Authorization: Bearer CRON_INVOKE_TOKEN
+#   - webhook-gcal                         → X-Goog-Channel-Token (verificado contra GCAL_WEBHOOK_TOKEN)
+# Sem verify_jwt=false aqui o gateway do Supabase rejeita as chamadas com 401
+# antes de chegar no nosso código. Versionar isso evita re-quebrar depois.
+
+[functions.sincronizar-reunioes]
+verify_jwt = false
+
+[functions.watchdog-gcal]
+verify_jwt = false
+
+[functions.webhook-gcal]
+verify_jwt = false
