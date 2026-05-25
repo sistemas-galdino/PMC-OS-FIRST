@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import { DatePicker } from "@/components/ui/date-picker"
 import {
   Select,
   SelectContent,
@@ -166,10 +167,11 @@ export function EncontroFormDialog({ open, inicial, tiposConhecidos, onClose, on
               <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Data
               </Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={form.data}
-                onChange={e => setForm(f => ({ ...f, data: e.target.value }))}
+                onChange={v => setForm(f => ({ ...f, data: v }))}
+                clearable={false}
+                placeholder="Escolher data"
               />
             </div>
             <div className="space-y-1.5">
