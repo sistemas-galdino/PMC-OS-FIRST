@@ -148,13 +148,18 @@ export default function CentralAtendimentosPage() {
     await refresh()
   }
 
-  async function addExcecao(payload: Omit<ExcecaoConsultor, "id" | "created_at">) {
-    const { error } = await supabase.from("consultores_excecoes").insert(payload)
+  async function addExcecoes(payloads: Omit<ExcecaoConsultor, "id" | "created_at">[]) {
+    if (payloads.length === 0) return
+    const { error } = await supabase.from("consultores_excecoes").insert(payloads)
     if (error) {
       setToast({ type: "err", msg: "Erro ao salvar exceção: " + error.message })
       return
     }
-    setToast({ type: "ok", msg: "Exceção adicionada" })
+    const n = payloads.length
+    setToast({
+      type: "ok",
+      msg: n === 1 ? "Exceção adicionada" : `${n} exceções adicionadas`,
+    })
     await refresh()
   }
 
@@ -343,7 +348,7 @@ export default function CentralAtendimentosPage() {
             }}
             onToggleAtivo={toggleConsultorAtivo}
             onSaveDisponibilidade={saveDisponibilidade}
-            onAddExcecao={addExcecao}
+            onAddExcecoes={addExcecoes}
             onRemoveExcecao={removeExcecao}
             onAddFeriado={addFeriado}
             onRemoveFeriado={removeFeriado}

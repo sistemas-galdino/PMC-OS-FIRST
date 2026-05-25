@@ -32,7 +32,7 @@ interface Props {
   onEditar: (c: Consultor) => void
   onToggleAtivo: (c: Consultor) => void
   onSaveDisponibilidade: (consultorId: string, janelas: JanelaForm[]) => Promise<void>
-  onAddExcecao: (payload: Omit<ExcecaoConsultor, "id" | "created_at">) => Promise<void>
+  onAddExcecoes: (payloads: Omit<ExcecaoConsultor, "id" | "created_at">[]) => Promise<void>
   onRemoveExcecao: (id: string) => Promise<void>
   onAddFeriado: (payload: Omit<Feriado, "id" | "created_at">) => Promise<void>
   onRemoveFeriado: (id: string) => Promise<void>
@@ -48,7 +48,7 @@ export function DisponibilidadeConsultores({
   onEditar,
   onToggleAtivo,
   onSaveDisponibilidade,
-  onAddExcecao,
+  onAddExcecoes,
   onRemoveExcecao,
   onAddFeriado,
   onRemoveFeriado,
@@ -278,7 +278,7 @@ export function DisponibilidadeConsultores({
                           janelasSemanais={janelasAtuais}
                           excecoes={excecoesPorConsultor[c.id] ?? []}
                           feriados={feriados}
-                          onAddExcecao={onAddExcecao}
+                          onAddExcecoes={onAddExcecoes}
                           onRemoveExcecao={onRemoveExcecao}
                         />
                       </div>

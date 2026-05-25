@@ -21,23 +21,25 @@ interface Props {
   janelasSemanais: Disponibilidade[]
   excecoes: ExcecaoConsultor[]
   feriados: Feriado[]
-  onAddExcecao: (payload: Omit<ExcecaoConsultor, "id" | "created_at">) => Promise<void>
+  onAddExcecoes: (payloads: Omit<ExcecaoConsultor, "id" | "created_at">[]) => Promise<void>
   onRemoveExcecao: (id: string) => Promise<void>
 }
+
+type Faixa = { hora_inicio: string; hora_fim: string }
 
 type NovaExcecao = {
   tipo: "bloqueio" | "extra"
   diaInteiro: boolean
-  hora_inicio: string
-  hora_fim: string
+  faixas: Faixa[]
   motivo: string
 }
+
+const FAIXA_PADRAO: Faixa = { hora_inicio: "09:00", hora_fim: "12:00" }
 
 const FORM_INICIAL: NovaExcecao = {
   tipo: "bloqueio",
   diaInteiro: true,
-  hora_inicio: "09:00",
-  hora_fim: "12:00",
+  faixas: [{ ...FAIXA_PADRAO }],
   motivo: "",
 }
 
@@ -84,7 +86,7 @@ export function CalendarioMesConsultor({
   janelasSemanais,
   excecoes,
   feriados,
-  onAddExcecao,
+  onAddExcecoes,
   onRemoveExcecao,
 }: Props) {
   const [mesRef, setMesRef] = useState(() => startOfMonth(new Date()))
@@ -125,45 +127,73 @@ export function CalendarioMesConsultor({
 
   function abrir(data: Date) {
     setDataSelecionada(data)
-    setForm(FORM_INICIAL)
+    setForm({ ...FORM_INICIAL, faixas: [{ ...FAIXA_PADRAO }] })
   }
 
   function fechar() {
     setDataSelecionada(null)
   }
 
+  function atualizarFaixa(idx: number, patch: Partial<Faixa>) {
+    setForm(f => ({
+      ...f,
+      faixas: f.faixas.map((fx, i) => (i === idx ? { ...fx, ...patch } : fx)),
+    }))
+  }
+
+  function adicionarFaixa() {
+    setForm(f => ({ ...f, faixas: [...f.faixas, { ...FAIXA_PADRAO }] }))
+  }
+
+  function removerFaixa(idx: number) {
+    setForm(f => ({
+      ...f,
+      faixas: f.faixas.length > 1 ? f.faixas.filter((_, i) => i !== idx) : f.faixas,
+    }))
+  }
+
   async function adicionar() {
     if (!dataSelecionada) return
     const iso = isoData(dataSelecionada)
+    const motivo = form.motivo.trim() || null
+
     if (form.tipo === "bloqueio" && form.diaInteiro) {
       setSaving(true)
-      await onAddExcecao({
+      await onAddExcecoes([{
         consultor_id: consultorId,
         data: iso,
         tipo: "bloqueio",
         hora_inicio: null,
         hora_fim: null,
-        motivo: form.motivo.trim() || null,
-      })
+        motivo,
+      }])
       setSaving(false)
-      setForm(FORM_INICIAL)
+      setForm({ ...FORM_INICIAL, faixas: [{ ...FAIXA_PADRAO }] })
       return
     }
-    if (form.hora_fim <= form.hora_inicio) {
-      alert("Hora fim precisa ser maior que hora início")
+
+    if (form.faixas.length === 0) {
+      alert("Adicione pelo menos uma faixa de horário")
       return
     }
+    for (const fx of form.faixas) {
+      if (fx.hora_fim <= fx.hora_inicio) {
+        alert("Hora fim precisa ser maior que hora início em todas as faixas")
+        return
+      }
+    }
+
     setSaving(true)
-    await onAddExcecao({
+    await onAddExcecoes(form.faixas.map(fx => ({
       consultor_id: consultorId,
       data: iso,
       tipo: form.tipo,
-      hora_inicio: form.hora_inicio + ":00",
-      hora_fim: form.hora_fim + ":00",
-      motivo: form.motivo.trim() || null,
-    })
+      hora_inicio: fx.hora_inicio + ":00",
+      hora_fim: fx.hora_fim + ":00",
+      motivo,
+    })))
     setSaving(false)
-    setForm(FORM_INICIAL)
+    setForm({ ...FORM_INICIAL, faixas: [{ ...FAIXA_PADRAO }] })
   }
 
   const tituloMes = mesRef
@@ -355,20 +385,44 @@ export function CalendarioMesConsultor({
             )}
 
             {!(form.tipo === "bloqueio" && form.diaInteiro) && (
-              <div className="flex items-center gap-2">
-                <Input
-                  type="time"
-                  value={form.hora_inicio}
-                  onChange={e => setForm(f => ({ ...f, hora_inicio: e.target.value }))}
-                  className="w-28 h-9"
-                />
-                <span className="text-muted-foreground text-xs">até</span>
-                <Input
-                  type="time"
-                  value={form.hora_fim}
-                  onChange={e => setForm(f => ({ ...f, hora_fim: e.target.value }))}
-                  className="w-28 h-9"
-                />
+              <div className="space-y-2">
+                {form.faixas.map((fx, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Input
+                      type="time"
+                      value={fx.hora_inicio}
+                      onChange={e => atualizarFaixa(idx, { hora_inicio: e.target.value })}
+                      className="w-28 h-9"
+                    />
+                    <span className="text-muted-foreground text-xs">até</span>
+                    <Input
+                      type="time"
+                      value={fx.hora_fim}
+                      onChange={e => atualizarFaixa(idx, { hora_fim: e.target.value })}
+                      className="w-28 h-9"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={form.faixas.length === 1}
+                      onClick={() => removerFaixa(idx)}
+                      className="text-destructive hover:bg-destructive/10 ml-auto disabled:opacity-30"
+                    >
+                      <Trash2Icon className="size-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={adicionarFaixa}
+                  className="gap-1.5"
+                >
+                  <PlusIcon className="size-3.5" />
+                  Adicionar faixa
+                </Button>
               </div>
             )}
 
@@ -380,7 +434,16 @@ export function CalendarioMesConsultor({
 
             <Button onClick={adicionar} disabled={saving} className="w-full gap-2">
               <PlusIcon className="size-3.5" />
-              {saving ? "Salvando..." : "Adicionar exceção"}
+              {(() => {
+                if (saving) return "Salvando..."
+                const isBloq = form.tipo === "bloqueio"
+                if (isBloq && form.diaInteiro) return "Bloquear dia inteiro"
+                const n = form.faixas.length
+                const noun = isBloq
+                  ? (n > 1 ? `${n} bloqueios` : "bloqueio")
+                  : (n > 1 ? `${n} atendimentos extra` : "atendimento extra")
+                return `Adicionar ${noun}`
+              })()}
             </Button>
           </div>
         </DialogContent>
