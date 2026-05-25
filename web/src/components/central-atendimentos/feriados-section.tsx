@@ -9,13 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  ChevronDownIcon,
-  PlusIcon,
-  Trash2Icon,
-  FlagIcon,
-} from "@/components/ui/icons"
-import { motion, AnimatePresence } from "framer-motion"
+import { PlusIcon, Trash2Icon } from "@/components/ui/icons"
 import {
   DIAS_SEMANA,
   diasDoMes,
@@ -39,7 +33,6 @@ function addMonths(d: Date, n: number): Date {
 }
 
 export function FeriadosSection({ feriados, onAdd, onRemove, onImportNacionais }: Props) {
-  const [expanded, setExpanded] = useState(false)
   const [mesRef, setMesRef] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
   const [dataSelecionada, setDataSelecionada] = useState<Date | null>(null)
   const [novoNome, setNovoNome] = useState("")
@@ -108,110 +101,73 @@ export function FeriadosSection({ feriados, onAdd, onRemove, onImportNacionais }
     .replace(/^./, c => c.toUpperCase())
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <button
-          type="button"
-          onClick={() => setExpanded(v => !v)}
-          className="w-full flex items-center gap-3 p-5 text-left hover:bg-muted/10 transition-colors"
-        >
-          <div className="size-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0">
-            <FlagIcon className="size-5" />
+    <Card className="w-fit">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-sm text-foreground">Feriados</span>
+            <Badge variant="outline" className="text-[9px] uppercase font-bold bg-muted/30 border-border text-muted-foreground">
+              {feriados.length}
+            </Badge>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-foreground">Feriados</span>
-              <Badge variant="outline" className="text-[9px] uppercase font-bold bg-muted/30 border-border text-muted-foreground">
-                {feriados.length} cadastrado{feriados.length !== 1 ? "s" : ""}
-              </Badge>
-            </div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">
-              Datas bloqueadas para todos os consultores.
-            </div>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={() => setMesRef(m => addMonths(m, -1))} className="size-7 p-0">
+              ‹
+            </Button>
+            <span className="text-xs font-bold text-foreground w-32 text-center">{tituloMes}</span>
+            <Button variant="ghost" size="sm" onClick={() => setMesRef(m => addMonths(m, 1))} className="size-7 p-0">
+              ›
+            </Button>
           </div>
-          <motion.div animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
-            <ChevronDownIcon className="size-4 text-muted-foreground" />
-          </motion.div>
-        </button>
+        </div>
 
-        <AnimatePresence initial={false}>
-          {expanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden border-t border-border/50"
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {ANOS_DISPONIVEIS.map(ano => (
+            <Button
+              key={ano}
+              variant="outline"
+              size="sm"
+              disabled={saving || !anoTemPendentes(ano)}
+              onClick={() => handleImport(ano)}
+              className="text-[11px] h-7 px-2"
             >
-              <div className="p-5 space-y-3 bg-muted/5">
-                {/* Header: nav + import nacionais */}
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => setMesRef(m => addMonths(m, -1))} className="size-7 p-0">
-                      ‹
-                    </Button>
-                    <span className="text-xs font-bold text-foreground w-36 text-center">{tituloMes}</span>
-                    <Button variant="ghost" size="sm" onClick={() => setMesRef(m => addMonths(m, 1))} className="size-7 p-0">
-                      ›
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {ANOS_DISPONIVEIS.map(ano => (
-                      <Button
-                        key={ano}
-                        variant="outline"
-                        size="sm"
-                        disabled={saving || !anoTemPendentes(ano)}
-                        onClick={() => handleImport(ano)}
-                        className="text-[11px] h-7 px-2"
-                      >
-                        {anoTemPendentes(ano) ? `Importar ${ano}` : `${ano} ✓`}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+              {anoTemPendentes(ano) ? `Importar ${ano}` : `${ano} ✓`}
+            </Button>
+          ))}
+        </div>
 
-                {/* Mini-calendário */}
-                <div className="grid grid-cols-7 gap-1 max-w-md">
-                  {HEADER_DIAS.map(d => (
-                    <div key={d} className="text-center text-[10px] uppercase font-bold tracking-widest text-muted-foreground py-1">
-                      {d}
-                    </div>
-                  ))}
-                  {cells.map((d, idx) => {
-                    const iso = isoData(d)
-                    const noMes = d.getMonth() === mesRef.getMonth()
-                    const feriado = feriadosPorData[iso]
+        <div className="grid grid-cols-7 gap-1 w-[280px]">
+          {HEADER_DIAS.map(d => (
+            <div key={d} className="text-center text-[10px] uppercase font-bold tracking-widest text-muted-foreground py-1">
+              {d}
+            </div>
+          ))}
+          {cells.map((d, idx) => {
+            const iso = isoData(d)
+            const noMes = d.getMonth() === mesRef.getMonth()
+            const feriado = feriadosPorData[iso]
 
-                    const classes = [
-                      "relative aspect-square flex items-center justify-center rounded-lg text-xs font-semibold cursor-pointer transition-colors",
-                    ]
-                    if (!noMes) classes.push("opacity-30")
-                    if (feriado) classes.push("bg-amber-500/15 text-amber-400 border border-amber-500/40 hover:bg-amber-500/25")
-                    else classes.push("text-muted-foreground hover:bg-muted/20 border border-transparent")
+            const classes = [
+              "relative aspect-square flex items-center justify-center rounded-lg text-xs font-semibold cursor-pointer transition-colors",
+            ]
+            if (!noMes) classes.push("opacity-30")
+            if (feriado) classes.push("bg-amber-500/15 text-amber-400 border border-amber-500/40 hover:bg-amber-500/25")
+            else classes.push("text-muted-foreground hover:bg-muted/20 border border-transparent")
 
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => abrir(d)}
-                        className={classes.join(" ")}
-                        title={feriado?.nome}
-                      >
-                        <span>{d.getDate()}</span>
-                        {feriado && <span className="absolute bottom-0.5 size-1 rounded-full bg-amber-400" />}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Clique numa data pra adicionar ou remover.
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => abrir(d)}
+                className={classes.join(" ")}
+                title={feriado?.nome}
+              >
+                <span>{d.getDate()}</span>
+                {feriado && <span className="absolute bottom-0.5 size-1 rounded-full bg-amber-400" />}
+              </button>
+            )
+          })}
+        </div>
       </CardContent>
 
       <Dialog open={!!dataSelecionada} onOpenChange={v => !v && fechar()}>
