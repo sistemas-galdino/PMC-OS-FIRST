@@ -32,9 +32,7 @@ export function StepConfirmacao({ consultor, data, horario, identificacao }: Pro
         <Item icon={<ClockIcon className="size-4 text-primary" />} label="Horário" value={`${horario} (${consultor.duracao_padrao_minutos} min)`} />
         <Item icon={<UsersIcon className="size-4 text-primary" />} label="Nome" value={identificacao.nome} />
         <Item icon={<MailIcon className="size-4 text-primary" />} label="Email" value={identificacao.email} />
-        {identificacao.empresa && (
-          <Item icon={<Building2Icon className="size-4 text-primary" />} label="Empresa" value={identificacao.empresa} />
-        )}
+        <Item icon={<Building2Icon className="size-4 text-primary" />} label="Código" value={identificacao.codigo_cliente} />
       </div>
 
       {identificacao.observacoes && (

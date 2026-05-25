@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea"
 export interface IdentificacaoForm {
   nome: string
   email: string
-  empresa: string
+  codigo_cliente: string
   telefone: string
   observacoes: string
 }
@@ -46,13 +46,17 @@ export function StepIdentificacao({ value, onChange }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Empresa</Label>
+          <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Código da empresa *</Label>
           <Input
-            value={value.empresa}
-            onChange={e => set("empresa", e.target.value)}
-            placeholder="Nome da empresa"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={value.codigo_cliente}
+            onChange={e => set("codigo_cliente", e.target.value)}
+            placeholder="Ex: 316"
             className="h-12"
           />
+          <p className="text-[11px] text-muted-foreground">Seu código de cliente no PMC OS. Se não souber, fale com seu consultor.</p>
         </div>
         <div className="space-y-1.5">
           <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Telefone</Label>

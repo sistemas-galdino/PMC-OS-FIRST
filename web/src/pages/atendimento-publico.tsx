@@ -20,9 +20,16 @@ const STEPS = ["Data", "Horário", "Você", "Confirmação"]
 const initialIdent: IdentificacaoForm = {
   nome: "",
   email: "",
-  empresa: "",
+  codigo_cliente: "",
   telefone: "",
   observacoes: "",
+}
+
+function codigoValido(s: string): boolean {
+  const trimmed = s.trim()
+  if (!trimmed) return false
+  const n = Number(trimmed)
+  return Number.isInteger(n) && n > 0
 }
 
 export default function AtendimentoPublicoPage() {
@@ -104,6 +111,10 @@ export default function AtendimentoPublicoPage() {
       setErro("Nome e email são obrigatórios")
       return
     }
+    if (!codigoValido(ident.codigo_cliente)) {
+      setErro("Informe o código da empresa (número inteiro)")
+      return
+    }
     setSubmitting(true)
     setErro(null)
     try {
@@ -114,13 +125,23 @@ export default function AtendimentoPublicoPage() {
           horario: horarioEscolhido,
           cliente_nome: ident.nome.trim(),
           cliente_email: ident.email.trim(),
-          cliente_empresa: ident.empresa.trim() || null,
+          codigo_cliente: Number(ident.codigo_cliente.trim()),
           cliente_telefone: ident.telefone.trim() || null,
           observacoes: ident.observacoes.trim() || null,
         },
       })
       if (fnErr) {
-        setErro("Não foi possível confirmar o agendamento: " + (fnErr.message ?? "erro desconhecido"))
+        let msg = fnErr.message ?? "erro desconhecido"
+        try {
+          const ctx = (fnErr as { context?: Response }).context
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json()
+            if (body?.error) msg = body.error
+          }
+        } catch {
+          // mantém msg padrão
+        }
+        setErro(msg)
         setSubmitting(false)
         return
       }
@@ -135,9 +156,15 @@ export default function AtendimentoPublicoPage() {
   function avancar() {
     if (step === 0 && !dataEscolhida) return
     if (step === 1 && !horarioEscolhido) return
-    if (step === 2 && (!ident.nome.trim() || !ident.email.trim())) {
-      setErro("Preencha nome e email")
-      return
+    if (step === 2) {
+      if (!ident.nome.trim() || !ident.email.trim()) {
+        setErro("Preencha nome e email")
+        return
+      }
+      if (!codigoValido(ident.codigo_cliente)) {
+        setErro("Informe o código da empresa (número inteiro)")
+        return
+      }
     }
     setErro(null)
     setStep(s => s + 1)
@@ -151,7 +178,7 @@ export default function AtendimentoPublicoPage() {
   const canAdvance = useMemo(() => {
     if (step === 0) return !!dataEscolhida
     if (step === 1) return !!horarioEscolhido
-    if (step === 2) return !!ident.nome.trim() && !!ident.email.trim()
+    if (step === 2) return !!ident.nome.trim() && !!ident.email.trim() && codigoValido(ident.codigo_cliente)
     return true
   }, [step, dataEscolhida, horarioEscolhido, ident])
 
