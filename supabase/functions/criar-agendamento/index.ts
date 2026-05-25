@@ -153,12 +153,15 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Esse horário já foi reservado por outra pessoa. Escolha outro." }, 409)
     }
 
-    const { data: matchCli } = await supabase
+    const { data: matchCli, error: cliErr } = await supabase
       .from("clientes_formulario")
-      .select("id_cliente, nome_empresa, codigo_cliente")
+      .select("id_cliente, empresa_nome, codigo_cliente")
       .eq("codigo_cliente", codigo_cliente)
-      .maybeSingle<{ id_cliente: string; nome_empresa: string | null; codigo_cliente: number }>()
+      .maybeSingle<{ id_cliente: string; empresa_nome: string | null; codigo_cliente: number }>()
 
+    if (cliErr) {
+      return jsonResponse({ error: "Erro ao consultar cadastro: " + cliErr.message }, 500)
+    }
     if (!matchCli) {
       return jsonResponse({ error: "Código não encontrado" }, 404)
     }
@@ -167,7 +170,7 @@ Deno.serve(async (req: Request) => {
     const horarioStr = h5 + ":00"
     const ano = dataDate.getFullYear()
     const mes = dataDate.getMonth() + 1
-    const empresaFinal = matchCli.nome_empresa
+    const empresaFinal = matchCli.empresa_nome
 
     const base: Record<string, unknown> = {
       id_unico,
