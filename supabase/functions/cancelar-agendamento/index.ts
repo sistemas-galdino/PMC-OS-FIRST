@@ -67,7 +67,12 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("CALENDAR_ORGANIZER_BLACKCRM") ?? "especialistablackcrm@rafaelgaldino.com.br"
     const EMAIL_ORG_CONSULTOR =
       Deno.env.get("CALENDAR_ORGANIZER_CONSULTOR") ?? "consultor@rafaelgaldino.com.br"
-    const emailOrganizador = origem === "blackcrm" ? EMAIL_ORG_BLACKCRM : EMAIL_ORG_CONSULTOR
+    const EMAIL_ORG_GALDINO =
+      Deno.env.get("CALENDAR_ORGANIZER_GALDINO") ?? "dono@rafaelgaldino.com.br"
+    const emailOrganizador =
+      origem === "blackcrm" ? EMAIL_ORG_BLACKCRM :
+      origem === "galdino" ? EMAIL_ORG_GALDINO :
+      EMAIL_ORG_CONSULTOR
 
     let deletado_gcal = false
     let gcal_erro: string | null = null

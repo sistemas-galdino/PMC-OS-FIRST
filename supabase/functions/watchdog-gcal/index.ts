@@ -178,10 +178,12 @@ async function buscarStatusEvento(
 async function rodarFallback(supabase: SupabaseClient, emailCalendar: string): Promise<number> {
   const hoje = new Date().toISOString().slice(0, 10)
   const EMAIL_ORG_BLACKCRM = Deno.env.get("CALENDAR_ORGANIZER_BLACKCRM") ?? "especialistablackcrm@rafaelgaldino.com.br"
+  const EMAIL_ORG_GALDINO = Deno.env.get("CALENDAR_ORGANIZER_GALDINO") ?? "dono@rafaelgaldino.com.br"
 
-  const origensDoCalendario: Origem[] = emailCalendar === EMAIL_ORG_BLACKCRM
-    ? ["blackcrm"]
-    : ["galdino", "mentoria"]
+  const origensDoCalendario: Origem[] =
+    emailCalendar === EMAIL_ORG_BLACKCRM ? ["blackcrm"] :
+    emailCalendar === EMAIL_ORG_GALDINO ? ["galdino"] :
+    ["mentoria"]
 
   const { data: linhas } = await supabase
     .from("agendamentos_central")
@@ -239,9 +241,10 @@ Deno.serve(async (req: Request) => {
 
     const EMAIL_ORG_BLACKCRM = Deno.env.get("CALENDAR_ORGANIZER_BLACKCRM") ?? "especialistablackcrm@rafaelgaldino.com.br"
     const EMAIL_ORG_CONSULTOR = Deno.env.get("CALENDAR_ORGANIZER_CONSULTOR") ?? "consultor@rafaelgaldino.com.br"
+    const EMAIL_ORG_GALDINO = Deno.env.get("CALENDAR_ORGANIZER_GALDINO") ?? "dono@rafaelgaldino.com.br"
 
     const relatorios: AcaoRelatorio[] = []
-    for (const email of [EMAIL_ORG_CONSULTOR, EMAIL_ORG_BLACKCRM]) {
+    for (const email of [EMAIL_ORG_CONSULTOR, EMAIL_ORG_BLACKCRM, EMAIL_ORG_GALDINO]) {
       relatorios.push(await processarCalendario(supabase, email, webhookToken))
     }
 

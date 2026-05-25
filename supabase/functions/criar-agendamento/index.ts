@@ -223,10 +223,14 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("CALENDAR_ORGANIZER_BLACKCRM") ?? "especialistablackcrm@rafaelgaldino.com.br"
     const EMAIL_ORG_CONSULTOR =
       Deno.env.get("CALENDAR_ORGANIZER_CONSULTOR") ?? "consultor@rafaelgaldino.com.br"
+    const EMAIL_ORG_GALDINO =
+      Deno.env.get("CALENDAR_ORGANIZER_GALDINO") ?? "dono@rafaelgaldino.com.br"
 
     const emailOrganizador =
       consultor.tabela_destino === "reunioes_blackcrm"
         ? EMAIL_ORG_BLACKCRM
+        : consultor.tabela_destino === "reunioes_galdino"
+        ? EMAIL_ORG_GALDINO
         : EMAIL_ORG_CONSULTOR
 
     try {
