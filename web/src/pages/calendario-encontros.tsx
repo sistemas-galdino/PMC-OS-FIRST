@@ -63,10 +63,6 @@ function coresDoTipo(tipo: string) {
   return TIPO_COLORS[tipo] ?? CORES_FALLBACK
 }
 
-function labelDoTipo(tipo: string): string {
-  return TIPO_LABELS[tipo] ?? tipo.replace(/_/g, " ").replace(/^./, c => c.toUpperCase())
-}
-
 // "DD/MM/YYYY" → "YYYY-MM-DD" pra preencher o <input type="date">
 function dataBrParaIso(d: string | null | undefined): string {
   if (!d) return ""
