@@ -146,7 +146,43 @@ Deno.serve(async (req: Request) => {
       const fim = j.hora_fim.slice(0, 5)
       return h5 >= ini && h5 < fim
     })
-    if (!dentroJanela) {
+
+    // Feriado global bloqueia tudo.
+    const { data: feriado } = await supabase
+      .from("feriados")
+      .select("nome")
+      .eq("data", data)
+      .maybeSingle<{ nome: string }>()
+    if (feriado) {
+      return jsonResponse({ error: `Feriado: ${feriado.nome}` }, 400)
+    }
+
+    // Exceções do consultor pra essa data.
+    const { data: excecoes } = await supabase
+      .from("consultores_excecoes")
+      .select("tipo, hora_inicio, hora_fim")
+      .eq("consultor_id", consultor.id)
+      .eq("data", data)
+
+    type Excecao = { tipo: "bloqueio" | "extra"; hora_inicio: string | null; hora_fim: string | null }
+    const excs = (excecoes ?? []) as Excecao[]
+
+    if (excs.some(e => e.tipo === "bloqueio" && !e.hora_inicio)) {
+      return jsonResponse({ error: "Consultor bloqueado nessa data" }, 400)
+    }
+    const colideBloqueio = excs.some(e => {
+      if (e.tipo !== "bloqueio" || !e.hora_inicio || !e.hora_fim) return false
+      return h5 >= e.hora_inicio.slice(0, 5) && h5 < e.hora_fim.slice(0, 5)
+    })
+    if (colideBloqueio) {
+      return jsonResponse({ error: "Horário bloqueado pelo consultor" }, 400)
+    }
+    const dentroExtra = excs.some(e => {
+      if (e.tipo !== "extra" || !e.hora_inicio || !e.hora_fim) return false
+      return h5 >= e.hora_inicio.slice(0, 5) && h5 < e.hora_fim.slice(0, 5)
+    })
+
+    if (!dentroJanela && !dentroExtra) {
       return jsonResponse({ error: "Horário fora da janela de disponibilidade do consultor" }, 400)
     }
 

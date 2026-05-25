@@ -12,26 +12,47 @@ import {
 } from "@/components/ui/icons"
 import { motion, AnimatePresence } from "framer-motion"
 import { DIAS_SEMANA, iniciais } from "@/lib/atendimentos"
-import type { Consultor, Disponibilidade } from "@/lib/atendimentos"
+import type {
+  Consultor,
+  Disponibilidade,
+  ExcecaoConsultor,
+  Feriado,
+} from "@/lib/atendimentos"
+import { FeriadosSection } from "./feriados-section"
+import { CalendarioMesConsultor } from "./calendario-mes-consultor"
 
 type JanelaForm = { dia_semana: number; hora_inicio: string; hora_fim: string }
 
 interface Props {
   consultores: Consultor[]
   disponibilidade: Disponibilidade[]
+  excecoes: ExcecaoConsultor[]
+  feriados: Feriado[]
   onNovo: () => void
   onEditar: (c: Consultor) => void
   onToggleAtivo: (c: Consultor) => void
   onSaveDisponibilidade: (consultorId: string, janelas: JanelaForm[]) => Promise<void>
+  onAddExcecao: (payload: Omit<ExcecaoConsultor, "id" | "created_at">) => Promise<void>
+  onRemoveExcecao: (id: string) => Promise<void>
+  onAddFeriado: (payload: Omit<Feriado, "id" | "created_at">) => Promise<void>
+  onRemoveFeriado: (id: string) => Promise<void>
+  onImportFeriadosNacionais: (ano: number) => Promise<void>
 }
 
 export function DisponibilidadeConsultores({
   consultores,
   disponibilidade,
+  excecoes,
+  feriados,
   onNovo,
   onEditar,
   onToggleAtivo,
   onSaveDisponibilidade,
+  onAddExcecao,
+  onRemoveExcecao,
+  onAddFeriado,
+  onRemoveFeriado,
+  onImportFeriadosNacionais,
 }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [draft, setDraft] = useState<Record<string, JanelaForm[]>>({})
@@ -44,6 +65,15 @@ export function DisponibilidadeConsultores({
     }
     return m
   }, [disponibilidade])
+
+  const excecoesPorConsultor = useMemo(() => {
+    const m: Record<string, ExcecaoConsultor[]> = {}
+    for (const e of excecoes) {
+      if (!m[e.consultor_id]) m[e.consultor_id] = []
+      m[e.consultor_id].push(e)
+    }
+    return m
+  }, [excecoes])
 
   function expandir(c: Consultor) {
     if (expandedId === c.id) {
@@ -99,7 +129,14 @@ export function DisponibilidadeConsultores({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <FeriadosSection
+        feriados={feriados}
+        onAdd={onAddFeriado}
+        onRemove={onRemoveFeriado}
+        onImportNacionais={onImportFeriadosNacionais}
+      />
+
+      <div className="flex items-center justify-between pt-2">
         <div>
           <h3 className="text-base font-bold tracking-tight text-foreground">Consultores</h3>
           <p className="text-xs text-muted-foreground">{consultores.length} cadastrado{consultores.length !== 1 ? "s" : ""}</p>
@@ -183,56 +220,67 @@ export function DisponibilidadeConsultores({
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden border-t border-border/50"
                     >
-                      <div className="p-5 space-y-3 bg-muted/5">
-                        <div className="text-[11px] uppercase font-bold tracking-widest text-muted-foreground">
-                          Janelas semanais
-                        </div>
-
-                        {janelas.length === 0 ? (
-                          <p className="text-sm text-muted-foreground py-2">Sem janelas. Adicione a primeira abaixo.</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {janelas.map((j, idx) => (
-                              <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-background/60 border border-border/50">
-                                <select
-                                  className="bg-muted/20 border border-border rounded-lg px-3 py-1.5 text-sm font-medium text-foreground"
-                                  value={j.dia_semana}
-                                  onChange={e => atualizarJanela(c.id, idx, { dia_semana: Number(e.target.value) })}
-                                >
-                                  {DIAS_SEMANA.map(d => (
-                                    <option key={d.value} value={d.value}>{d.label}</option>
-                                  ))}
-                                </select>
-                                <Input
-                                  type="time"
-                                  value={j.hora_inicio}
-                                  onChange={e => atualizarJanela(c.id, idx, { hora_inicio: e.target.value })}
-                                  className="w-28 h-9"
-                                />
-                                <span className="text-muted-foreground text-xs">até</span>
-                                <Input
-                                  type="time"
-                                  value={j.hora_fim}
-                                  onChange={e => atualizarJanela(c.id, idx, { hora_fim: e.target.value })}
-                                  className="w-28 h-9"
-                                />
-                                <Button variant="ghost" size="sm" onClick={() => removerJanela(c.id, idx)} className="text-destructive hover:bg-destructive/10 ml-auto">
-                                  <Trash2Icon className="size-3.5" />
-                                </Button>
-                              </div>
-                            ))}
+                      <div className="p-5 bg-muted/5 grid gap-6 lg:grid-cols-2">
+                        <div className="space-y-3">
+                          <div className="text-[11px] uppercase font-bold tracking-widest text-muted-foreground">
+                            Janelas semanais
                           </div>
-                        )}
 
-                        <div className="flex items-center gap-2 pt-2">
-                          <Button variant="outline" size="sm" onClick={() => adicionarJanela(c.id)} className="gap-2">
-                            <PlusIcon className="size-3.5" />
-                            Adicionar janela
-                          </Button>
-                          <Button size="sm" onClick={() => salvar(c.id)}>
-                            Salvar disponibilidade
-                          </Button>
+                          {janelas.length === 0 ? (
+                            <p className="text-sm text-muted-foreground py-2">Sem janelas. Adicione a primeira abaixo.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {janelas.map((j, idx) => (
+                                <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-background/60 border border-border/50">
+                                  <select
+                                    className="bg-muted/20 border border-border rounded-lg px-3 py-1.5 text-sm font-medium text-foreground"
+                                    value={j.dia_semana}
+                                    onChange={e => atualizarJanela(c.id, idx, { dia_semana: Number(e.target.value) })}
+                                  >
+                                    {DIAS_SEMANA.map(d => (
+                                      <option key={d.value} value={d.value}>{d.label}</option>
+                                    ))}
+                                  </select>
+                                  <Input
+                                    type="time"
+                                    value={j.hora_inicio}
+                                    onChange={e => atualizarJanela(c.id, idx, { hora_inicio: e.target.value })}
+                                    className="w-28 h-9"
+                                  />
+                                  <span className="text-muted-foreground text-xs">até</span>
+                                  <Input
+                                    type="time"
+                                    value={j.hora_fim}
+                                    onChange={e => atualizarJanela(c.id, idx, { hora_fim: e.target.value })}
+                                    className="w-28 h-9"
+                                  />
+                                  <Button variant="ghost" size="sm" onClick={() => removerJanela(c.id, idx)} className="text-destructive hover:bg-destructive/10 ml-auto">
+                                    <Trash2Icon className="size-3.5" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 pt-2">
+                            <Button variant="outline" size="sm" onClick={() => adicionarJanela(c.id)} className="gap-2">
+                              <PlusIcon className="size-3.5" />
+                              Adicionar janela
+                            </Button>
+                            <Button size="sm" onClick={() => salvar(c.id)}>
+                              Salvar disponibilidade
+                            </Button>
+                          </div>
                         </div>
+
+                        <CalendarioMesConsultor
+                          consultorId={c.id}
+                          janelasSemanais={janelasAtuais}
+                          excecoes={excecoesPorConsultor[c.id] ?? []}
+                          feriados={feriados}
+                          onAddExcecao={onAddExcecao}
+                          onRemoveExcecao={onRemoveExcecao}
+                        />
                       </div>
                     </motion.div>
                   )}

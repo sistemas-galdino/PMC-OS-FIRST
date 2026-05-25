@@ -13,7 +13,7 @@ import { StepHorario } from "@/components/atendimento-publico/step-horario"
 import { StepIdentificacao, type IdentificacaoForm } from "@/components/atendimento-publico/step-identificacao"
 import { StepConfirmacao } from "@/components/atendimento-publico/step-confirmacao"
 import { StepSucesso } from "@/components/atendimento-publico/step-sucesso"
-import type { Consultor, Disponibilidade } from "@/lib/atendimentos"
+import type { Consultor, Disponibilidade, ExcecaoConsultor, Feriado } from "@/lib/atendimentos"
 
 const STEPS = ["Data", "Horário", "Você", "Confirmação"]
 
@@ -39,6 +39,8 @@ export default function AtendimentoPublicoPage() {
   const [consultores, setConsultores] = useState<Consultor[]>([])
   const [consultor, setConsultor] = useState<Consultor | null>(null)
   const [disponibilidade, setDisponibilidade] = useState<Disponibilidade[]>([])
+  const [excecoes, setExcecoes] = useState<ExcecaoConsultor[]>([])
+  const [feriados, setFeriados] = useState<Feriado[]>([])
   const [loading, setLoading] = useState(true)
   const [erroFatal, setErroFatal] = useState<string | null>(null)
 
@@ -68,13 +70,27 @@ export default function AtendimentoPublicoPage() {
           return
         }
 
-        const { data: d } = await supabase
-          .from("consultores_disponibilidade")
-          .select("*")
-          .eq("consultor_id", c.id)
+        const hoje = new Date().toISOString().slice(0, 10)
+        const [{ data: d }, { data: exs }, { data: fs }] = await Promise.all([
+          supabase
+            .from("consultores_disponibilidade")
+            .select("*")
+            .eq("consultor_id", c.id),
+          supabase
+            .from("consultores_excecoes")
+            .select("*")
+            .eq("consultor_id", c.id)
+            .gte("data", hoje),
+          supabase
+            .from("feriados")
+            .select("*")
+            .gte("data", hoje),
+        ])
 
         setConsultor(c as Consultor)
         setDisponibilidade((d as Disponibilidade[]) ?? [])
+        setExcecoes((exs as ExcecaoConsultor[]) ?? [])
+        setFeriados((fs as Feriado[]) ?? [])
       } else {
         const { data: cs } = await supabase
           .from("consultores_atendimento")
@@ -270,6 +286,8 @@ export default function AtendimentoPublicoPage() {
           {step === 0 && (
             <StepData
               disponibilidade={disponibilidade}
+              excecoes={excecoes}
+              feriados={feriados}
               value={dataEscolhida}
               onChange={v => {
                 setDataEscolhida(v)
@@ -281,6 +299,8 @@ export default function AtendimentoPublicoPage() {
           {step === 1 && dataEscolhida && (
             <StepHorario
               disponibilidade={disponibilidade}
+              excecoes={excecoes}
+              feriados={feriados}
               duracao_minutos={consultor.duracao_padrao_minutos}
               data={dataEscolhida}
               slotsOcupados={slotsOcupados}

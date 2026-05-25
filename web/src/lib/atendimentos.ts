@@ -53,6 +53,25 @@ export interface Disponibilidade {
   hora_fim: string
 }
 
+export interface ExcecaoConsultor {
+  id: string
+  consultor_id: string
+  data: string // YYYY-MM-DD
+  tipo: "bloqueio" | "extra"
+  hora_inicio: string | null // null = bloqueio dia inteiro
+  hora_fim: string | null
+  motivo: string | null
+  created_at?: string
+}
+
+export interface Feriado {
+  id: string
+  data: string
+  nome: string
+  tipo: "nacional" | "customizado"
+  created_at?: string
+}
+
 export interface AgendamentoCentral {
   id_unico: string
   origem: "galdino" | "mentoria" | "blackcrm"
@@ -133,22 +152,95 @@ export function slotsDoDia(
   return Array.from(todos).sort()
 }
 
-export function proximasDatasValidas(
-  disponibilidade: Disponibilidade[],
-  n: number = 12,
-  startOffsetDays: number = 1,
-): Date[] {
-  const diasValidos = new Set(disponibilidade.map(d => d.dia_semana))
-  if (diasValidos.size === 0) return []
+function hhmm(t: string): string {
+  return t.slice(0, 5)
+}
+
+// Combina as 3 camadas (semanal → +extras → −bloqueios → ∅ feriado)
+// pra produzir os slots ofertáveis numa data específica.
+export function slotsDisponiveisNaData(opts: {
+  data: Date
+  janelas: Disponibilidade[]
+  excecoes: ExcecaoConsultor[]
+  feriados: Set<string> // datas ISO YYYY-MM-DD
+  duracao_minutos: number
+}): string[] {
+  const { data, janelas, excecoes, feriados, duracao_minutos } = opts
+  const iso = isoData(data)
+  if (feriados.has(iso)) return []
+
+  const excecoesDia = excecoes.filter(e => e.data === iso)
+  const bloqDiaTodo = excecoesDia.some(e => e.tipo === "bloqueio" && !e.hora_inicio)
+  if (bloqDiaTodo) return []
+
+  const dia = data.getDay()
+  const janelasSemanais = janelas.filter(j => j.dia_semana === dia)
+  const janelasExtra = excecoesDia.filter(e => e.tipo === "extra" && e.hora_inicio && e.hora_fim)
+
+  const slots = new Set<string>()
+  for (const j of janelasSemanais) {
+    for (const s of gerarSlots(hhmm(j.hora_inicio), hhmm(j.hora_fim), duracao_minutos)) {
+      slots.add(s)
+    }
+  }
+  for (const e of janelasExtra) {
+    for (const s of gerarSlots(hhmm(e.hora_inicio!), hhmm(e.hora_fim!), duracao_minutos)) {
+      slots.add(s)
+    }
+  }
+
+  const bloqueios = excecoesDia.filter(e => e.tipo === "bloqueio" && e.hora_inicio && e.hora_fim)
+  for (const slot of Array.from(slots)) {
+    for (const b of bloqueios) {
+      if (slot >= hhmm(b.hora_inicio!) && slot < hhmm(b.hora_fim!)) {
+        slots.delete(slot)
+        break
+      }
+    }
+  }
+
+  return Array.from(slots).sort()
+}
+
+export function proximasDatasValidas(opts: {
+  disponibilidade: Disponibilidade[]
+  excecoes?: ExcecaoConsultor[]
+  feriados?: Set<string>
+  n?: number
+  startOffsetDays?: number
+}): Date[] {
+  const {
+    disponibilidade,
+    excecoes = [],
+    feriados = new Set<string>(),
+    n = 12,
+    startOffsetDays = 1,
+  } = opts
+
+  const diasComJanelaSemanal = new Set(disponibilidade.map(d => d.dia_semana))
+  const datasComExtra = new Set(
+    excecoes.filter(e => e.tipo === "extra").map(e => e.data),
+  )
+  const datasBloqueadasFullDay = new Set(
+    excecoes.filter(e => e.tipo === "bloqueio" && !e.hora_inicio).map(e => e.data),
+  )
+
+  if (diasComJanelaSemanal.size === 0 && datasComExtra.size === 0) return []
+
   const datas: Date[] = []
   const hoje = new Date()
   hoje.setHours(0, 0, 0, 0)
   let offset = startOffsetDays
-  while (datas.length < n && offset < 90) {
+  while (datas.length < n && offset < 120) {
     const d = new Date(hoje)
     d.setDate(d.getDate() + offset)
-    if (diasValidos.has(d.getDay())) datas.push(d)
+    const iso = isoData(d)
     offset++
+    if (feriados.has(iso)) continue
+    if (datasBloqueadasFullDay.has(iso)) continue
+    const temSemanal = diasComJanelaSemanal.has(d.getDay())
+    const temExtra = datasComExtra.has(iso)
+    if (temSemanal || temExtra) datas.push(d)
   }
   return datas
 }

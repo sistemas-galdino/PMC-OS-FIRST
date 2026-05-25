@@ -2,10 +2,12 @@ import { useMemo } from "react"
 import { motion } from "framer-motion"
 import { Card } from "@/components/ui/card"
 import { proximasDatasValidas, isoData } from "@/lib/atendimentos"
-import type { Disponibilidade } from "@/lib/atendimentos"
+import type { Disponibilidade, ExcecaoConsultor, Feriado } from "@/lib/atendimentos"
 
 interface Props {
   disponibilidade: Disponibilidade[]
+  excecoes: ExcecaoConsultor[]
+  feriados: Feriado[]
   value: string | null
   onChange: (iso: string) => void
 }
@@ -13,8 +15,17 @@ interface Props {
 const MESES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 const DIAS_CURTO = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
-export function StepData({ disponibilidade, value, onChange }: Props) {
-  const datas = useMemo(() => proximasDatasValidas(disponibilidade, 12, 1), [disponibilidade])
+export function StepData({ disponibilidade, excecoes, feriados, value, onChange }: Props) {
+  const datas = useMemo(() => {
+    const feriadosSet = new Set(feriados.map(f => f.data))
+    return proximasDatasValidas({
+      disponibilidade,
+      excecoes,
+      feriados: feriadosSet,
+      n: 12,
+      startOffsetDays: 1,
+    })
+  }, [disponibilidade, excecoes, feriados])
 
   if (datas.length === 0) {
     return (

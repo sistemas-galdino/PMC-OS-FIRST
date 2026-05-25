@@ -1,11 +1,13 @@
 import { useMemo } from "react"
 import { motion } from "framer-motion"
 import { Card } from "@/components/ui/card"
-import { slotsDoDia } from "@/lib/atendimentos"
-import type { Disponibilidade } from "@/lib/atendimentos"
+import { slotsDisponiveisNaData } from "@/lib/atendimentos"
+import type { Disponibilidade, ExcecaoConsultor, Feriado } from "@/lib/atendimentos"
 
 interface Props {
   disponibilidade: Disponibilidade[]
+  excecoes: ExcecaoConsultor[]
+  feriados: Feriado[]
   duracao_minutos: number
   data: string
   slotsOcupados: string[]
@@ -13,12 +15,26 @@ interface Props {
   onChange: (slot: string) => void
 }
 
-export function StepHorario({ disponibilidade, duracao_minutos, data, slotsOcupados, value, onChange }: Props) {
+export function StepHorario({
+  disponibilidade,
+  excecoes,
+  feriados,
+  duracao_minutos,
+  data,
+  slotsOcupados,
+  value,
+  onChange,
+}: Props) {
   const slots = useMemo(() => {
-    const diaSemana = new Date(data + "T00:00:00").getDay()
-    const janelas = disponibilidade.filter(d => d.dia_semana === diaSemana)
-    return slotsDoDia(janelas, duracao_minutos)
-  }, [disponibilidade, duracao_minutos, data])
+    const feriadosSet = new Set(feriados.map(f => f.data))
+    return slotsDisponiveisNaData({
+      data: new Date(data + "T00:00:00"),
+      janelas: disponibilidade,
+      excecoes,
+      feriados: feriadosSet,
+      duracao_minutos,
+    })
+  }, [disponibilidade, excecoes, feriados, duracao_minutos, data])
 
   const ocupados = new Set(slotsOcupados.map(s => s.slice(0, 5)))
 

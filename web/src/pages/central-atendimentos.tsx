@@ -22,7 +22,10 @@ import type {
   Disponibilidade,
   AgendamentoCentral,
   TabelaDestino,
+  ExcecaoConsultor,
+  Feriado,
 } from "@/lib/atendimentos"
+import { FERIADOS_NACIONAIS_BR } from "@/lib/feriados-br"
 
 type Toast = { type: "ok" | "err"; msg: string } | null
 type TabKey = "visao-geral" | "agendamentos" | "disponibilidade" | "link-publico" | "area-consultor"
@@ -47,6 +50,8 @@ export default function CentralAtendimentosPage() {
 
   const [consultores, setConsultores] = useState<Consultor[]>([])
   const [disponibilidade, setDisponibilidade] = useState<Disponibilidade[]>([])
+  const [excecoes, setExcecoes] = useState<ExcecaoConsultor[]>([])
+  const [feriados, setFeriados] = useState<Feriado[]>([])
   const [agendamentos, setAgendamentos] = useState<AgendamentoCentral[]>([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<Toast>(null)
@@ -63,14 +68,18 @@ export default function CentralAtendimentosPage() {
   }, [toast])
 
   async function refresh() {
-    const [{ data: cs }, { data: ds }, { data: ags }] = await Promise.all([
+    const [{ data: cs }, { data: ds }, { data: ags }, { data: exs }, { data: fs }] = await Promise.all([
       supabase.from("consultores_atendimento").select("*").order("ordem", { ascending: true }),
       supabase.from("consultores_disponibilidade").select("*"),
       supabase.from("agendamentos_central").select("*").order("data_reuniao", { ascending: false }),
+      supabase.from("consultores_excecoes").select("*"),
+      supabase.from("feriados").select("*").order("data", { ascending: true }),
     ])
     setConsultores((cs as Consultor[]) ?? [])
     setDisponibilidade((ds as Disponibilidade[]) ?? [])
     setAgendamentos((ags as AgendamentoCentral[]) ?? [])
+    setExcecoes((exs as ExcecaoConsultor[]) ?? [])
+    setFeriados((fs as Feriado[]) ?? [])
     setLoading(false)
   }
 
@@ -136,6 +145,68 @@ export default function CentralAtendimentosPage() {
       }
     }
     setToast({ type: "ok", msg: "Disponibilidade salva" })
+    await refresh()
+  }
+
+  async function addExcecao(payload: Omit<ExcecaoConsultor, "id" | "created_at">) {
+    const { error } = await supabase.from("consultores_excecoes").insert(payload)
+    if (error) {
+      setToast({ type: "err", msg: "Erro ao salvar exceção: " + error.message })
+      return
+    }
+    setToast({ type: "ok", msg: "Exceção adicionada" })
+    await refresh()
+  }
+
+  async function removeExcecao(id: string) {
+    const { error } = await supabase.from("consultores_excecoes").delete().eq("id", id)
+    if (error) {
+      setToast({ type: "err", msg: "Erro ao remover exceção" })
+      return
+    }
+    setToast({ type: "ok", msg: "Exceção removida" })
+    await refresh()
+  }
+
+  async function addFeriado(payload: Omit<Feriado, "id" | "created_at">) {
+    const { error } = await supabase.from("feriados").insert(payload)
+    if (error) {
+      setToast({
+        type: "err",
+        msg: error.code === "23505" ? "Já existe feriado nessa data" : "Erro ao salvar feriado",
+      })
+      return
+    }
+    setToast({ type: "ok", msg: "Feriado adicionado" })
+    await refresh()
+  }
+
+  async function removeFeriado(id: string) {
+    const { error } = await supabase.from("feriados").delete().eq("id", id)
+    if (error) {
+      setToast({ type: "err", msg: "Erro ao remover feriado" })
+      return
+    }
+    setToast({ type: "ok", msg: "Feriado removido" })
+    await refresh()
+  }
+
+  async function importFeriadosNacionais(ano: number) {
+    const oficiais = FERIADOS_NACIONAIS_BR[ano] ?? []
+    const datasCadastradas = new Set(feriados.map(f => f.data))
+    const novos = oficiais
+      .filter(f => !datasCadastradas.has(f.data))
+      .map(f => ({ data: f.data, nome: f.nome, tipo: "nacional" as const }))
+    if (novos.length === 0) {
+      setToast({ type: "ok", msg: `Feriados de ${ano} já estão cadastrados` })
+      return
+    }
+    const { error } = await supabase.from("feriados").insert(novos)
+    if (error) {
+      setToast({ type: "err", msg: "Erro ao importar feriados: " + error.message })
+      return
+    }
+    setToast({ type: "ok", msg: `${novos.length} feriado${novos.length !== 1 ? "s" : ""} importado${novos.length !== 1 ? "s" : ""}` })
     await refresh()
   }
 
@@ -260,6 +331,8 @@ export default function CentralAtendimentosPage() {
           <DisponibilidadeConsultores
             consultores={consultores}
             disponibilidade={disponibilidade}
+            excecoes={excecoes}
+            feriados={feriados}
             onNovo={() => {
               setEditConsultor(null)
               setConsultorDialogOpen(true)
@@ -270,6 +343,11 @@ export default function CentralAtendimentosPage() {
             }}
             onToggleAtivo={toggleConsultorAtivo}
             onSaveDisponibilidade={saveDisponibilidade}
+            onAddExcecao={addExcecao}
+            onRemoveExcecao={removeExcecao}
+            onAddFeriado={addFeriado}
+            onRemoveFeriado={removeFeriado}
+            onImportFeriadosNacionais={importFeriadosNacionais}
           />
         </TabsContent>
 
