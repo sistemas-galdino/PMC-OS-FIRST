@@ -209,9 +209,23 @@ async function rodarFallback(supabase: SupabaseClient, emailCalendar: string): P
   return cancelados
 }
 
+function autorizado(req: Request): boolean {
+  const cronToken = Deno.env.get("CRON_INVOKE_TOKEN")
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+  const auth = req.headers.get("Authorization") ?? ""
+  const debugToken = req.headers.get("X-Debug-Token") ?? ""
+  if (cronToken && auth === `Bearer ${cronToken}`) return true
+  if (serviceKey && (auth === `Bearer ${serviceKey}` || debugToken === serviceKey)) return true
+  return false
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
+  }
+
+  if (!autorizado(req)) {
+    return jsonResponse({ error: "Não autorizado" }, 401)
   }
 
   try {
