@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Download, Inbox, Clock } from "lucide-react"
 import { supabase } from "@/lib/supabase"
@@ -26,9 +26,14 @@ import {
   SearchIcon as Search,
   BriefcaseIcon as Briefcase,
   CheckCircle2Icon as CheckCircle2,
+  ShieldCheckIcon as ShieldCheck,
+  ArrowLeftIcon as ArrowLeft,
   XIcon,
 } from "@/components/ui/icons"
 import { downloadCSV, type CSVColumn } from "@/lib/csv"
+
+const UNLOCK_PASSWORD = "L95sjTM53"
+const UNLOCK_KEY = "respostas-onboarding-unlocked"
 
 type OnboardingStatus = "enviado" | "em_andamento"
 
@@ -285,6 +290,97 @@ function FieldDisplay({
 }
 
 export default function RespostasOnboardingPage() {
+  const [unlocked, setUnlocked] = useState<boolean>(
+    () => typeof window !== "undefined" && window.sessionStorage.getItem(UNLOCK_KEY) === "1",
+  )
+
+  if (!unlocked) {
+    return (
+      <PasswordGate
+        onUnlock={() => {
+          window.sessionStorage.setItem(UNLOCK_KEY, "1")
+          setUnlocked(true)
+        }}
+      />
+    )
+  }
+
+  return <RespostasOnboardingContent />
+}
+
+function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
+  const navigate = useNavigate()
+  const [value, setValue] = useState("")
+  const [error, setError] = useState(false)
+
+  function tryUnlock(e?: React.FormEvent) {
+    e?.preventDefault()
+    if (value === UNLOCK_PASSWORD) {
+      setError(false)
+      onUnlock()
+    } else {
+      setError(true)
+      setValue("")
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex items-center justify-center min-h-[70vh] py-10"
+    >
+      <div className="w-full max-w-md border border-border bg-card/60 backdrop-blur-md rounded-2xl shadow-2xl p-8 space-y-6">
+        <div className="flex flex-col items-center text-center gap-3">
+          <div className="size-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+            <ShieldCheck className="size-7 text-primary" />
+          </div>
+          <div className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">PMC OS</div>
+          <h1 className="text-2xl font-bold tracking-tight">Área restrita</h1>
+          <p className="text-sm text-muted-foreground max-w-sm">
+            Digite a senha para visualizar as respostas de onboarding dos clientes.
+          </p>
+        </div>
+
+        <form onSubmit={tryUnlock} className="space-y-3">
+          <Input
+            type="password"
+            autoFocus
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value)
+              if (error) setError(false)
+            }}
+            placeholder="Senha de acesso"
+            className="h-12 bg-background border-border focus-visible:border-primary/50 shadow-sm text-center tracking-wider"
+            aria-invalid={error}
+          />
+          {error && (
+            <p className="text-xs text-destructive font-semibold text-center">
+              Senha incorreta. Tente novamente.
+            </p>
+          )}
+          <Button type="submit" className="w-full h-12 gap-2 text-xs font-bold uppercase tracking-wider">
+            <ShieldCheck className="size-4" />
+            Desbloquear
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => navigate("/")}
+            className="w-full h-10 gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground"
+          >
+            <ArrowLeft className="size-4" />
+            Voltar
+          </Button>
+        </form>
+      </div>
+    </motion.div>
+  )
+}
+
+function RespostasOnboardingContent() {
   const [sp, setSp] = useSearchParams()
   const tab = (sp.get("tab") as TabKey | null) ?? "enviadas"
   const [loading, setLoading] = useState(true)
