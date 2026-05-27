@@ -38,6 +38,7 @@ import RoadmapSistemasPage from "@/pages/roadmap-sistemas"
 import CentralAtendimentosPage from "@/pages/central-atendimentos"
 import AtendimentoPublicoPage from "@/pages/atendimento-publico"
 import FunisPage from "@/pages/funis"
+import RespostasOnboardingPage from "@/pages/respostas-onboarding"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { BackgroundShader } from "@/components/ui/background-shader"
@@ -240,6 +241,7 @@ function App() {
                     <Route path="/roadmap-sistemas" element={isAdmin ? <RoadmapSistemasPage /> : <Navigate to="/" replace />} />
                     <Route path="/central-atendimentos" element={isAdmin ? <CentralAtendimentosPage /> : <Navigate to="/" replace />} />
                     <Route path="/funis" element={isAdmin ? <FunisPage /> : <Navigate to="/" replace />} />
+                    <Route path="/respostas-onboarding" element={isAdmin ? <RespostasOnboardingPage /> : <Navigate to="/" replace />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </DashboardLayout>

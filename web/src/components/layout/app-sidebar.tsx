@@ -31,6 +31,7 @@ import {
   Building2Icon as Building,
   BarChart3Icon as BarChart3,
   CompassIcon as Compass,
+  FileTextIcon as FileText,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -83,6 +84,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Central de Atendimentos", icon: MessageSquare, url: "/central-atendimentos" },
     { title: "Funis", icon: BarChart3, url: "/funis" },
     { title: "Pendentes Onboarding", icon: Clock, url: "/onboarding" },
+    { title: "Respostas de Onboarding", icon: FileText, url: "/respostas-onboarding" },
     { title: "Consultores", icon: MessageSquare, url: "/mentores" },
     { title: "Reunioes Galdino", icon: Calendar, url: "/reunioes-galdino" },
     { title: "Reunioes Black CRM", icon: Settings, url: "/reunioes-blackcrm" },
