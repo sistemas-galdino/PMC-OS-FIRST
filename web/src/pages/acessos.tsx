@@ -137,12 +137,16 @@ export default function AcessosPage() {
   const metrics = useMemo(() => {
     const now = Date.now()
     const total = rows.length
+    let totalAtivos = 0
+    let nuncaAtivos = 0
     let jaAcessaram = 0
     let nunca = 0
     let ativos = 0
     let inativos = 0
     let aguardando = 0
     for (const r of rows) {
+      const isClienteAtivo = r.status_atual === "Ativo no Programa"
+      if (isClienteAtivo) totalAtivos++
       if (r.last_sign_in_at) {
         jaAcessaram++
         const diff = now - new Date(r.last_sign_in_at).getTime()
@@ -150,10 +154,11 @@ export default function AcessosPage() {
         else inativos++
       } else {
         nunca++
+        if (isClienteAtivo) nuncaAtivos++
         if (r.tem_auth_user) aguardando++
       }
     }
-    return { total, jaAcessaram, nunca, ativos, inativos, aguardando }
+    return { total, totalAtivos, jaAcessaram, nunca, nuncaAtivos, ativos, inativos, aguardando }
   }, [rows])
 
   const csOptions = useMemo(() => {
@@ -264,9 +269,9 @@ export default function AcessosPage() {
   }
 
   const cards = [
-    { title: "Total de Membros", value: metrics.total, icon: Users, cls: "text-primary bg-primary/10", desc: "Cadastrados no sistema" },
+    { title: "Total de Membros", value: metrics.totalAtivos, icon: Users, cls: "text-primary bg-primary/10", desc: "Clientes ativos no programa" },
     { title: "Já Acessaram", value: metrics.jaAcessaram, icon: ShieldCheck, cls: "text-emerald-400 bg-emerald-500/10", desc: "Logaram ao menos 1 vez" },
-    { title: "Nunca Acessaram", value: metrics.nunca, icon: AlertCircle, cls: "text-red-400 bg-red-500/10", desc: "Sem registro de login" },
+    { title: "Nunca Acessaram", value: metrics.nuncaAtivos, icon: AlertCircle, cls: "text-red-400 bg-red-500/10", desc: "Ativos sem registro de login" },
     { title: "Ativos (14 dias)", value: metrics.ativos, icon: TrendingUp, cls: "text-emerald-400 bg-emerald-500/10", desc: "Logaram recentemente" },
     { title: "Inativos (>14 dias)", value: metrics.inativos, icon: Clock, cls: "text-orange-400 bg-orange-500/10", desc: "Sumiram do sistema" },
     { title: "Aguardando Acesso", value: metrics.aguardando, icon: Mail, cls: "text-yellow-400 bg-yellow-500/10", desc: "Convite enviado, sem acesso" },
