@@ -1,15 +1,39 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TargetIcon } from "@/components/ui/icons"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { TargetIcon, CalendarIcon } from "@/components/ui/icons"
+import { StatusBadgeToggle } from "@/components/status-badge-toggle"
 
-const TOTAL_GALDINO = 12
+const TOTAL_DEFAULT = 4
+const TOTAL_OPTIONS = [4, 6, 12] as const
+
+interface GaldinoMeeting {
+  id_unico: string
+  data_reuniao: string
+  horario: string | null
+  empresa: string | null
+  pessoa: string | null
+  nome_empresa_formatado: string | null
+  nome_cliente_formatado: string | null
+  cliente_compareceu: boolean | null
+  nps: number | null
+}
 
 interface CicloData {
   realizadas: number
-  proximaAgendada: string | null
+  totalGaldino: number
   dataEntrada: string | null
+  meetings: GaldinoMeeting[]
 }
 
 function parseIso(iso: string | null | undefined): Date | null {
@@ -32,6 +56,10 @@ function formatDateShort(iso: string | null | undefined): string {
   return "—"
 }
 
+function formatDateLong(iso: string): string {
+  return new Date(iso + "T00:00:00").toLocaleDateString("pt-BR")
+}
+
 function formatDateFromObj(d: Date): string {
   const dd = String(d.getDate()).padStart(2, "0")
   const mm = String(d.getMonth() + 1).padStart(2, "0")
@@ -39,13 +67,23 @@ function formatDateFromObj(d: Date): string {
   return `${dd}/${mm}/${yy}`
 }
 
+function todayKey(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`
+}
+
 export default function TabCicloGaldino({ clientId }: { clientId: string }) {
+  const navigate = useNavigate()
   const [data, setData] = useState<CicloData>({
     realizadas: 0,
-    proximaAgendada: null,
+    totalGaldino: TOTAL_DEFAULT,
     dataEntrada: null,
+    meetings: [],
   })
   const [loading, setLoading] = useState(true)
+  const [savingTotal, setSavingTotal] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -53,27 +91,24 @@ export default function TabCicloGaldino({ clientId }: { clientId: string }) {
     setLoading(true)
 
     async function load() {
-      const nowIso = new Date().toISOString()
-
-      const [realizadasRes, proximaRes, entradaRes] = await Promise.all([
+      const [realizadasRes, infoRes, listRes] = await Promise.all([
         supabase
           .from("reunioes_galdino")
           .select("id_cliente", { count: "exact", head: true })
           .eq("id_cliente", clientId)
           .eq("cliente_compareceu", true),
         supabase
-          .from("reunioes_galdino")
-          .select("data_reuniao")
+          .from("cliente_informacoes_empresa")
+          .select("data_entrada, total_galdino")
           .eq("id_cliente", clientId)
-          .gt("data_reuniao", nowIso)
-          .order("data_reuniao", { ascending: true })
-          .limit(1)
           .maybeSingle(),
         supabase
-          .from("cliente_informacoes_empresa")
-          .select("data_entrada")
+          .from("reunioes_galdino")
+          .select(
+            "id_unico, data_reuniao, horario, empresa, pessoa, nome_empresa_formatado, nome_cliente_formatado, cliente_compareceu, nps"
+          )
           .eq("id_cliente", clientId)
-          .maybeSingle(),
+          .order("data_reuniao", { ascending: false }),
       ])
 
       if (cancelled) return
@@ -85,8 +120,9 @@ export default function TabCicloGaldino({ clientId }: { clientId: string }) {
 
       setData({
         realizadas: realizadasRes.count ?? 0,
-        proximaAgendada: proximaRes.data?.data_reuniao ?? null,
-        dataEntrada: entradaRes.data?.data_entrada ?? null,
+        totalGaldino: infoRes.data?.total_galdino ?? TOTAL_DEFAULT,
+        dataEntrada: infoRes.data?.data_entrada ?? null,
+        meetings: listRes.data ?? [],
       })
       setLoading(false)
     }
@@ -102,8 +138,45 @@ export default function TabCicloGaldino({ clientId }: { clientId: string }) {
     }
   }, [clientId])
 
+  async function handleChangeTotal(next: string) {
+    const value = Number(next)
+    const previous = data.totalGaldino
+    if (value === previous) return
+    setData((d) => ({ ...d, totalGaldino: value })) // otimista
+    setSavingTotal(true)
+    const { error: upsertError } = await supabase
+      .from("cliente_informacoes_empresa")
+      .upsert({ id_cliente: clientId, total_galdino: value }, { onConflict: "id_cliente" })
+    setSavingTotal(false)
+    if (upsertError) {
+      setData((d) => ({ ...d, totalGaldino: previous })) // rollback
+      toast.error("Não foi possível salvar o ciclo. Tente novamente.")
+      return
+    }
+    toast.success(`Ciclo Galdino definido para ${value} reuniões.`)
+    window.dispatchEvent(new Event("galdino:changed")) // header atualiza
+  }
+
+  function handleStatusChange(idUnico: string, novo: boolean) {
+    setData((d) => ({
+      ...d,
+      meetings: d.meetings.map((m) =>
+        m.id_unico === idUnico ? { ...m, cliente_compareceu: novo } : m
+      ),
+    }))
+  }
+
+  const today = todayKey()
+  const agendadas = data.meetings
+    .filter((m) => m.data_reuniao > today)
+    .sort((a, b) => a.data_reuniao.localeCompare(b.data_reuniao))
+  const realizadasList = data.meetings
+    .filter((m) => m.data_reuniao <= today)
+    .sort((a, b) => b.data_reuniao.localeCompare(a.data_reuniao))
+
   const realizadas = data.realizadas
-  const pendentes = Math.max(0, TOTAL_GALDINO - realizadas)
+  const pendentes = Math.max(0, data.totalGaldino - realizadas)
+  const proximaAgendada = agendadas[0]?.data_reuniao ?? null
   const dataEntradaParsed = parseIso(data.dataEntrada)
   const dataIdeal = dataEntradaParsed
     ? formatDateFromObj(addMonths(dataEntradaParsed, (realizadas + 1) * 3))
@@ -125,11 +198,32 @@ export default function TabCicloGaldino({ clientId }: { clientId: string }) {
       className="space-y-4"
     >
       <Card className="hover:translate-y-0">
-        <CardHeader>
+        <CardHeader className="flex items-center justify-between gap-4">
           <CardTitle className="flex items-center gap-2 text-base">
             <TargetIcon className="size-4 text-yellow-400" />
             Ciclo Galdino
           </CardTitle>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Ciclo
+            </span>
+            <Select
+              value={String(data.totalGaldino)}
+              onValueChange={handleChangeTotal}
+              disabled={savingTotal}
+            >
+              <SelectTrigger className="h-8 w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TOTAL_OPTIONS.map((opt) => (
+                  <SelectItem key={opt} value={String(opt)}>
+                    {opt} reuniões
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {error && (
@@ -139,12 +233,12 @@ export default function TabCicloGaldino({ clientId }: { clientId: string }) {
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <KpiCell label="Total" value={String(TOTAL_GALDINO)} valueClass="text-foreground" />
+            <KpiCell label="Total" value={String(data.totalGaldino)} valueClass="text-foreground" />
             <KpiCell label="Realizadas" value={String(realizadas)} valueClass="text-emerald-400" />
             <KpiCell label="Pendentes" value={String(pendentes)} valueClass="text-yellow-400" />
             <KpiCell
               label="Próxima agendada"
-              value={formatDateShort(data.proximaAgendada)}
+              value={formatDateShort(proximaAgendada)}
               valueClass="text-foreground"
             />
             <KpiCell label="Data ideal próxima" value={dataIdeal} valueClass="text-emerald-400" />
@@ -156,7 +250,123 @@ export default function TabCicloGaldino({ clientId }: { clientId: string }) {
           </p>
         </CardContent>
       </Card>
+
+      <MeetingSection
+        title="Agendadas"
+        meetings={agendadas}
+        emptyText="Nenhuma reunião agendada."
+        onOpen={(id) => navigate(`/reuniao-galdino/${id}`)}
+        onStatusChange={handleStatusChange}
+      />
+
+      <MeetingSection
+        title="Realizadas"
+        meetings={realizadasList}
+        emptyText="Nenhuma reunião realizada."
+        onOpen={(id) => navigate(`/reuniao-galdino/${id}`)}
+        onStatusChange={handleStatusChange}
+      />
     </motion.div>
+  )
+}
+
+function MeetingSection({
+  title,
+  meetings,
+  emptyText,
+  onOpen,
+  onStatusChange,
+}: {
+  title: string
+  meetings: GaldinoMeeting[]
+  emptyText: string
+  onOpen: (idUnico: string) => void
+  onStatusChange: (idUnico: string, novo: boolean) => void
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 px-1">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          {title}
+        </h3>
+        <span className="text-[10px] font-bold text-muted-foreground/60">({meetings.length})</span>
+      </div>
+
+      {meetings.length === 0 ? (
+        <Card className="hover:translate-y-0">
+          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+            {emptyText}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {meetings.map((m) => (
+            <GaldinoMeetingCard
+              key={m.id_unico}
+              meeting={m}
+              onOpen={() => onOpen(m.id_unico)}
+              onStatusChange={onStatusChange}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GaldinoMeetingCard({
+  meeting,
+  onOpen,
+  onStatusChange,
+}: {
+  meeting: GaldinoMeeting
+  onOpen: () => void
+  onStatusChange: (idUnico: string, novo: boolean) => void
+}) {
+  const nome =
+    meeting.nome_cliente_formatado || meeting.pessoa || meeting.empresa || "Sem identificação"
+  const empresa = meeting.nome_empresa_formatado || meeting.empresa || ""
+
+  return (
+    <Card
+      onClick={onOpen}
+      className="cursor-pointer hover:border-primary/30 transition-all duration-300"
+    >
+      <CardContent className="p-5 space-y-4">
+        <div className="flex justify-between items-start gap-3">
+          <div className="space-y-1 flex-1 min-w-0">
+            <h4 className="font-bold text-sm text-foreground leading-tight line-clamp-1">{nome}</h4>
+            {empresa && (
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest line-clamp-1">
+                {empresa}
+              </p>
+            )}
+          </div>
+          <StatusBadgeToggle
+            compareceu={meeting.cliente_compareceu}
+            dataReuniao={meeting.data_reuniao}
+            idUnico={meeting.id_unico}
+            tabela="reunioes_galdino"
+            isAdmin
+            onChange={(novo) => onStatusChange(meeting.id_unico, novo)}
+          />
+        </div>
+
+        <div className="flex items-center justify-between border-t border-border/50 pt-3 text-[11px] font-semibold text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="size-3.5 text-primary/60" />
+            <span className="uppercase tracking-widest">{formatDateLong(meeting.data_reuniao)}</span>
+            {meeting.horario && <span className="text-border">|</span>}
+            {meeting.horario && <span>{meeting.horario}</span>}
+          </div>
+          {meeting.nps != null && (
+            <span>
+              NPS: <span className="text-primary font-bold">{meeting.nps}</span>
+            </span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

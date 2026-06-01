@@ -25,7 +25,7 @@ interface SummaryData {
   contasBlackCrm: number | null
 }
 
-const GALDINO_TOTAL_DEFAULT = 12 // TODO: tornar dinâmico por cliente (cliente_informacoes_empresa.total_galdino?)
+const GALDINO_TOTAL_DEFAULT = 4 // ciclo padrão; cliente pode ter 6 ou 12 (cliente_informacoes_empresa.total_galdino)
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—"
@@ -65,6 +65,7 @@ export function ExecutiveSummaryHeader({ clientId }: ExecutiveSummaryHeaderProps
         consultorTotalRes,
         ultimaConsultorRes,
         clienteRes,
+        infoRes,
       ] = await Promise.all([
         supabase
           .from("reunioes_galdino")
@@ -98,6 +99,11 @@ export function ExecutiveSummaryHeader({ clientId }: ExecutiveSummaryHeaderProps
           .select("tem_crm, tem_conta_blackcrm, quantas_contas_blackcrm")
           .eq("id_cliente", clientId)
           .maybeSingle(),
+        supabase
+          .from("cliente_informacoes_empresa")
+          .select("total_galdino")
+          .eq("id_cliente", clientId)
+          .maybeSingle(),
       ])
 
       if (cancelled) return
@@ -111,7 +117,9 @@ export function ExecutiveSummaryHeader({ clientId }: ExecutiveSummaryHeaderProps
 
       setData({
         galdinoFeitas: galdinoFeitasRes.error ? null : galdinoFeitasRes.count ?? 0,
-        galdinoTotal: GALDINO_TOTAL_DEFAULT,
+        galdinoTotal: infoRes.error
+          ? GALDINO_TOTAL_DEFAULT
+          : infoRes.data?.total_galdino ?? GALDINO_TOTAL_DEFAULT,
         proxGaldino: proxGaldinoRes.error ? null : proxGaldinoRes.data?.data_reuniao ?? null,
         consultorTotal: consultorTotalRes.error ? null : consultorTotalRes.count ?? 0,
         ultimaConsultor: ultimaConsultorRes.error ? null : ultimaConsultorRes.data?.data_reuniao ?? null,
@@ -125,7 +133,12 @@ export function ExecutiveSummaryHeader({ clientId }: ExecutiveSummaryHeaderProps
       if (!cancelled) setLoading(false)
     })
 
-    return () => { cancelled = true }
+    const handler = () => { fetchAll() }
+    window.addEventListener("galdino:changed", handler)
+    return () => {
+      cancelled = true
+      window.removeEventListener("galdino:changed", handler)
+    }
   }, [clientId])
 
   const cards = [
