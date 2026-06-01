@@ -15,11 +15,12 @@ import {
   ClockIcon,
   Building2Icon,
   VideoIcon,
+  FileTextIcon,
   ExternalLinkIcon,
   UserCheckIcon,
 } from "@/components/ui/icons"
-import { iniciais, STATUS_BADGE, STATUS_LABEL } from "@/lib/atendimentos"
-import type { Consultor, AgendamentoCentral, StatusAgendamento } from "@/lib/atendimentos"
+import { iniciais, statusEfetivo, STATUS_EFETIVO_BADGE, STATUS_EFETIVO_LABEL } from "@/lib/atendimentos"
+import type { Consultor, AgendamentoCentral } from "@/lib/atendimentos"
 
 interface Props {
   consultores: Consultor[]
@@ -67,31 +68,38 @@ export function AreaConsultor({ consultores, agendamentos }: Props) {
     let proximas = 0
     let realizadas = 0
     for (const a of meusAgendamentos) {
-      if (a.status_agendamento === "realizado") {
-        realizadas++
-        continue
-      }
-      if (!a.data_reuniao) continue
-      if (a.status_agendamento === "cancelado") continue
+      const st = statusEfetivo(a)
+      if (st === "cancelado") continue
       if (a.data_reuniao === h) {
         hoje++
-      } else if (a.data_reuniao > h) {
-        if (a.status_agendamento === "confirmado" || a.status_agendamento === "pendente_sync") {
-          proximas++
-        }
+        continue
       }
+      if (st === "agendada") proximas++
+      else if (st === "realizada") realizadas++
     }
     return { hoje, proximas, realizadas }
   }, [meusAgendamentos])
 
-  const agenda = useMemo(() => {
-    const h = hojeIso()
+  const proximasList = useMemo(() => {
     return meusAgendamentos
-      .filter(a => a.data_reuniao && a.data_reuniao >= h && a.status_agendamento !== "cancelado" && a.status_agendamento !== "realizado")
+      .filter(a => statusEfetivo(a) === "agendada")
       .sort((a, b) => {
         const dc = (a.data_reuniao ?? "").localeCompare(b.data_reuniao ?? "")
         if (dc !== 0) return dc
         return (a.horario ?? "").localeCompare(b.horario ?? "")
+      })
+  }, [meusAgendamentos])
+
+  const historico = useMemo(() => {
+    return meusAgendamentos
+      .filter(a => {
+        const st = statusEfetivo(a)
+        return st === "realizada" || st === "faltou"
+      })
+      .sort((a, b) => {
+        const dc = (b.data_reuniao ?? "").localeCompare(a.data_reuniao ?? "")
+        if (dc !== 0) return dc
+        return (b.horario ?? "").localeCompare(a.horario ?? "")
       })
   }, [meusAgendamentos])
 
@@ -154,21 +162,46 @@ export function AreaConsultor({ consultores, agendamentos }: Props) {
       <Card>
         <CardContent className="p-0">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <div className="font-bold text-foreground">Agenda de {primeiroNome}</div>
+            <div className="font-bold text-foreground">Próximas reuniões de {primeiroNome}</div>
             <div className="text-xs text-muted-foreground">
-              {agenda.length} {agenda.length === 1 ? "reunião futura" : "reuniões futuras"}
+              {proximasList.length} {proximasList.length === 1 ? "reunião futura" : "reuniões futuras"}
             </div>
           </div>
-          {agenda.length === 0 ? (
+          {proximasList.length === 0 ? (
             <div className="py-14 px-6 text-center space-y-2">
               <div className="mx-auto size-12 rounded-2xl bg-muted/20 flex items-center justify-center">
                 <CalendarIcon className="size-5 text-muted-foreground" />
               </div>
-              <p className="text-sm text-muted-foreground">Nenhuma reunião agendada para {primeiroNome}.</p>
+              <p className="text-sm text-muted-foreground">Nenhuma reunião futura para {primeiroNome}.</p>
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {agenda.map(a => (
+              {proximasList.map(a => (
+                <MeetingRow key={a.id_unico} ag={a} />
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="font-bold text-foreground">Histórico</div>
+            <div className="text-xs text-muted-foreground">
+              {historico.length} {historico.length === 1 ? "reunião" : "reuniões"}
+            </div>
+          </div>
+          {historico.length === 0 ? (
+            <div className="py-14 px-6 text-center space-y-2">
+              <div className="mx-auto size-12 rounded-2xl bg-muted/20 flex items-center justify-center">
+                <CalendarIcon className="size-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">Nenhuma reunião no histórico de {primeiroNome}.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border max-h-[480px] overflow-y-auto">
+              {historico.map(a => (
                 <MeetingRow key={a.id_unico} ag={a} />
               ))}
             </ul>
@@ -205,7 +238,7 @@ function DateBlock({ dataISO }: { dataISO: string }) {
 }
 
 function MeetingRow({ ag }: { ag: AgendamentoCentral }) {
-  const status = ag.status_agendamento as StatusAgendamento | null
+  const status = statusEfetivo(ag)
   return (
     <li className="px-6 py-4 flex items-center gap-4 hover:bg-muted/10 transition-colors">
       {ag.data_reuniao ? <DateBlock dataISO={ag.data_reuniao} /> : <div className="size-16 shrink-0" />}
@@ -213,11 +246,9 @@ function MeetingRow({ ag }: { ag: AgendamentoCentral }) {
         <div className="flex items-center gap-2 flex-wrap">
           <Building2Icon className="size-4 text-muted-foreground shrink-0" />
           <span className="font-bold text-foreground truncate">{ag.empresa ?? "—"}</span>
-          {status && (
-            <Badge variant="outline" className={`uppercase font-bold text-[9px] px-2 ${STATUS_BADGE[status]}`}>
-              {STATUS_LABEL[status]}
-            </Badge>
-          )}
+          <Badge variant="outline" className={`uppercase font-bold text-[9px] px-2 ${STATUS_EFETIVO_BADGE[status]}`}>
+            {STATUS_EFETIVO_LABEL[status]}
+          </Badge>
         </div>
         <div className="text-sm text-muted-foreground truncate">{ag.cliente_nome ?? ag.cliente_email ?? "Cliente"}</div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -226,17 +257,44 @@ function MeetingRow({ ag }: { ag: AgendamentoCentral }) {
         </div>
       </div>
       <div className="shrink-0">
-        {ag.link_meet ? (
-          <Button
-            onClick={() => window.open(ag.link_meet!, "_blank", "noopener,noreferrer")}
-            className="font-bold"
-          >
-            <VideoIcon className="size-4" />
-            Entrar no Meet
-            <ExternalLinkIcon className="size-3.5" />
-          </Button>
+        {status === "agendada" ? (
+          ag.link_meet ? (
+            <Button
+              onClick={() => window.open(ag.link_meet!, "_blank", "noopener,noreferrer")}
+              className="font-bold"
+            >
+              <VideoIcon className="size-4" />
+              Entrar no Meet
+              <ExternalLinkIcon className="size-3.5" />
+            </Button>
+          ) : (
+            <span className="text-xs text-muted-foreground italic">Aguardando link</span>
+          )
         ) : (
-          <span className="text-xs text-muted-foreground italic">Aguardando link</span>
+          <div className="flex items-center gap-2">
+            {ag.link_gravacao && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(ag.link_gravacao!, "_blank", "noopener,noreferrer")}
+                className="font-bold text-xs"
+              >
+                <VideoIcon className="size-3.5" />
+                Gravação
+              </Button>
+            )}
+            {ag.link_geminidoc && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(ag.link_geminidoc!, "_blank", "noopener,noreferrer")}
+                className="font-bold text-xs"
+              >
+                <FileTextIcon className="size-3.5" />
+                Doc
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </li>
