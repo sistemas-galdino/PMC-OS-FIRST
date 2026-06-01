@@ -312,7 +312,7 @@ async function main() {
   if (!clientes) throw new Error('Falha ao carregar clientes')
   const clienteByCodigo = new Map(clientes.map(c => [c.codigo_cliente, c]))
   // Lista de mentores conhecidos (distinct reunioes_mentoria_new.mentor via MCP — RLS bloqueia anon)
-  const mentoresNomes = ['David Abner', 'Diego Silva', 'Issao Yokoi', 'Jeff Duarte', 'Mateus Moura', 'Railson Alves', 'Rodrigo Nogueira']
+  const mentoresNomes = ['Ayslan Leite', 'David Abner', 'Diego Silva', 'Issao Yokoi', 'Jeff Duarte', 'Matheus Moura', 'Maxsuell Lopes', 'Railson Alves', 'Rodrigo Nogueira']
   console.log(`👤 ${mentoresNomes.length} mentores:`, mentoresNomes.join(', '))
 
   const accessToken = await getAccessToken()
