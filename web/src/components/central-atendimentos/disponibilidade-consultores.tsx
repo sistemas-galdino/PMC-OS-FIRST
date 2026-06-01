@@ -23,6 +23,14 @@ import { CalendarioMesConsultor } from "./calendario-mes-consultor"
 
 type JanelaForm = { dia_semana: number; hora_inicio: string; hora_fim: string }
 
+function formatarDataExtra(iso: string): string {
+  return new Date(iso + "T00:00:00").toLocaleDateString("pt-BR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+  })
+}
+
 interface Props {
   consultores: Consultor[]
   disponibilidade: Disponibilidade[]
@@ -152,6 +160,10 @@ export function DisponibilidadeConsultores({
           const expanded = expandedId === c.id
           const janelas = draft[c.id] ?? []
           const janelasAtuais = disponibilidadePorConsultor[c.id] ?? []
+          const extras = (excecoesPorConsultor[c.id] ?? [])
+            .filter(e => e.tipo === "extra")
+            .sort((a, b) => a.data.localeCompare(b.data) || (a.hora_inicio ?? "").localeCompare(b.hora_inicio ?? ""))
+          const extrasCount = extras.length
 
           return (
             <Card key={c.id} className={!c.ativo ? "opacity-60" : ""}>
@@ -179,10 +191,18 @@ export function DisponibilidadeConsultores({
                       {c.especialidade ?? "—"} · {c.email_calendar}
                     </div>
                     <div className="text-[11px] text-muted-foreground mt-1">
-                      {janelasAtuais.length === 0 ? (
+                      {janelasAtuais.length === 0 && extrasCount === 0 ? (
                         <span className="text-amber-400">Sem disponibilidade configurada</span>
                       ) : (
-                        <span>{janelasAtuais.length} janela{janelasAtuais.length !== 1 ? "s" : ""} configurada{janelasAtuais.length !== 1 ? "s" : ""}</span>
+                        <span>
+                          {janelasAtuais.length > 0 && (
+                            <>{janelasAtuais.length} janela{janelasAtuais.length !== 1 ? "s" : ""} semanal{janelasAtuais.length !== 1 ? "is" : ""}</>
+                          )}
+                          {janelasAtuais.length > 0 && extrasCount > 0 && " · "}
+                          {extrasCount > 0 && (
+                            <span className="text-emerald-400">{extrasCount} data{extrasCount !== 1 ? "s" : ""} extra</span>
+                          )}
+                        </span>
                       )}
                       {" · "}
                       <span>{c.duracao_padrao_minutos}min por reunião</span>
@@ -227,7 +247,7 @@ export function DisponibilidadeConsultores({
                           </div>
 
                           {janelas.length === 0 ? (
-                            <p className="text-sm text-muted-foreground py-2">Sem janelas. Adicione a primeira abaixo.</p>
+                            <p className="text-sm text-muted-foreground py-2">Sem janelas semanais.</p>
                           ) : (
                             <div className="space-y-2">
                               {janelas.map((j, idx) => (
@@ -270,6 +290,44 @@ export function DisponibilidadeConsultores({
                             <Button size="sm" onClick={() => salvar(c.id)}>
                               Salvar disponibilidade
                             </Button>
+                          </div>
+
+                          <div className="pt-4 mt-2 border-t border-border/50 space-y-2">
+                            <div className="text-[11px] uppercase font-bold tracking-widest text-muted-foreground">
+                              Atendimentos extras (datas específicas)
+                            </div>
+                            {extras.length === 0 ? (
+                              <p className="text-sm text-muted-foreground py-1">
+                                Nenhum atendimento extra. Selecione uma data no calendário ao lado para adicionar.
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                {extras.map(e => (
+                                  <div key={e.id} className="flex items-center gap-2 p-2 rounded-lg bg-background/60 border border-border/50">
+                                    <Badge variant="outline" className="text-[9px] uppercase font-bold bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shrink-0">
+                                      Extra
+                                    </Badge>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm font-medium text-foreground capitalize">
+                                        {formatarDataExtra(e.data)}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground truncate">
+                                        {e.hora_inicio?.slice(0, 5)} – {e.hora_fim?.slice(0, 5)}
+                                        {e.motivo ? ` · ${e.motivo}` : ""}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => onRemoveExcecao(e.id)}
+                                      className="text-destructive hover:bg-destructive/10 shrink-0"
+                                    >
+                                      <Trash2Icon className="size-3.5" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
 
