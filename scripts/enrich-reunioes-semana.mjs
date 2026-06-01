@@ -1,7 +1,7 @@
 // Enriquece reuniões (semana 06/04–12/04) com dados mecânicos extraídos do Gemini Doc
 // e cria registros faltantes. NÃO gera ganho/ações — isso vem depois via LLM pass.
 //
-// Campos populados: link_gravacao, link_geminidoc, transcricao, resumo, detalhes_reuniao
+// Campos populados: link_gravacao, link_geminidoc, link_meet, transcricao, resumo, detalhes_reuniao
 // + matching de cliente via codigo_cliente no description e mentor via título.
 //
 // Uso:
@@ -362,6 +362,7 @@ async function main() {
       resumo: parsed.resumo,
       link_gravacao: gravacao?.fileUrl || null,
       link_geminidoc: geminiDoc?.fileUrl || null,
+      link_meet: event.hangoutLink || null,
       ano: d.getFullYear(),
       mes: d.getMonth() + 1,
     }
@@ -427,6 +428,7 @@ async function main() {
       if (payload.resumo) upd.resumo = payload.resumo
       if (payload.link_gravacao) upd.link_gravacao = payload.link_gravacao
       if (payload.link_geminidoc) upd.link_geminidoc = payload.link_geminidoc
+      if (payload.link_meet) upd.link_meet = payload.link_meet
       if (tabela === 'reunioes_galdino' && payload.detalhes_reuniao) upd.detalhes_reuniao = payload.detalhes_reuniao
       if (tabela === 'reunioes_mentoria_new') {
         if (payload.gravada) upd.gravada = true
