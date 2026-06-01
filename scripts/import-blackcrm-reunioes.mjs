@@ -125,11 +125,12 @@ function getWeekBounds(date) {
 }
 
 function formatDate(dateStr) {
+  // ISO AAAA-MM-DD — a view agendamentos_central só reconhece datas ISO.
   const d = new Date(dateStr)
   const dd = String(d.getDate()).padStart(2, '0')
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const yyyy = d.getFullYear()
-  return `${dd}/${mm}/${yyyy}`
+  return `${yyyy}-${mm}-${dd}`
 }
 
 function formatTime(dateStr) {
