@@ -32,6 +32,7 @@ import {
   BarChart3Icon as BarChart3,
   CompassIcon as Compass,
   FileTextIcon as FileText,
+  TargetIcon as Target,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -79,6 +80,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
   const adminItems = [
     { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
     { title: "Clientes", icon: Users, url: "/clientes" },
+    { title: "CRM", icon: Target, url: "/crm" },
     { title: "Acessos", icon: ShieldCheck, url: "/acessos" },
     { title: "Roadmap de Sistemas", icon: Compass, url: "/roadmap-sistemas" },
     { title: "Central de Atendimentos", icon: MessageSquare, url: "/central-atendimentos" },
