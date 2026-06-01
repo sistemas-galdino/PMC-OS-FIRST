@@ -19,7 +19,7 @@ import {
   ExternalLinkIcon,
   UserCheckIcon,
 } from "@/components/ui/icons"
-import { iniciais, statusEfetivo, STATUS_EFETIVO_BADGE, STATUS_EFETIVO_LABEL } from "@/lib/atendimentos"
+import { iniciais, statusEfetivo, nomesDoConsultor, STATUS_EFETIVO_BADGE, STATUS_EFETIVO_LABEL } from "@/lib/atendimentos"
 import type { Consultor, AgendamentoCentral } from "@/lib/atendimentos"
 
 interface Props {
@@ -59,7 +59,8 @@ export function AreaConsultor({ consultores, agendamentos }: Props) {
 
   const meusAgendamentos = useMemo(() => {
     if (!selecionado) return [] as AgendamentoCentral[]
-    return agendamentos.filter(a => a.consultor_nome === selecionado.nome)
+    const nomes = nomesDoConsultor(selecionado)
+    return agendamentos.filter(a => a.consultor_nome != null && nomes.includes(a.consultor_nome))
   }, [agendamentos, selecionado])
 
   const stats = useMemo(() => {

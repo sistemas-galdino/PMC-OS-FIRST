@@ -41,8 +41,16 @@ export interface Consultor {
   duracao_padrao_minutos: number
   ativo: boolean
   ordem: number
+  nomes_match: string[] | null
   created_at: string
   updated_at: string
+}
+
+// Nomes que identificam o consultor nas reuniões (nome + aliases). As reuniões
+// guardam o nome do mentor/responsável, que às vezes difere do cadastro (ex.: Léo
+// vs Leonardo) — usar isto pra casar a agenda do consultor com as reuniões dele.
+export function nomesDoConsultor(c: Pick<Consultor, "nome" | "nomes_match">): string[] {
+  return [c.nome, ...(c.nomes_match ?? [])]
 }
 
 export interface Disponibilidade {

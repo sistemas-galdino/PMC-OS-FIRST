@@ -186,15 +186,14 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Horário fora da janela de disponibilidade do consultor" }, 400)
     }
 
-    const { data: existentes } = await supabase
-      .from("agendamentos_central")
-      .select("horario, status_agendamento")
-      .eq("consultor_nome", consultor.nome)
-      .eq("data_reuniao", data)
-    const conflito = ((existentes as { horario: string | null; status_agendamento: string | null }[] | null) ?? []).some(e => {
-      if (e.status_agendamento === "cancelado") return false
-      return (e.horario ?? "").slice(0, 5) === h5
+    // Fonte única de verdade pros horários ocupados (nome + aliases, exclui cancelados).
+    const { data: ocupados } = await supabase.rpc("horarios_ocupados_consultor", {
+      p_slug: slug,
+      p_data: data,
     })
+    const conflito = ((ocupados as { horario: string | null }[] | null) ?? []).some(
+      o => (o.horario ?? "").slice(0, 5) === h5,
+    )
     if (conflito) {
       return jsonResponse({ error: "Esse horário já foi reservado por outra pessoa. Escolha outro." }, 409)
     }

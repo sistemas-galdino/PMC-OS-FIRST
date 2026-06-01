@@ -24,6 +24,7 @@ import { SearchIcon, FilterIcon, AlertTriangleIcon } from "@/components/ui/icons
 import {
   formatarData,
   statusEfetivo,
+  nomesDoConsultor,
   STATUS_EFETIVO_BADGE,
   STATUS_EFETIVO_LABEL,
   STATUS_EFETIVO_LIST,
@@ -55,8 +56,12 @@ export function AgendamentosLista({ agendamentos, consultores, onOpenDetails }: 
   }
 
   const filtered = useMemo(() => {
+    // nome selecionado → consultor → seus nomes (com aliases), pra casar reuniões
+    // gravadas com nome alternativo (ex.: Léo ↔ Leonardo).
+    const consultorSel = consultores.find(c => c.nome === consultorFilter)
+    const nomesSel = consultorSel ? nomesDoConsultor(consultorSel) : [consultorFilter]
     return agendamentos.filter(a => {
-      if (consultorFilter !== "all" && a.consultor_nome !== consultorFilter) return false
+      if (consultorFilter !== "all" && !nomesSel.includes(a.consultor_nome ?? "")) return false
       if (statusFilter !== "all" && statusEfetivo(a) !== statusFilter) return false
       if (dateFrom && (a.data_reuniao ?? "") < dateFrom) return false
       if (dateTo && (a.data_reuniao ?? "") > dateTo) return false
@@ -70,7 +75,7 @@ export function AgendamentosLista({ agendamentos, consultores, onOpenDetails }: 
       }
       return true
     })
-  }, [agendamentos, consultorFilter, statusFilter, dateFrom, dateTo, searchTerm])
+  }, [agendamentos, consultores, consultorFilter, statusFilter, dateFrom, dateTo, searchTerm])
 
   const consultorOpts = consultores.map(c => c.nome).sort()
   if (!consultorOpts.includes("Galdino")) consultorOpts.unshift("Galdino")

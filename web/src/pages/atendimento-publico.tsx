@@ -111,12 +111,12 @@ export default function AtendimentoPublicoPage() {
       return
     }
     async function fetchOcupados() {
-      const { data } = await supabase
-        .from("agendamentos_central")
-        .select("horario")
-        .eq("consultor_nome", consultor!.nome)
-        .eq("data_reuniao", dataEscolhida!)
-        .neq("status_agendamento", "cancelado")
+      // RPC SECURITY DEFINER: o link público é anônimo e não lê reuniões direto (RLS).
+      // Retorna só os horários ocupados do consultor (nome + aliases) na data.
+      const { data } = await supabase.rpc("horarios_ocupados_consultor", {
+        p_slug: consultor!.slug,
+        p_data: dataEscolhida!,
+      })
       setSlotsOcupados(((data as { horario: string | null }[] | null) ?? []).map(r => r.horario ?? "").filter(Boolean))
     }
     fetchOcupados()
