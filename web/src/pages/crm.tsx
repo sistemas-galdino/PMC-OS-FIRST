@@ -284,16 +284,16 @@ export default function CRMPage() {
 
   // ── GUARDIÃO DE IA (snapshot) ───────────────────────────────────────
   const guardiao = useMemo(() => {
+    // "Com Guardião IA" = carteira inteira; "Sem Guardião IA" e Cobertura = só clientes ativos.
+    const ativos = filteredClients.filter((c) => c.status_atual === "Ativo no Programa")
     const com = filteredClients.filter((c) => c.tem_guardiao_ia === "sim").length
-    const total = filteredClients.length
-    // "Sem Guardião IA" considera apenas clientes ativos sem guardião (métrica acionável).
-    const sem = filteredClients.filter(
-      (c) => c.status_atual === "Ativo no Programa" && c.tem_guardiao_ia !== "sim",
-    ).length
+    const comAtivos = ativos.filter((c) => c.tem_guardiao_ia === "sim").length
+    const totalAtivos = ativos.length
+    const sem = ativos.filter((c) => c.tem_guardiao_ia !== "sim").length
     return {
       com,
       sem,
-      cobertura: total > 0 ? Math.round((com / total) * 100) : 0,
+      cobertura: totalAtivos > 0 ? Math.round((comAtivos / totalAtivos) * 100) : 0,
     }
   }, [filteredClients])
 
