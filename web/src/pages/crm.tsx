@@ -286,9 +286,13 @@ export default function CRMPage() {
   const guardiao = useMemo(() => {
     const com = filteredClients.filter((c) => c.tem_guardiao_ia === "sim").length
     const total = filteredClients.length
+    // "Sem Guardião IA" considera apenas clientes ativos sem guardião (métrica acionável).
+    const sem = filteredClients.filter(
+      (c) => c.status_atual === "Ativo no Programa" && c.tem_guardiao_ia !== "sim",
+    ).length
     return {
       com,
-      sem: total - com,
+      sem,
       cobertura: total > 0 ? Math.round((com / total) * 100) : 0,
     }
   }, [filteredClients])
