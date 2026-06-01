@@ -21,12 +21,14 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { SearchIcon, FilterIcon, AlertTriangleIcon } from "@/components/ui/icons"
-import { formatarData, STATUS_BADGE, STATUS_LABEL, STATUS_AGENDAMENTO } from "@/lib/atendimentos"
-import type {
-  Consultor,
-  AgendamentoCentral,
-  StatusAgendamento,
+import {
+  formatarData,
+  statusEfetivo,
+  STATUS_EFETIVO_BADGE,
+  STATUS_EFETIVO_LABEL,
+  STATUS_EFETIVO_LIST,
 } from "@/lib/atendimentos"
+import type { Consultor, AgendamentoCentral } from "@/lib/atendimentos"
 
 interface Props {
   agendamentos: AgendamentoCentral[]
@@ -55,7 +57,7 @@ export function AgendamentosLista({ agendamentos, consultores, onOpenDetails }: 
   const filtered = useMemo(() => {
     return agendamentos.filter(a => {
       if (consultorFilter !== "all" && a.consultor_nome !== consultorFilter) return false
-      if (statusFilter !== "all" && a.status_agendamento !== statusFilter) return false
+      if (statusFilter !== "all" && statusEfetivo(a) !== statusFilter) return false
       if (dateFrom && (a.data_reuniao ?? "") < dateFrom) return false
       if (dateTo && (a.data_reuniao ?? "") > dateTo) return false
       if (searchTerm) {
@@ -104,8 +106,8 @@ export function AgendamentosLista({ agendamentos, consultores, onOpenDetails }: 
             </SelectTrigger>
             <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
               <SelectItem value="all" className="rounded-lg font-medium">Todos status</SelectItem>
-              {STATUS_AGENDAMENTO.map(s => (
-                <SelectItem key={s} value={s} className="rounded-lg font-medium">{STATUS_LABEL[s]}</SelectItem>
+              {STATUS_EFETIVO_LIST.map(s => (
+                <SelectItem key={s} value={s} className="rounded-lg font-medium">{STATUS_EFETIVO_LABEL[s]}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -160,12 +162,10 @@ export function AgendamentosLista({ agendamentos, consultores, onOpenDetails }: 
                     <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">{a.cliente_email ?? "—"}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
-                        {a.status_agendamento && (
-                          <Badge variant="outline" className={`uppercase font-bold text-[9px] px-2 ${STATUS_BADGE[a.status_agendamento as StatusAgendamento]}`}>
-                            {STATUS_LABEL[a.status_agendamento as StatusAgendamento]}
-                          </Badge>
-                        )}
-                        {!a.id_reuniao && (
+                        <Badge variant="outline" className={`uppercase font-bold text-[9px] px-2 ${STATUS_EFETIVO_BADGE[statusEfetivo(a)]}`}>
+                          {STATUS_EFETIVO_LABEL[statusEfetivo(a)]}
+                        </Badge>
+                        {statusEfetivo(a) === "agendada" && !a.id_reuniao && (
                           <span title="Evento ainda não criado no Google Calendar">
                             <AlertTriangleIcon className="size-3.5 text-amber-400" />
                           </span>

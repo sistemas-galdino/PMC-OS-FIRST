@@ -96,6 +96,36 @@ export interface AgendamentoCentral {
   atualizado_em: string | null
 }
 
+// Status "efetivo" da reunião, derivado de data + comparecimento — porque as reuniões
+// sincronizadas do Google Calendar não têm `status_agendamento` (esse só é setado pelo
+// fluxo de booking do link público). Mesma lógica do StatusBadgeToggle.
+export type StatusEfetivo = "agendada" | "realizada" | "faltou" | "cancelado"
+
+export function statusEfetivo(
+  a: Pick<AgendamentoCentral, "data_reuniao" | "cliente_compareceu" | "status_agendamento">,
+): StatusEfetivo {
+  if (a.status_agendamento === "cancelado") return "cancelado"
+  if (a.data_reuniao && a.data_reuniao > isoData(new Date())) return "agendada"
+  if (a.cliente_compareceu === false) return "faltou"
+  return "realizada"
+}
+
+export const STATUS_EFETIVO_LIST = ["agendada", "realizada", "faltou", "cancelado"] as const
+
+export const STATUS_EFETIVO_LABEL: Record<StatusEfetivo, string> = {
+  agendada: "Agendada",
+  realizada: "Realizada",
+  faltou: "Faltou",
+  cancelado: "Cancelado",
+}
+
+export const STATUS_EFETIVO_BADGE: Record<StatusEfetivo, string> = {
+  agendada: "bg-amber-500/10 border-amber-500/30 text-amber-400",
+  realizada: "bg-primary/10 border-primary/30 text-primary",
+  faltou: "bg-destructive/10 border-destructive/30 text-destructive",
+  cancelado: "bg-muted/20 border-border text-muted-foreground",
+}
+
 export function slugify(nome: string): string {
   return nome
     .toLowerCase()

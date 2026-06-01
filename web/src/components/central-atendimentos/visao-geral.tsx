@@ -16,8 +16,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
-import { formatarData, iniciais, STATUS_BADGE, STATUS_LABEL } from "@/lib/atendimentos"
-import type { Consultor, AgendamentoCentral, StatusAgendamento } from "@/lib/atendimentos"
+import { formatarData, iniciais, statusEfetivo, STATUS_EFETIVO_BADGE, STATUS_EFETIVO_LABEL } from "@/lib/atendimentos"
+import type { Consultor, AgendamentoCentral } from "@/lib/atendimentos"
 
 interface Props {
   consultores: Consultor[]
@@ -37,16 +37,15 @@ export function VisaoGeral({ consultores, agendamentos }: Props) {
 
   const stats = useMemo(() => {
     const noMes = agendamentos.filter(a => dentroDoMes(a.data_reuniao, ano, mes))
-    const realizados = noMes.filter(a => a.status_agendamento === "realizado").length
-    const confirmados = noMes.filter(a => a.status_agendamento === "confirmado").length
-    const pendentes = noMes.filter(a => a.status_agendamento === "pendente_sync").length
-    return { total: noMes.length, realizados, confirmados, pendentes }
+    const totalMes = noMes.filter(a => statusEfetivo(a) !== "cancelado").length
+    const realizadasMes = noMes.filter(a => statusEfetivo(a) === "realizada").length
+    const agendadasFuturas = agendamentos.filter(a => statusEfetivo(a) === "agendada").length
+    return { totalMes, realizadasMes, agendadasFuturas }
   }, [agendamentos, ano, mes])
 
   const proximas = useMemo(() => {
-    const hojeIso = hoje.toISOString().slice(0, 10)
     return agendamentos
-      .filter(a => a.data_reuniao && a.data_reuniao >= hojeIso && a.status_agendamento !== "cancelado")
+      .filter(a => statusEfetivo(a) === "agendada")
       .sort((a, b) => {
         if (!a.data_reuniao || !b.data_reuniao) return 0
         const dataCompare = a.data_reuniao.localeCompare(b.data_reuniao)
@@ -59,6 +58,7 @@ export function VisaoGeral({ consultores, agendamentos }: Props) {
   const distribuicao = useMemo(() => {
     const map: Record<string, number> = {}
     for (const a of agendamentos) {
+      if (statusEfetivo(a) === "cancelado") continue
       const k = a.consultor_nome ?? "Sem consultor"
       map[k] = (map[k] ?? 0) + 1
     }
@@ -71,9 +71,9 @@ export function VisaoGeral({ consultores, agendamentos }: Props) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Agendamentos no mês" value={stats.total} icon={<CalendarIcon className="size-5 text-primary" />} />
-        <StatCard label="Confirmados" value={stats.confirmados} icon={<CheckCircle2Icon className="size-5 text-primary" />} />
-        <StatCard label="Pendentes de sync" value={stats.pendentes} icon={<ClockIcon className="size-5 text-amber-400" />} />
+        <StatCard label="Reuniões no mês" value={stats.totalMes} icon={<CalendarIcon className="size-5 text-primary" />} />
+        <StatCard label="Realizadas no mês" value={stats.realizadasMes} icon={<CheckCircle2Icon className="size-5 text-primary" />} />
+        <StatCard label="Agendadas (futuras)" value={stats.agendadasFuturas} icon={<ClockIcon className="size-5 text-amber-400" />} />
         <StatCard label="Consultores ativos" value={consultores.filter(c => c.ativo).length} icon={<UsersIcon className="size-5 text-primary" />} />
       </div>
 
@@ -87,7 +87,7 @@ export function VisaoGeral({ consultores, agendamentos }: Props) {
               </Badge>
             </div>
             {proximas.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma reunião agendada via sistema ainda.</p>
+              <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma reunião futura agendada.</p>
             ) : (
               <ul className="space-y-3">
                 {proximas.map(p => (
@@ -105,11 +105,9 @@ export function VisaoGeral({ consultores, agendamentos }: Props) {
                       <div className="text-xs font-bold text-foreground">{formatarData(p.data_reuniao)}</div>
                       <div className="text-[11px] text-muted-foreground">{(p.horario ?? "").slice(0, 5)}</div>
                     </div>
-                    {p.status_agendamento && (
-                      <Badge variant="outline" className={`uppercase font-bold text-[9px] px-2 ${STATUS_BADGE[p.status_agendamento as StatusAgendamento]}`}>
-                        {STATUS_LABEL[p.status_agendamento as StatusAgendamento]}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className={`uppercase font-bold text-[9px] px-2 ${STATUS_EFETIVO_BADGE[statusEfetivo(p)]}`}>
+                      {STATUS_EFETIVO_LABEL[statusEfetivo(p)]}
+                    </Badge>
                   </li>
                 ))}
               </ul>
