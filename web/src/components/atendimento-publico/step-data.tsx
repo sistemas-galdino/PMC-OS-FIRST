@@ -1,6 +1,7 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { proximasDatasValidas, isoData } from "@/lib/atendimentos"
 import type { Disponibilidade, ExcecaoConsultor, Feriado } from "@/lib/atendimentos"
 
@@ -18,18 +19,22 @@ const MESES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "se
 const DIAS_CURTO = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
 export function StepData({ disponibilidade, excecoes, feriados, duracao_minutos, ocupadosPorData, value, onChange }: Props) {
-  const datas = useMemo(() => {
+  const [limite, setLimite] = useState(12)
+
+  const { datas, temMais } = useMemo(() => {
     const feriadosSet = new Set(feriados.map(f => f.data))
-    return proximasDatasValidas({
+    // Pede uma data a mais que o limite pra saber se ainda há próximas (evita "Ver mais" morto).
+    const todas = proximasDatasValidas({
       disponibilidade,
       excecoes,
       feriados: feriadosSet,
-      n: 12,
+      n: limite + 1,
       startOffsetDays: 1,
       ocupadosPorData,
       duracao_minutos,
     })
-  }, [disponibilidade, excecoes, feriados, duracao_minutos, ocupadosPorData])
+    return { datas: todas.slice(0, limite), temMais: todas.length > limite }
+  }, [disponibilidade, excecoes, feriados, duracao_minutos, ocupadosPorData, limite])
 
   if (datas.length === 0) {
     return (
@@ -40,7 +45,8 @@ export function StepData({ disponibilidade, excecoes, feriados, duracao_minutos,
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
       {datas.map((d, idx) => {
         const iso = isoData(d)
         const selected = value === iso
@@ -69,6 +75,15 @@ export function StepData({ disponibilidade, excecoes, feriados, duracao_minutos,
           </motion.button>
         )
       })}
+      </div>
+
+      {temMais && (
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={() => setLimite(l => l + 12)} className="font-bold">
+            Ver mais datas
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
