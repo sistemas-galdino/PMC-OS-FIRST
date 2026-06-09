@@ -9,7 +9,18 @@ import {
   Edit3Icon,
   ChevronDownIcon,
   Trash2Icon,
+  XIcon,
+  CopyIcon,
 } from "@/components/ui/icons"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 import { motion, AnimatePresence } from "framer-motion"
 import { DIAS_SEMANA, iniciais } from "@/lib/atendimentos"
 import type {
@@ -107,14 +118,26 @@ export function DisponibilidadeConsultores({
     }))
   }
 
-  function adicionarJanela(consultorId: string) {
+  function adicionarJanelaNoDia(consultorId: string, dia: number) {
     setDraft(prev => ({
       ...prev,
       [consultorId]: [
         ...(prev[consultorId] ?? []),
-        { dia_semana: 1, hora_inicio: "09:00", hora_fim: "12:00" },
+        { dia_semana: dia, hora_inicio: "09:00", hora_fim: "10:00" },
       ],
     }))
+  }
+
+  // Substitui as faixas dos dias de destino pelas faixas do dia de origem (igual ao Google).
+  function copiarDia(consultorId: string, diaOrigem: number, diasDestino: number[]) {
+    if (diasDestino.length === 0) return
+    setDraft(prev => {
+      const arr = prev[consultorId] ?? []
+      const origem = arr.filter(j => j.dia_semana === diaOrigem)
+      const semDestino = arr.filter(j => !diasDestino.includes(j.dia_semana))
+      const novos = diasDestino.flatMap(d => origem.map(o => ({ ...o, dia_semana: d })))
+      return { ...prev, [consultorId]: [...semDestino, ...novos] }
+    })
   }
 
   function removerJanela(consultorId: string, idx: number) {
@@ -243,50 +266,86 @@ export function DisponibilidadeConsultores({
                       <div className="p-5 bg-muted/5 grid gap-6 lg:grid-cols-2">
                         <div className="space-y-3">
                           <div className="text-[11px] uppercase font-bold tracking-widest text-muted-foreground">
-                            Janelas semanais
+                            Disponibilidade semanal
+                          </div>
+                          <p className="text-xs text-muted-foreground -mt-1">
+                            Defina os horários em que esse consultor atende toda semana.
+                          </p>
+
+                          <div className="divide-y divide-border/50 rounded-lg border border-border/50 bg-background/40">
+                            {DIAS_SEMANA.map(d => {
+                              const doDia = janelas
+                                .map((j, idx) => ({ j, idx }))
+                                .filter(x => x.j.dia_semana === d.value)
+                              return (
+                                <div key={d.value} className="flex items-start gap-3 p-3">
+                                  <div className="w-10 shrink-0 pt-2 text-xs font-bold text-foreground">
+                                    {d.curto}.
+                                  </div>
+                                  <div className="flex-1 min-w-0 space-y-2">
+                                    {doDia.length === 0 ? (
+                                      <div className="flex items-center gap-2 h-9">
+                                        <span className="flex-1 text-sm text-muted-foreground">Indisponível</span>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon-sm"
+                                          onClick={() => adicionarJanelaNoDia(c.id, d.value)}
+                                          title="Adicionar horário"
+                                        >
+                                          <PlusIcon className="size-4" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      doDia.map(({ j, idx }, posicao) => (
+                                        <div key={idx} className="flex items-center gap-2">
+                                          <Input
+                                            type="time"
+                                            value={j.hora_inicio}
+                                            onChange={e => atualizarJanela(c.id, idx, { hora_inicio: e.target.value })}
+                                            className="w-28 h-9"
+                                          />
+                                          <span className="text-muted-foreground text-xs">–</span>
+                                          <Input
+                                            type="time"
+                                            value={j.hora_fim}
+                                            onChange={e => atualizarJanela(c.id, idx, { hora_fim: e.target.value })}
+                                            className="w-28 h-9"
+                                          />
+                                          <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            onClick={() => removerJanela(c.id, idx)}
+                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            title="Remover horário"
+                                          >
+                                            <XIcon className="size-4" />
+                                          </Button>
+                                          {posicao === 0 && (
+                                            <>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon-sm"
+                                                onClick={() => adicionarJanelaNoDia(c.id, d.value)}
+                                                title="Adicionar outro horário"
+                                              >
+                                                <PlusIcon className="size-4" />
+                                              </Button>
+                                              <CopiarParaDias
+                                                diaOrigem={d.value}
+                                                onCopiar={dias => copiarDia(c.id, d.value, dias)}
+                                              />
+                                            </>
+                                          )}
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
 
-                          {janelas.length === 0 ? (
-                            <p className="text-sm text-muted-foreground py-2">Sem janelas semanais.</p>
-                          ) : (
-                            <div className="space-y-2">
-                              {janelas.map((j, idx) => (
-                                <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-background/60 border border-border/50">
-                                  <select
-                                    className="bg-muted/20 border border-border rounded-lg px-3 py-1.5 text-sm font-medium text-foreground"
-                                    value={j.dia_semana}
-                                    onChange={e => atualizarJanela(c.id, idx, { dia_semana: Number(e.target.value) })}
-                                  >
-                                    {DIAS_SEMANA.map(d => (
-                                      <option key={d.value} value={d.value}>{d.label}</option>
-                                    ))}
-                                  </select>
-                                  <Input
-                                    type="time"
-                                    value={j.hora_inicio}
-                                    onChange={e => atualizarJanela(c.id, idx, { hora_inicio: e.target.value })}
-                                    className="w-28 h-9"
-                                  />
-                                  <span className="text-muted-foreground text-xs">até</span>
-                                  <Input
-                                    type="time"
-                                    value={j.hora_fim}
-                                    onChange={e => atualizarJanela(c.id, idx, { hora_fim: e.target.value })}
-                                    className="w-28 h-9"
-                                  />
-                                  <Button variant="ghost" size="sm" onClick={() => removerJanela(c.id, idx)} className="text-destructive hover:bg-destructive/10 ml-auto">
-                                    <Trash2Icon className="size-3.5" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
                           <div className="flex items-center gap-2 pt-2">
-                            <Button variant="outline" size="sm" onClick={() => adicionarJanela(c.id)} className="gap-2">
-                              <PlusIcon className="size-3.5" />
-                              Adicionar janela
-                            </Button>
                             <Button size="sm" onClick={() => salvar(c.id)}>
                               Salvar disponibilidade
                             </Button>
@@ -358,5 +417,48 @@ export function DisponibilidadeConsultores({
         )}
       </div>
     </div>
+  )
+}
+
+// Menu pra copiar as faixas de um dia pra outros dias da semana (escolha múltipla).
+function CopiarParaDias({
+  diaOrigem,
+  onCopiar,
+}: {
+  diaOrigem: number
+  onCopiar: (dias: number[]) => void
+}) {
+  const [sel, setSel] = useState<number[]>([])
+  const outrosDias = DIAS_SEMANA.filter(d => d.value !== diaOrigem)
+
+  function toggle(v: number) {
+    setSel(prev => (prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]))
+  }
+
+  return (
+    <DropdownMenu onOpenChange={o => { if (!o) setSel([]) }}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon-sm" title="Copiar para outros dias">
+          <CopyIcon className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuLabel>Copiar para</DropdownMenuLabel>
+        {outrosDias.map(d => (
+          <DropdownMenuCheckboxItem
+            key={d.value}
+            checked={sel.includes(d.value)}
+            onCheckedChange={() => toggle(d.value)}
+            onSelect={e => e.preventDefault()}
+          >
+            {d.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem disabled={sel.length === 0} onSelect={() => onCopiar(sel)}>
+          Copiar {sel.length > 0 ? `(${sel.length})` : ""}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
