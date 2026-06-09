@@ -224,7 +224,7 @@ export function AreaConsultor({ consultores, agendamentos }: Props) {
                   <p className="text-sm text-muted-foreground">Nenhuma reunião no histórico de {primeiroNome}.</p>
                 </div>
               ) : (
-                <ul className="divide-y divide-border max-h-[480px] overflow-y-auto">
+                <ul className="divide-y divide-border max-h-[480px] overflow-y-auto scrollbar-custom">
                   {historico.map(a => (
                     <MeetingRow key={a.id_unico} ag={a} />
                   ))}

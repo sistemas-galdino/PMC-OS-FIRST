@@ -265,7 +265,7 @@ export function CalendarioAgendaConsultor({ agendamentos, consultorNome }: Props
       </div>
 
       {/* Grade */}
-      <div className="rounded-xl border border-border overflow-auto" style={{ maxHeight: 640 }}>
+      <div className="rounded-xl border border-border overflow-auto scrollbar-custom" style={{ maxHeight: 640 }}>
         <div className="grid relative" style={{ gridTemplateColumns: gridCols }}>
           {/* Linha 1: canto + cabeçalhos de dia (sticky no topo) */}
           <div className="sticky top-0 left-0 z-30 bg-card border-b border-r border-border" />
