@@ -325,6 +325,21 @@ export function isoData(d: Date): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
+// Soma (ou subtrai, com n negativo) dias a uma data, sem mutar a original.
+export function addDias(d: Date, n: number): Date {
+  const r = new Date(d)
+  r.setDate(r.getDate() + n)
+  return r
+}
+
+// Volta pro domingo da semana de `d` (início de semana à brasileira, igual ao
+// Google Agenda: DOM…SÁB), zerando as horas.
+export function inicioDaSemana(d: Date): Date {
+  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  r.setDate(r.getDate() - r.getDay())
+  return r
+}
+
 export function formatarData(iso: string | null): string {
   if (!iso) return "—"
   try {

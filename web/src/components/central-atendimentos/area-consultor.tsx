@@ -10,6 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { CalendarioAgendaConsultor } from "./calendario-agenda-consultor"
 import {
   CalendarIcon,
   ClockIcon,
@@ -160,55 +162,78 @@ export function AreaConsultor({ consultores, agendamentos }: Props) {
         <StatCard label="Realizadas" value={stats.realizadas} />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <div className="font-bold text-foreground">Próximas reuniões de {primeiroNome}</div>
-            <div className="text-xs text-muted-foreground">
-              {proximasList.length} {proximasList.length === 1 ? "reunião futura" : "reuniões futuras"}
-            </div>
-          </div>
-          {proximasList.length === 0 ? (
-            <div className="py-14 px-6 text-center space-y-2">
-              <div className="mx-auto size-12 rounded-2xl bg-muted/20 flex items-center justify-center">
-                <CalendarIcon className="size-5 text-muted-foreground" />
-              </div>
-              <p className="text-sm text-muted-foreground">Nenhuma reunião futura para {primeiroNome}.</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-border">
-              {proximasList.map(a => (
-                <MeetingRow key={a.id_unico} ag={a} />
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="agenda" className="gap-6">
+        <TabsList className="w-full sm:w-80">
+          <TabsTrigger value="agenda" className="gap-2">
+            <CalendarIcon className="size-4" />
+            Agenda
+          </TabsTrigger>
+          <TabsTrigger value="lista" className="gap-2">
+            <ClockIcon className="size-4" />
+            Lista
+          </TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <div className="font-bold text-foreground">Histórico</div>
-            <div className="text-xs text-muted-foreground">
-              {historico.length} {historico.length === 1 ? "reunião" : "reuniões"}
-            </div>
-          </div>
-          {historico.length === 0 ? (
-            <div className="py-14 px-6 text-center space-y-2">
-              <div className="mx-auto size-12 rounded-2xl bg-muted/20 flex items-center justify-center">
-                <CalendarIcon className="size-5 text-muted-foreground" />
+        <TabsContent value="agenda">
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <CalendarioAgendaConsultor agendamentos={meusAgendamentos} consultorNome={primeiroNome} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="lista" className="space-y-6">
+          <Card>
+            <CardContent className="p-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <div className="font-bold text-foreground">Próximas reuniões de {primeiroNome}</div>
+                <div className="text-xs text-muted-foreground">
+                  {proximasList.length} {proximasList.length === 1 ? "reunião futura" : "reuniões futuras"}
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">Nenhuma reunião no histórico de {primeiroNome}.</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-border max-h-[480px] overflow-y-auto">
-              {historico.map(a => (
-                <MeetingRow key={a.id_unico} ag={a} />
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+              {proximasList.length === 0 ? (
+                <div className="py-14 px-6 text-center space-y-2">
+                  <div className="mx-auto size-12 rounded-2xl bg-muted/20 flex items-center justify-center">
+                    <CalendarIcon className="size-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Nenhuma reunião futura para {primeiroNome}.</p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {proximasList.map(a => (
+                    <MeetingRow key={a.id_unico} ag={a} />
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <div className="font-bold text-foreground">Histórico</div>
+                <div className="text-xs text-muted-foreground">
+                  {historico.length} {historico.length === 1 ? "reunião" : "reuniões"}
+                </div>
+              </div>
+              {historico.length === 0 ? (
+                <div className="py-14 px-6 text-center space-y-2">
+                  <div className="mx-auto size-12 rounded-2xl bg-muted/20 flex items-center justify-center">
+                    <CalendarIcon className="size-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Nenhuma reunião no histórico de {primeiroNome}.</p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-border max-h-[480px] overflow-y-auto">
+                  {historico.map(a => (
+                    <MeetingRow key={a.id_unico} ag={a} />
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
