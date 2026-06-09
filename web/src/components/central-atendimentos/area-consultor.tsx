@@ -27,6 +27,7 @@ import type { Consultor, AgendamentoCentral } from "@/lib/atendimentos"
 interface Props {
   consultores: Consultor[]
   agendamentos: AgendamentoCentral[]
+  onExcluir: (ag: AgendamentoCentral) => Promise<boolean>
 }
 
 function hojeIso(): string {
@@ -40,7 +41,7 @@ function descricaoConsultor(c: Consultor): string {
   return "Consultor"
 }
 
-export function AreaConsultor({ consultores, agendamentos }: Props) {
+export function AreaConsultor({ consultores, agendamentos, onExcluir }: Props) {
   const [sp, setSp] = useSearchParams()
   const slugParam = sp.get("consultor")
 
@@ -177,7 +178,7 @@ export function AreaConsultor({ consultores, agendamentos }: Props) {
         <TabsContent value="agenda">
           <Card>
             <CardContent className="p-4 sm:p-6">
-              <CalendarioAgendaConsultor agendamentos={meusAgendamentos} consultorNome={primeiroNome} />
+              <CalendarioAgendaConsultor agendamentos={meusAgendamentos} consultorNome={primeiroNome} onExcluir={onExcluir} />
             </CardContent>
           </Card>
         </TabsContent>

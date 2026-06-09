@@ -260,6 +260,27 @@ export default function CentralAtendimentosPage() {
     setAgendamentoDialogOpen(false)
   }
 
+  // Exclui um agendamento pela agenda do consultor: apaga o evento no Google
+  // Calendar e marca a linha como cancelado (reusa a edge function de cancelamento).
+  async function excluirAgendamento(ag: AgendamentoCentral): Promise<boolean> {
+    const { data, error: fnErr } = await supabase.functions.invoke("cancelar-agendamento", {
+      body: { origem: ag.origem, id_unico: ag.id_unico },
+    })
+    if (fnErr) {
+      setToast({ type: "err", msg: "Erro ao excluir agendamento" })
+      return false
+    }
+    const gcalErro = (data as { gcal_erro?: string | null } | null)?.gcal_erro
+    setToast({
+      type: "ok",
+      msg: gcalErro
+        ? "Agendamento excluído (atenção: o evento no Google Calendar pode não ter sido removido)"
+        : "Agendamento excluído",
+    })
+    await refresh()
+    return true
+  }
+
   const consultoresAtivos = useMemo(() => consultores.filter(c => c.ativo), [consultores])
 
   if (loading) {
@@ -361,7 +382,7 @@ export default function CentralAtendimentosPage() {
         </TabsContent>
 
         <TabsContent value="area-consultor" className="mt-6">
-          <AreaConsultor consultores={consultoresAtivos} agendamentos={agendamentos} />
+          <AreaConsultor consultores={consultoresAtivos} agendamentos={agendamentos} onExcluir={excluirAgendamento} />
         </TabsContent>
       </Tabs>
 

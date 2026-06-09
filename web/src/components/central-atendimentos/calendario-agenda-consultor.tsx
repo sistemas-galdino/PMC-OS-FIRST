@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import {
   Building2Icon,
   CalendarIcon,
   UserCheckIcon,
+  Trash2Icon,
 } from "@/components/ui/icons"
 import {
   isoData,
@@ -31,6 +32,7 @@ import type { AgendamentoCentral, StatusEfetivo } from "@/lib/atendimentos"
 interface Props {
   agendamentos: AgendamentoCentral[]
   consultorNome: string
+  onExcluir: (ag: AgendamentoCentral) => Promise<boolean>
 }
 
 const HOUR_PX = 56
@@ -117,7 +119,7 @@ function empacotarDia(items: ItemTempo[]): Bloco[] {
   return blocos
 }
 
-export function CalendarioAgendaConsultor({ agendamentos, consultorNome }: Props) {
+export function CalendarioAgendaConsultor({ agendamentos, consultorNome, onExcluir }: Props) {
   const [view, setView] = useState<"semana" | "dia">("semana")
   const [refDate, setRefDate] = useState(() => {
     const n = new Date()
@@ -398,7 +400,7 @@ export function CalendarioAgendaConsultor({ agendamentos, consultorNome }: Props
         </div>
       )}
 
-      <AgendamentoDetalhe ag={selecionado} onClose={() => setSelecionado(null)} />
+      <AgendamentoDetalhe ag={selecionado} onClose={() => setSelecionado(null)} onExcluir={onExcluir} />
     </div>
   )
 }
@@ -406,16 +408,36 @@ export function CalendarioAgendaConsultor({ agendamentos, consultorNome }: Props
 function AgendamentoDetalhe({
   ag,
   onClose,
+  onExcluir,
 }: {
   ag: AgendamentoCentral | null
   onClose: () => void
+  onExcluir: (ag: AgendamentoCentral) => Promise<boolean>
 }) {
+  const [confirmando, setConfirmando] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
+
+  // Zera a confirmação ao trocar de reunião (ou fechar) — hooks sempre no topo.
+  useEffect(() => {
+    setConfirmando(false)
+    setExcluindo(false)
+  }, [ag?.id_unico])
+
   if (!ag) return null
   const status = statusEfetivo(ag)
   const aguardandoMeet = status === "agendada" && !ag.link_meet
   const data = ag.data_reuniao
     ? capitalizar(formatarDataLonga(new Date(ag.data_reuniao + "T00:00:00")))
     : "Sem data"
+
+  async function handleExcluir() {
+    if (!ag) return
+    setExcluindo(true)
+    const ok = await onExcluir(ag)
+    setExcluindo(false)
+    if (ok) onClose()
+    else setConfirmando(false)
+  }
   return (
     <Dialog open={!!ag} onOpenChange={v => !v && onClose()}>
       <DialogContent className="sm:max-w-md">
@@ -498,6 +520,47 @@ function AgendamentoDetalhe({
               )}
             </div>
           )}
+
+          <div className="pt-3 border-t border-border/50">
+            {!confirmando ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmando(true)}
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive font-bold"
+              >
+                <Trash2Icon className="size-3.5" />
+                Excluir agendamento
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Tem certeza? Isso também remove o evento do Google Calendar.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleExcluir}
+                    disabled={excluindo}
+                    className="font-bold"
+                  >
+                    <Trash2Icon className="size-3.5" />
+                    {excluindo ? "Excluindo..." : "Excluir"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmando(false)}
+                    disabled={excluindo}
+                    className="font-bold"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
