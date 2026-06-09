@@ -373,6 +373,11 @@ export function CalendarioAgendaConsultor({ agendamentos, consultorNome }: Props
                       <div className="text-[11px] font-semibold leading-tight truncate">
                         {b.ag.empresa ?? b.ag.cliente_nome ?? "Reunião"}
                       </div>
+                      {b.ag.codigo_cliente != null && (
+                        <div className="text-[9px] font-semibold leading-tight opacity-80 truncate">
+                          ID {b.ag.codigo_cliente}
+                        </div>
+                      )}
                     </button>
                   )
                 })}
@@ -407,6 +412,7 @@ function AgendamentoDetalhe({
 }) {
   if (!ag) return null
   const status = statusEfetivo(ag)
+  const aguardandoMeet = status === "agendada" && !ag.link_meet
   const data = ag.data_reuniao
     ? capitalizar(formatarDataLonga(new Date(ag.data_reuniao + "T00:00:00")))
     : "Sem data"
@@ -435,6 +441,15 @@ function AgendamentoDetalhe({
             {ag.cliente_nome ?? ag.cliente_email ?? "Cliente"}
           </div>
 
+          {ag.codigo_cliente != null && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+                ID do cliente
+              </span>
+              <span className="font-bold text-foreground">#{ag.codigo_cliente}</span>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <CalendarIcon className="size-4" />
             {data}
@@ -444,43 +459,45 @@ function AgendamentoDetalhe({
             {ag.duracao_minutos ? ` (${ag.duracao_minutos}min)` : ""}
           </div>
 
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
-            {status === "agendada" && ag.link_meet && (
-              <Button
-                onClick={() => window.open(ag.link_meet!, "_blank", "noopener,noreferrer")}
-                className="font-bold"
-              >
-                <VideoIcon className="size-4" />
-                Entrar no Meet
-                <ExternalLinkIcon className="size-3.5" />
-              </Button>
-            )}
-            {status === "agendada" && !ag.link_meet && (
-              <span className="text-xs text-muted-foreground italic">Aguardando link do Meet</span>
-            )}
-            {ag.link_gravacao && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(ag.link_gravacao!, "_blank", "noopener,noreferrer")}
-                className="font-bold text-xs"
-              >
-                <VideoIcon className="size-3.5" />
-                Gravação
-              </Button>
-            )}
-            {ag.link_geminidoc && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(ag.link_geminidoc!, "_blank", "noopener,noreferrer")}
-                className="font-bold text-xs"
-              >
-                <FileTextIcon className="size-3.5" />
-                Doc
-              </Button>
-            )}
-          </div>
+          {(ag.link_meet || aguardandoMeet || ag.link_gravacao || ag.link_geminidoc) && (
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
+              {ag.link_meet && (
+                <Button
+                  onClick={() => window.open(ag.link_meet!, "_blank", "noopener,noreferrer")}
+                  className="font-bold"
+                >
+                  <VideoIcon className="size-4" />
+                  Entrar no Meet
+                  <ExternalLinkIcon className="size-3.5" />
+                </Button>
+              )}
+              {aguardandoMeet && (
+                <span className="text-xs text-muted-foreground italic">Aguardando link do Meet</span>
+              )}
+              {ag.link_gravacao && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(ag.link_gravacao!, "_blank", "noopener,noreferrer")}
+                  className="font-bold text-xs"
+                >
+                  <VideoIcon className="size-3.5" />
+                  Gravação
+                </Button>
+              )}
+              {ag.link_geminidoc && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(ag.link_geminidoc!, "_blank", "noopener,noreferrer")}
+                  className="font-bold text-xs"
+                >
+                  <FileTextIcon className="size-3.5" />
+                  Doc
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

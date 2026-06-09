@@ -275,6 +275,11 @@ function MeetingRow({ ag }: { ag: AgendamentoCentral }) {
           <Badge variant="outline" className={`uppercase font-bold text-[9px] px-2 ${STATUS_EFETIVO_BADGE[status]}`}>
             {STATUS_EFETIVO_LABEL[status]}
           </Badge>
+          {ag.codigo_cliente != null && (
+            <Badge variant="outline" className="uppercase font-bold text-[9px] px-2 bg-muted/20 border-border text-muted-foreground">
+              ID {ag.codigo_cliente}
+            </Badge>
+          )}
         </div>
         <div className="text-sm text-muted-foreground truncate">{ag.cliente_nome ?? ag.cliente_email ?? "Cliente"}</div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
