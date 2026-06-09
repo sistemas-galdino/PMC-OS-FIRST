@@ -29,6 +29,12 @@ interface Consultor {
 const TZ = "America/Fortaleza"
 const TZ_OFFSET = "-03:00"
 
+// Anti-spam por IP: cada agendamento cria um evento real no Google Calendar, então
+// limitamos o flood. Ajuste fino aqui. (Tabela: public.agendamento_rate_limit)
+const RL_JANELA_MIN = 10 // janela curta, em minutos
+const RL_MAX_JANELA = 5 // máx. de tentativas na janela curta
+const RL_MAX_DIA = 30 // máx. de tentativas por IP em 24h
+
 // Whitelist de caixas Workspace válidas (DWD configurada). Espelho de
 // EMAILS_CALENDAR_VALIDOS em web/src/lib/atendimentos.ts.
 const EMAILS_CALENDAR_VALIDOS = new Set([
@@ -120,6 +126,30 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
     })
+
+    // Anti-spam por IP (cabeçalho do proxy do Supabase). Conta tentativas recentes
+    // e bloqueia flood antes de criar evento/linha. Registra toda tentativa válida.
+    const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "desconhecido"
+    {
+      const desdeJanela = new Date(Date.now() - RL_JANELA_MIN * 60_000).toISOString()
+      const desdeDia = new Date(Date.now() - 24 * 60 * 60_000).toISOString()
+      const [{ count: nJanela }, { count: nDia }] = await Promise.all([
+        supabase
+          .from("agendamento_rate_limit")
+          .select("id", { count: "exact", head: true })
+          .eq("ip", ip)
+          .gte("criado_em", desdeJanela),
+        supabase
+          .from("agendamento_rate_limit")
+          .select("id", { count: "exact", head: true })
+          .eq("ip", ip)
+          .gte("criado_em", desdeDia),
+      ])
+      if ((nJanela ?? 0) >= RL_MAX_JANELA || (nDia ?? 0) >= RL_MAX_DIA) {
+        return jsonResponse({ error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." }, 429)
+      }
+      await supabase.from("agendamento_rate_limit").insert({ ip })
+    }
 
     const { data: consultor, error: cErr } = await supabase
       .from("consultores_atendimento")

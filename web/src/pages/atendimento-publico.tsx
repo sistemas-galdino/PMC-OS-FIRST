@@ -61,7 +61,9 @@ export default function AtendimentoPublicoPage() {
       if (slug) {
         const { data: c, error: cErr } = await supabase
           .from("consultores_atendimento")
-          .select("*")
+          // Só colunas públicas: anon não tem grant em email/email_calendar/
+          // tabela_destino/nomes_match (ver migration 20260609_hardening_link_publico).
+          .select("id,nome,slug,especialidade,descricao,avatar_url,accent,duracao_padrao_minutos,ordem,ativo,tipo_reuniao")
           .eq("slug", slug)
           .eq("ativo", true)
           .maybeSingle()
@@ -84,7 +86,8 @@ export default function AtendimentoPublicoPage() {
             .eq("consultor_id", c.id),
           supabase
             .from("consultores_excecoes")
-            .select("*")
+            // Sem a coluna 'motivo' (anon não tem grant nela).
+            .select("id,consultor_id,data,tipo,hora_inicio,hora_fim")
             .eq("consultor_id", c.id)
             .gte("data", hoje),
           supabase
@@ -113,7 +116,7 @@ export default function AtendimentoPublicoPage() {
       } else {
         const { data: cs } = await supabase
           .from("consultores_atendimento")
-          .select("*")
+          .select("id,nome,slug,especialidade,descricao,avatar_url,accent,duracao_padrao_minutos,ordem,ativo,tipo_reuniao")
           .eq("ativo", true)
           .order("ordem", { ascending: true })
         setConsultores((cs as Consultor[]) ?? [])
