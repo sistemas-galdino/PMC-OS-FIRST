@@ -306,7 +306,7 @@ export function CalendarioMesConsultor({
           <span className="size-2 rounded-sm bg-primary/40 border border-primary/40" /> Disponível
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-sm ring-2 ring-emerald-500/60" /> Extra
+          <span className="size-2 rounded-sm ring-2 ring-emerald-500/60" /> Avulso
         </span>
         <span className="flex items-center gap-1.5">
           <span className="size-2 rounded-sm ring-2 ring-destructive/60" /> Bloqueio
@@ -409,7 +409,7 @@ export function CalendarioMesConsultor({
                 onClick={() => setForm(f => ({ ...f, tipo: "extra", diaInteiro: false }))}
                 className="flex-1"
               >
-                Atender extra
+                Atender avulso
               </Button>
             </div>
 
@@ -427,7 +427,7 @@ export function CalendarioMesConsultor({
             {form.tipo === "bloqueio" && !form.diaInteiro && (
               slotsDisponiveis.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-1">
-                  Sem horários disponíveis nesse dia. Marque "Dia inteiro" ou crie atendimento extra antes.
+                  Sem horários disponíveis nesse dia. Marque "Dia inteiro" ou crie atendimento avulso antes.
                 </p>
               ) : (
                 <div>
@@ -516,7 +516,7 @@ export function CalendarioMesConsultor({
                   return n === 1 ? "Bloquear 1 horário" : `Bloquear ${n} horários`
                 }
                 const n = form.faixasExtra.length
-                return n > 1 ? `Adicionar ${n} atendimentos extra` : "Adicionar atendimento extra"
+                return n > 1 ? `Adicionar ${n} atendimentos avulsos` : "Adicionar atendimento avulso"
               })()}
             </Button>
           </div>

@@ -223,7 +223,7 @@ export function DisponibilidadeConsultores({
                           )}
                           {janelasAtuais.length > 0 && extrasCount > 0 && " · "}
                           {extrasCount > 0 && (
-                            <span className="text-emerald-400">{extrasCount} data{extrasCount !== 1 ? "s" : ""} extra</span>
+                            <span className="text-emerald-400">{extrasCount} data{extrasCount !== 1 ? "s" : ""} avulsa{extrasCount !== 1 ? "s" : ""}</span>
                           )}
                         </span>
                       )}
@@ -353,18 +353,18 @@ export function DisponibilidadeConsultores({
 
                           <div className="pt-4 mt-2 border-t border-border/50 space-y-2">
                             <div className="text-[11px] uppercase font-bold tracking-widest text-muted-foreground">
-                              Atendimentos extras (datas específicas)
+                              Atendimentos avulsos (datas específicas)
                             </div>
                             {extras.length === 0 ? (
                               <p className="text-sm text-muted-foreground py-1">
-                                Nenhum atendimento extra. Selecione uma data no calendário ao lado para adicionar.
+                                Nenhum atendimento avulso. Selecione uma data no calendário ao lado para adicionar.
                               </p>
                             ) : (
                               <div className="space-y-2">
                                 {extras.map(e => (
                                   <div key={e.id} className="flex items-center gap-2 p-2 rounded-lg bg-background/60 border border-border/50">
                                     <Badge variant="outline" className="text-[9px] uppercase font-bold bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shrink-0">
-                                      Extra
+                                      Avulso
                                     </Badge>
                                     <div className="flex-1 min-w-0">
                                       <div className="text-sm font-medium text-foreground capitalize">
