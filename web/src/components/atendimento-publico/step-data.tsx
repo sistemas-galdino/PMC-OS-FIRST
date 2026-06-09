@@ -8,6 +8,8 @@ interface Props {
   disponibilidade: Disponibilidade[]
   excecoes: ExcecaoConsultor[]
   feriados: Feriado[]
+  duracao_minutos: number
+  ocupadosPorData: Map<string, Set<string>>
   value: string | null
   onChange: (iso: string) => void
 }
@@ -15,7 +17,7 @@ interface Props {
 const MESES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 const DIAS_CURTO = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
-export function StepData({ disponibilidade, excecoes, feriados, value, onChange }: Props) {
+export function StepData({ disponibilidade, excecoes, feriados, duracao_minutos, ocupadosPorData, value, onChange }: Props) {
   const datas = useMemo(() => {
     const feriadosSet = new Set(feriados.map(f => f.data))
     return proximasDatasValidas({
@@ -24,8 +26,10 @@ export function StepData({ disponibilidade, excecoes, feriados, value, onChange 
       feriados: feriadosSet,
       n: 12,
       startOffsetDays: 1,
+      ocupadosPorData,
+      duracao_minutos,
     })
-  }, [disponibilidade, excecoes, feriados])
+  }, [disponibilidade, excecoes, feriados, duracao_minutos, ocupadosPorData])
 
   if (datas.length === 0) {
     return (

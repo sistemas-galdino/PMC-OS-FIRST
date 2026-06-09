@@ -240,12 +240,32 @@ export function slotsDisponiveisNaData(opts: {
   return Array.from(slots).sort()
 }
 
+// Janela máxima (em dias a partir de hoje) que o link público oferta pra agendar.
+export const HORIZONTE_DIAS = 120
+
+// Converte as linhas do RPC horarios_ocupados_consultor_intervalo num mapa
+// dataISO ("AAAA-MM-DD") → conjunto de horários "HH:MM" ocupados.
+export function mapaOcupadosPorData(
+  rows: { data_reuniao: string | null; horario: string | null }[],
+): Map<string, Set<string>> {
+  const mapa = new Map<string, Set<string>>()
+  for (const r of rows) {
+    if (!r.data_reuniao || !r.horario) continue
+    const dia = r.data_reuniao.slice(0, 10)
+    if (!mapa.has(dia)) mapa.set(dia, new Set())
+    mapa.get(dia)!.add(r.horario.slice(0, 5))
+  }
+  return mapa
+}
+
 export function proximasDatasValidas(opts: {
   disponibilidade: Disponibilidade[]
   excecoes?: ExcecaoConsultor[]
   feriados?: Set<string>
   n?: number
   startOffsetDays?: number
+  ocupadosPorData?: Map<string, Set<string>>
+  duracao_minutos?: number
 }): Date[] {
   const {
     disponibilidade,
@@ -253,6 +273,8 @@ export function proximasDatasValidas(opts: {
     feriados = new Set<string>(),
     n = 12,
     startOffsetDays = 1,
+    ocupadosPorData,
+    duracao_minutos,
   } = opts
 
   const diasComJanelaSemanal = new Set(disponibilidade.map(d => d.dia_semana))
@@ -269,7 +291,7 @@ export function proximasDatasValidas(opts: {
   const hoje = new Date()
   hoje.setHours(0, 0, 0, 0)
   let offset = startOffsetDays
-  while (datas.length < n && offset < 120) {
+  while (datas.length < n && offset < HORIZONTE_DIAS) {
     const d = new Date(hoje)
     d.setDate(d.getDate() + offset)
     const iso = isoData(d)
@@ -278,7 +300,20 @@ export function proximasDatasValidas(opts: {
     if (datasBloqueadasFullDay.has(iso)) continue
     const temSemanal = diasComJanelaSemanal.has(d.getDay())
     const temExtra = datasComExtra.has(iso)
-    if (temSemanal || temExtra) datas.push(d)
+    if (!temSemanal && !temExtra) continue
+    // Com a ocupação em mãos, escondemos datas sem nenhum horário livre.
+    if (ocupadosPorData && duracao_minutos != null) {
+      const ocup = ocupadosPorData.get(iso) ?? new Set<string>()
+      const livres = slotsDisponiveisNaData({
+        data: d,
+        janelas: disponibilidade,
+        excecoes,
+        feriados,
+        duracao_minutos,
+      }).filter(s => !ocup.has(s))
+      if (livres.length === 0) continue
+    }
+    datas.push(d)
   }
   return datas
 }

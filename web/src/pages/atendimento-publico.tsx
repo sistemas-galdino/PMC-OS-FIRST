@@ -14,6 +14,7 @@ import { StepHorario } from "@/components/atendimento-publico/step-horario"
 import { StepIdentificacao, type IdentificacaoForm } from "@/components/atendimento-publico/step-identificacao"
 import { StepConfirmacao } from "@/components/atendimento-publico/step-confirmacao"
 import { StepSucesso } from "@/components/atendimento-publico/step-sucesso"
+import { mapaOcupadosPorData, isoData, HORIZONTE_DIAS } from "@/lib/atendimentos"
 import type { Consultor, Disponibilidade, ExcecaoConsultor, Feriado } from "@/lib/atendimentos"
 
 const STEPS = ["Data", "Horário", "Você", "Confirmação"]
@@ -49,7 +50,7 @@ export default function AtendimentoPublicoPage() {
   const [dataEscolhida, setDataEscolhida] = useState<string | null>(null)
   const [horarioEscolhido, setHorarioEscolhido] = useState<string | null>(null)
   const [ident, setIdent] = useState<IdentificacaoForm>(initialIdent)
-  const [slotsOcupados, setSlotsOcupados] = useState<string[]>([])
+  const [ocupadosPorData, setOcupadosPorData] = useState<Map<string, Set<string>>>(new Map())
   const [submitting, setSubmitting] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState(false)
@@ -72,7 +73,11 @@ export default function AtendimentoPublicoPage() {
         }
 
         const hoje = new Date().toISOString().slice(0, 10)
-        const [{ data: d }, { data: exs }, { data: fs }] = await Promise.all([
+        const hojeLocal = new Date()
+        hojeLocal.setHours(0, 0, 0, 0)
+        const ateLocal = new Date(hojeLocal)
+        ateLocal.setDate(ateLocal.getDate() + HORIZONTE_DIAS)
+        const [{ data: d }, { data: exs }, { data: fs }, { data: ocup }] = await Promise.all([
           supabase
             .from("consultores_disponibilidade")
             .select("*")
@@ -86,12 +91,25 @@ export default function AtendimentoPublicoPage() {
             .from("feriados")
             .select("*")
             .gte("data", hoje),
+          // Ocupação da janela inteira (RPC SECURITY DEFINER): o link público é
+          // anônimo e não lê reuniões direto (RLS). Devolve só (data, horário) do
+          // consultor (nome + aliases), pra esconder horários ocupados E datas lotadas.
+          supabase.rpc("horarios_ocupados_consultor_intervalo", {
+            p_slug: c.slug,
+            p_from: isoData(hojeLocal),
+            p_to: isoData(ateLocal),
+          }),
         ])
 
         setConsultor(c as Consultor)
         setDisponibilidade((d as Disponibilidade[]) ?? [])
         setExcecoes((exs as ExcecaoConsultor[]) ?? [])
         setFeriados((fs as Feriado[]) ?? [])
+        setOcupadosPorData(
+          mapaOcupadosPorData(
+            (ocup as { data_reuniao: string | null; horario: string | null }[] | null) ?? [],
+          ),
+        )
       } else {
         const { data: cs } = await supabase
           .from("consultores_atendimento")
@@ -105,22 +123,11 @@ export default function AtendimentoPublicoPage() {
     load()
   }, [slug])
 
-  useEffect(() => {
-    if (!consultor || !dataEscolhida) {
-      setSlotsOcupados([])
-      return
-    }
-    async function fetchOcupados() {
-      // RPC SECURITY DEFINER: o link público é anônimo e não lê reuniões direto (RLS).
-      // Retorna só os horários ocupados do consultor (nome + aliases) na data.
-      const { data } = await supabase.rpc("horarios_ocupados_consultor", {
-        p_slug: consultor!.slug,
-        p_data: dataEscolhida!,
-      })
-      setSlotsOcupados(((data as { horario: string | null }[] | null) ?? []).map(r => r.horario ?? "").filter(Boolean))
-    }
-    fetchOcupados()
-  }, [consultor, dataEscolhida])
+  // Horários ocupados da data selecionada, derivados do mapa carregado no load().
+  const slotsOcupadosData = useMemo(
+    () => (dataEscolhida ? Array.from(ocupadosPorData.get(dataEscolhida) ?? []) : []),
+    [ocupadosPorData, dataEscolhida],
+  )
 
   async function submeter() {
     if (!consultor || !dataEscolhida || !horarioEscolhido) return
@@ -289,6 +296,8 @@ export default function AtendimentoPublicoPage() {
               disponibilidade={disponibilidade}
               excecoes={excecoes}
               feriados={feriados}
+              duracao_minutos={consultor.duracao_padrao_minutos}
+              ocupadosPorData={ocupadosPorData}
               value={dataEscolhida}
               onChange={v => {
                 setDataEscolhida(v)
@@ -304,7 +313,7 @@ export default function AtendimentoPublicoPage() {
               feriados={feriados}
               duracao_minutos={consultor.duracao_padrao_minutos}
               data={dataEscolhida}
-              slotsOcupados={slotsOcupados}
+              slotsOcupados={slotsOcupadosData}
               value={horarioEscolhido}
               onChange={setHorarioEscolhido}
             />

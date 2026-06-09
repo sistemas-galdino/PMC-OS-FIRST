@@ -58,8 +58,7 @@ export function StepHorario({
 
   return (
     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-      {slots.map((slot, idx) => {
-        const ocupado = ocupados.has(slot)
+      {livres.map((slot, idx) => {
         const selected = value === slot
         return (
           <motion.button
@@ -67,13 +66,10 @@ export function StepHorario({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.02 }}
-            disabled={ocupado}
             onClick={() => onChange(slot)}
-            className={`rounded-lg border-2 px-3 py-3 text-sm font-bold tracking-wider transition-all disabled:cursor-not-allowed disabled:opacity-30 ${
+            className={`rounded-lg border-2 px-3 py-3 text-sm font-bold tracking-wider transition-all ${
               selected
                 ? "border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                : ocupado
-                ? "border-border bg-muted/10 text-muted-foreground line-through"
                 : "border-border bg-muted/10 text-foreground hover:border-primary/40 hover:bg-primary/5"
             }`}
           >
