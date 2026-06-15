@@ -1,6 +1,5 @@
 import { motion } from "framer-motion"
 import { BackgroundShader } from "@/components/ui/background-shader"
-import { TrendingUpIcon as TrendingUp } from "@/components/ui/icons"
 import { STEP_TITLES } from "@/lib/onboarding-schema"
 
 interface OnboardingLayoutProps {
@@ -21,9 +20,9 @@ export function OnboardingLayout({ children, currentStep, totalSteps = 6 }: Onbo
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-2xl shadow-primary/20 mb-6"
+          className="flex size-14 items-center justify-center overflow-hidden rounded-2xl shadow-2xl shadow-primary/20 mb-6"
         >
-          <TrendingUp className="size-7" />
+          <img src="/logo.png" alt="PMC OS" className="size-full object-cover" />
         </motion.div>
 
         {/* Title */}

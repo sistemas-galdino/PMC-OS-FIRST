@@ -4,7 +4,6 @@ import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { BackgroundShader } from "@/components/ui/background-shader"
-import { TrendingUpIcon as TrendingUp } from "@/components/ui/icons"
 import { motion } from "framer-motion"
 import type { EmailOtpType } from "@supabase/supabase-js"
 
@@ -54,9 +53,9 @@ export default function AtivarContaPage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="flex size-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-2xl shadow-primary/20"
+            className="flex size-16 items-center justify-center overflow-hidden rounded-2xl shadow-2xl shadow-primary/20"
           >
-            <TrendingUp className="size-8" />
+            <img src="/logo.png" alt="PMC OS" className="size-full object-cover" />
           </motion.div>
         </div>
 

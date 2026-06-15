@@ -20,7 +20,6 @@ import {
   MessageSquareIcon as MessageSquare,
   LogOutIcon as LogOut,
   ChevronRightIcon as ChevronRight,
-  TrendingUpIcon as TrendingUp,
   Share2Icon as Share2,
   CheckSquareIcon as CheckSquare,
   BookOpenIcon as BookOpen,
@@ -123,9 +122,9 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+            className="flex size-9 items-center justify-center overflow-hidden rounded-xl shadow-lg shadow-primary/20"
           >
-            <TrendingUp className="size-5" />
+            <img src="/logo.png" alt="PMC OS" className="size-full object-cover" />
           </motion.div>
           <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
             <span className="font-bold tracking-tight text-lg text-foreground">PMC OS</span>
