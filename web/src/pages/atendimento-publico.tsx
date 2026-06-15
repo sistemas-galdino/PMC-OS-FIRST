@@ -145,8 +145,19 @@ export default function AtendimentoPublicoPage() {
     setSubmitting(true)
     setErro(null)
     try {
-      const { error: fnErr } = await supabase.functions.invoke("criar-agendamento", {
-        body: {
+      // fetch direto (em vez de supabase.functions.invoke): o invoke consome o corpo
+      // da resposta de erro, então a UI mostrava "non-2xx" genérico em vez da mensagem
+      // real. Aqui lemos o JSON nós mesmos e exibimos body.error.
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      const res = await fetch(`${baseUrl}/functions/v1/criar-agendamento`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({
           slug: consultor.slug,
           data: dataEscolhida,
           horario: horarioEscolhido,
@@ -155,20 +166,11 @@ export default function AtendimentoPublicoPage() {
           codigo_cliente: Number(ident.codigo_cliente.trim()),
           cliente_telefone: ident.telefone.trim() || null,
           observacoes: ident.observacoes.trim() || null,
-        },
+        }),
       })
-      if (fnErr) {
-        let msg = fnErr.message ?? "erro desconhecido"
-        try {
-          const ctx = (fnErr as { context?: Response }).context
-          if (ctx && typeof ctx.json === "function") {
-            const body = await ctx.json()
-            if (body?.error) msg = body.error
-          }
-        } catch {
-          // mantém msg padrão
-        }
-        setErro(msg)
+      const json = await res.json().catch(() => ({} as { error?: string }))
+      if (!res.ok) {
+        setErro(json.error ?? "Não foi possível concluir o agendamento. Tente de novo.")
         setSubmitting(false)
         return
       }
@@ -302,9 +304,18 @@ export default function AtendimentoPublicoPage() {
               duracao_minutos={consultor.duracao_padrao_minutos}
               ocupadosPorData={ocupadosPorData}
               value={dataEscolhida}
-              onChange={v => {
-                setDataEscolhida(v)
+              horario={horarioEscolhido}
+              onSelecionarData={iso => {
+                setErro(null)
+                setDataEscolhida(iso)
                 setHorarioEscolhido(null)
+                setStep(1)
+              }}
+              onSelecionarHorario={(iso, slot) => {
+                setErro(null)
+                setDataEscolhida(iso)
+                setHorarioEscolhido(slot)
+                setStep(2)
               }}
             />
           )}
