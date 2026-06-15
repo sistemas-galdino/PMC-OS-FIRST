@@ -33,6 +33,7 @@ export function StepHorario({
       excecoes,
       feriados: feriadosSet,
       duracao_minutos,
+      apenasAvulsoHoje: true,
     })
   }, [disponibilidade, excecoes, feriados, duracao_minutos, data])
 

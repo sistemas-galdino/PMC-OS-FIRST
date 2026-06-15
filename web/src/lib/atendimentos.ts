@@ -202,8 +202,11 @@ export function slotsDisponiveisNaData(opts: {
   excecoes: ExcecaoConsultor[]
   feriados: Set<string> // datas ISO YYYY-MM-DD
   duracao_minutos: number
+  // No dia de HOJE, esconde a janela semanal (só oferta avulsos/extras) e
+  // descarta horários que já passaram. Não afeta datas futuras nem o admin.
+  apenasAvulsoHoje?: boolean
 }): string[] {
-  const { data, janelas, excecoes, feriados, duracao_minutos } = opts
+  const { data, janelas, excecoes, feriados, duracao_minutos, apenasAvulsoHoje = false } = opts
   const iso = isoData(data)
   if (feriados.has(iso)) return []
 
@@ -211,8 +214,13 @@ export function slotsDisponiveisNaData(opts: {
   const bloqDiaTodo = excecoesDia.some(e => e.tipo === "bloqueio" && !e.hora_inicio)
   if (bloqDiaTodo) return []
 
+  const hojeRef = new Date()
+  hojeRef.setHours(0, 0, 0, 0)
+  const ehHoje = apenasAvulsoHoje && iso === isoData(hojeRef)
+
   const dia = data.getDay()
-  const janelasSemanais = janelas.filter(j => j.dia_semana === dia)
+  // Hoje só oferta avulso: a janela semanal de hoje fica escondida.
+  const janelasSemanais = ehHoje ? [] : janelas.filter(j => j.dia_semana === dia)
   const janelasExtra = excecoesDia.filter(e => e.tipo === "extra" && e.hora_inicio && e.hora_fim)
 
   const slots = new Set<string>()
@@ -237,7 +245,14 @@ export function slotsDisponiveisNaData(opts: {
     }
   }
 
-  return Array.from(slots).sort()
+  let resultado = Array.from(slots).sort()
+  // Hoje: descarta avulsos cujo horário já passou (não dá pra agendar no passado).
+  if (ehHoje) {
+    const agora = new Date()
+    const nowHHMM = toHHMM(agora.getHours(), agora.getMinutes())
+    resultado = resultado.filter(s => s >= nowHHMM)
+  }
+  return resultado
 }
 
 // Janela máxima (em dias a partir de hoje) que o link público oferta pra agendar.
@@ -266,6 +281,9 @@ export function proximasDatasValidas(opts: {
   startOffsetDays?: number
   ocupadosPorData?: Map<string, Set<string>>
   duracao_minutos?: number
+  // Inclui HOJE (1º da lista) quando houver horário avulso livre — nunca pela
+  // janela semanal. Avulsos já passados não contam (ver slotsDisponiveisNaData).
+  incluirHojeAvulso?: boolean
 }): Date[] {
   const {
     disponibilidade,
@@ -275,6 +293,7 @@ export function proximasDatasValidas(opts: {
     startOffsetDays = 1,
     ocupadosPorData,
     duracao_minutos,
+    incluirHojeAvulso = false,
   } = opts
 
   const diasComJanelaSemanal = new Set(disponibilidade.map(d => d.dia_semana))
@@ -290,6 +309,28 @@ export function proximasDatasValidas(opts: {
   const datas: Date[] = []
   const hoje = new Date()
   hoje.setHours(0, 0, 0, 0)
+
+  // HOJE entra (como 1º card) só via avulso livre — nunca pela janela semanal.
+  if (incluirHojeAvulso && duracao_minutos != null) {
+    const hojeIso = isoData(hoje)
+    if (
+      datasComExtra.has(hojeIso) &&
+      !feriados.has(hojeIso) &&
+      !datasBloqueadasFullDay.has(hojeIso)
+    ) {
+      const ocup = ocupadosPorData?.get(hojeIso) ?? new Set<string>()
+      const livres = slotsDisponiveisNaData({
+        data: hoje,
+        janelas: disponibilidade,
+        excecoes,
+        feriados,
+        duracao_minutos,
+        apenasAvulsoHoje: true,
+      }).filter(s => !ocup.has(s))
+      if (livres.length > 0) datas.push(hoje)
+    }
+  }
+
   let offset = startOffsetDays
   while (datas.length < n && offset < HORIZONTE_DIAS) {
     const d = new Date(hoje)

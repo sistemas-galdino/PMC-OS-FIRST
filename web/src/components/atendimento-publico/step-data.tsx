@@ -53,6 +53,7 @@ export function StepData({
       startOffsetDays: 1,
       ocupadosPorData,
       duracao_minutos,
+      incluirHojeAvulso: true,
     })
     const visiveis = todas.slice(0, limite).map(d => {
       const iso = isoData(d)
@@ -63,6 +64,7 @@ export function StepData({
         excecoes,
         feriados: feriadosSet,
         duracao_minutos,
+        apenasAvulsoHoje: true,
       }).filter(s => !ocup.has(s))
       return { d, iso, livres }
     })
