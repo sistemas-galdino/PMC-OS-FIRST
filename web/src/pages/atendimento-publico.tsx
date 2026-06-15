@@ -282,11 +282,6 @@ export default function AtendimentoPublicoPage() {
       subtitle={consultor.descricao ?? `Escolha a melhor data e horário para conversar com ${consultor.nome}.`}
     >
       <div className="space-y-8">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/atendimento")} className="gap-2 -ml-2">
-          <ArrowLeftIcon className="size-4" />
-          <span className="text-xs font-bold uppercase tracking-widest">Trocar consultor</span>
-        </Button>
-
         <Stepper steps={STEPS} current={step} />
 
         <motion.div
