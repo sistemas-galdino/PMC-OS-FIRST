@@ -46,6 +46,23 @@ function formatTamanho(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+// Garante que o link abra externamente: "google.com.br" sem esquema vira
+// URL relativa e o navegador resolveria dentro do app (/reuniao/...).
+function externalHref(url: string): string {
+  const u = url.trim()
+  if (/^https?:\/\//i.test(u) || /^(mailto|tel):/i.test(u)) return u
+  if (/^\/\//.test(u)) return `https:${u}`
+  return `https://${u}`
+}
+
+// Para arquivos, o ?download= faz o Supabase Storage servir como anexo (baixa
+// com o nome original em vez de abrir inline).
+function hrefFor(a: Anexo): string {
+  if (a.tipo === "link") return externalHref(a.url)
+  const sep = a.url.includes("?") ? "&" : "?"
+  return `${a.url}${sep}download=${encodeURIComponent(a.nome)}`
+}
+
 export function TabArquivos({ idReuniao, tabelaOrigem, idCliente, isAdmin }: Props) {
   const [anexos, setAnexos] = useState<Anexo[]>([])
   const [loading, setLoading] = useState(true)
@@ -128,7 +145,7 @@ export function TabArquivos({ idReuniao, tabelaOrigem, idCliente, isAdmin }: Pro
     if (!linkUrl.trim() || !idCliente || !uid) return
     setBusy(true)
     setError(null)
-    const href = linkUrl.trim()
+    const raw = linkUrl.trim()
     const { data, error: insErr } = await supabase
       .from("reuniao_anexos")
       .insert([
@@ -139,8 +156,8 @@ export function TabArquivos({ idReuniao, tabelaOrigem, idCliente, isAdmin }: Pro
           criado_por: uid,
           criado_por_admin: isAdmin,
           tipo: "link",
-          url: href,
-          nome: linkNome.trim() || href,
+          url: externalHref(raw),
+          nome: linkNome.trim() || raw,
           mime: null,
           tamanho: null,
         },
@@ -300,10 +317,10 @@ export function TabArquivos({ idReuniao, tabelaOrigem, idCliente, isAdmin }: Pro
                   {a.tipo === "arquivo" && a.tamanho ? ` · ${formatTamanho(a.tamanho)}` : ""}
                 </p>
               </div>
-              <a href={a.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+              <a href={hrefFor(a)} target="_blank" rel="noopener noreferrer" className="shrink-0">
                 <Button variant="outline" size="sm" className="font-bold text-xs uppercase tracking-wider gap-2">
                   <ExternalLinkIcon className="size-4" />
-                  Abrir
+                  {a.tipo === "arquivo" ? "Baixar" : "Abrir"}
                 </Button>
               </a>
               {canDelete(a) && (
