@@ -14,12 +14,15 @@ import {
   PlusIcon as Plus,
   Trash2Icon as Trash2,
   ChevronDownIcon as ChevronDown,
+  PackageIcon,
 } from "@/components/ui/icons"
 import { motion } from "framer-motion"
 import { StatusBadgeToggle } from "@/components/status-badge-toggle"
+import { TabArquivos } from "@/components/reunioes/tab-arquivos"
 
 interface Meeting {
   id_unico: string
+  id_cliente: string | null
   mentor: string
   nome_cliente_formatado: string
   nome_empresa_formatado: string
@@ -33,7 +36,7 @@ interface Meeting {
   link_geminidoc: string | null
 }
 
-type Tab = "resumo" | "acoes" | "transcricao" | "gravacao"
+type Tab = "resumo" | "acoes" | "transcricao" | "gravacao" | "arquivos"
 
 export default function ReuniaoDetalhePage({ isAdmin: isAdminProp = false }: { isAdmin?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
@@ -92,6 +95,7 @@ export default function ReuniaoDetalhePage({ isAdmin: isAdminProp = false }: { i
     { key: "acoes", label: "Ações", icon: <ClipboardList className="size-4" /> },
     { key: "transcricao", label: "Transcrição", icon: <FileTextIcon className="size-4" /> },
     { key: "gravacao", label: "Gravação", icon: <VideoIcon className="size-4" /> },
+    { key: "arquivos", label: "Arquivos", icon: <PackageIcon className="size-4" /> },
   ]
 
   return (
@@ -184,6 +188,14 @@ export default function ReuniaoDetalhePage({ isAdmin: isAdminProp = false }: { i
         {activeTab === "acoes" && <TabAcoes meeting={meeting} isAdmin={isAdmin} onUpdate={setMeeting} />}
         {activeTab === "transcricao" && <TabTranscricao meeting={meeting} />}
         {activeTab === "gravacao" && <TabGravacao meeting={meeting} />}
+        {activeTab === "arquivos" && (
+          <TabArquivos
+            idReuniao={meeting.id_unico}
+            tabelaOrigem="reunioes_mentoria_new"
+            idCliente={meeting.id_cliente}
+            isAdmin={isAdmin}
+          />
+        )}
       </motion.div>
     </div>
   )

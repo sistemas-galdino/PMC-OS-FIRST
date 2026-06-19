@@ -15,12 +15,15 @@ import {
   PlusIcon as Plus,
   Trash2Icon as Trash2,
   ChevronDownIcon as ChevronDown,
+  PackageIcon,
 } from "@/components/ui/icons"
 import { motion } from "framer-motion"
 import { StatusBadgeToggle } from "@/components/status-badge-toggle"
+import { TabArquivos } from "@/components/reunioes/tab-arquivos"
 
 interface Meeting {
   id_unico: string
+  id_cliente: string | null
   empresa: string | null
   nome_empresa_formatado: string | null
   data_reuniao: string
@@ -41,7 +44,7 @@ interface Meeting {
   cliente_compareceu: boolean | null
 }
 
-type Tab = "resumo" | "acoes" | "transcricao" | "gravacao"
+type Tab = "resumo" | "acoes" | "transcricao" | "gravacao" | "arquivos"
 
 function FormattedContent({ text }: { text: string }) {
   const lines = text.split('\n')
@@ -169,6 +172,7 @@ export default function ReuniaoBlackCRMDetalhePage({ isAdmin = false }: { isAdmi
     { key: "acoes", label: "Acoes", icon: <ClipboardList className="size-4" /> },
     { key: "transcricao", label: "Transcricao", icon: <FileTextIcon className="size-4" /> },
     { key: "gravacao", label: "Gravacao", icon: <VideoIcon className="size-4" /> },
+    { key: "arquivos", label: "Arquivos", icon: <PackageIcon className="size-4" /> },
   ]
 
   const empresaName = meeting.nome_empresa_formatado || meeting.empresa || "Sem identificacao"
@@ -284,6 +288,14 @@ export default function ReuniaoBlackCRMDetalhePage({ isAdmin = false }: { isAdmi
         {activeTab === "acoes" && <TabAcoes meeting={meeting} isAdmin={isAdmin} onUpdate={setMeeting} />}
         {activeTab === "transcricao" && <TabTranscricao meeting={meeting} />}
         {activeTab === "gravacao" && <TabGravacao meeting={meeting} />}
+        {activeTab === "arquivos" && (
+          <TabArquivos
+            idReuniao={meeting.id_unico}
+            tabelaOrigem="reunioes_blackcrm"
+            idCliente={meeting.id_cliente}
+            isAdmin={isAdmin}
+          />
+        )}
       </motion.div>
     </div>
   )
