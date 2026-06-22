@@ -45,6 +45,15 @@ const EMAILS_CALENDAR_VALIDOS = new Set([
   "mentor@rafaelgaldino.com.br",
 ])
 
+// Sucesso do Cliente (coluna clientes_entrada_new.sc) → caixa Workspace.
+// Espelha CS_OPTIONS do front (tab-perfil.tsx). Atualizar aqui se a equipe mudar.
+const CS_EMAILS: Record<string, string> = {
+  fernanda: "atendimento_01@rafaelgaldino.com.br",
+  gabriela: "atendimento_02@rafaelgaldino.com.br",
+  geovana: "atendimento_03@rafaelgaldino.com.br",
+  francielly: "atendimento_04@rafaelgaldino.com.br",
+}
+
 function addMinutos(h5: string, mins: number): string {
   const [hh, mm] = h5.split(":").map(Number)
   const total = hh * 60 + mm + mins
@@ -255,6 +264,23 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Código não encontrado" }, 404)
     }
 
+    // Sucesso do Cliente responsável (clientes_entrada_new.sc, ligada por id_cliente).
+    // Vira convidado confirmado no evento. Lookup tolerante a falha: nunca bloqueia o agendamento.
+    let csEmail: string | null = null
+    let csNome: string | null = null
+    {
+      const { data: entradaCli } = await supabase
+        .from("clientes_entrada_new")
+        .select("sc")
+        .eq("id_cliente", matchCli.id_cliente)
+        .maybeSingle<{ sc: string | null }>()
+      const scNorm = entradaCli?.sc?.trim().toLowerCase()
+      if (scNorm && CS_EMAILS[scNorm]) {
+        csEmail = CS_EMAILS[scNorm]
+        csNome = entradaCli!.sc!.trim()
+      }
+    }
+
     const id_unico = crypto.randomUUID()
     const horarioStr = h5 + ":00"
     const ano = dataDate.getFullYear()
@@ -337,6 +363,9 @@ Deno.serve(async (req: Request) => {
           { email: consultor.email_calendar, displayName: consultor.nome, responseStatus: "accepted" },
           ...(consultor.email && consultor.email !== consultor.email_calendar
             ? [{ email: consultor.email, displayName: consultor.nome, responseStatus: "accepted" as const }]
+            : []),
+          ...(csEmail
+            ? [{ email: csEmail, displayName: csNome ? `${csNome} (Sucesso do Cliente)` : "Sucesso do Cliente", responseStatus: "accepted" as const }]
             : []),
         ],
         conferenceData: {
