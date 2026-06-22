@@ -8,10 +8,11 @@ interface Props {
   consultor: Consultor
   data: string
   horario: string
+  duracaoMinutos: number
   identificacao: IdentificacaoForm
 }
 
-export function StepConfirmacao({ consultor, data, horario, identificacao }: Props) {
+export function StepConfirmacao({ consultor, data, horario, duracaoMinutos, identificacao }: Props) {
   return (
     <Card className="p-6 space-y-6 max-w-xl">
       <div className="flex items-center gap-4 pb-5 border-b border-border">
@@ -29,7 +30,7 @@ export function StepConfirmacao({ consultor, data, horario, identificacao }: Pro
 
       <div className="grid grid-cols-2 gap-4">
         <Item icon={<CalendarIcon className="size-4 text-primary" />} label="Data" value={formatarData(data)} />
-        <Item icon={<ClockIcon className="size-4 text-primary" />} label="Horário" value={`${horario} (${consultor.duracao_padrao_minutos} min)`} />
+        <Item icon={<ClockIcon className="size-4 text-primary" />} label="Horário" value={`${horario} (${duracaoMinutos} min)`} />
         <Item icon={<UsersIcon className="size-4 text-primary" />} label="Nome" value={identificacao.nome} />
         <Item icon={<MailIcon className="size-4 text-primary" />} label="Email" value={identificacao.email} />
         <Item icon={<Building2Icon className="size-4 text-primary" />} label="Código" value={identificacao.codigo_cliente} />

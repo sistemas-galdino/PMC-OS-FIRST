@@ -161,6 +161,13 @@ function toHHMM(h: number, m: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
 }
 
+// Minutos entre dois horários "HH:MM" (b - a).
+function minutosEntre(h5a: string, h5b: string): number {
+  const a = parseTime(h5a)
+  const b = parseTime(h5b)
+  return (b.h * 60 + b.m) - (a.h * 60 + a.m)
+}
+
 export function gerarSlots(
   hora_inicio: string,
   hora_fim: string,
@@ -229,10 +236,10 @@ export function slotsDisponiveisNaData(opts: {
       slots.add(s)
     }
   }
+  // Cada avulso (extra) = UM horário clicável: começa no hora_inicio e dura a
+  // janela inteira (hora_fim - hora_inicio), independente da duração padrão.
   for (const e of janelasExtra) {
-    for (const s of gerarSlots(hhmm(e.hora_inicio!), hhmm(e.hora_fim!), duracao_minutos)) {
-      slots.add(s)
-    }
+    slots.add(hhmm(e.hora_inicio!))
   }
 
   const bloqueios = excecoesDia.filter(e => e.tipo === "bloqueio" && e.hora_inicio && e.hora_fim)
@@ -253,6 +260,27 @@ export function slotsDisponiveisNaData(opts: {
     resultado = resultado.filter(s => s >= nowHHMM)
   }
   return resultado
+}
+
+// Duração de um horário ofertado: se o slot casa o início de um avulso (extra),
+// vale a janela do avulso; senão, a duração padrão do consultor.
+export function duracaoDoSlot(opts: {
+  data: Date
+  hhmm: string
+  excecoes: ExcecaoConsultor[]
+  duracao_padrao: number
+}): number {
+  const iso = isoData(opts.data)
+  const extra = opts.excecoes.find(
+    e =>
+      e.tipo === "extra" &&
+      e.data === iso &&
+      e.hora_inicio &&
+      e.hora_fim &&
+      hhmm(e.hora_inicio) === opts.hhmm,
+  )
+  if (extra) return minutosEntre(hhmm(extra.hora_inicio!), hhmm(extra.hora_fim!))
+  return opts.duracao_padrao
 }
 
 // Janela máxima (em dias a partir de hoje) que o link público oferta pra agendar.

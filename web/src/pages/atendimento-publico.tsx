@@ -14,7 +14,7 @@ import { StepHorario } from "@/components/atendimento-publico/step-horario"
 import { StepIdentificacao, type IdentificacaoForm } from "@/components/atendimento-publico/step-identificacao"
 import { StepConfirmacao } from "@/components/atendimento-publico/step-confirmacao"
 import { StepSucesso } from "@/components/atendimento-publico/step-sucesso"
-import { mapaOcupadosPorData, isoData, HORIZONTE_DIAS } from "@/lib/atendimentos"
+import { mapaOcupadosPorData, isoData, HORIZONTE_DIAS, duracaoDoSlot } from "@/lib/atendimentos"
 import type { Consultor, Disponibilidade, ExcecaoConsultor, Feriado } from "@/lib/atendimentos"
 
 const STEPS = ["Data", "Horário", "Você", "Confirmação"]
@@ -337,6 +337,12 @@ export default function AtendimentoPublicoPage() {
               consultor={consultor}
               data={dataEscolhida}
               horario={horarioEscolhido}
+              duracaoMinutos={duracaoDoSlot({
+                data: new Date(dataEscolhida + "T00:00:00"),
+                hhmm: horarioEscolhido,
+                excecoes,
+                duracao_padrao: consultor.duracao_padrao_minutos,
+              })}
               identificacao={ident}
             />
           )}

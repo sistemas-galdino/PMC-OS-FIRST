@@ -53,6 +53,13 @@ function addMinutos(h5: string, mins: number): string {
   return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`
 }
 
+// Minutos entre dois horários "HH:MM" (b - a).
+function minutosEntre(h5a: string, h5b: string): number {
+  const [ha, ma] = h5a.split(":").map(Number)
+  const [hb, mb] = h5b.split(":").map(Number)
+  return (hb * 60 + mb) - (ha * 60 + ma)
+}
+
 function tituloEvento(consultor: Consultor, cliente_nome: string, empresa: string | null): string {
   const empresaTxt = empresa ? ` — ${empresa}` : ""
   if (consultor.tabela_destino === "reunioes_galdino") {
@@ -207,14 +214,21 @@ Deno.serve(async (req: Request) => {
     if (colideBloqueio) {
       return jsonResponse({ error: "Horário bloqueado pelo consultor" }, 400)
     }
-    const dentroExtra = excs.some(e => {
-      if (e.tipo !== "extra" || !e.hora_inicio || !e.hora_fim) return false
-      return h5 >= e.hora_inicio.slice(0, 5) && h5 < e.hora_fim.slice(0, 5)
-    })
+    // Avulso (extra) = UM horário que começa no hora_inicio e dura a janela
+    // inteira. O agendamento tem que bater o início exato de uma janela extra.
+    const extraMatch = excs.find(
+      e => e.tipo === "extra" && e.hora_inicio && e.hora_fim && e.hora_inicio.slice(0, 5) === h5,
+    )
+    const dentroExtra = !!extraMatch
 
     if (!dentroJanela && !dentroExtra) {
       return jsonResponse({ error: "Horário fora da janela de disponibilidade do consultor" }, 400)
     }
+
+    // Avulso usa a duração da janela; janela semanal usa a duração padrão.
+    const duracaoMin = extraMatch
+      ? minutosEntre(extraMatch.hora_inicio!.slice(0, 5), extraMatch.hora_fim!.slice(0, 5))
+      : consultor.duracao_padrao_minutos
 
     // Fonte única de verdade pros horários ocupados (nome + aliases, exclui cancelados).
     const { data: ocupados } = await supabase.rpc("horarios_ocupados_consultor", {
@@ -257,7 +271,7 @@ Deno.serve(async (req: Request) => {
       empresa: empresaFinal,
       cliente_email: cliente_email.toLowerCase(),
       cliente_telefone: cliente_telefone ?? null,
-      duracao_minutos: consultor.duracao_padrao_minutos,
+      duracao_minutos: duracaoMin,
       status_agendamento: "pendente_sync",
       criado_via: "agendamento_publico",
       observacoes: observacoes ?? null,
@@ -303,7 +317,7 @@ Deno.serve(async (req: Request) => {
 
     try {
       const startISO = `${data}T${horarioStr}${TZ_OFFSET}`
-      const endHorario = addMinutos(h5, consultor.duracao_padrao_minutos) + ":00"
+      const endHorario = addMinutos(h5, duracaoMin) + ":00"
       const endISO = `${data}T${endHorario}${TZ_OFFSET}`
 
       const payload: NovoEvento = {
