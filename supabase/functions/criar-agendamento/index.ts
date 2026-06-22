@@ -24,6 +24,7 @@ interface Consultor {
   tipo_reuniao: "implementacao" | "tutoria" | null
   duracao_padrao_minutos: number
   ativo: boolean
+  cor_agenda: number | null
 }
 
 const TZ = "America/Fortaleza"
@@ -374,6 +375,7 @@ Deno.serve(async (req: Request) => {
             conferenceSolutionKey: { type: "hangoutsMeet" },
           },
         },
+        ...(consultor.cor_agenda ? { colorId: String(consultor.cor_agenda) } : {}),
       }
 
       const evento = await criarEvento(emailOrganizador, payload)

@@ -38,6 +38,7 @@ export interface Consultor {
   descricao: string | null
   avatar_url: string | null
   accent: string
+  cor_agenda: number | null
   duracao_padrao_minutos: number
   ativo: boolean
   ordem: number
@@ -45,6 +46,22 @@ export interface Consultor {
   created_at: string
   updated_at: string
 }
+
+// Cores de evento do Google Calendar (colorId 1..11) + hex aproximado pro swatch.
+// Usado pra colorir os eventos de agendamento por consultor. `null` = sem cor (branco).
+export const CORES_AGENDA_GOOGLE = [
+  { id: 1, nome: "Lavanda", hex: "#7986CB" },
+  { id: 2, nome: "Sálvia", hex: "#33B679" },
+  { id: 3, nome: "Uva", hex: "#8E24AA" },
+  { id: 4, nome: "Flamingo", hex: "#E67C73" },
+  { id: 5, nome: "Banana", hex: "#F6BF26" },
+  { id: 6, nome: "Tangerina", hex: "#F4511E" },
+  { id: 7, nome: "Pavão", hex: "#039BE5" },
+  { id: 8, nome: "Grafite", hex: "#616161" },
+  { id: 9, nome: "Mirtilo", hex: "#3F51B5" },
+  { id: 10, nome: "Manjericão", hex: "#0B8043" },
+  { id: 11, nome: "Tomate", hex: "#D50000" },
+] as const
 
 // Nomes que identificam o consultor nas reuniões (nome + aliases). As reuniões
 // guardam o nome do mentor/responsável, que às vezes difere do cadastro (ex.: Léo

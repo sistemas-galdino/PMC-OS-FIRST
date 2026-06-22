@@ -12,6 +12,7 @@ export interface NovoEvento {
   start: { dateTime: string; timeZone: string }
   end: { dateTime: string; timeZone: string }
   attendees?: AttendeePayload[]
+  colorId?: string // colorId de evento do Google Calendar (1..11)
   conferenceData?: {
     createRequest: {
       requestId: string

@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { slugify, EMAILS_CALENDAR_VALIDOS } from "@/lib/atendimentos"
+import { slugify, EMAILS_CALENDAR_VALIDOS, CORES_AGENDA_GOOGLE } from "@/lib/atendimentos"
 import type { Consultor, TabelaDestino } from "@/lib/atendimentos"
 
 interface Props {
@@ -38,6 +38,7 @@ const initialForm = {
   especialidade: "",
   descricao: "",
   avatar_url: "",
+  cor_agenda: null as number | null,
   duracao_padrao_minutos: 60,
   ativo: true,
   ordem: 0,
@@ -61,6 +62,7 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
           especialidade: consultor.especialidade ?? "",
           descricao: consultor.descricao ?? "",
           avatar_url: consultor.avatar_url ?? "",
+          cor_agenda: consultor.cor_agenda ?? null,
           duracao_padrao_minutos: consultor.duracao_padrao_minutos,
           ativo: consultor.ativo,
           ordem: consultor.ordem,
@@ -97,6 +99,7 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
       especialidade: form.especialidade.trim() || null,
       descricao: form.descricao.trim() || null,
       avatar_url: form.avatar_url.trim() || null,
+      cor_agenda: form.cor_agenda,
       duracao_padrao_minutos: form.duracao_padrao_minutos,
       ativo: form.ativo,
       ordem: form.ordem,
@@ -222,6 +225,33 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
                 onChange={e => setForm(f => ({ ...f, ordem: Number(e.target.value) || 0 }))}
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Cor da agenda (Google Calendar)</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, cor_agenda: null }))}
+                title="Sem cor (branco)"
+                className={`h-7 w-7 rounded-full border-2 grid place-items-center text-[11px] text-muted-foreground ${form.cor_agenda == null ? "border-foreground" : "border-border"}`}
+              >
+                —
+              </button>
+              {CORES_AGENDA_GOOGLE.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, cor_agenda: c.id }))}
+                  title={c.nome}
+                  style={{ backgroundColor: c.hex }}
+                  className={`h-7 w-7 rounded-full border-2 transition ${form.cor_agenda === c.id ? "border-foreground ring-2 ring-foreground/30" : "border-transparent"}`}
+                />
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Cor dos eventos desse consultor na agenda do Google. Vale para novos agendamentos do link público.
+            </p>
           </div>
 
           <label className="flex items-center gap-2 pt-1 cursor-pointer">
