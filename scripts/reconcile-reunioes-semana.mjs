@@ -92,7 +92,11 @@ function classifyMentorEvent(event) {
     /\[PMC\]\s*Acompanhamento com Mentor/i,
     /\[PMC\]\s*Acompanhamento com Consultor/i,
     /\[PMC\]\s*Mentor Tr[aá]fego Pago/i,
-    /\[PMC\]\s*Consultor\s*-/i,
+    // "[PMC] Consultor ..." em qualquer formato: com ou sem traço depois de
+    // "Consultor" (ex.: "[PMC] Consultor Maxsuell Lopes (...)"), e tolera o typo
+    // "[PM]" (sem o C). \b evita casar "Consultores".
+    /\[PMC?\]\s*Consultor\b/i,
+    /Consultor de posicionamento/i,
   ]
   if (!patterns.some(p => p.test(t))) return null
   return 'reunioes_mentoria_new'
