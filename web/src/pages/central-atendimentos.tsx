@@ -281,6 +281,52 @@ export default function CentralAtendimentosPage() {
     return true
   }
 
+  // Reagenda pela agenda do consultor: move o evento no Google Calendar e
+  // atualiza data/horário no banco (reusa a edge function reagendar-agendamento).
+  async function reagendarAgendamento(ag: AgendamentoCentral, data: string, horario: string): Promise<boolean> {
+    const { data: res, error: fnErr } = await supabase.functions.invoke("reagendar-agendamento", {
+      body: { origem: ag.origem, id_unico: ag.id_unico, data, horario },
+    })
+    if (fnErr) {
+      setToast({ type: "err", msg: "Erro ao reagendar" })
+      return false
+    }
+    const gcalErro = (res as { gcal_erro?: string | null } | null)?.gcal_erro
+    setToast({
+      type: "ok",
+      msg: gcalErro
+        ? "Reagendado (atenção: o evento no Google Calendar pode não ter sido movido)"
+        : "Reagendado",
+    })
+    await refresh()
+    return true
+  }
+
+  // Corrige o ID do cliente da reunião: reatribui id_cliente + código + empresa no
+  // banco (a reunião passa pro painel certo) e atualiza o evento no Google Calendar.
+  async function alterarClienteAgendamento(ag: AgendamentoCentral, codigo_cliente: number): Promise<boolean> {
+    const { data: res, error: fnErr } = await supabase.functions.invoke("reatribuir-cliente-agendamento", {
+      body: { origem: ag.origem, id_unico: ag.id_unico, codigo_cliente },
+    })
+    if (fnErr) {
+      setToast({ type: "err", msg: "Erro ao alterar o ID do cliente" })
+      return false
+    }
+    const r = res as { ok?: boolean; error?: string; empresa?: string | null; gcal_erro?: string | null } | null
+    if (!r?.ok) {
+      setToast({ type: "err", msg: r?.error ?? "Não foi possível alterar o ID do cliente" })
+      return false
+    }
+    setToast({
+      type: "ok",
+      msg: r.gcal_erro
+        ? `Reatribuído para ${r.empresa ?? "novo cliente"} (atenção: o evento no Google Calendar pode não ter sido atualizado)`
+        : `Reatribuído para ${r.empresa ?? "novo cliente"}`,
+    })
+    await refresh()
+    return true
+  }
+
   const consultoresAtivos = useMemo(() => consultores.filter(c => c.ativo), [consultores])
 
   if (loading) {
@@ -382,7 +428,13 @@ export default function CentralAtendimentosPage() {
         </TabsContent>
 
         <TabsContent value="area-consultor" className="mt-6">
-          <AreaConsultor consultores={consultoresAtivos} agendamentos={agendamentos} onExcluir={excluirAgendamento} />
+          <AreaConsultor
+            consultores={consultoresAtivos}
+            agendamentos={agendamentos}
+            onExcluir={excluirAgendamento}
+            onReagendar={reagendarAgendamento}
+            onAlterarCliente={alterarClienteAgendamento}
+          />
         </TabsContent>
       </Tabs>
 

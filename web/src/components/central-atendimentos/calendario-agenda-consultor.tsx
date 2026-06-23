@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
   VideoIcon,
@@ -33,6 +34,8 @@ interface Props {
   agendamentos: AgendamentoCentral[]
   consultorNome: string
   onExcluir: (ag: AgendamentoCentral) => Promise<boolean>
+  onReagendar: (ag: AgendamentoCentral, data: string, horario: string) => Promise<boolean>
+  onAlterarCliente: (ag: AgendamentoCentral, codigo_cliente: number) => Promise<boolean>
 }
 
 const HOUR_PX = 56
@@ -119,7 +122,7 @@ function empacotarDia(items: ItemTempo[]): Bloco[] {
   return blocos
 }
 
-export function CalendarioAgendaConsultor({ agendamentos, consultorNome, onExcluir }: Props) {
+export function CalendarioAgendaConsultor({ agendamentos, consultorNome, onExcluir, onReagendar, onAlterarCliente }: Props) {
   const [view, setView] = useState<"semana" | "dia">("semana")
   const [refDate, setRefDate] = useState(() => {
     const n = new Date()
@@ -400,27 +403,47 @@ export function CalendarioAgendaConsultor({ agendamentos, consultorNome, onExclu
         </div>
       )}
 
-      <AgendamentoDetalhe ag={selecionado} onClose={() => setSelecionado(null)} onExcluir={onExcluir} />
+      <AgendamentoDetalhe
+        ag={selecionado}
+        onClose={() => setSelecionado(null)}
+        onExcluir={onExcluir}
+        onReagendar={onReagendar}
+        onAlterarCliente={onAlterarCliente}
+      />
     </div>
   )
 }
+
+type ModoAcao = "view" | "reagendar" | "alterar" | "excluir"
 
 function AgendamentoDetalhe({
   ag,
   onClose,
   onExcluir,
+  onReagendar,
+  onAlterarCliente,
 }: {
   ag: AgendamentoCentral | null
   onClose: () => void
   onExcluir: (ag: AgendamentoCentral) => Promise<boolean>
+  onReagendar: (ag: AgendamentoCentral, data: string, horario: string) => Promise<boolean>
+  onAlterarCliente: (ag: AgendamentoCentral, codigo_cliente: number) => Promise<boolean>
 }) {
-  const [confirmando, setConfirmando] = useState(false)
-  const [excluindo, setExcluindo] = useState(false)
+  const [modo, setModo] = useState<ModoAcao>("view")
+  const [salvando, setSalvando] = useState(false)
+  const [novaData, setNovaData] = useState("")
+  const [novaHora, setNovaHora] = useState("")
+  const [novoCodigo, setNovoCodigo] = useState("")
+  const [erroCodigo, setErroCodigo] = useState<string | null>(null)
 
-  // Zera a confirmação ao trocar de reunião (ou fechar) — hooks sempre no topo.
+  // Zera o modo/formulários ao trocar de reunião (ou fechar) — hooks sempre no topo.
   useEffect(() => {
-    setConfirmando(false)
-    setExcluindo(false)
+    setModo("view")
+    setSalvando(false)
+    setErroCodigo(null)
+    setNovaData(ag?.data_reuniao ?? "")
+    setNovaHora((ag?.horario ?? "").slice(0, 5))
+    setNovoCodigo(ag?.codigo_cliente != null ? String(ag.codigo_cliente) : "")
   }, [ag?.id_unico])
 
   if (!ag) return null
@@ -430,13 +453,37 @@ function AgendamentoDetalhe({
     ? capitalizar(formatarDataLonga(new Date(ag.data_reuniao + "T00:00:00")))
     : "Sem data"
 
+  async function handleReagendar() {
+    if (!ag || !novaData || !novaHora) return
+    setSalvando(true)
+    const ok = await onReagendar(ag, novaData, novaHora)
+    setSalvando(false)
+    if (ok) onClose()
+    else setModo("view")
+  }
+
+  async function handleAlterar() {
+    if (!ag) return
+    const n = Number(novoCodigo)
+    if (!Number.isInteger(n) || n <= 0) {
+      setErroCodigo("Informe um ID válido")
+      return
+    }
+    setSalvando(true)
+    setErroCodigo(null)
+    const ok = await onAlterarCliente(ag, n)
+    setSalvando(false)
+    if (ok) onClose()
+    else setErroCodigo("Não foi possível alterar — confira o ID do cliente")
+  }
+
   async function handleExcluir() {
     if (!ag) return
-    setExcluindo(true)
+    setSalvando(true)
     const ok = await onExcluir(ag)
-    setExcluindo(false)
+    setSalvando(false)
     if (ok) onClose()
-    else setConfirmando(false)
+    else setModo("view")
   }
   return (
     <Dialog open={!!ag} onOpenChange={v => !v && onClose()}>
@@ -522,17 +569,136 @@ function AgendamentoDetalhe({
           )}
 
           <div className="pt-3 border-t border-border/50">
-            {!confirmando ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmando(true)}
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive font-bold"
-              >
-                <Trash2Icon className="size-3.5" />
-                Excluir agendamento
-              </Button>
-            ) : (
+            {modo === "view" && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setModo("reagendar")}
+                  className="font-bold"
+                >
+                  <CalendarIcon className="size-3.5" />
+                  Reagendar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setModo("alterar")}
+                  className="font-bold"
+                >
+                  <UserCheckIcon className="size-3.5" />
+                  Alterar ID do cliente
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setModo("excluir")}
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive font-bold"
+                >
+                  <Trash2Icon className="size-3.5" />
+                  Excluir
+                </Button>
+              </div>
+            )}
+
+            {modo === "reagendar" && (
+              <div className="space-y-3">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+                  Reagendar
+                </p>
+                <div className="flex gap-2">
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Data</label>
+                    <Input
+                      type="date"
+                      value={novaData}
+                      onChange={e => setNovaData(e.target.value)}
+                      disabled={salvando}
+                    />
+                  </div>
+                  <div className="w-28 space-y-1">
+                    <label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Hora</label>
+                    <Input
+                      type="time"
+                      value={novaHora}
+                      onChange={e => setNovaHora(e.target.value)}
+                      disabled={salvando}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  O evento no Google Calendar é movido e o cliente é avisado.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleReagendar}
+                    disabled={salvando || !novaData || !novaHora}
+                    className="font-bold"
+                  >
+                    {salvando ? "Salvando..." : "Salvar"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setModo("view")}
+                    disabled={salvando}
+                    className="font-bold"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {modo === "alterar" && (
+              <div className="space-y-3">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+                  Alterar ID do cliente
+                </p>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                    Novo ID do cliente
+                  </label>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    value={novoCodigo}
+                    onChange={e => {
+                      setNovoCodigo(e.target.value)
+                      setErroCodigo(null)
+                    }}
+                    disabled={salvando}
+                    placeholder="Ex.: 316"
+                  />
+                  {erroCodigo && <p className="text-xs font-semibold text-destructive">{erroCodigo}</p>}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  A reunião passa pro painel do cliente certo e o evento no Google Calendar é atualizado.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleAlterar}
+                    disabled={salvando || !novoCodigo}
+                    className="font-bold"
+                  >
+                    {salvando ? "Salvando..." : "Salvar"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setModo("view")}
+                    disabled={salvando}
+                    className="font-bold"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {modo === "excluir" && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
                   Tem certeza? Isso também remove o evento do Google Calendar.
@@ -542,17 +708,17 @@ function AgendamentoDetalhe({
                     variant="destructive"
                     size="sm"
                     onClick={handleExcluir}
-                    disabled={excluindo}
+                    disabled={salvando}
                     className="font-bold"
                   >
                     <Trash2Icon className="size-3.5" />
-                    {excluindo ? "Excluindo..." : "Excluir"}
+                    {salvando ? "Excluindo..." : "Excluir"}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setConfirmando(false)}
-                    disabled={excluindo}
+                    onClick={() => setModo("view")}
+                    disabled={salvando}
                     className="font-bold"
                   >
                     Cancelar

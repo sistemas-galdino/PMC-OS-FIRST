@@ -28,6 +28,8 @@ interface Props {
   consultores: Consultor[]
   agendamentos: AgendamentoCentral[]
   onExcluir: (ag: AgendamentoCentral) => Promise<boolean>
+  onReagendar: (ag: AgendamentoCentral, data: string, horario: string) => Promise<boolean>
+  onAlterarCliente: (ag: AgendamentoCentral, codigo_cliente: number) => Promise<boolean>
 }
 
 function hojeIso(): string {
@@ -41,7 +43,7 @@ function descricaoConsultor(c: Consultor): string {
   return "Consultor"
 }
 
-export function AreaConsultor({ consultores, agendamentos, onExcluir }: Props) {
+export function AreaConsultor({ consultores, agendamentos, onExcluir, onReagendar, onAlterarCliente }: Props) {
   const [sp, setSp] = useSearchParams()
   const slugParam = sp.get("consultor")
 
@@ -178,7 +180,13 @@ export function AreaConsultor({ consultores, agendamentos, onExcluir }: Props) {
         <TabsContent value="agenda">
           <Card>
             <CardContent className="p-4 sm:p-6">
-              <CalendarioAgendaConsultor agendamentos={meusAgendamentos} consultorNome={primeiroNome} onExcluir={onExcluir} />
+              <CalendarioAgendaConsultor
+                agendamentos={meusAgendamentos}
+                consultorNome={primeiroNome}
+                onExcluir={onExcluir}
+                onReagendar={onReagendar}
+                onAlterarCliente={onAlterarCliente}
+              />
             </CardContent>
           </Card>
         </TabsContent>

@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts"
 import { criarEvento, type NovoEvento } from "../_shared/google-calendar.ts"
+import { tituloEvento, descricaoEvento } from "../_shared/agendamento-evento.ts"
 
 interface Body {
   slug: string
@@ -68,37 +69,6 @@ function minutosEntre(h5a: string, h5b: string): number {
   const [ha, ma] = h5a.split(":").map(Number)
   const [hb, mb] = h5b.split(":").map(Number)
   return (hb * 60 + mb) - (ha * 60 + ma)
-}
-
-function tituloEvento(consultor: Consultor, cliente_nome: string, empresa: string | null): string {
-  const empresaTxt = empresa ? ` — ${empresa}` : ""
-  if (consultor.tabela_destino === "reunioes_galdino") {
-    return `PMC - Reunião Individual - Rafael Galdino (${cliente_nome})${empresaTxt}`
-  }
-  if (consultor.tabela_destino === "reunioes_blackcrm") {
-    const t = consultor.tipo_reuniao === "implementacao" ? "Implementação" : "Tutoria"
-    return `[PMC - ${consultor.nome}] ${t}${empresaTxt}`
-  }
-  return `[PMC] Acompanhamento com Consultor ${consultor.nome} (${cliente_nome})${empresaTxt}`
-}
-
-function descricaoEvento(opts: {
-  cliente_nome: string
-  cliente_email: string
-  cliente_telefone: string | null
-  empresa: string | null
-  observacoes: string | null
-  codigo_cliente: number | null
-}): string {
-  const linhas = [
-    `Cliente: ${opts.cliente_nome}`,
-    `Email: ${opts.cliente_email}`,
-  ]
-  if (opts.cliente_telefone) linhas.push(`Telefone: ${opts.cliente_telefone}`)
-  if (opts.empresa) linhas.push(`Empresa: ${opts.empresa}`)
-  if (opts.observacoes) linhas.push("", `Observações: ${opts.observacoes}`)
-  if (opts.codigo_cliente) linhas.push("", `Código do cliente: ${opts.codigo_cliente}`)
-  return linhas.join("\n")
 }
 
 Deno.serve(async (req: Request) => {
@@ -348,7 +318,13 @@ Deno.serve(async (req: Request) => {
       const endISO = `${data}T${endHorario}${TZ_OFFSET}`
 
       const payload: NovoEvento = {
-        summary: tituloEvento(consultor, cliente_nome, empresaFinal),
+        summary: tituloEvento({
+          tabela_destino: consultor.tabela_destino,
+          nome: consultor.nome,
+          tipo_reuniao: consultor.tipo_reuniao,
+          cliente_nome,
+          empresa: empresaFinal,
+        }),
         description: descricaoEvento({
           cliente_nome,
           cliente_email: cliente_email.toLowerCase(),
