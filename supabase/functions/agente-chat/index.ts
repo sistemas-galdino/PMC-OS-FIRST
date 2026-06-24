@@ -18,7 +18,8 @@ Banco Postgres (Supabase) do programa PMC. Tabelas/views principais (somente lei
 
 - agendamentos_central (VIEW — visao UNIFICADA de TODAS as reunioes; use para perguntas gerais de reuniao/agenda):
     origem ('galdino'|'mentoria'|'blackcrm'), id_unico, id_reuniao, data_reuniao (date),
-    horario, consultor_nome, cliente_nome, cliente_email, empresa, status_agendamento
+    horario, consultor_nome, cliente_nome, cliente_email, empresa, status_agendamento,
+    codigo_cliente (NUMERO do cliente), id_cliente, link_meet, link_gravacao
 - reunioes_mentoria_new (reunioes com consultores; tem transcricao/resumo):
     id_unico (uuid), id_cliente (uuid), id_reuniao, data_reuniao (date), horario, mentor,
     pessoa, empresa, cliente_email, status_agendamento, link_meet, link_gravacao,
@@ -38,30 +39,47 @@ Banco Postgres (Supabase) do programa PMC. Tabelas/views principais (somente lei
 - mentores: equipe/admins (email, ...)
 
 Convencoes importantes:
+- IDENTIFICACAO DO CLIENTE: cada cliente tem um numero (codigo_cliente). "cliente 234" =>
+  filtre por codigo_cliente = 234 (numerico), nao trate como nome. Alternativa: achar por nome
+  (pessoa / nome_cliente_formatado / nome_empresa_formatado com ILIKE).
 - Empresa do cliente = nome_empresa_formatado (clientes_entrada_new) ou empresa (nas reunioes).
 - reunioes_blackcrm.data_reuniao e TEXT no formato 'AAAA-MM-DD' (compare como texto ou ::date).
 - Para reuniao/agenda em geral prefira agendamentos_central; para transcricao/resumo use as
   tabelas de detalhe (reunioes_*).
 `.trim()
 
-function systemPrompt(hoje: string): string {
+function systemPrompt(hoje: string, diaSemana: string): string {
   return [
     "Voce e o assistente interno do PMC OS, usado pela equipe (admins) para apurar reunioes,",
     "clientes, agendamentos e tudo do programa. Responda SEMPRE em portugues do Brasil, de forma",
     "objetiva e citando numeros concretos. Quando fizer sentido, formate em tabela markdown.",
     "",
-    `Hoje e ${hoje}.`,
+    `Hoje e ${hoje} (${diaSemana}), no fuso de Sao Paulo. 'amanha' = hoje+1; 'esta semana' = seg a dom.`,
     "",
     "Voce tem acesso SOMENTE LEITURA ao banco via a tool `consultar_banco` (uma unica query SELECT",
-    "em Postgres). Use `descrever_schema` quando estiver em duvida sobre o nome exato de uma tabela",
-    "ou coluna. Nao invente dados: se a query nao retornar linhas, diga que nao ha registros.",
+    "em Postgres). Use `descrever_schema` quando estiver em duvida sobre o nome de uma tabela/coluna.",
     "Voce NAO pode alterar nada — se pedirem para criar/editar/apagar, explique que e somente leitura.",
+    "Se uma tool retornar um objeto com `erro`, informe brevemente que houve um problema tecnico e",
+    "NAO invente dados.",
     "",
-    "Se uma tool retornar um objeto com `erro`, informe brevemente que houve um problema tecnico",
-    "ao consultar o banco e NAO invente dados.",
-    "Ao perguntarem sobre reunioes, NAO filtre por status a menos que peçam explicitamente um",
-    "status; conte/lista todas as reunioes do periodo. Para datas, use a coluna `data_reuniao`",
-    "(tipo date) em agendamentos_central.",
+    "COMO CONSULTAR (importante p/ nao errar):",
+    "- Cliente e identificado pelo NUMERO `codigo_cliente`. 'cliente 234' => filtre por",
+    "  codigo_cliente = 234 (numerico); nao trate 234 como nome.",
+    "- Para achar a reuniao de um cliente, filtre por codigo_cliente (e data se preciso). NAO",
+    "  acrescente filtro por consultor_nome — o codigo do cliente ja identifica e o nome do",
+    "  consultor pode nao bater (ex.: 'David' vs nome completo). So filtre por consultor se",
+    "  pedirem explicitamente as reunioes de um consultor especifico.",
+    "- NAO filtre por status a menos que peçam explicitamente um status.",
+    `- Proxima reuniao de um cliente: data_reuniao >= '${hoje}' (INCLUI hoje), ordenado por data.`,
+    "- Se a consulta vier VAZIA, remova os filtros opcionais (consultor, status, data) e tente de",
+    "  novo (ex.: so por codigo_cliente) ANTES de concluir que nao ha; so diga que nao existe",
+    "  depois de tentar a versao ampla.",
+    "",
+    "BRIEFING ('o que preciso saber pra reuniao com o cliente X'): reuna e resuma (1) dados do",
+    "cliente em clientes_entrada_new pelo codigo_cliente (empresa=nome_empresa_formatado, CS=sc,",
+    "status_atual, nivel_engajamento); (2) a reuniao em agendamentos_central (data, horario,",
+    "consultor, status, link_meet); (3) historico: ultimas reunioes com resumo/transcricao",
+    "(reunioes_*) e atividades pendentes em cliente_atividades.",
     "",
     "Esquema do banco:",
     SCHEMA_DOC,
@@ -144,14 +162,20 @@ Deno.serve(async (req: Request) => {
       },
     })
 
-    const hoje = new Date().toISOString().slice(0, 10)
+    const agora = new Date()
+    const hoje = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(agora)
+    const diaSemana = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo", weekday: "long",
+    }).format(agora)
 
     const result = streamText({
       model: openai("gpt-4o"),
-      system: systemPrompt(hoje),
+      system: systemPrompt(hoje, diaSemana),
       messages: convertToCoreMessages(messages),
       tools: { consultar_banco: consultarBanco, descrever_schema: descreverSchema },
-      maxSteps: 6,
+      maxSteps: 10,
       onFinish: async ({ text }) => {
         if (conversationId && text && text.trim()) {
           await supabase.from("agent_messages").insert({
