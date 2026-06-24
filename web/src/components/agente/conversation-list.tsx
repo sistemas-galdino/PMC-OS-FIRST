@@ -19,7 +19,7 @@ export function ConversationList({ conversas, activeId, onSelect, onNova, onExcl
           Nova conversa
         </Button>
       </div>
-      <div className="flex-1 overflow-y-auto px-2 pb-3">
+      <div className="flex-1 overflow-y-auto px-2 pb-3 scrollbar-custom">
         {conversas.length === 0 ? (
           <p className="px-3 py-6 text-center text-xs text-muted-foreground">
             Nenhuma conversa ainda.

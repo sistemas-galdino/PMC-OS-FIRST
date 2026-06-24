@@ -57,6 +57,12 @@ function systemPrompt(hoje: string): string {
     "ou coluna. Nao invente dados: se a query nao retornar linhas, diga que nao ha registros.",
     "Voce NAO pode alterar nada — se pedirem para criar/editar/apagar, explique que e somente leitura.",
     "",
+    "Se uma tool retornar um objeto com `erro`, informe brevemente que houve um problema tecnico",
+    "ao consultar o banco e NAO invente dados.",
+    "Ao perguntarem sobre reunioes, NAO filtre por status a menos que peçam explicitamente um",
+    "status; conte/lista todas as reunioes do periodo. Para datas, use a coluna `data_reuniao`",
+    "(tipo date) em agendamentos_central.",
+    "",
     "Esquema do banco:",
     SCHEMA_DOC,
   ].join("\n")
@@ -112,7 +118,10 @@ Deno.serve(async (req: Request) => {
       }),
       execute: async ({ sql }) => {
         const { data, error } = await supabase.rpc("agent_run_sql", { p_sql: sql })
-        if (error) return { erro: error.message }
+        if (error) {
+          console.error("agent_run_sql error:", JSON.stringify(error))
+          return { erro: error.message }
+        }
         return { linhas: data }
       },
     })
@@ -127,7 +136,10 @@ Deno.serve(async (req: Request) => {
         const { data, error } = await supabase.rpc("agent_describe_schema", {
           p_tabelas: tabelas && tabelas.length ? tabelas : null,
         })
-        if (error) return { erro: error.message }
+        if (error) {
+          console.error("agent_describe_schema error:", JSON.stringify(error))
+          return { erro: error.message }
+        }
         return { schema: data }
       },
     })

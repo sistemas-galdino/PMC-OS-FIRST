@@ -70,7 +70,7 @@ export function Chat({ conversationId, initialMessages, onConversationCreated, c
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto px-4 py-6 scrollbar-custom">
         {vazio ? (
           <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center gap-6 text-center">
             <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-lg shadow-primary/10">
@@ -129,7 +129,7 @@ export function Chat({ conversationId, initialMessages, onConversationCreated, c
             }}
             rows={1}
             placeholder="Pergunte sobre reuniões, clientes, agendamentos…"
-            className="max-h-40 min-h-[44px] flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            className="max-h-40 min-h-[44px] flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 scrollbar-custom"
           />
           <Button
             type="submit"
