@@ -242,6 +242,10 @@ export const Sparkles2Icon = (props: IconProps) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3l1.912 4.338L18.25 9.25l-4.338 1.912L12 15.5l-1.912-4.338L5.75 9.25l4.338-1.912zM19 15l.955 2.17L22.125 18.125L19.955 19.08L19 21.25l-.955-2.17L15.875 18.125l2.17-.955z"/></svg>
 );
 
+export const BotIcon = (props: IconProps) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"><rect width="18" height="10" x="3" y="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4m-4 5h.01M16 16h.01"/></g></svg>
+);
+
 export const Building2Icon = (props: IconProps) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2m12 0h2a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2"/><path d="M10 6h4m-4 4h4m-4 4h4m-4 4h4"/></g></svg>
 );

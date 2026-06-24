@@ -162,7 +162,9 @@ Deno.serve(async (req: Request) => {
       description:
         "Retorna as colunas (nome e tipo) das tabelas do programa. Use quando estiver em duvida sobre nomes de tabelas/colunas antes de escrever um SELECT.",
       parameters: z.object({
-        tabelas: z.array(z.string()).optional().describe("Opcional: lista de tabelas a descrever; vazio = todas."),
+        // .nullable (e nao .optional) por causa do strict schema da Responses API do gpt-5.5:
+        // todo campo precisa estar em `required`. null = descrever todas as tabelas.
+        tabelas: z.array(z.string()).nullable().describe("Lista de tabelas a descrever; use null para descrever todas."),
       }),
       execute: async ({ tabelas }) => {
         const { data, error } = await supabase.rpc("agent_describe_schema", {
@@ -185,12 +187,18 @@ Deno.serve(async (req: Request) => {
     }).format(agora)
 
     const result = streamText({
-      model: openai("gpt-5.5"),
+      // gpt-5.5 com tools + reasoning EXIGE a Responses API (/v1/responses); o openai()
+      // default vai pro /v1/chat/completions e quebra. .responses() roteia certo.
+      model: openai.responses("gpt-5.5"),
       providerOptions: { openai: { reasoningEffort: "medium" } },
       system: systemPrompt(hoje, diaSemana),
       messages: convertToCoreMessages(messages),
       tools: { consultar_banco: consultarBanco, descrever_schema: descreverSchema },
       maxSteps: 15,
+      onError: (e) => {
+        const m = e instanceof Error ? `${e.name}: ${e.message}` : JSON.stringify(e)
+        console.error("streamText error:", m)
+      },
       onFinish: async ({ text }) => {
         if (conversationId && text && text.trim()) {
           await supabase.from("agent_messages").insert({
@@ -202,7 +210,15 @@ Deno.serve(async (req: Request) => {
       },
     })
 
-    return result.toDataStreamResponse({ headers: corsHeaders })
+    return result.toDataStreamResponse({
+      headers: corsHeaders,
+      // Propaga a mensagem real do erro pro cliente (em vez do generico "An error occurred").
+      getErrorMessage: (error) => {
+        const m = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+        console.error("toDataStreamResponse error:", m)
+        return m
+      },
+    })
   } catch (e) {
     return jsonResponse({ error: String(e instanceof Error ? e.message : e) }, 500)
   }

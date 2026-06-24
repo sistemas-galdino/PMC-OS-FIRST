@@ -156,3 +156,23 @@
 .scrollbar-custom::-webkit-scrollbar-thumb:hover {
   background-color: var(--muted-foreground);
 }
+
+/* Texto com brilho passando (indicador "em processo" do agente) */
+@keyframes text-shimmer {
+  to {
+    background-position: -200% center;
+  }
+}
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted-foreground) 0%,
+    var(--foreground) 50%,
+    var(--muted-foreground) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shimmer 1.6s linear infinite;
+}
