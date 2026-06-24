@@ -29,6 +29,12 @@ interface Reuniao {
 
 const TABELAS: Reuniao["origem_tabela"][] = ["reunioes_galdino", "reunioes_mentoria_new", "reunioes_blackcrm"]
 
+// Até quando vale re-checar o anexo de gravação numa reunião já transcrita. A
+// gravação (mp4) costuma entrar no evento depois da transcrição/doc; sem isso o
+// link_gravacao nunca era preenchido. Gravação não aparece meses depois, então
+// limitamos a janela pra não re-buscar evento à toa pra sempre.
+const JANELA_REGRAVACAO_DIAS = 120
+
 function autorizado(req: Request): boolean {
   const expected = Deno.env.get("CRON_INVOKE_TOKEN")
   if (!expected) return false
@@ -60,6 +66,9 @@ function nomeConsultorDaLinha(r: Reuniao): string | null {
 
 async function buscarReunioesParaEnrich(supabase: any): Promise<Reuniao[]> {
   const hojeIso = new Date().toISOString().slice(0, 10)
+  const cutoffRegravacao = new Date(Date.now() - JANELA_REGRAVACAO_DIAS * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10)
   const all: Reuniao[] = []
 
   const sel = "id_unico, id_reuniao, data_reuniao, empresa, transcricao, link_geminidoc, link_gravacao, ganho"
@@ -76,7 +85,11 @@ async function buscarReunioesParaEnrich(supabase: any): Promise<Reuniao[]> {
       .eq("criado_via", "agendamento_publico")
       .not("id_reuniao", "is", null)
       .lt("data_reuniao", hojeIso)
-      .or("transcricao.is.null,ganho.is.null")
+      // Falta transcrição/ganho (qualquer idade) OU falta gravação/doc numa reunião
+      // recente (até JANELA_REGRAVACAO_DIAS): a gravação chega depois da transcrição.
+      .or(
+        `transcricao.is.null,ganho.is.null,and(data_reuniao.gte.${cutoffRegravacao},or(link_gravacao.is.null,link_geminidoc.is.null))`,
+      )
 
     if (error) {
       console.error(`[sincronizar] erro select ${tabela}:`, error.message)
@@ -109,6 +122,8 @@ async function enrichReuniao(supabase: any, r: Reuniao, consultor: Consultor): P
     const patch: Record<string, unknown> = {}
     if (!r.link_gravacao && att.gravacao_url) patch.link_gravacao = att.gravacao_url
     if (!r.link_geminidoc && att.gemini_doc_url) patch.link_geminidoc = att.gemini_doc_url
+    // Marca gravada quando a gravação aparece (inclusive tardia, sem reler o doc).
+    if (r.origem_tabela === "reunioes_mentoria_new" && att.gravacao_url) patch.gravada = true
 
     if (att.gemini_doc_id && !r.transcricao) {
       try {
@@ -119,7 +134,6 @@ async function enrichReuniao(supabase: any, r: Reuniao, consultor: Consultor): P
         if (parsed.detalhes) patch.detalhes_reuniao = parsed.detalhes
         if (r.origem_tabela === "reunioes_mentoria_new") {
           patch.tem_transcricao = !!parsed.transcricao
-          patch.gravada = !!att.gravacao_url
         }
       } catch (docErr) {
         // gemini doc pode falhar (ainda não pronto). Continua só com attachments.
@@ -213,8 +227,10 @@ Deno.serve(async (req: Request) => {
     const consultor = consultoresMap.get(`${r.origem_tabela}|${consultorNome}`)
     if (!consultor) continue
 
-    // Passada 1: enrich (Calendar + Docs)
-    if (!r.transcricao) {
+    // Passada 1: enrich (Calendar + Docs). Roda também quando só falta a gravação/doc
+    // (gravação tardia): enrichReuniao preenche os links sempre e só relê o doc se
+    // a transcrição ainda estiver vazia.
+    if (!r.transcricao || !r.link_gravacao || !r.link_geminidoc) {
       const res = await enrichReuniao(supabase, r, consultor)
       if (res.ok) {
         stats.enrich_ok++

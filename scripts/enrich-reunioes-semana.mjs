@@ -322,9 +322,12 @@ async function main() {
 
   // Helper: processa um evento (faltante OU incompleto) numa tabela
   async function processEntry(entry, tabela, mode) {
+    // Já tem transcrição (e sem --force): não relê o doc/LLM, mas ainda backfilla
+    // gravação/doc que chegaram DEPOIS da transcrição (gravação tardia).
+    let soAnexos = false
     if (SKIP_WITH_TRANSCR) {
       const { data: row } = await supabase.from(tabela).select('transcricao').eq('id_reuniao', entry.id).maybeSingle()
-      if (row?.transcricao) { console.log(`   ⏭️ ${entry.id} já tem transcrição — pulando (use --force pra sobrescrever)`); return null }
+      if (row?.transcricao) { console.log(`   📎 ${entry.id} já tem transcrição — checando só anexos (gravação/doc)`); soAnexos = true }
     }
     const { event, gravacao, geminiDoc } = getAttachments(allLookupEvents, entry.id)
     if (!event) { console.log(`   ⚠️ evento ${entry.id} não encontrado nos JSONs`); return null }
@@ -336,7 +339,7 @@ async function main() {
     const mentor = findMentor(event.summary || '', mentoresNomes)
 
     let parsed = { resumo: null, detalhes: null, transcricao: null }
-    if (geminiDoc?.fileId) {
+    if (geminiDoc?.fileId && !soAnexos) {
       try {
         const doc = await fetchGeminiDoc(accessToken, geminiDoc.fileId)
         parsed = parseGeminiDoc(doc)
