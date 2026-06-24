@@ -1,6 +1,7 @@
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "./app-sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { FloatingAgente } from "@/components/agente/floating-agente"
 import { motion, AnimatePresence } from "framer-motion"
 import { useLocation } from "react-router-dom"
 
@@ -36,6 +37,7 @@ export function DashboardLayout({ children, isAdmin }: DashboardLayoutProps) {
               </motion.div>
             </AnimatePresence>
           </main>
+          {isAdmin && <FloatingAgente />}
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>

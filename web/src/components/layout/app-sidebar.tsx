@@ -18,6 +18,7 @@ import {
   ClockIcon as Clock,
   SettingsIcon as Settings,
   MessageSquareIcon as MessageSquare,
+  MessageCircleIcon as MessageCircle,
   LogOutIcon as LogOut,
   ChevronRightIcon as ChevronRight,
   Share2Icon as Share2,
@@ -78,6 +79,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
 
   const adminItems = [
     { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
+    { title: "Agente", icon: MessageCircle, url: "/agente" },
     { title: "Clientes", icon: Users, url: "/clientes" },
     { title: "CRM", icon: Target, url: "/crm" },
     { title: "Acessos", icon: ShieldCheck, url: "/acessos" },
