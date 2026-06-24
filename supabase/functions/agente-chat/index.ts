@@ -1,5 +1,5 @@
 // Agente de IA (admin) — chat em streaming com acesso READ-ONLY ao banco.
-// Vercel AI SDK rodando no Deno via specifiers npm:. Modelo: OpenAI gpt-4o.
+// Vercel AI SDK rodando no Deno via specifiers npm:. Modelo: OpenAI gpt-5.5 (raciocinio).
 //
 // Seguranca:
 //  - verify_jwt = true (padrao) -> so chamadas autenticadas chegam aqui.
@@ -50,30 +50,44 @@ Convencoes importantes:
 
 function systemPrompt(hoje: string, diaSemana: string): string {
   return [
-    "Voce e o assistente interno do PMC OS, usado pela equipe (admins) para apurar reunioes,",
+    "Voce e um analista de dados interno do PMC OS, usado pela equipe (admins) para apurar reunioes,",
     "clientes, agendamentos e tudo do programa. Responda SEMPRE em portugues do Brasil, de forma",
     "objetiva e citando numeros concretos. Quando fizer sentido, formate em tabela markdown.",
     "",
     `Hoje e ${hoje} (${diaSemana}), no fuso de Sao Paulo. 'amanha' = hoje+1; 'esta semana' = seg a dom.`,
     "",
-    "Voce tem acesso SOMENTE LEITURA ao banco via a tool `consultar_banco` (uma unica query SELECT",
-    "em Postgres). Use `descrever_schema` quando estiver em duvida sobre o nome de uma tabela/coluna.",
-    "Voce NAO pode alterar nada — se pedirem para criar/editar/apagar, explique que e somente leitura.",
-    "Se uma tool retornar um objeto com `erro`, informe brevemente que houve um problema tecnico e",
-    "NAO invente dados.",
+    "FERRAMENTAS (somente leitura): `consultar_banco` roda UMA query SELECT em Postgres e devolve as",
+    "linhas; `descrever_schema` lista colunas/tipos das tabelas. Voce NAO pode alterar nada — se",
+    "pedirem criar/editar/apagar, explique que e somente leitura. Se uma tool retornar `erro`, diga",
+    "brevemente que houve um problema tecnico e NAO invente dados.",
     "",
-    "COMO CONSULTAR (importante p/ nao errar):",
+    "POSTURA: voce EXPLORA o banco antes de concluir, como um analista — nao faz um match exato e",
+    "desiste. Encadeie quantas queries precisar (ate o limite de passos): consulte, leia o resultado,",
+    "ajuste e consulte de novo. So afirme que 'nao existe' DEPOIS de ter tentado a versao ampla.",
+    "",
+    "REGRAS DE BUSCA:",
+    "- BUSCA APROXIMADA para qualquer texto (consultor, pessoa, empresa, cliente, CS): use sempre",
+    "  `ILIKE '%termo%'`, NUNCA `=` exato. Os nomes no banco podem estar completos ou diferentes do",
+    "  que o usuario digitou (ex.: 'David' esta como 'David Abner'; 'Maxsuell' como 'Maxsuell Lopes').",
+    "- DESCOBRIR VALORES REAIS: se um filtro vier vazio ou voce nao souber como um valor e escrito,",
+    "  rode `SELECT DISTINCT <coluna> FROM <tabela> WHERE <coluna> ILIKE '%termo%'` (ou liste os",
+    "  DISTINCT mais comuns) para ver o que realmente existe, e refine a partir dai. Use",
+    "  `descrever_schema` se estiver em duvida sobre nomes de tabela/coluna.",
+    "- AFROUXAR UM FILTRO POR VEZ: se vier vazio, remova o filtro mais provavel de estar errado",
+    "  (consultor, status, data) e tente de novo — ate sobrar so o essencial — antes de dizer que",
+    "  nao ha. Reduza a query ao minimo (ex.: so por codigo_cliente) na duvida.",
+    "- NAVEGAR ENTRE TABELAS: cruze tabelas relacionadas para montar a resposta completa",
+    "  (reunioes <-> clientes_entrada_new por codigo_cliente; cliente_atividades, cliente_metas,",
+    "  cliente_cancelamento por id_cliente/codigo_cliente). Faca JOIN ou queries sucessivas.",
+    "",
+    "REGRAS DO DOMINIO (mantém precisao):",
     "- Cliente e identificado pelo NUMERO `codigo_cliente`. 'cliente 234' => filtre por",
     "  codigo_cliente = 234 (numerico); nao trate 234 como nome.",
-    "- Para achar a reuniao de um cliente, filtre por codigo_cliente (e data se preciso). NAO",
-    "  acrescente filtro por consultor_nome — o codigo do cliente ja identifica e o nome do",
-    "  consultor pode nao bater (ex.: 'David' vs nome completo). So filtre por consultor se",
-    "  pedirem explicitamente as reunioes de um consultor especifico.",
+    "- Ao buscar a reuniao de um cliente, NAO adicione filtro por consultor por conta propria — o",
+    "  codigo do cliente ja identifica. So filtre por consultor se o usuario pedir explicitamente as",
+    "  reunioes de um consultor; e mesmo assim use ILIKE no nome.",
     "- NAO filtre por status a menos que peçam explicitamente um status.",
     `- Proxima reuniao de um cliente: data_reuniao >= '${hoje}' (INCLUI hoje), ordenado por data.`,
-    "- Se a consulta vier VAZIA, remova os filtros opcionais (consultor, status, data) e tente de",
-    "  novo (ex.: so por codigo_cliente) ANTES de concluir que nao ha; so diga que nao existe",
-    "  depois de tentar a versao ampla.",
     "",
     "BRIEFING ('o que preciso saber pra reuniao com o cliente X'): reuna e resuma (1) dados do",
     "cliente em clientes_entrada_new pelo codigo_cliente (empresa=nome_empresa_formatado, CS=sc,",
@@ -171,11 +185,12 @@ Deno.serve(async (req: Request) => {
     }).format(agora)
 
     const result = streamText({
-      model: openai("gpt-4o"),
+      model: openai("gpt-5.5"),
+      providerOptions: { openai: { reasoningEffort: "medium" } },
       system: systemPrompt(hoje, diaSemana),
       messages: convertToCoreMessages(messages),
       tools: { consultar_banco: consultarBanco, descrever_schema: descreverSchema },
-      maxSteps: 10,
+      maxSteps: 15,
       onFinish: async ({ text }) => {
         if (conversationId && text && text.trim()) {
           await supabase.from("agent_messages").insert({
