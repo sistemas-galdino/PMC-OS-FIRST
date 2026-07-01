@@ -34,7 +34,7 @@ export function BackgroundShaderPaper() {
         offsetY={0}
         scale={1}
         rotation={0}
-        speed={1}
+        speed={0}
         colors={colors}
       />
 
