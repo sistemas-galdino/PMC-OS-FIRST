@@ -25,7 +25,7 @@ export function BackgroundShaderPaper() {
         colorBack="hsl(0, 0%, 0%)"
         softness={0.76}
         intensity={0.45}
-        noise={0}
+        noise={0.5}
         shape="corners"
         offsetX={0}
         offsetY={0}
