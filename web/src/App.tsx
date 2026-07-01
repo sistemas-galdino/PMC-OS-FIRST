@@ -43,7 +43,8 @@ import CRMPage from "@/pages/crm"
 import AgentePage from "@/pages/agente"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
-import { BackgroundShader } from "@/components/ui/background-shader"
+// import { BackgroundShader } from "@/components/ui/background-shader" // fallback: shader padrão
+import { BackgroundShaderPaper } from "@/components/ui/background-shader-paper"
 
 // Error Boundary to catch any component crashes
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: any }> {
@@ -180,7 +181,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <BackgroundShader />
+      <BackgroundShaderPaper />
       <BrowserRouter>
         <Routes>
           <Route
