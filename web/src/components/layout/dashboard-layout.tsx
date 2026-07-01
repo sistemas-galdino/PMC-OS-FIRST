@@ -17,7 +17,7 @@ export function DashboardLayout({ children, isAdmin }: DashboardLayoutProps) {
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar isAdmin={isAdmin} />
-        <SidebarInset className="bg-background/20 backdrop-blur-3xl relative">
+        <SidebarInset className="bg-background/30 relative">
           <div className="absolute top-4 left-4 z-50">
             <SidebarTrigger className="text-primary hover:bg-primary/10 transition-colors shadow-lg bg-background/20 backdrop-blur-md border border-border/50" />
           </div>

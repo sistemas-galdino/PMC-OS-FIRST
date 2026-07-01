@@ -3,10 +3,13 @@ import { useMemo } from "react"
 
 /**
  * Background estilo paper-design (GrainGradient): fundo preto + manchas de cor
- * nos cantos + granulado nativo. Recolorido na paleta verde/lime do sistema.
+ * nos cantos, na paleta verde/lime do sistema, + uma camada de grão de filme
+ * por cima cobrindo a tela inteira.
  *
- * Mesmos parâmetros do exemplo de referência, só com as 3 cores trocadas pelo
- * verde da marca (lime #dafc67 + verdes vivos).
+ * Obs: o grão do próprio GrainGradient só aparece nas transições de cor (ele é
+ * somado ao `shape`, que satura nas áreas chapadas). O granulado visível no
+ * fundo todo vem da camada `feTurbulence` sobreposta — ajuste a intensidade via
+ * a `opacity` dessa camada.
  */
 export function BackgroundShaderPaper() {
   const colors = useMemo(
@@ -34,6 +37,24 @@ export function BackgroundShaderPaper() {
         speed={1}
         colors={colors}
       />
+
+      {/* Camada de grão de filme — cobre a tela toda (o grão do shader só pega
+          nas transições de cor). Suba/baixe a opacity pra mais/menos grão. */}
+      <svg
+        className="absolute inset-0 h-full w-full opacity-55 mix-blend-screen"
+        aria-hidden="true"
+      >
+        <filter id="bg-film-grain">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.4"
+            numOctaves={4}
+            stitchTiles="stitch"
+          />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#bg-film-grain)" />
+      </svg>
     </div>
   )
 }
