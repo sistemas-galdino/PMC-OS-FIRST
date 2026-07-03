@@ -19,9 +19,10 @@ interface Props {
   session?: Session
   clientId?: string
   adminView?: boolean
+  hideTabList?: boolean
 }
 
-export default function GuardiaoPage({ session, clientId, adminView }: Props) {
+export default function GuardiaoPage({ session, clientId, adminView, hideTabList }: Props) {
   const [sp, setSp] = useSearchParams()
   const raw = sp.get('tab') || 'visao-geral'
   const tab = VALID_TABS.has(raw) ? raw : 'visao-geral'
@@ -49,6 +50,7 @@ export default function GuardiaoPage({ session, clientId, adminView }: Props) {
       </motion.div>
 
       <Tabs value={tab} onValueChange={onTabChange} className="w-full">
+        {!hideTabList && (
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="visao-geral">
             <ShieldCheck className="size-4" />
@@ -67,6 +69,7 @@ export default function GuardiaoPage({ session, clientId, adminView }: Props) {
             <span>Ranking</span>
           </TabsTrigger>
         </TabsList>
+        )}
 
         <TabsContent value="visao-geral" className="mt-8">
           <VisaoGeral />

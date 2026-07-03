@@ -251,7 +251,7 @@ function App() {
                     <Route path="/respostas-onboarding" element={isAdmin ? <RespostasOnboardingPage /> : <Navigate to="/" replace />} />
                     <Route path="/crm" element={isAdmin ? <CRMPage /> : <Navigate to="/" replace />} />
                     <Route path="/agente" element={isAdmin ? <AgentePage /> : <Navigate to="/" replace />} />
-                    <Route path="/guardiao" element={<GuardiaoPage session={session} />} />
+                    <Route path="/guardiao" element={<GuardiaoPage session={session} hideTabList />} />
                     <Route path="/guardiao-admin" element={isAdmin ? <GuardiaoAdminPage /> : <Navigate to="/" replace />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

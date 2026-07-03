@@ -6,11 +6,15 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   LayoutDashboardIcon as LayoutDashboard,
   UsersIcon as Users,
@@ -47,7 +51,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
-import { useLocation, useNavigate } from "react-router-dom"
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
 import { DollarSignIcon } from "@/components/ui/icons"
@@ -59,6 +63,8 @@ interface AppSidebarProps {
 export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const currentTab = searchParams.get("tab") || "visao-geral"
   const moedaAtual = useClienteMoeda()
 
   async function trocarMoeda(nova: string) {
@@ -77,7 +83,10 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     }
   }
 
-  const adminItems = [
+  type NavChild = { title: string; tab: string }
+  type NavItem = { title: string; icon: any; url: string; children?: NavChild[] }
+
+  const adminItems: NavItem[] = [
     { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
     { title: "Agente", icon: MessageCircle, url: "/agente" },
     { title: "Clientes", icon: Users, url: "/clientes" },
@@ -98,7 +107,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Configurações", icon: Settings, url: "/configuracoes" },
   ]
 
-  const clientItems = [
+  const clientItems: NavItem[] = [
     { title: "Dashboard", icon: LayoutDashboard, url: "/" },
     { title: "Informações da Empresa", icon: Building, url: "/informacoes-empresa" },
     { title: "Mapeamento", icon: Share2, url: "/mapeamento" },
@@ -110,7 +119,17 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Trilhas", icon: MapTrilha, url: "/trilhas" },
     { title: "Central de Vitórias", icon: Trophy, url: "/vitorias" },
     { title: "Meu Time", icon: Users, url: "/meu-time" },
-    { title: "Guardião", icon: ShieldCheck, url: "/guardiao" },
+    {
+      title: "Guardião",
+      icon: ShieldCheck,
+      url: "/guardiao",
+      children: [
+        { title: "Visão geral", tab: "visao-geral" },
+        { title: "Convites", tab: "convites" },
+        { title: "Resultados", tab: "resultados" },
+        { title: "Ranking", tab: "ranking" },
+      ],
+    },
     { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
     { title: "Ferramentas IA", icon: Sparkles, url: "/ferramentas" },
     { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
@@ -143,37 +162,90 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="mt-2 space-y-0.5">
-              {items.map((item, index) => (
-                <SidebarMenuItem key={item.title}>
-                  <motion.div
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
-                  >
-                    <SidebarMenuButton
-                      tooltip={item.title}
-                      isActive={location.pathname === item.url}
-                      onClick={() => navigate(item.url)}
-                      className={`rounded-lg transition-all duration-300 font-medium h-9 px-3 ${
-                        location.pathname === item.url
-                          ? "bg-primary/10 text-primary hover:bg-primary/20"
-                          : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      }`}
+              {items.map((item, index) => {
+                const active = location.pathname === item.url
+
+                if (item.children) {
+                  return (
+                    <Collapsible
+                      key={item.title}
+                      asChild
+                      defaultOpen={active}
+                      className="group/collapsible"
                     >
-                      <item.icon className={`size-4 transition-transform duration-300 ${location.pathname === item.url ? "scale-110" : "group-hover:scale-110"}`} />
-                      <span className="ml-2">{item.title}</span>
-                      {location.pathname === item.url && (
-                        <motion.div
-                          layoutId="activeTab"
-                          className="ml-auto"
-                        >
-                          <ChevronRight className="size-4" />
-                        </motion.div>
-                      )}
-                    </SidebarMenuButton>
-                  </motion.div>
-                </SidebarMenuItem>
-              ))}
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton
+                            tooltip={item.title}
+                            isActive={active}
+                            className={`rounded-lg transition-all duration-300 font-medium h-9 px-3 ${
+                              active
+                                ? "bg-primary/10 text-primary hover:bg-primary/20"
+                                : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            }`}
+                          >
+                            <item.icon className={`size-4 transition-transform duration-300 ${active ? "scale-110" : "group-hover:scale-110"}`} />
+                            <span className="ml-2">{item.title}</span>
+                            <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {item.children.map((child) => {
+                              const childActive = active && currentTab === child.tab
+                              return (
+                                <SidebarMenuSubItem key={child.tab}>
+                                  <SidebarMenuSubButton asChild isActive={childActive}>
+                                    <button
+                                      type="button"
+                                      onClick={() => navigate(`${item.url}?tab=${child.tab}`)}
+                                      className="w-full cursor-pointer"
+                                    >
+                                      <span>{child.title}</span>
+                                    </button>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              )
+                            })}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  )
+                }
+
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <motion.div
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
+                    >
+                      <SidebarMenuButton
+                        tooltip={item.title}
+                        isActive={active}
+                        onClick={() => navigate(item.url)}
+                        className={`rounded-lg transition-all duration-300 font-medium h-9 px-3 ${
+                          active
+                            ? "bg-primary/10 text-primary hover:bg-primary/20"
+                            : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        }`}
+                      >
+                        <item.icon className={`size-4 transition-transform duration-300 ${active ? "scale-110" : "group-hover:scale-110"}`} />
+                        <span className="ml-2">{item.title}</span>
+                        {active && (
+                          <motion.div
+                            layoutId="activeTab"
+                            className="ml-auto"
+                          >
+                            <ChevronRight className="size-4" />
+                          </motion.div>
+                        )}
+                      </SidebarMenuButton>
+                    </motion.div>
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
