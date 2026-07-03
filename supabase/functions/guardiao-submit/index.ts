@@ -23,8 +23,14 @@ interface TextAnswerIn {
   question_id: string
   text: string
 }
+interface IdentityIn {
+  name?: string
+  email?: string
+  whatsapp?: string
+}
 interface Body {
   token: string
+  identity?: IdentityIn
   answers?: AnswerIn[]
   text_answers?: TextAnswerIn[]
   ai_tools_text?: string
@@ -44,6 +50,7 @@ Deno.serve(async (req: Request) => {
     const answers: AnswerIn[] = Array.isArray(body.answers) ? body.answers : []
     const textAnswers: TextAnswerIn[] = Array.isArray(body.text_answers) ? body.text_answers : []
     const aiToolsText = (body.ai_tools_text ?? "").toString()
+    const identity: IdentityIn = body.identity && typeof body.identity === "object" ? body.identity : {}
 
     if (!token || token.length < 8) {
       return jsonResponse({ error: "Token inválido" }, 400)
@@ -178,10 +185,21 @@ Deno.serve(async (req: Request) => {
       })
     if (resErr) return jsonResponse({ error: resErr.message }, 500)
 
-    // 7) Atualiza convite
+    // 7) Atualiza convite (marca concluido + grava identidade do candidato quando vier)
+    const updatePayload: Record<string, unknown> = {
+      status: "concluido",
+      completed_at: new Date().toISOString(),
+    }
+    const idName = (identity.name ?? "").toString().trim()
+    const idEmail = (identity.email ?? "").toString().trim()
+    const idWhatsapp = (identity.whatsapp ?? "").toString().trim()
+    if (idName) updatePayload.candidate_name = idName
+    if (idEmail) updatePayload.candidate_email = idEmail
+    if (idWhatsapp) updatePayload.candidate_whatsapp = idWhatsapp
+
     const { error: uErr } = await supabase
       .from("guardiao_invites")
-      .update({ status: "concluido", completed_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq("id", invite.id)
     if (uErr) return jsonResponse({ error: uErr.message }, 500)
 
