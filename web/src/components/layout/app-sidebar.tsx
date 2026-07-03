@@ -83,7 +83,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     }
   }
 
-  type NavChild = { title: string; tab: string }
+  type NavChild = { title: string; tab: string; icon: any }
   type NavItem = { title: string; icon: any; url: string; children?: NavChild[] }
 
   const adminItems: NavItem[] = [
@@ -124,10 +124,10 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       icon: ShieldCheck,
       url: "/guardiao",
       children: [
-        { title: "Visão geral", tab: "visao-geral" },
-        { title: "Convites", tab: "convites" },
-        { title: "Resultados", tab: "resultados" },
-        { title: "Ranking", tab: "ranking" },
+        { title: "Visão geral", tab: "visao-geral", icon: Compass },
+        { title: "Convites", tab: "convites", icon: Share2 },
+        { title: "Resultados", tab: "resultados", icon: BarChart3 },
+        { title: "Ranking", tab: "ranking", icon: Trophy },
       ],
     },
     { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
@@ -177,14 +177,9 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton
                             tooltip={item.title}
-                            isActive={active}
-                            className={`rounded-lg transition-all duration-300 font-medium h-9 px-3 ${
-                              active
-                                ? "bg-primary/10 text-primary hover:bg-primary/20"
-                                : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                            }`}
+                            className="rounded-lg transition-all duration-300 font-medium h-9 px-3 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                           >
-                            <item.icon className={`size-4 transition-transform duration-300 ${active ? "scale-110" : "group-hover:scale-110"}`} />
+                            <item.icon className="size-4 transition-transform duration-300 group-hover:scale-110" />
                             <span className="ml-2">{item.title}</span>
                             <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                           </SidebarMenuButton>
@@ -195,12 +190,16 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
                               const childActive = active && currentTab === child.tab
                               return (
                                 <SidebarMenuSubItem key={child.tab}>
-                                  <SidebarMenuSubButton asChild isActive={childActive}>
+                                  <SidebarMenuSubButton
+                                    asChild
+                                    className={childActive ? "bg-primary/10 text-primary hover:bg-primary/20 [&>svg]:text-primary" : ""}
+                                  >
                                     <button
                                       type="button"
                                       onClick={() => navigate(`${item.url}?tab=${child.tab}`)}
                                       className="w-full cursor-pointer"
                                     >
+                                      <child.icon className="size-4" />
                                       <span>{child.title}</span>
                                     </button>
                                   </SidebarMenuSubButton>
@@ -233,14 +232,6 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
                       >
                         <item.icon className={`size-4 transition-transform duration-300 ${active ? "scale-110" : "group-hover:scale-110"}`} />
                         <span className="ml-2">{item.title}</span>
-                        {active && (
-                          <motion.div
-                            layoutId="activeTab"
-                            className="ml-auto"
-                          >
-                            <ChevronRight className="size-4" />
-                          </motion.div>
-                        )}
                       </SidebarMenuButton>
                     </motion.div>
                   </SidebarMenuItem>
