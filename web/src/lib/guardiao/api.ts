@@ -107,7 +107,7 @@ export async function listarConvites(clientId?: string): Promise<GuardiaoInvite[
   if (clientId) q = q.eq("id_cliente", clientId);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return (data ?? []) as GuardiaoInvite[];
+  return (data ?? []) as unknown as GuardiaoInvite[];
 }
 
 /** Lista convites juntando o resultado de cada um (espelha listResults). */
@@ -120,7 +120,7 @@ export async function listarResultados(clientId?: string): Promise<InviteWithRes
   const { data: invites, error } = await q;
   if (error) throw new Error(error.message);
 
-  const inviteRows = (invites ?? []) as GuardiaoInvite[];
+  const inviteRows = (invites ?? []) as unknown as GuardiaoInvite[];
   const inviteIds = inviteRows.map((i) => i.id);
 
   let results: GuardiaoResult[] = [];
