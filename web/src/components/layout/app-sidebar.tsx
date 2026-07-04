@@ -21,6 +21,7 @@ import {
   MessageCircleIcon as MessageCircle,
   LogOutIcon as LogOut,
   ChevronRightIcon as ChevronRight,
+  ChevronDownIcon as ChevronDown,
   Share2Icon as Share2,
   CheckSquareIcon as CheckSquare,
   BookOpenIcon as BookOpen,
@@ -51,15 +52,22 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
 import { DollarSignIcon } from "@/components/ui/icons"
+import type { ComponentType, SVGProps } from "react"
 
 interface AppSidebarProps {
   isAdmin?: boolean
 }
 
+type NavItem = { title: string; icon: ComponentType<SVGProps<SVGSVGElement>>; url: string }
+type NavGroup = { label: string; items: NavItem[] }
+
 export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const moedaAtual = useClienteMoeda()
+
+  // Estamos dentro do Sistema Operacional do Guardião?
+  const isGuardiao = location.pathname.startsWith("/guardiao")
 
   async function trocarMoeda(nova: string) {
     if (nova !== "BRL" && nova !== "USD") return
@@ -77,7 +85,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     }
   }
 
-  const adminItems = [
+  const adminItems: NavItem[] = [
     { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
     { title: "Agente", icon: MessageCircle, url: "/agente" },
     { title: "Clientes", icon: Users, url: "/clientes" },
@@ -97,7 +105,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Configurações", icon: Settings, url: "/configuracoes" },
   ]
 
-  const clientItems = [
+  const clientItems: NavItem[] = [
     { title: "Dashboard", icon: LayoutDashboard, url: "/" },
     { title: "Informações da Empresa", icon: Building, url: "/informacoes-empresa" },
     { title: "Mapeamento", icon: Share2, url: "/mapeamento" },
@@ -114,67 +122,157 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
   ]
 
+  // Nav do Sistema do Guardião (3 grupos, espelhando o app original).
+  const guardiaoGroups: NavGroup[] = [
+    {
+      label: "Gestão do Guardião",
+      items: [
+        { title: "Painel de Controle", icon: LayoutDashboard, url: "/guardiao" },
+        { title: "Setores / Projetos", icon: Building, url: "/guardiao/setores" },
+        { title: "Tarefas", icon: CheckSquare, url: "/guardiao/tarefas" },
+        { title: "Central de Vitórias", icon: Trophy, url: "/guardiao/vitorias" },
+        { title: "Relatório para CEO", icon: FileText, url: "/guardiao/relatorio" },
+      ],
+    },
+    {
+      label: "Metodologia",
+      items: [
+        { title: "Jornada das 7 Fases", icon: MapTrilha, url: "/guardiao/jornada" },
+        { title: "Rotinas e Rituais", icon: Clock, url: "/guardiao/agenda" },
+        { title: "Evidências", icon: ShieldCheck, url: "/guardiao/evidencias" },
+      ],
+    },
+    {
+      label: "Apoio",
+      items: [{ title: "Apoio PMC", icon: Sparkles, url: "/guardiao/apoio" }],
+    },
+  ]
+
   const items = isAdmin ? adminItems : clientItems
+
+  // Rota ativa: painel/raiz por match exato; demais consideram sub-rotas (ex.: /guardiao/setores/:id).
+  function isActive(url: string) {
+    if (url === "/" || url === "/guardiao") return location.pathname === url
+    return location.pathname === url || location.pathname.startsWith(url + "/")
+  }
+
+  function renderItem(item: NavItem, index: number, active: boolean) {
+    return (
+      <SidebarMenuItem key={item.title}>
+        <motion.div
+          initial={{ x: -20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
+        >
+          <SidebarMenuButton
+            tooltip={item.title}
+            isActive={active}
+            onClick={() => navigate(item.url)}
+            className={`rounded-lg transition-all duration-300 font-medium h-9 px-3 ${
+              active
+                ? "bg-primary/10 text-primary hover:bg-primary/20"
+                : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            }`}
+          >
+            <item.icon className={`size-4 transition-transform duration-300 ${active ? "scale-110" : "group-hover:scale-110"}`} />
+            <span className="ml-2">{item.title}</span>
+            {active && (
+              <motion.div layoutId="activeTab" className="ml-auto">
+                <ChevronRight className="size-4" />
+              </motion.div>
+            )}
+          </SidebarMenuButton>
+        </motion.div>
+      </SidebarMenuItem>
+    )
+  }
 
   return (
     <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border bg-sidebar/40 text-sidebar-foreground backdrop-blur-xl">
       <SidebarHeader className="p-4 border-b border-border bg-sidebar/20 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="flex size-9 items-center justify-center overflow-hidden rounded-xl shadow-lg shadow-primary/20"
-          >
-            <img src="/logo.png" alt="PMC OS" className="size-full object-cover" />
-          </motion.div>
-          <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-            <span className="font-bold tracking-tight text-lg text-foreground">PMC OS</span>
-            <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-[0.2em]">Black Eagle</span>
+        {!isAdmin ? (
+          // Cliente: logo vira seletor de perfil (Painel Geral ↔ Sistema do Guardião).
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="-m-1 flex w-full items-center gap-3 rounded-lg p-1 text-left outline-none transition-colors hover:bg-sidebar-accent/50">
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className="flex size-9 items-center justify-center overflow-hidden rounded-xl shadow-lg shadow-primary/20"
+                >
+                  <img src="/logo.png" alt="PMC OS" className="size-full object-cover" />
+                </motion.div>
+                <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
+                  <span className="font-bold tracking-tight text-lg text-foreground">PMC OS</span>
+                  <span className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${isGuardiao ? "text-primary" : "text-muted-foreground"}`}>
+                    {isGuardiao ? "Sistema do Guardião" : "Black Eagle"}
+                  </span>
+                </div>
+                <ChevronDown className="ml-auto size-4 text-muted-foreground group-data-[collapsible=icon]:hidden" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start" className="min-w-[230px]">
+              <DropdownMenuItem
+                onClick={() => navigate("/")}
+                className={`cursor-pointer font-medium ${!isGuardiao ? "text-primary" : ""}`}
+              >
+                <LayoutDashboard className="size-4" />
+                Painel Geral
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => navigate("/guardiao")}
+                className={`cursor-pointer font-medium ${isGuardiao ? "text-primary" : ""}`}
+              >
+                <ShieldCheck className="size-4" />
+                Sistema do Guardião de IA
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          // Admin: logo estático (o guardião é acessado via oversight, com ?cliente).
+          <div className="flex items-center gap-3">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="flex size-9 items-center justify-center overflow-hidden rounded-xl shadow-lg shadow-primary/20"
+            >
+              <img src="/logo.png" alt="PMC OS" className="size-full object-cover" />
+            </motion.div>
+            <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
+              <span className="font-bold tracking-tight text-lg text-foreground">PMC OS</span>
+              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-[0.2em]">Black Eagle</span>
+            </div>
           </div>
-        </div>
+        )}
       </SidebarHeader>
       <SidebarContent className="px-2">
-        <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold uppercase text-muted-foreground tracking-widest mt-3 px-4">
-            {isAdmin ? "Visão Geral" : "Gestão"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="mt-2 space-y-0.5">
-              {items.map((item, index) => (
-                <SidebarMenuItem key={item.title}>
-                  <motion.div
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
-                  >
-                    <SidebarMenuButton
-                      tooltip={item.title}
-                      isActive={location.pathname === item.url}
-                      onClick={() => navigate(item.url)}
-                      className={`rounded-lg transition-all duration-300 font-medium h-9 px-3 ${
-                        location.pathname === item.url
-                          ? "bg-primary/10 text-primary hover:bg-primary/20"
-                          : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      }`}
-                    >
-                      <item.icon className={`size-4 transition-transform duration-300 ${location.pathname === item.url ? "scale-110" : "group-hover:scale-110"}`} />
-                      <span className="ml-2">{item.title}</span>
-                      {location.pathname === item.url && (
-                        <motion.div
-                          layoutId="activeTab"
-                          className="ml-auto"
-                        >
-                          <ChevronRight className="size-4" />
-                        </motion.div>
-                      )}
-                    </SidebarMenuButton>
-                  </motion.div>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {isGuardiao ? (
+          guardiaoGroups.map((group) => (
+            <SidebarGroup key={group.label}>
+              <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold uppercase text-muted-foreground tracking-widest mt-3 px-4">
+                {group.label}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="mt-2 space-y-0.5">
+                  {group.items.map((item, index) => renderItem(item, index, isActive(item.url)))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))
+        ) : (
+          <SidebarGroup>
+            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold uppercase text-muted-foreground tracking-widest mt-3 px-4">
+              {isAdmin ? "Visão Geral" : "Gestão"}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="mt-2 space-y-0.5">
+                {items.map((item, index) => renderItem(item, index, location.pathname === item.url))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter className="p-3 border-t border-border bg-sidebar/20">
         <SidebarMenu>

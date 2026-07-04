@@ -41,6 +41,7 @@ import FunisPage from "@/pages/funis"
 import RespostasOnboardingPage from "@/pages/respostas-onboarding"
 import CRMPage from "@/pages/crm"
 import AgentePage from "@/pages/agente"
+import { GuardiaoApp } from "@/pages/guardiao/guardiao-app"
 import type { Session } from "@supabase/supabase-js"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 // import { BackgroundShader } from "@/components/ui/background-shader" // fallback: shader padrão
@@ -247,6 +248,7 @@ function App() {
                     <Route path="/respostas-onboarding" element={isAdmin ? <RespostasOnboardingPage /> : <Navigate to="/" replace />} />
                     <Route path="/crm" element={isAdmin ? <CRMPage /> : <Navigate to="/" replace />} />
                     <Route path="/agente" element={isAdmin ? <AgentePage /> : <Navigate to="/" replace />} />
+                    <Route path="/guardiao/*" element={<GuardiaoApp session={session} isAdmin={isAdmin} />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </DashboardLayout>
