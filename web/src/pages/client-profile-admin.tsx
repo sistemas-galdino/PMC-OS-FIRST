@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExecutiveSummaryHeader } from "@/components/client-profile/executive-summary-header"
+import { Button } from "@/components/ui/button"
+import { ShieldCheckIcon } from "@/components/ui/icons"
 import { supabase } from "@/lib/supabase"
 import TabPerfil from "@/components/client-profile/admin-tabs/tab-perfil"
 import TabPrograma from "@/components/client-profile/admin-tabs/tab-programa"
@@ -74,6 +76,15 @@ export default function ClientProfileAdmin({ clientId }: { clientId: string }) {
   return (
     <div className="space-y-6">
       <ExecutiveSummaryHeader clientId={clientId} />
+
+      <div className="flex justify-end">
+        <Button asChild variant="outline" size="sm">
+          <Link to={`/guardiao?cliente=${clientId}`}>
+            <ShieldCheckIcon className="size-4" />
+            Abrir Sistema do Guardião
+          </Link>
+        </Button>
+      </div>
 
       <Tabs value={activeTab} onValueChange={handleChange} className="gap-6">
         <TabsList className="h-auto min-h-11 flex-wrap justify-start gap-1 p-1">

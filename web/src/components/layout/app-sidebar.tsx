@@ -22,6 +22,7 @@ import {
   LogOutIcon as LogOut,
   ChevronRightIcon as ChevronRight,
   ChevronDownIcon as ChevronDown,
+  ArrowLeftIcon as ArrowLeft,
   Share2Icon as Share2,
   CheckSquareIcon as CheckSquare,
   BookOpenIcon as BookOpen,
@@ -249,7 +250,26 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       </SidebarHeader>
       <SidebarContent className="px-2">
         {isGuardiao ? (
-          guardiaoGroups.map((group) => (
+          <>
+            {isAdmin && (
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu className="mt-2">
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        tooltip="Voltar ao Admin"
+                        onClick={() => navigate("/")}
+                        className="rounded-lg transition-all duration-300 font-medium h-9 px-3 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                      >
+                        <ArrowLeft className="size-4" />
+                        <span className="ml-2">Voltar ao Admin</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+            {guardiaoGroups.map((group) => (
             <SidebarGroup key={group.label}>
               <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold uppercase text-muted-foreground tracking-widest mt-3 px-4">
                 {group.label}
@@ -260,7 +280,8 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-          ))
+            ))}
+          </>
         ) : (
           <SidebarGroup>
             <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold uppercase text-muted-foreground tracking-widest mt-3 px-4">

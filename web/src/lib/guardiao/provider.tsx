@@ -33,11 +33,17 @@ interface GuardiaoProviderProps {
 }
 
 export function GuardiaoProvider({ session, isAdmin = false, children }: GuardiaoProviderProps) {
-  const clienteParam =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("cliente")
-      : null;
-  const clientId = (isAdmin && clienteParam) ? clienteParam : session?.user?.id ?? null;
+  // Captura o cliente-alvo UMA vez no mount. Assim a navegação interna do /guardiao/*
+  // (que não carrega o ?cliente na URL) não reseta o contexto quando o admin está
+  // em oversight de um cliente. Ao sair de /guardiao e voltar com outro ?cliente, o
+  // GuardiaoApp remonta e o provider recaptura.
+  const [clientId] = useState<string | null>(() => {
+    const clienteParam =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("cliente")
+        : null;
+    return isAdmin && clienteParam ? clienteParam : session?.user?.id ?? null;
+  });
 
   const [ready, setReady] = useState(false);
   const [resolvedClientId, setResolvedClientId] = useState<string | null>(null);
