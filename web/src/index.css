@@ -176,3 +176,9 @@
   color: transparent;
   animation: text-shimmer 1.6s linear infinite;
 }
+
+/* Glow neon (portado do Guardião ui-kit — --neon remapeado p/ --primary) */
+.glow-neon {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 25%, transparent),
+              0 10px 40px -10px color-mix(in oklab, var(--primary) 35%, transparent);
+}
