@@ -192,41 +192,43 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border bg-sidebar/40 text-sidebar-foreground backdrop-blur-xl">
       <SidebarHeader className="p-4 border-b border-border bg-sidebar/20 backdrop-blur-sm">
         {!isAdmin ? (
-          // Cliente: logo vira seletor de perfil (Painel Geral ↔ Sistema do Guardião).
+          // Cliente: logo vira seletor de perfil (Painel Geral ↔ Painel do Guardião).
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="-m-1 flex w-full items-center gap-3 rounded-lg p-1 text-left outline-none transition-colors hover:bg-sidebar-accent/50">
+              <button className="-m-1 flex w-full items-center gap-2.5 rounded-lg p-1 text-left outline-none transition-colors hover:bg-sidebar-accent/50">
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
-                  className="flex size-9 items-center justify-center overflow-hidden rounded-xl shadow-lg shadow-primary/20"
+                  className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-lg shadow-primary/20"
                 >
                   <img src="/logo.png" alt="PMC OS" className="size-full object-cover" />
                 </motion.div>
-                <div className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-                  <span className="font-bold tracking-tight text-lg text-foreground">PMC OS</span>
-                  <span className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${isGuardiao ? "text-primary" : "text-muted-foreground"}`}>
-                    {isGuardiao ? "Sistema do Guardião" : "Black Eagle"}
-                  </span>
-                </div>
-                <ChevronDown className="ml-auto size-4 text-muted-foreground group-data-[collapsible=icon]:hidden" />
+                <span className="font-bold tracking-tight text-lg text-foreground group-data-[collapsible=icon]:hidden">PMC OS</span>
+                <span className="rounded-md border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary group-data-[collapsible=icon]:hidden">
+                  {isGuardiao ? "Guardião" : "Geral"}
+                </span>
+                <ChevronDown className="ml-auto size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="start" className="min-w-[230px]">
+            <DropdownMenuContent side="right" align="start" className="min-w-[260px]">
               <DropdownMenuItem
                 onClick={() => navigate("/")}
-                className={`cursor-pointer font-medium ${!isGuardiao ? "text-primary" : ""}`}
+                className={`cursor-pointer flex-col items-start gap-1 py-2 whitespace-normal ${!isGuardiao ? "bg-primary/10" : ""}`}
               >
-                <LayoutDashboard className="size-4" />
-                Painel Geral
+                <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${!isGuardiao ? "border-transparent bg-primary text-primary-foreground" : "border-primary/40 bg-primary/10 text-primary"}`}>
+                  Painel Geral
+                </span>
+                <span className="text-xs text-muted-foreground">Reuniões, indicadores, ações e trilhas.</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => navigate("/guardiao")}
-                className={`cursor-pointer font-medium ${isGuardiao ? "text-primary" : ""}`}
+                className={`cursor-pointer flex-col items-start gap-1 py-2 whitespace-normal ${isGuardiao ? "bg-primary/10" : ""}`}
               >
-                <ShieldCheck className="size-4" />
-                Sistema do Guardião de IA
+                <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${isGuardiao ? "border-transparent bg-primary text-primary-foreground" : "border-primary/40 bg-primary/10 text-primary"}`}>
+                  Painel do Guardião
+                </span>
+                <span className="text-xs text-muted-foreground">Implementação de IA na sua empresa.</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
