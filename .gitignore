@@ -11,3 +11,8 @@ scripts/mentor-events.json
 scripts/mentores-events.json
 scripts/reconciliacao-preview.json
 scripts/enrich-semana-rls.sql
+
+# App-fonte da Lovable (dropado no monorepo, nao faz parte do build) + segredos locais
+IA-Guardian-Hub/
+pass.txt
+.DS_Store
