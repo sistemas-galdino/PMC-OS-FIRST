@@ -195,7 +195,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
           // Cliente: logo vira seletor de perfil (Painel Geral ↔ Painel do Guardião).
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="-m-1 flex w-full items-center gap-2.5 rounded-lg p-1 text-left outline-none transition-colors hover:bg-sidebar-accent/50">
+              <button className="-m-1 flex w-full items-center gap-2 rounded-lg p-1 text-left outline-none transition-colors hover:bg-sidebar-accent/50">
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -204,8 +204,8 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
                 >
                   <img src="/logo.png" alt="PMC OS" className="size-full object-cover" />
                 </motion.div>
-                <span className="font-bold tracking-tight text-lg text-foreground group-data-[collapsible=icon]:hidden">PMC OS</span>
-                <span className="rounded-md border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary group-data-[collapsible=icon]:hidden">
+                <span className="shrink-0 whitespace-nowrap font-bold tracking-tight text-lg text-foreground group-data-[collapsible=icon]:hidden">PMC OS</span>
+                <span className="shrink-0 whitespace-nowrap rounded-md border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary group-data-[collapsible=icon]:hidden">
                   {isGuardiao ? "Guardião" : "Geral"}
                 </span>
                 <ChevronDown className="ml-auto size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />
