@@ -113,7 +113,7 @@ export function Ranking({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center rounded-xl border border-border bg-card px-6 py-16">
+      <div className="flex items-center justify-center rounded-xl border border-border bg-card/50 backdrop-blur-md px-6 py-16">
         <Spinner className="size-6 text-primary" />
       </div>
     );
@@ -121,7 +121,7 @@ export function Ranking({
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card px-6 py-16 text-center">
+      <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card/50 backdrop-blur-md px-6 py-16 text-center">
         <TrophyIcon className="h-8 w-8 text-primary" />
         <h2 className="mt-4 text-lg font-bold tracking-tight">Nenhum candidato ainda</h2>
         <p className="mt-1 max-w-md text-sm text-muted-foreground">
@@ -239,7 +239,7 @@ function CardBody({ row, dragging }: { row: InviteWithResult; dragging?: boolean
   const pct = Number(row.result?.score_pct ?? 0);
   return (
     <div
-      className={`cursor-pointer rounded-lg border border-border bg-card p-2 transition hover:border-primary/50 ${
+      className={`cursor-pointer rounded-lg border border-border bg-card/50 backdrop-blur-md p-2 transition hover:border-primary/50 ${
         dragging ? "border-primary/60 shadow-lg shadow-primary/10" : ""
       }`}
     >

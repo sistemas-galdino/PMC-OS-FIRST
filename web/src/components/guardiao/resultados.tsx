@@ -141,7 +141,7 @@ export function Resultados({
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center rounded-xl border border-border bg-card px-6 py-16">
+        <div className="flex items-center justify-center rounded-xl border border-border bg-card/50 backdrop-blur-md px-6 py-16">
           <Spinner className="size-6 text-primary" />
         </div>
       ) : completed.length > 0 ? (
@@ -154,7 +154,7 @@ export function Resultados({
           </div>
 
           {/* Tabela de respondentes */}
-          <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="overflow-hidden rounded-xl border border-border bg-card/50 backdrop-blur-md">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -226,7 +226,7 @@ export function Resultados({
           </div>
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card px-6 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card/50 backdrop-blur-md px-6 py-16 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 ring-1 ring-primary/30">
             <BarChart3Icon className="h-6 w-6 text-primary" />
           </div>
@@ -469,7 +469,7 @@ function MetricCard({
   value: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card/50 backdrop-blur-md p-4">
       <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
         {icon}
         {label}

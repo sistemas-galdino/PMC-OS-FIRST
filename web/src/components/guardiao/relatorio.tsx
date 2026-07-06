@@ -52,7 +52,7 @@ export function Relatorio({ inviteId }: { inviteId: string }) {
 
   if (error || !data) {
     return (
-      <div className="rounded-xl border border-border bg-card p-8 text-center">
+      <div className="rounded-xl border border-border bg-card/50 backdrop-blur-md p-8 text-center">
         <AlertTriangleIcon className="mx-auto h-8 w-8 text-destructive" />
         <h1 className="mt-3 text-xl font-bold tracking-tight">Não foi possível abrir o resultado</h1>
         <p className="mt-2 text-sm text-muted-foreground">{error}</p>
@@ -64,7 +64,7 @@ export function Relatorio({ inviteId }: { inviteId: string }) {
 
   if (!result) {
     return (
-      <div className="rounded-xl border border-border bg-card p-8 text-center">
+      <div className="rounded-xl border border-border bg-card/50 backdrop-blur-md p-8 text-center">
         <AlertTriangleIcon className="mx-auto h-8 w-8 text-yellow-500" />
         <h1 className="mt-3 text-xl font-bold tracking-tight">Avaliação ainda não concluída</h1>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -118,7 +118,7 @@ function ReportView({
       </div>
 
       {/* PÁGINA 1 */}
-      <section className="rounded-xl border border-border bg-card p-6 md:p-8 print:break-after-page print:rounded-none print:border-0">
+      <section className="rounded-xl border border-border bg-card/50 backdrop-blur-md p-6 md:p-8 print:break-after-page print:rounded-none print:border-0">
         <header className="mb-6 flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">
@@ -183,7 +183,7 @@ function ReportView({
       </section>
 
       {/* PÁGINA 2 */}
-      <section className="mt-6 rounded-xl border border-border bg-card p-6 md:p-8 print:mt-0 print:rounded-none print:border-0">
+      <section className="mt-6 rounded-xl border border-border bg-card/50 backdrop-blur-md p-6 md:p-8 print:mt-0 print:rounded-none print:border-0">
         <div className="mb-6 grid gap-6 md:grid-cols-2">
           <div>
             <SectionTitle index="3" title="Pontos fortes identificados" />
@@ -248,7 +248,7 @@ function ReportView({
 
       {/* Resposta aberta (não imprime na versão executiva) */}
       {openAnswers && openAnswers.length > 0 && (
-        <section className="mt-6 rounded-xl border border-border bg-card p-6 md:p-8 print:hidden">
+        <section className="mt-6 rounded-xl border border-border bg-card/50 backdrop-blur-md p-6 md:p-8 print:hidden">
           <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Resposta aberta do candidato
           </h3>
