@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
 import { toast } from "sonner"
-import { getInvitePorToken, submeterRespostas } from "@/lib/guardiao/api"
+import {
+  resolveShare,
+  getQuestionsByAssessment,
+  submeterRespostas,
+  type ResolvedShare,
+} from "@/lib/guardiao/api"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -21,11 +26,22 @@ import {
 import { cn } from "@/lib/utils"
 
 /* ---------------------------------------------------------------------------
- * Formulário público do respondente (SEM login) — Fase 5.
- * Rota (registrada na Fase 6): /guardiao/r/:token  ->  export default abaixo.
+ * Formulário público do respondente (SEM login) — padrão Typeform.
+ * Rota: /guardiao/r/:token  (:token = share token fixo por tipo).
+ * O link é reutilizável: cada envio cria um convite+resultado novo, com a
+ * identidade vinda do formulário.
  * ------------------------------------------------------------------------- */
 
-type LoadResult = Awaited<ReturnType<typeof getInvitePorToken>>
+type LoadResult = {
+  share: ResolvedShare
+  assessment: { id: string; type: string; title: string; description: string | null }
+  questions: any[]
+}
+
+/** Chave de localStorage do guard "já respondi" (por share token). */
+function doneKey(token: string): string {
+  return `guardiao:respondido:${token}`
+}
 
 const KNOWN_AI_TOOLS = [
   "ChatGPT",
@@ -78,16 +94,35 @@ export default function GuardiaoResponderPage() {
       setLoading(false)
       return
     }
+    // Guard leve: se já respondi por este link neste navegador, vai direto pra
+    // tela de conclusão (evita reenvio acidental num link reutilizável).
+    try {
+      if (typeof window !== "undefined" && window.localStorage.getItem(doneKey(token))) {
+        setDone(true)
+      }
+    } catch {
+      /* localStorage indisponível — ignora */
+    }
     let alive = true
     ;(async () => {
       try {
-        const res = await getInvitePorToken(token)
+        const share = await resolveShare(token)
         if (!alive) return
-        setData(res)
-        setIdentity({
-          name: res.invite.candidate_name ?? "",
-          email: res.invite.candidate_email ?? "",
-          whatsapp: res.invite.candidate_whatsapp ?? "",
+        if (!share) {
+          setLoadError("Link inválido ou expirado.")
+          return
+        }
+        const questions = await getQuestionsByAssessment(share.assessment_id)
+        if (!alive) return
+        setData({
+          share,
+          assessment: {
+            id: share.assessment_id,
+            type: share.type,
+            title: share.title,
+            description: share.description,
+          },
+          questions,
         })
       } catch (err: any) {
         if (alive) setLoadError(err?.message ?? "Não foi possível carregar a avaliação")
@@ -156,7 +191,7 @@ export default function GuardiaoResponderPage() {
     setSubmitting(true)
     try {
       await submeterRespostas({
-        token: token!,
+        share_token: token!,
         identity: {
           name: identity.name.trim(),
           email: identity.email.trim() || undefined,
@@ -170,10 +205,30 @@ export default function GuardiaoResponderPage() {
           .filter((q: any) => (textAnswers[q.id] ?? "").trim())
           .map((q: any) => ({ question_id: q.id, text: textAnswers[q.id].trim() })),
       })
+      try {
+        if (typeof window !== "undefined" && token) {
+          window.localStorage.setItem(doneKey(token), new Date().toISOString())
+        }
+      } catch {
+        /* localStorage indisponível — ignora */
+      }
       setDone(true)
       if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
     } catch (err: any) {
       const msg = err?.message ?? ""
+      // Anti-duplicidade do servidor (mesmo e-mail já respondeu): mostra conclusão.
+      if (msg.includes("já respondeu") || msg.includes("ja respondeu")) {
+        try {
+          if (typeof window !== "undefined" && token) {
+            window.localStorage.setItem(doneKey(token), new Date().toISOString())
+          }
+        } catch {
+          /* ignora */
+        }
+        toast.info("Você já respondeu esta avaliação.")
+        setDone(true)
+        return
+      }
       if (msg.includes("já concluída") || msg.includes("ja concluida") || msg.includes("concluído")) {
         setDone(true)
         return
@@ -228,24 +283,12 @@ export default function GuardiaoResponderPage() {
     )
   }
 
-  if (data.invite.expired) {
-    return (
-      <Shell>
-        <NoticeCard
-          icon={<AlertTriangleIcon className="text-primary" />}
-          title="Este convite expirou"
-          message="Solicite um novo link ao responsável pela avaliação."
-        />
-      </Shell>
-    )
-  }
-
-  if (done || data.invite.status === "concluido") {
+  if (done) {
     return (
       <Shell>
         <NoticeCard
           icon={<CheckIcon className="text-primary" />}
-          title={done ? "Avaliação enviada!" : "Você já concluiu esta avaliação"}
+          title="Avaliação enviada!"
           message="Obrigado por participar. Entraremos em contato caso você seja selecionado(a)."
         />
       </Shell>
@@ -266,7 +309,7 @@ export default function GuardiaoResponderPage() {
 
   /* -------------------------------- Wizard --------------------------------- */
 
-  const displayName = identity.name || data.invite.candidate_name || ""
+  const displayName = identity.name || ""
 
   return (
     <div className="min-h-screen bg-background text-foreground">

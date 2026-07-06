@@ -67,11 +67,23 @@ export type GuardiaoResult = {
 export type InviteWithResult = GuardiaoInvite & { result: GuardiaoResult | null };
 
 export type SubmitPayload = {
-  token: string;
+  /** Token do share link fixo (padrão Typeform). Preferencial. */
+  share_token?: string;
+  /** Token legado (1 convite por candidato). Mantido para compat. */
+  token?: string;
   identity?: { name?: string; email?: string; whatsapp?: string };
   answers: Array<{ question_id: string; option_id: string }>;
   text_answers?: Array<{ question_id: string; text: string }>;
   ai_tools_text?: string;
+};
+
+/** Dados resolvidos de um share link a partir do token público. */
+export type ResolvedShare = {
+  id_cliente: string;
+  type: AssessmentType;
+  assessment_id: string;
+  title: string;
+  description: string | null;
 };
 
 /* ---------------------------------------------------------------------------
@@ -85,7 +97,7 @@ const INVITE_LIST_SELECT =
  * Admin / cliente — convites e resultados
  * ------------------------------------------------------------------------- */
 
-/** Cria um convite para o cliente logado (id_cliente = auth.uid()). */
+/** Cria um convite para o cliente logado (id_cliente = auth.uid()). LEGADO. */
 export async function criarConvite(type: AssessmentType): Promise<{ token: string }> {
   const { data, error } = await supabase.rpc("guardiao_criar_convite", { p_type: type });
   if (error) throw new Error(error.message);
@@ -96,6 +108,72 @@ export async function criarConvite(type: AssessmentType): Promise<{ token: strin
         ? ((data[0] as any)?.token ?? (data[0] as any))
         : ((data as any)?.token ?? String(data ?? ""));
   return { token: token as string };
+}
+
+/** Monta a URL pública do respondente a partir do token. */
+function shareUrl(token: string): string {
+  return `${window.location.origin}/guardiao/r/${token}`;
+}
+
+/** Pega (ou cria) o token do share link fixo do cliente logado para um tipo. */
+async function getOrCreateShareToken(type: AssessmentType): Promise<string> {
+  const { data, error } = await supabase.rpc("guardiao_get_or_create_share_link", {
+    p_type: type,
+  });
+  if (error) throw new Error(error.message);
+  const token =
+    typeof data === "string"
+      ? data
+      : Array.isArray(data)
+        ? ((data[0] as any)?.token ?? (data[0] as any))
+        : ((data as any)?.token ?? String(data ?? ""));
+  return token as string;
+}
+
+/**
+ * Devolve os DOIS links fixos e reutilizáveis do cliente logado (padrão Typeform):
+ * um `interno` e um `externo`, já como URLs prontas para copiar.
+ */
+export async function getShareLinks(): Promise<{ interno: string; externo: string }> {
+  const [interno, externo] = await Promise.all([
+    getOrCreateShareToken("interno"),
+    getOrCreateShareToken("externo"),
+  ]);
+  return { interno: shareUrl(interno), externo: shareUrl(externo) };
+}
+
+/** Resolve um share token público -> cliente + assessment daquele tipo. */
+export async function resolveShare(token: string): Promise<ResolvedShare | null> {
+  const { data, error } = await supabase.rpc("guardiao_resolve_share", { p_token: token });
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+  return {
+    id_cliente: row.id_cliente,
+    type: row.type,
+    assessment_id: row.assessment_id,
+    title: row.title,
+    description: row.description ?? null,
+  };
+}
+
+/** Carrega perguntas + opções de um assessment (leitura pública anon). */
+export async function getQuestionsByAssessment(assessmentId: string): Promise<any[]> {
+  const { data: questions, error } = await supabase
+    .from("guardiao_questions")
+    .select(
+      "id, code, type, pillar, prompt, scenario_label, order_index, guardiao_question_options(id, letter, label, points, disc_tags, order_index)",
+    )
+    .eq("assessment_id", assessmentId)
+    .order("order_index", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  return (questions ?? []).map((q: any) => ({
+    ...q,
+    guardiao_question_options: [...(q.guardiao_question_options ?? [])].sort(
+      (a: any, b: any) => a.order_index - b.order_index,
+    ),
+  }));
 }
 
 /** Lista convites (RLS escopa ao cliente; admin passa clientId para filtrar). */

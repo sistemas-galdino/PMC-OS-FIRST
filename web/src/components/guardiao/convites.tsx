@@ -4,11 +4,11 @@ import { toast } from "sonner"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import {
   Building2Icon as Building2,
   GlobeIcon as Globe,
-  LinkIcon as LinkIco,
   CopyIcon as Copy,
   CheckIcon as Check,
   Trash2Icon as Trash,
@@ -17,22 +17,15 @@ import {
   RefreshCwIcon as RefreshCw,
 } from "@/components/ui/icons"
 import {
-  criarConvite,
+  getShareLinks,
   listarConvites,
   deletarConvite,
-  type AssessmentType,
   type GuardiaoInvite,
 } from "@/lib/guardiao/api"
 
 interface Props {
   clientId?: string
   adminView?: boolean
-}
-
-/** Monta o link público do respondente a partir do token. */
-function linkFor(token?: string): string {
-  if (!token) return ""
-  return `${window.location.origin}/guardiao/r/${token}`
 }
 
 function fmtDate(iso?: string): string {
@@ -48,7 +41,7 @@ function fmtDate(iso?: string): string {
   }
 }
 
-async function copy(text: string) {
+async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text)
     toast.success("Link copiado")
@@ -57,121 +50,158 @@ async function copy(text: string) {
   }
 }
 
-export default function Convites({ clientId }: Props) {
+/** Cartão com o link fixo e reutilizável de um tipo (padrão Typeform). */
+function ShareLinkCard({
+  icon,
+  title,
+  subtitle,
+  link,
+  loading,
+  outline,
+}: {
+  icon: React.ReactNode
+  title: string
+  subtitle: string
+  link: string
+  loading: boolean
+  outline?: boolean
+}) {
+  const [copied, setCopied] = useState(false)
+
+  async function onCopy() {
+    if (!link) return
+    await copyText(link)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1800)
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-start gap-3">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/30">
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-bold tracking-tight text-foreground">{title}</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+
+          <div className="mt-4 flex items-center gap-2">
+            <Input
+              readOnly
+              value={loading ? "Gerando link…" : link}
+              onFocus={(e) => e.currentTarget.select()}
+              className="font-mono text-xs"
+            />
+            <Button
+              type="button"
+              variant={outline ? "outline" : "default"}
+              size="icon"
+              aria-label="Copiar link"
+              onClick={() => void onCopy()}
+              disabled={loading || !link}
+            >
+              {loading ? (
+                <Spinner className="size-4" />
+              ) : copied ? (
+                <Check className="size-4" />
+              ) : (
+                <Copy className="size-4" />
+              )}
+            </Button>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Link fixo e reutilizável — qualquer pessoa que o abrir preenche uma nova avaliação.
+          </p>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+export default function Convites({ clientId, adminView }: Props) {
+  const [links, setLinks] = useState<{ interno: string; externo: string }>({
+    interno: "",
+    externo: "",
+  })
+  const [linksLoading, setLinksLoading] = useState(true)
   const [invites, setInvites] = useState<GuardiaoInvite[]>([])
   const [loading, setLoading] = useState(true)
-  const [generating, setGenerating] = useState<AssessmentType | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  // Os links fixos são do cliente logado. No oversight admin (adminView),
+  // não há sessão do cliente para resolver os links — mostramos só as respostas.
+  const canManageLinks = !adminView
 
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
       setInvites(await listarConvites(clientId))
     } catch (err: any) {
-      toast.error("Erro ao carregar convites", { description: err?.message })
+      toast.error("Erro ao carregar respostas", { description: err?.message })
     } finally {
       setLoading(false)
     }
   }, [clientId])
 
+  const loadLinks = useCallback(async () => {
+    if (!canManageLinks) {
+      setLinksLoading(false)
+      return
+    }
+    setLinksLoading(true)
+    try {
+      setLinks(await getShareLinks())
+    } catch (err: any) {
+      toast.error("Erro ao carregar links", { description: err?.message })
+    } finally {
+      setLinksLoading(false)
+    }
+  }, [canManageLinks])
+
   useEffect(() => {
     void refresh()
   }, [refresh])
 
-  async function gerar(type: AssessmentType) {
-    setGenerating(type)
-    try {
-      const { token } = await criarConvite(type)
-      const url = linkFor(token)
-      await navigator.clipboard.writeText(url).catch(() => {})
-      toast.success(
-        type === "interno"
-          ? "Link para colaborador interno gerado e copiado"
-          : "Link para candidato externo gerado e copiado",
-      )
-      await refresh()
-    } catch (err: any) {
-      toast.error("Erro ao gerar link", { description: err?.message })
-    } finally {
-      setGenerating(null)
-    }
-  }
+  useEffect(() => {
+    void loadLinks()
+  }, [loadLinks])
 
   async function remover(id: string) {
     try {
       await deletarConvite(id)
       setInvites((prev) => prev.filter((i) => i.id !== id))
-      toast.success("Convite removido")
+      toast.success("Resposta removida")
     } catch (err: any) {
-      toast.error("Erro ao remover convite", { description: err?.message })
+      toast.error("Erro ao remover resposta", { description: err?.message })
     }
-  }
-
-  async function copyRow(inv: GuardiaoInvite) {
-    const url = linkFor(inv.token)
-    if (!url) {
-      toast.error("Convite sem link disponível")
-      return
-    }
-    await copy(url)
-    setCopiedId(inv.id)
-    setTimeout(() => setCopiedId((c) => (c === inv.id ? null : c)), 1800)
   }
 
   return (
     <div className="space-y-8">
-      {/* Geradores de link */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/30">
-              <Building2 className="size-5 text-primary" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-base font-bold tracking-tight text-foreground">Colaborador interno</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Para quem já trabalha na empresa
-              </p>
-              <Button
-                className="mt-4 w-full"
-                onClick={() => gerar("interno")}
-                disabled={generating !== null}
-              >
-                {generating === "interno" ? <Spinner className="size-4" /> : <LinkIco className="size-4" />}
-                Gerar link — Colaborador interno
-              </Button>
-            </div>
-          </div>
-        </Card>
+      {/* Links fixos por tipo (padrão Typeform) */}
+      {canManageLinks && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <ShareLinkCard
+            icon={<Building2 className="size-5 text-primary" />}
+            title="Colaborador interno"
+            subtitle="Para quem já trabalha na empresa"
+            link={links.interno}
+            loading={linksLoading}
+          />
+          <ShareLinkCard
+            icon={<Globe className="size-5 text-primary" />}
+            title="Candidato externo"
+            subtitle="Para candidatos de fora da empresa"
+            link={links.externo}
+            loading={linksLoading}
+            outline
+          />
+        </div>
+      )}
 
-        <Card className="p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/30">
-              <Globe className="size-5 text-primary" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-base font-bold tracking-tight text-foreground">Candidato externo</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Para candidatos de fora da empresa
-              </p>
-              <Button
-                className="mt-4 w-full"
-                variant="outline"
-                onClick={() => gerar("externo")}
-                disabled={generating !== null}
-              >
-                {generating === "externo" ? <Spinner className="size-4" /> : <LinkIco className="size-4" />}
-                Gerar link — Candidato externo
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Lista de convites */}
+      {/* Respostas recebidas (read-only) */}
       <Card>
         <div className="flex items-center justify-between border-b border-border p-6">
-          <CardTitle>Convites gerados</CardTitle>
+          <CardTitle>Respostas recebidas</CardTitle>
           <Button variant="ghost" size="sm" onClick={() => void refresh()} disabled={loading}>
             <RefreshCw className="size-4" />
             Atualizar
@@ -184,7 +214,7 @@ export default function Convites({ clientId }: Props) {
             </div>
           ) : invites.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">
-              Nenhum convite gerado ainda. Gere um link acima para começar.
+              Nenhuma resposta recebida ainda. Compartilhe um dos links acima para começar.
             </p>
           ) : (
             <ul className="divide-y divide-border">
@@ -199,7 +229,7 @@ export default function Convites({ clientId }: Props) {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="truncate font-bold tracking-tight text-foreground">
-                          {inv.candidate_name || "Aguardando respondente"}
+                          {inv.candidate_name || "Sem nome"}
                         </span>
                         {tipo && (
                           <Badge variant="outline" className="capitalize">
@@ -220,20 +250,16 @@ export default function Convites({ clientId }: Props) {
                       </div>
                       <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Clock className="size-3" />
-                        Criado em {fmtDate(inv.created_at)}
+                        Recebida em {fmtDate(inv.completed_at ?? inv.created_at)}
                         {inv.candidate_email ? ` · ${inv.candidate_email}` : ""}
                       </p>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => void copyRow(inv)}>
-                        {copiedId === inv.id ? <Check className="size-4" /> : <Copy className="size-4" />}
-                        {copiedId === inv.id ? "Copiado" : "Copiar link"}
-                      </Button>
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        aria-label="Remover convite"
+                        aria-label="Remover resposta"
                         onClick={() => void remover(inv.id)}
                       >
                         <Trash className="size-4 text-destructive" />

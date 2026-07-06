@@ -17,7 +17,11 @@ function jsonResponse(payload: unknown, status = 200): Response {
 // =========================================================
 // guardiao-submit
 // Recebe as respostas do formulario publico do "Perfil do Guardiao" e:
-//  - carrega o convite por token (rejeita concluido / expirado);
+//  - obtem um convite (invite):
+//      * share_token (padrao Typeform / LINK UNICO por tipo): resolve o link
+//        fixo, e CRIA um convite novo por envio (identidade vem do formulario);
+//      * token (legado, 1 convite por candidato): carrega o convite existente
+//        (rejeita concluido / expirado).
 //  - carrega perguntas + opcoes do assessment;
 //  - calcula score / DISC / pilares (porte fiel de src/lib/responder.functions.ts
 //    do sistema fonte);
@@ -41,7 +45,8 @@ interface IdentityIn {
   whatsapp?: string
 }
 interface Body {
-  token: string
+  token?: string
+  share_token?: string
   identity?: IdentityIn
   answers?: AnswerIn[]
   text_answers?: TextAnswerIn[]
@@ -59,12 +64,17 @@ Deno.serve(async (req: Request) => {
   try {
     const body = (await req.json()) as Body
     const token = (body.token ?? "").trim()
+    const shareToken = (body.share_token ?? "").trim()
     const answers: AnswerIn[] = Array.isArray(body.answers) ? body.answers : []
     const textAnswers: TextAnswerIn[] = Array.isArray(body.text_answers) ? body.text_answers : []
     const aiToolsText = (body.ai_tools_text ?? "").toString()
     const identity: IdentityIn = body.identity && typeof body.identity === "object" ? body.identity : {}
 
-    if (!token || token.length < 8) {
+    const idName = (identity.name ?? "").toString().trim()
+    const idEmail = (identity.email ?? "").toString().trim()
+    const idWhatsapp = (identity.whatsapp ?? "").toString().trim()
+
+    if ((!shareToken || shareToken.length < 8) && (!token || token.length < 8)) {
       return jsonResponse({ error: "Token inválido" }, 400)
     }
 
@@ -74,20 +84,80 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false },
     })
 
-    // 1) Carrega convite
-    const { data: invite, error: iErr } = await supabase
-      .from("guardiao_invites")
-      .select("id, status, assessment_id, expires_at")
-      .eq("token", token)
-      .maybeSingle()
-    if (iErr) return jsonResponse({ error: iErr.message }, 500)
+    // 1) Obtem o convite (invite): via share_token (cria novo) ou token (legado).
+    let invite: { id: string; assessment_id: string } | null = null
+
+    if (shareToken) {
+      // 1a) LINK UNICO por tipo (padrao Typeform): resolve o link fixo -> cliente
+      //     + assessment daquele type, e cria um convite novo por envio.
+      const { data: link, error: lErr } = await supabase
+        .from("guardiao_share_links")
+        .select("id_cliente, type")
+        .eq("token", shareToken)
+        .maybeSingle()
+      if (lErr) return jsonResponse({ error: lErr.message }, 500)
+      if (!link) return jsonResponse({ error: "Link inválido ou expirado." }, 404)
+
+      const { data: assessment, error: aErr } = await supabase
+        .from("guardiao_assessments")
+        .select("id")
+        .eq("type", link.type)
+        .order("version", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (aErr) return jsonResponse({ error: aErr.message }, 500)
+      if (!assessment) return jsonResponse({ error: "Avaliação não encontrada" }, 404)
+
+      // Anti-duplicidade leve: se ja respondeu (mesmo email) esta avaliacao, 409.
+      if (idEmail) {
+        const { data: dup, error: dErr } = await supabase
+          .from("guardiao_invites")
+          .select("id")
+          .eq("id_cliente", link.id_cliente)
+          .eq("assessment_id", assessment.id)
+          .eq("status", "concluido")
+          .ilike("candidate_email", idEmail)
+          .limit(1)
+        if (dErr) return jsonResponse({ error: dErr.message }, 500)
+        if (dup && dup.length > 0) {
+          return jsonResponse({ error: "Você já respondeu esta avaliação." }, 409)
+        }
+      }
+
+      const { data: created, error: cErr } = await supabase
+        .from("guardiao_invites")
+        .insert({
+          id_cliente: link.id_cliente,
+          assessment_id: assessment.id,
+          candidate_name: idName || null,
+          candidate_email: idEmail || null,
+          candidate_whatsapp: idWhatsapp || null,
+          status: "concluido",
+          completed_at: new Date().toISOString(),
+        })
+        .select("id, assessment_id")
+        .single()
+      if (cErr) return jsonResponse({ error: cErr.message }, 500)
+      invite = created
+    } else {
+      // 1b) Legado: 1 convite por candidato, carregado pelo token.
+      const { data: legacy, error: iErr } = await supabase
+        .from("guardiao_invites")
+        .select("id, status, assessment_id, expires_at")
+        .eq("token", token)
+        .maybeSingle()
+      if (iErr) return jsonResponse({ error: iErr.message }, 500)
+      if (!legacy) return jsonResponse({ error: "Convite não encontrado" }, 404)
+      if (legacy.status === "concluido") {
+        return jsonResponse({ error: "Avaliação já concluída" }, 409)
+      }
+      if (legacy.expires_at && new Date(legacy.expires_at) < new Date()) {
+        return jsonResponse({ error: "Convite expirado" }, 410)
+      }
+      invite = { id: legacy.id, assessment_id: legacy.assessment_id }
+    }
+
     if (!invite) return jsonResponse({ error: "Convite não encontrado" }, 404)
-    if (invite.status === "concluido") {
-      return jsonResponse({ error: "Avaliação já concluída" }, 409)
-    }
-    if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-      return jsonResponse({ error: "Convite expirado" }, 410)
-    }
 
     // 2) Carrega perguntas + opcoes do assessment
     const { data: questions, error: qErr } = await supabase
@@ -202,9 +272,6 @@ Deno.serve(async (req: Request) => {
       status: "concluido",
       completed_at: new Date().toISOString(),
     }
-    const idName = (identity.name ?? "").toString().trim()
-    const idEmail = (identity.email ?? "").toString().trim()
-    const idWhatsapp = (identity.whatsapp ?? "").toString().trim()
     if (idName) updatePayload.candidate_name = idName
     if (idEmail) updatePayload.candidate_email = idEmail
     if (idWhatsapp) updatePayload.candidate_whatsapp = idWhatsapp
