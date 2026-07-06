@@ -70,6 +70,66 @@ function isTextQuestion(q: any): boolean {
   return q?.type === "texto_livre" || !(q?.guardiao_question_options?.length)
 }
 
+/* ------------------------- Identidade: validação --------------------------- */
+
+/** Lista de DDI/país (dígitos únicos por país). Brasil primeiro. */
+const COUNTRIES = [
+  { code: "BR", name: "Brasil", dial: "+55", flag: "🇧🇷" },
+  { code: "PT", name: "Portugal", dial: "+351", flag: "🇵🇹" },
+  { code: "US", name: "Estados Unidos", dial: "+1", flag: "🇺🇸" },
+  { code: "AR", name: "Argentina", dial: "+54", flag: "🇦🇷" },
+  { code: "CL", name: "Chile", dial: "+56", flag: "🇨🇱" },
+  { code: "CO", name: "Colômbia", dial: "+57", flag: "🇨🇴" },
+  { code: "MX", name: "México", dial: "+52", flag: "🇲🇽" },
+  { code: "PY", name: "Paraguai", dial: "+595", flag: "🇵🇾" },
+  { code: "PE", name: "Peru", dial: "+51", flag: "🇵🇪" },
+  { code: "UY", name: "Uruguai", dial: "+598", flag: "🇺🇾" },
+  { code: "BO", name: "Bolívia", dial: "+591", flag: "🇧🇴" },
+  { code: "ES", name: "Espanha", dial: "+34", flag: "🇪🇸" },
+  { code: "GB", name: "Reino Unido", dial: "+44", flag: "🇬🇧" },
+  { code: "FR", name: "França", dial: "+33", flag: "🇫🇷" },
+  { code: "DE", name: "Alemanha", dial: "+49", flag: "🇩🇪" },
+  { code: "IT", name: "Itália", dial: "+39", flag: "🇮🇹" },
+  { code: "NL", name: "Holanda", dial: "+31", flag: "🇳🇱" },
+  { code: "CH", name: "Suíça", dial: "+41", flag: "🇨🇭" },
+  { code: "AO", name: "Angola", dial: "+244", flag: "🇦🇴" },
+  { code: "MZ", name: "Moçambique", dial: "+258", flag: "🇲🇿" },
+  { code: "ZA", name: "África do Sul", dial: "+27", flag: "🇿🇦" },
+  { code: "AE", name: "Emirados Árabes", dial: "+971", flag: "🇦🇪" },
+  { code: "IN", name: "Índia", dial: "+91", flag: "🇮🇳" },
+  { code: "CN", name: "China", dial: "+86", flag: "🇨🇳" },
+  { code: "JP", name: "Japão", dial: "+81", flag: "🇯🇵" },
+  { code: "AU", name: "Austrália", dial: "+61", flag: "🇦🇺" },
+] as const
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || "").trim())
+}
+
+function onlyDigits(s: string): string {
+  return (s || "").replace(/\D/g, "")
+}
+
+/** Máscara: (XX) XXXXX-XXXX para o Brasil (+55); só dígitos para os demais. */
+function maskPhone(value: string, dial: string): string {
+  const d = onlyDigits(value)
+  if (dial === "+55") {
+    const x = d.slice(0, 11)
+    if (x.length <= 2) return x
+    if (x.length <= 6) return `(${x.slice(0, 2)}) ${x.slice(2)}`
+    if (x.length <= 10) return `(${x.slice(0, 2)}) ${x.slice(2, 6)}-${x.slice(6)}`
+    return `(${x.slice(0, 2)}) ${x.slice(2, 7)}-${x.slice(7, 11)}`
+  }
+  return d.slice(0, 15)
+}
+
+/** BR exige 10 (fixo) ou 11 (celular) dígitos; demais países, ao menos 8. */
+function isValidPhone(value: string, dial: string): boolean {
+  const d = onlyDigits(value)
+  if (dial === "+55") return d.length === 10 || d.length === 11
+  return d.length >= 8
+}
+
 export default function GuardiaoResponderPage() {
   const { token } = useParams<{ token?: string }>()
 
@@ -86,7 +146,7 @@ export default function GuardiaoResponderPage() {
   const [otherTools, setOtherTools] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
-  const [identity, setIdentity] = useState({ name: "", email: "", whatsapp: "" })
+  const [identity, setIdentity] = useState({ name: "", email: "", phone: "", dial: "+55" })
 
   useEffect(() => {
     if (!token) {
@@ -176,6 +236,14 @@ export default function GuardiaoResponderPage() {
       toast.error("Informe seu nome completo")
       return
     }
+    if (!isValidEmail(identity.email)) {
+      toast.error("Informe um e-mail válido")
+      return
+    }
+    if (!isValidPhone(identity.phone, identity.dial)) {
+      toast.error("Informe um telefone válido com DDD")
+      return
+    }
     goTo(2)
   }
 
@@ -194,8 +262,8 @@ export default function GuardiaoResponderPage() {
         share_token: token!,
         identity: {
           name: identity.name.trim(),
-          email: identity.email.trim() || undefined,
-          whatsapp: identity.whatsapp.trim() || undefined,
+          email: identity.email.trim(),
+          whatsapp: `${identity.dial} ${identity.phone}`.trim(),
         },
         ai_tools_text: buildAiToolsText(),
         answers: choiceQs
@@ -435,17 +503,26 @@ function Intro({ assessment, onStart }: { assessment: any; onStart: () => void }
   )
 }
 
+type IdentityData = { name: string; email: string; phone: string; dial: string }
+
 function IdentityStep({
   identity,
   onChange,
   onNext,
   onPrev,
 }: {
-  identity: { name: string; email: string; whatsapp: string }
-  onChange: (v: { name: string; email: string; whatsapp: string }) => void
+  identity: IdentityData
+  onChange: (v: IdentityData) => void
   onNext: () => void
   onPrev: () => void
 }) {
+  const emailInvalid = identity.email.length > 0 && !isValidEmail(identity.email)
+  const phoneInvalid = identity.phone.length > 0 && !isValidPhone(identity.phone, identity.dial)
+  const canProceed =
+    !!identity.name.trim() &&
+    isValidEmail(identity.email) &&
+    isValidPhone(identity.phone, identity.dial)
+
   return (
     <Section>
       <div className="flex items-center gap-2">
@@ -470,32 +547,60 @@ function IdentityStep({
             placeholder="Digite aqui seu nome completo"
           />
         </div>
+
         <div className="space-y-2">
-          <Label className="text-muted-foreground">Melhor e-mail</Label>
+          <Label className="text-muted-foreground">
+            Melhor e-mail <span className="text-destructive">*</span>
+          </Label>
           <Input
             type="email"
+            inputMode="email"
             value={identity.email}
+            aria-invalid={emailInvalid}
             onChange={(e) => onChange({ ...identity, email: e.target.value })}
-            placeholder="Digite aqui seu melhor e-mail"
+            placeholder="voce@empresa.com"
           />
+          {emailInvalid && (
+            <p className="text-xs text-destructive">Digite um e-mail válido (ex.: nome@dominio.com).</p>
+          )}
         </div>
+
         <div className="space-y-2">
-          <Label className="text-muted-foreground">WhatsApp</Label>
-          <Input
-            type="tel"
-            value={identity.whatsapp}
-            onChange={(e) => onChange({ ...identity, whatsapp: e.target.value })}
-            placeholder="Digite aqui seu melhor WhatsApp"
-          />
+          <Label className="text-muted-foreground">
+            WhatsApp / Telefone <span className="text-destructive">*</span>
+          </Label>
+          <div className="flex gap-2">
+            <select
+              aria-label="Código do país (DDI)"
+              value={identity.dial}
+              onChange={(e) => {
+                const dial = e.target.value
+                onChange({ ...identity, dial, phone: maskPhone(identity.phone, dial) })
+              }}
+              className="h-11 shrink-0 rounded-lg border border-border bg-muted/20 px-2 text-sm text-foreground outline-none transition-colors focus-visible:border-primary/50 dark:bg-muted/10"
+            >
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.dial}>
+                  {c.flag} {c.dial}
+                </option>
+              ))}
+            </select>
+            <Input
+              type="tel"
+              inputMode="tel"
+              value={identity.phone}
+              aria-invalid={phoneInvalid}
+              onChange={(e) => onChange({ ...identity, phone: maskPhone(e.target.value, identity.dial) })}
+              placeholder={identity.dial === "+55" ? "(11) 99999-9999" : "Número com DDD"}
+            />
+          </div>
+          {phoneInvalid && (
+            <p className="text-xs text-destructive">Digite um telefone válido com DDD.</p>
+          )}
         </div>
       </div>
 
-      <NavRow
-        onPrev={onPrev}
-        onNext={onNext}
-        nextDisabled={!identity.name.trim()}
-        nextLabel="Continuar"
-      />
+      <NavRow onPrev={onPrev} onNext={onNext} nextDisabled={!canProceed} nextLabel="Continuar" />
     </Section>
   )
 }
