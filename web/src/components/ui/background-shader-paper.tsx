@@ -26,9 +26,9 @@ export function BackgroundShaderPaper() {
       <GrainGradient
         style={{ height: "100%", width: "100%" }}
         colorBack="hsl(0, 0%, 0%)"
-        softness={0.76}
+        softness={2.0}
         intensity={0.45}
-        noise={0.5}
+        noise={0.05}
         shape="corners"
         offsetX={0}
         offsetY={0}
