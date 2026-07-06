@@ -259,7 +259,7 @@ MÉTRICAS:
       </div>
 
       {view === "editar" ? (
-        <div className="guardiao-no-print rounded-lg border bg-card p-5">
+        <div className="guardiao-no-print rounded-lg border card-glass p-5">
           <label className="text-xs text-muted-foreground">Período</label>
           <Input className="mb-3 mt-1" value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
           <Textarea
@@ -338,7 +338,7 @@ MÉTRICAS:
       <h3 className="guardiao-no-print text-lg font-semibold">Histórico de relatórios</h3>
       <div className="guardiao-no-print space-y-2">
         {relatorios.map((r) => (
-          <div key={r.id} className="rounded-lg border bg-card p-4">
+          <div key={r.id} className="rounded-lg border card-glass p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-medium">{r.periodo}</div>
@@ -474,7 +474,7 @@ function ResumoExecutivoTopo() {
   const gargCriticos = gargalos.filter((g) => g.prioridade === "Alta").length
 
   const StatMini = ({ label, value }: { label: string; value: number | string }) => (
-    <div className="rounded-lg border bg-card p-3">
+    <div className="rounded-lg border card-glass p-3">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="text-xl font-semibold text-primary">{value}</div>
     </div>
@@ -493,7 +493,7 @@ function ResumoExecutivoTopo() {
         <StatMini label="Setores acompanhados" value={setores.length} />
       </div>
 
-      <div className="rounded-lg border bg-card overflow-x-auto">
+      <div className="rounded-lg border card-glass overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted text-xs uppercase tracking-wider text-muted-foreground">
             <tr>

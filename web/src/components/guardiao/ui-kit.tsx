@@ -16,7 +16,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
 
 export function StatCard({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="mt-2 text-3xl font-semibold text-primary">{value}</div>
       {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
@@ -54,7 +54,7 @@ export function FaseBadge({ fase, titulo }: { fase?: number | null; titulo?: str
 
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="rounded-lg border bg-card p-10 text-center">
+    <div className="rounded-lg border card-glass p-10 text-center">
       <div className="text-base font-medium">{title}</div>
       {hint && <div className="text-sm text-muted-foreground mt-1">{hint}</div>}
     </div>

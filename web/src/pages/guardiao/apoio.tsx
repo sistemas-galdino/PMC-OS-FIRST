@@ -31,7 +31,7 @@ export default function ApoioPage() {
             href={a.link}
             target="_blank"
             rel="noreferrer"
-            className="rounded-lg border bg-card p-6 hover:glow-neon transition-all block"
+            className="rounded-lg border card-glass p-6 hover:glow-neon transition-all block"
           >
             <div className="h-12 w-12 rounded-lg bg-primary grid place-items-center text-primary-foreground text-xl font-bold mb-4">
               {a.nome[0]}
@@ -45,7 +45,7 @@ export default function ApoioPage() {
         ))}
       </div>
 
-      <div className="mt-8 rounded-lg border bg-card p-6">
+      <div className="mt-8 rounded-lg border card-glass p-6">
         <h3 className="text-base font-semibold mb-2">Como solicitar apoio dentro de um projeto</h3>
         <p className="text-sm text-muted-foreground">
           Em qualquer projeto piloto, marque <strong className="text-foreground">"Precisa de apoio PMC?" → Sim</strong> e

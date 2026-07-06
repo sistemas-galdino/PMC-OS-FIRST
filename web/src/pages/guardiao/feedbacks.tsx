@@ -26,7 +26,7 @@ export default function Feedbacks() {
           {sorted.map((f) => {
             const setor = setores.find((s) => s.id === f.setorId)
             return (
-              <div key={f.id} className="rounded-lg border bg-card p-4 flex flex-col gap-2">
+              <div key={f.id} className="rounded-lg border card-glass p-4 flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-2 flex-wrap">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

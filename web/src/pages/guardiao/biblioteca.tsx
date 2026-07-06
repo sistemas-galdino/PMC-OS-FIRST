@@ -102,7 +102,7 @@ export default function Biblioteca() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         {Object.entries(BIBLIOTECA).map(([setor, lista]) => (
-          <div key={setor} className="rounded-lg border bg-card p-5">
+          <div key={setor} className="rounded-lg border card-glass p-5">
             <h3 className="text-lg font-semibold mb-1">{setor}</h3>
             <p className="text-xs text-muted-foreground mb-4">{lista.length} soluções sugeridas</p>
             <div className="space-y-2">

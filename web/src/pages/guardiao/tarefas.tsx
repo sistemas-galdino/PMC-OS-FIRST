@@ -144,7 +144,7 @@ export default function Tarefas() {
       {view === "lista" && (
         <div className="space-y-2">
           {filtered.map((t) => (
-            <div key={t.id} className="rounded-lg border bg-card p-4 flex items-center gap-3 flex-wrap">
+            <div key={t.id} className="rounded-lg border card-glass p-4 flex items-center gap-3 flex-wrap">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium">{t.titulo}</div>
                 <div className="text-xs text-muted-foreground">
@@ -176,7 +176,7 @@ export default function Tarefas() {
             {STATUS_TAREFA.map((col) => (
               <div key={col} className="w-72 shrink-0">
                 <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2 px-1">{col}</div>
-                <div className="space-y-2 min-h-[100px] rounded-lg border bg-card p-2">
+                <div className="space-y-2 min-h-[100px] rounded-lg border card-glass p-2">
                   {filtered.filter((t) => t.status === col).map((t) => (
                     <div key={t.id} className="p-3 rounded-md bg-muted">
                       <div className="text-sm font-medium">{t.titulo}</div>
@@ -191,7 +191,7 @@ export default function Tarefas() {
       )}
 
       {view === "calendario" && (
-        <div className="rounded-lg border bg-card p-4">
+        <div className="rounded-lg border card-glass p-4">
           <Table>
             <TableHeader>
               <TableRow>

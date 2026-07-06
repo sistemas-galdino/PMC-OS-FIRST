@@ -55,7 +55,7 @@ export default function ProjetoDetalhe() {
   if (!projeto) {
     return (
       <div className="space-y-6">
-        <div className="rounded-lg border bg-card p-10 text-center">
+        <div className="rounded-lg border card-glass p-10 text-center">
           <div className="text-base font-medium">Projeto não encontrado</div>
           <Link to="/guardiao/projetos" className="text-sm text-primary mt-2 inline-block">← Voltar para projetos</Link>
         </div>
@@ -103,7 +103,7 @@ export default function ProjetoDetalhe() {
       </div>
 
       {/* Hero */}
-      <div className="rounded-lg border bg-card p-6 relative overflow-hidden">
+      <div className="rounded-lg border card-glass p-6 relative overflow-hidden">
         <div className="absolute inset-0 opacity-30 pointer-events-none"
           style={{ background: "radial-gradient(600px 200px at 0% 0%, color-mix(in oklab, var(--primary) 25%, transparent), transparent 60%)" }} />
         <div className="relative">
@@ -152,14 +152,14 @@ export default function ProjetoDetalhe() {
 
       {/* Análise da IA */}
       {gargalo?.analiseIA && (
-        <div className="rounded-lg border bg-card p-5">
+        <div className="rounded-lg border card-glass p-5">
           <h3 className="text-sm uppercase tracking-wider text-muted-foreground mb-2">Análise da IA</h3>
           <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans">{gargalo.analiseIA}</pre>
         </div>
       )}
 
       {/* Progresso por etapa */}
-      <div className="rounded-lg border bg-card p-5">
+      <div className="rounded-lg border card-glass p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-semibold">Andamento da construção</h3>
           <div className="text-sm text-muted-foreground">{feitas} de {totalTarefas} concluídas · <span className="text-primary font-medium">{progresso}%</span></div>
@@ -212,7 +212,7 @@ export default function ProjetoDetalhe() {
       </div>
 
       {/* Timeline */}
-      <div className="rounded-lg border bg-card p-5">
+      <div className="rounded-lg border card-glass p-5">
         <h3 className="text-lg font-semibold mb-3">Linha do tempo do projeto</h3>
         <div className="grid sm:grid-cols-4 gap-2 mb-4">
           <GSelect

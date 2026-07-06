@@ -162,7 +162,7 @@ export default function Projetos() {
                     onDrop={() => onDrop(col)}
                     className={cn(
                       "space-y-2 min-h-[120px] rounded-lg p-2 border transition-colors",
-                      isOver ? "bg-primary/10 border-primary" : "bg-card border-border"
+                      isOver ? "bg-primary/10 border-primary" : "card-glass border-border"
                     )}
                   >
                     {itens.map((p) => (
@@ -204,7 +204,7 @@ export default function Projetos() {
       ) : (
         <div className="space-y-2">
           {visiveis.map((p) => (
-            <div key={p.id} className="rounded-lg border bg-card p-4 flex items-center gap-4 flex-wrap">
+            <div key={p.id} className="rounded-lg border card-glass p-4 flex items-center gap-4 flex-wrap">
               <button className="flex-1 min-w-0 text-left" onClick={() => setDetail(p.id)}>
                 <div className="font-medium">{p.nome}</div>
                 <div className="text-xs text-muted-foreground">{setorNome(p.setorId)} · {p.tipoEntrega}</div>

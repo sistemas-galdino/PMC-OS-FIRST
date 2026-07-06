@@ -93,7 +93,7 @@ export default function FaseDetalhe() {
       />
 
       {bloqueada && (
-        <div className="rounded-lg border border-amber-500/40 bg-card p-4">
+        <div className="rounded-lg border border-amber-500/40 card-glass p-4">
           <div className="text-sm">
             Esta fase está bloqueada. Conclua a Fase 0{faseNum - 1} para desbloquear.
           </div>
@@ -101,7 +101,7 @@ export default function FaseDetalhe() {
       )}
 
       {/* Como usar esta fase */}
-      <div className="rounded-lg border border-primary/30 bg-card p-5">
+      <div className="rounded-lg border border-primary/30 card-glass p-5">
         <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" /> Como usar esta fase
@@ -159,7 +159,7 @@ export default function FaseDetalhe() {
         <StatCard label="Tarefas da fase" value={st.tarefas.filter((t) => t.fase === faseNum).length} />
       </div>
 
-      <div className="rounded-lg border bg-card p-5">
+      <div className="rounded-lg border card-glass p-5">
         <h3 className="text-sm font-semibold mb-1">Sobre esta fase</h3>
         <p className="text-sm text-muted-foreground">{meta.resumo}</p>
         <div className="grid md:grid-cols-3 gap-3 mt-4 text-xs">
@@ -184,7 +184,7 @@ export default function FaseDetalhe() {
       </div>
 
       {/* Processo da fase */}
-      <div className="rounded-lg border bg-card p-5">
+      <div className="rounded-lg border card-glass p-5">
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
           <ListChecks className="h-4 w-4 text-primary" /> Processo desta fase
         </h3>
@@ -211,7 +211,7 @@ export default function FaseDetalhe() {
       {faseNum === 7 && <FormFase7 />}
 
       {/* Checklist */}
-      <div className="rounded-lg border bg-card p-5">
+      <div className="rounded-lg border card-glass p-5">
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary" /> Checklist da fase</h3>
         <div className="grid md:grid-cols-2 gap-2">
           {checklist.map((c) => (
@@ -229,7 +229,7 @@ export default function FaseDetalhe() {
 
       {/* Evidências obrigatórias */}
       {evidObrig.length > 0 && (
-        <div className="rounded-lg border bg-card p-5">
+        <div className="rounded-lg border card-glass p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold flex items-center gap-2"><FileCheck2 className="h-4 w-4 text-primary" /> Evidências obrigatórias</h3>
             <Link to="/guardiao/evidencias" className="text-xs text-primary">Abrir Evidências →</Link>
@@ -265,7 +265,7 @@ export default function FaseDetalhe() {
       <SugestaoIA faseNum={faseNum} />
 
       {/* Observações do Guardião */}
-      <div className="rounded-lg border bg-card p-5">
+      <div className="rounded-lg border card-glass p-5">
         <h3 className="text-sm font-semibold mb-2">Observações do Guardião</h3>
         <Textarea
           className="min-h-[120px]"
@@ -276,7 +276,7 @@ export default function FaseDetalhe() {
       </div>
 
       {/* Ações finais */}
-      <div className="rounded-lg border bg-card p-5 flex flex-wrap items-center gap-3">
+      <div className="rounded-lg border card-glass p-5 flex flex-wrap items-center gap-3">
         <GSelect
           className="h-8 w-56"
           value={estado.status}
@@ -404,7 +404,7 @@ function SetoresEnvolvidos({ faseNum }: { faseNum: Fase }) {
   const sugeridos = SETORES_SUGERIDOS_FASE[faseNum]
 
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Building2 className="h-4 w-4 text-primary" /> Setores envolvidos
@@ -484,7 +484,7 @@ function TarefasDaFase({ faseNum }: { faseNum: Fase }) {
   }
 
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <ListChecks className="h-4 w-4 text-primary" /> Tarefas da fase
@@ -568,7 +568,7 @@ function ResultadoFase({ faseNum }: { faseNum: Fase }) {
   const st = useStore((s) => s)
   const estado = st.jornada.fases[faseNum]
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
         <Target className="h-4 w-4 text-primary" /> Resultado da fase
       </h3>
@@ -633,7 +633,7 @@ function ApresentarCEO({ faseNum }: { faseNum: Fase }) {
   }
 
   return (
-    <div className="rounded-lg border border-primary/30 bg-card p-5">
+    <div className="rounded-lg border border-primary/30 card-glass p-5">
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Presentation className="h-4 w-4 text-primary" /> O que apresentar para o CEO
@@ -671,7 +671,7 @@ function VitoriasDaFase({ faseNum }: { faseNum: Fase }) {
   const st = useStore((s) => s)
   const vitorias = (st.vitorias ?? []).filter((v) => v.fase === faseNum)
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" /> Vitórias vinculadas a esta fase
       </h3>
@@ -724,7 +724,7 @@ function FormFase1() {
   }, [g.modeloEmpresa])
 
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <h3 className="text-sm font-semibold mb-4">Perfil do Guardião</h3>
       <div className="grid md:grid-cols-2 gap-3">
         <Field label="Nome do Guardião principal"><Input className="h-8" value={g.nomePrincipal} onChange={(e) => upd("nomePrincipal", e.target.value)} /></Field>
@@ -788,7 +788,7 @@ function FormFase2() {
   const upd = (p: Partial<NonNullable<typeof i>>) => setorId && actions.upsertInteligencia(setorId, p)
 
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold">Inteligência por setor</h3>
         <div className="flex items-center gap-2">
@@ -839,7 +839,7 @@ function FormFase2() {
 function FormFase3() {
   const st = useStore((s) => s)
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">Mapeamento de gargalos</h3>
         <Button asChild size="sm">
@@ -877,7 +877,7 @@ function FormFase3() {
 function FormFase4() {
   const st = useStore((s) => s)
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">Soluções operacionais</h3>
         <Button asChild size="sm">
@@ -899,7 +899,7 @@ function FormFase4() {
 function FormFase5() {
   const st = useStore((s) => s)
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">Copilotos e rotinas</h3>
         <div className="flex gap-2 items-center">
@@ -926,7 +926,7 @@ function FormFase6() {
   const st = useStore((s) => s)
   const sistemas = st.projetos.filter((p) => p.tipoEntrega === "Sistema")
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">Sistemas inteligentes</h3>
         <Button asChild size="sm">
@@ -965,7 +965,7 @@ function FormFase7() {
     resultadoEsperado: "", consultorSugerido: "", linkAgenda: "",
   })
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">Arsenal do Lucro</h3>
         <Button size="sm" onClick={() => setOpen(true)}>
@@ -1092,7 +1092,7 @@ function SugestaoIA({ faseNum }: { faseNum: Fase }) {
   }
 
   return (
-    <section className="rounded-lg border border-primary/30 bg-card p-5 glow-neon">
+    <section className="rounded-lg border border-primary/30 card-glass p-5 glow-neon">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />

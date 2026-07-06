@@ -136,14 +136,14 @@ export default function Apresentacao() {
             <div className="text-sm uppercase tracking-[0.3em] text-primary mb-2">Decisões pendentes</div>
             <h2 className="text-5xl font-semibold mb-8">O que precisamos do CEO</h2>
             {resumo.apoioCEO && (
-              <div className="rounded-lg border border-primary/40 bg-card p-6 mb-4">
+              <div className="rounded-lg border border-primary/40 card-glass p-6 mb-4">
                 <div className="text-sm uppercase tracking-wider text-primary mb-1">Esta semana</div>
                 <div className="text-2xl">{resumo.apoioCEO}</div>
               </div>
             )}
             <div className="space-y-3 overflow-auto">
               {decisoes.slice(0, 5).map((t) => (
-                <div key={t.id} className="rounded-lg border bg-card p-4 flex items-center gap-4">
+                <div key={t.id} className="rounded-lg border card-glass p-4 flex items-center gap-4">
                   <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground grid place-items-center text-sm font-bold">!</div>
                   <div>
                     <div className="text-xl">{t.titulo}</div>
@@ -206,7 +206,7 @@ export default function Apresentacao() {
       </div>
 
       <div className="flex-1 min-h-0 flex items-stretch justify-center">
-        <div key={slide?.id} className="w-full max-w-[1400px] m-auto h-[80vh] rounded-lg border bg-card overflow-hidden relative animate-fade">
+        <div key={slide?.id} className="w-full max-w-[1400px] m-auto h-[80vh] rounded-lg border card-glass overflow-hidden relative animate-fade">
           {slide?.render()}
         </div>
       </div>
@@ -252,7 +252,7 @@ function LogoMark({ className }: { className?: string }) {
 
 function BigStat({ n, label }: { n: number | string; label: string }) {
   return (
-    <div className="rounded-lg border bg-card p-8 flex flex-col justify-center">
+    <div className="rounded-lg border card-glass p-8 flex flex-col justify-center">
       <div className="text-7xl font-semibold text-primary tracking-tight">{n}</div>
       <div className="text-lg text-muted-foreground mt-2">{label}</div>
     </div>
@@ -261,7 +261,7 @@ function BigStat({ n, label }: { n: number | string; label: string }) {
 
 function MiniStat({ n, label }: { n: number | string; label: string }) {
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <div className="text-3xl font-semibold text-primary">{n}</div>
       <div className="text-sm text-muted-foreground mt-1">{label}</div>
     </div>

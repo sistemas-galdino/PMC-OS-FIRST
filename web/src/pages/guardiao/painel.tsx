@@ -209,7 +209,7 @@ function MinhaSemana() {
 function CardSemana({ icon, title, empty, children }: { icon: ReactNode; title: string; empty: string; children: ReactNode }) {
   const hasChildren = Array.isArray(children) ? children.length > 0 : !!children
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="rounded-lg border card-glass p-4">
       <div className="flex items-center gap-2 text-xs font-semibold mb-2">{icon}{title}</div>
       <div className="space-y-1.5">
         {hasChildren ? children : <div className="text-xs text-muted-foreground">{empty}</div>}
@@ -254,7 +254,7 @@ function ProjetosPorSetor() {
             ?? PROXIMA_ACAO_FASE[fase]
 
           return (
-            <div key={s.id} className="rounded-lg border bg-card p-4 flex flex-col gap-2">
+            <div key={s.id} className="rounded-lg border card-glass p-4 flex flex-col gap-2">
               <div className="flex items-start justify-between gap-2 flex-wrap">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold truncate flex items-center gap-2">
@@ -367,7 +367,7 @@ function ResumoExecutivoCEO() {
         <MiniExec icon={<ListChecks className="h-4 w-4" />} k="Setores acompanhados" v={setores.length} />
       </div>
 
-      <div className="rounded-lg border bg-card overflow-x-auto">
+      <div className="rounded-lg border card-glass overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
@@ -408,7 +408,7 @@ function ResumoExecutivoCEO() {
 
 function MiniExec({ icon, k, v }: { icon: ReactNode; k: string; v: number | string }) {
   return (
-    <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
+    <div className="rounded-lg border card-glass p-3 flex items-center gap-3">
       <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center text-primary">{icon}</div>
       <div className="min-w-0">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{k}</div>
@@ -441,7 +441,7 @@ function ConsultaMetodologia() {
             <Link
               key={f.num}
               to={`/guardiao/fases/${f.num}`}
-              className="rounded-lg border bg-card p-3 flex flex-col gap-2 hover:glow-neon transition"
+              className="rounded-lg border card-glass p-3 flex flex-col gap-2 hover:glow-neon transition"
             >
               <div className="flex items-center justify-between">
                 <FaseBadge fase={f.num} />

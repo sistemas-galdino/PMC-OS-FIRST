@@ -105,7 +105,7 @@ export default function Evidencias() {
           const obrig = EVIDENCIAS_OBRIGATORIAS[f.num]
           const aprov = obrig.filter((tipo) => evidencias.some((e) => e.fase === f.num && e.tipo === tipo && e.status === "Aprovada")).length
           return (
-            <div key={f.num} className="rounded-lg border bg-card p-4">
+            <div key={f.num} className="rounded-lg border card-glass p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-sm font-semibold">Fase 0{f.num}</div>
                 <Badge tone={aprov === obrig.length ? "ok" : "warn"}>{aprov}/{obrig.length}</Badge>
@@ -136,7 +136,7 @@ export default function Evidencias() {
             const fase = FASES.find((f) => f.num === e.fase)
             const setor = setores.find((s) => s.id === e.setorId)
             return (
-              <div key={e.id} className="rounded-lg border bg-card p-4">
+              <div key={e.id} className="rounded-lg border card-glass p-4">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">

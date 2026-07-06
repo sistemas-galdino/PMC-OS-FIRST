@@ -37,7 +37,7 @@ export default function JornadaHub() {
             <Link
               key={f.num}
               to={`/guardiao/fases/${f.num}`}
-              className="rounded-lg border bg-card p-4 flex flex-col gap-3 hover:glow-neon transition"
+              className="rounded-lg border card-glass p-4 flex flex-col gap-3 hover:glow-neon transition"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">

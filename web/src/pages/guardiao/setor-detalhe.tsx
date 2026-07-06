@@ -81,7 +81,7 @@ export default function SetorDetalhe() {
   if (!setor) {
     return (
       <div className="space-y-6">
-        <div className="rounded-lg border bg-card p-10 text-center">
+        <div className="rounded-lg border card-glass p-10 text-center">
           <div className="text-base font-medium">Setor não encontrado</div>
           <Link to="/guardiao/setores" className="text-sm text-primary mt-2 inline-block">← Voltar para setores</Link>
         </div>
@@ -221,7 +221,7 @@ ${decisao}`
       </div>
 
       {/* Cabeçalho */}
-      <div className="rounded-lg border bg-card p-6">
+      <div className="rounded-lg border card-glass p-6">
         <div className="text-xs uppercase tracking-[0.2em] text-primary mb-2">Setor</div>
         <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">{setor.nome}</h1>
         <div className="mt-3 flex flex-wrap gap-2 items-center">
@@ -325,7 +325,7 @@ ${decisao}`
 
       {tab === "diag" && (
         <>
-          <div className="rounded-lg border border-primary/30 bg-card p-5">
+          <div className="rounded-lg border border-primary/30 card-glass p-5">
             <h3 className="text-lg font-semibold">Diagnóstico guiado do setor</h3>
             <p className="text-sm text-muted-foreground mt-1">
               Responda com base na conversa com o líder e na observação da rotina do setor. Cada bloco abaixo é um trecho do roteiro da reunião.
@@ -378,7 +378,7 @@ ${decisao}`
 
           <DiagnosticoExtraBlock setor={setor} />
 
-          <div className="rounded-lg border bg-card p-4 mt-4 flex flex-wrap items-center gap-2 justify-between">
+          <div className="rounded-lg border card-glass p-4 mt-4 flex flex-wrap items-center gap-2 justify-between">
             <div className="text-sm text-muted-foreground">Diagnóstico preenchido? Gere as sugestões da IA na próxima aba.</div>
             <Button size="sm" onClick={() => setTab("sugestoes")}>
               <Sparkles className="h-4 w-4" /> Ir para Sugestões da IA
@@ -389,7 +389,7 @@ ${decisao}`
 
       {tab === "sugestoes" && (
         <>
-          <div className="rounded-lg border bg-card p-5">
+          <div className="rounded-lg border card-glass p-5">
             <h3 className="text-lg font-semibold">Sugestões da IA para este setor</h3>
             <p className="text-sm text-muted-foreground mt-1">
               A IA usa o diagnóstico preenchido (processos, tarefas repetitivas, gargalos e time) para sugerir dashboards, sistemas, automações, agentes e o primeiro projeto piloto.
@@ -508,7 +508,7 @@ ${decisao}`
 
 function Section({ title, right, children }: { title: string; right?: ReactNode; children: ReactNode }) {
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-lg border card-glass p-5">
       <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
         <h3 className="text-lg font-semibold">{title}</h3>
         {right}
@@ -569,8 +569,8 @@ function ProcessosBlock({ setorId, processos, faseAtual }: { setorId: string; pr
             <Textarea className="md:col-span-2 min-h-[60px]" placeholder="Descrição do processo" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
             <Input placeholder="Impacta (receita/custo/entrega/atendimento)" value={form.impacto} onChange={(e) => setForm({ ...form, impacto: e.target.value })} />
             <GSelect className="w-full" value={String(form.fase)} onChange={(v) => setForm({ ...form, fase: Number(v) as Fase })} options={faseOptions} />
-            <label className="flex items-center gap-2 text-sm p-2 rounded-md bg-card"><input type="checkbox" checked={form.temPlanilha} onChange={(e) => setForm({ ...form, temPlanilha: e.target.checked })} /> Existe planilha envolvida</label>
-            <label className="flex items-center gap-2 text-sm p-2 rounded-md bg-card"><input type="checkbox" checked={form.geraIndicador} onChange={(e) => setForm({ ...form, geraIndicador: e.target.checked })} /> Gera dado ou indicador</label>
+            <label className="flex items-center gap-2 text-sm p-2 rounded-md card-glass"><input type="checkbox" checked={form.temPlanilha} onChange={(e) => setForm({ ...form, temPlanilha: e.target.checked })} /> Existe planilha envolvida</label>
+            <label className="flex items-center gap-2 text-sm p-2 rounded-md card-glass"><input type="checkbox" checked={form.geraIndicador} onChange={(e) => setForm({ ...form, geraIndicador: e.target.checked })} /> Gera dado ou indicador</label>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancelar</Button>
@@ -716,7 +716,7 @@ function TarefasRepBlock({ setorId, lista }: { setorId: string; lista: TarefaRep
 
 function Flag({ label, v, on }: { label: string; v: boolean; on: (b: boolean) => void }) {
   return (
-    <label className="flex items-center gap-2 p-1.5 rounded-md bg-card cursor-pointer">
+    <label className="flex items-center gap-2 p-1.5 rounded-md card-glass cursor-pointer">
       <input type="checkbox" checked={v} onChange={(e) => on(e.target.checked)} /> {label}
     </label>
   )

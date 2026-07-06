@@ -25,7 +25,7 @@ export default function PromptsMetodologia() {
       />
 
       <div className="grid lg:grid-cols-[260px_1fr] gap-6">
-        <aside className="rounded-lg border bg-card p-2 h-fit">
+        <aside className="rounded-lg border card-glass p-2 h-fit">
           {FASES.map((f) => (
             <button
               key={f.num}
@@ -42,7 +42,7 @@ export default function PromptsMetodologia() {
         </aside>
 
         <section className="space-y-4">
-          <div className="rounded-lg border bg-card p-5">
+          <div className="rounded-lg border card-glass p-5">
             <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
               <div>
                 <h3 className="text-sm font-semibold">Prompt da Fase 0{faseSel} — {faseAtual.titulo}</h3>
@@ -86,7 +86,7 @@ export default function PromptsMetodologia() {
           </div>
 
           {versoes[faseSel].length > 0 && (
-            <div className="rounded-lg border bg-card p-5">
+            <div className="rounded-lg border card-glass p-5">
               <h4 className="text-sm font-semibold mb-2">Versões personalizadas desta sessão</h4>
               <div className="space-y-2">
                 {versoes[faseSel].map((v, i) => (

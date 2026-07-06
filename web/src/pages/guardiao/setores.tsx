@@ -133,7 +133,7 @@ export default function Setores() {
 
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((s) => (
-          <div key={s.id} className="rounded-lg border bg-card p-5 hover:bg-muted transition-colors">
+          <div key={s.id} className="rounded-lg border card-glass p-5 hover:bg-muted transition-colors">
             <div className="flex items-start justify-between gap-3">
               <button onClick={() => setSelected(s.id)} className="text-left flex-1 min-w-0">
                 <div className="text-lg font-semibold truncate">{s.nome}</div>

@@ -182,3 +182,36 @@
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 25%, transparent),
               0 10px 40px -10px color-mix(in oklab, var(--primary) 35%, transparent);
 }
+
+/* Card "glass" (mesmo recipe do <Card> geral: bg-card/50 + backdrop-blur-md).
+   Usado no Guardião no lugar de bg-card (que é preto opaco) pra deixar o
+   shader de fundo aparecer atrás dos cards. */
+.card-glass {
+  background-color: color-mix(in oklab, var(--card) 50%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* Scrollbars escuras no sistema todo (combina com o tema). Track transparente
+   (mostra o fundo escuro) + thumb cinza discreto. .scrollbar-hide continua
+   escondendo por ter maior especificidade. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--foreground) 20%, transparent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, var(--foreground) 20%, transparent);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklab, var(--foreground) 32%, transparent);
+}

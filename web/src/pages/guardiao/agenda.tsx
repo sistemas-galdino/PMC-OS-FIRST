@@ -250,7 +250,7 @@ export default function Agenda() {
         {ROTINAS.map((r) => {
           const count = atividadesRotina.filter((t) => t.tipoRotina === r.key).length
           return (
-            <div key={r.key} className="rounded-lg border bg-card p-5 flex flex-col">
+            <div key={r.key} className="rounded-lg border card-glass p-5 flex flex-col">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="text-[11px] uppercase tracking-wider text-primary">Cadência</div>
@@ -323,7 +323,7 @@ export default function Agenda() {
       )}
 
       {/* Disseminação da cultura */}
-      <section className="rounded-lg border bg-card p-6">
+      <section className="rounded-lg border card-glass p-6">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <div className="text-[11px] uppercase tracking-wider text-primary">Disseminação da Cultura de IA</div>
@@ -430,7 +430,7 @@ function Calendario({
   const todayISO = new Date().toISOString().slice(0, 10)
 
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="rounded-lg border card-glass p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-base font-semibold capitalize">{monthLabel}</h3>
         <div className="flex gap-1">
@@ -549,7 +549,7 @@ function ListaTarefas({
       {tarefas.length === 0 ? (
         <EmptyState title="Nenhuma atividade encontrada" hint="Crie uma nova atividade ou ajuste os filtros." />
       ) : (
-        <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="rounded-lg border card-glass overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>

@@ -40,7 +40,7 @@ export default function PromptCompleto() {
         subtitle="Use este prompt para adaptar o sistema à sua rotina, ao seu setor ou à realidade da sua empresa."
       />
 
-      <div className="rounded-lg border bg-card p-5">
+      <div className="rounded-lg border card-glass p-5">
         <p className="text-sm text-muted-foreground">
           Você pode adaptar este prompt com base no setor, nos gargalos identificados, na rotina da empresa e nos
           projetos pilotos que deseja criar.

@@ -215,7 +215,7 @@ function VitoriaCard({ v, setorNome, onDetalhes, onEditar }: {
   v: Vitoria; setorNome?: string; onDetalhes: () => void; onEditar: () => void
 }) {
   return (
-    <div className="rounded-lg border bg-card p-4 flex flex-col">
+    <div className="rounded-lg border card-glass p-4 flex flex-col">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <Trophy className="h-4 w-4 text-primary" />
@@ -298,7 +298,7 @@ function PainelIndicadores({ vitorias, setores }: { vitorias: Vitoria[]; setores
       <BlocoBarras titulo="Vitórias por fase" dados={porFase} />
       <BlocoBarras titulo="Horas economizadas por setor (mês)" dados={horasPorSetor} sufixo="h" />
       <BlocoBarras titulo="Horas economizadas por mês" dados={horasPorMes} sufixo="h" />
-      <div className="rounded-lg border bg-card p-4">
+      <div className="rounded-lg border card-glass p-4">
         <div className="text-sm font-semibold mb-3">Soluções criadas</div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <Mini label="Sistemas" valor={stats.sistemas} />
@@ -325,7 +325,7 @@ function BlocoBarras({ titulo, dados, sufixo }: { titulo: string; dados: Record<
   const entries = Object.entries(dados).sort((a, b) => b[1] - a[1])
   const max = Math.max(1, ...entries.map(([, v]) => v))
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="rounded-lg border card-glass p-4">
       <div className="text-sm font-semibold mb-3">{titulo}</div>
       {entries.length === 0 ? (
         <div className="text-xs text-muted-foreground">Sem dados.</div>
