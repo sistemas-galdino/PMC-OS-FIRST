@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   MapIcon as Map,
   TrendingUpIcon as TrendingUp,
@@ -24,6 +25,9 @@ interface CenariosForm {
   como_ajudar: string
   resultados_esperados: string
   entregas_decisivas: string
+  usa_crm: '' | 'sim' | 'nao'
+  crm_atual: string
+  vai_usar_black_crm: '' | 'sim' | 'nao'
 }
 
 const EMPTY: CenariosForm = {
@@ -35,7 +39,14 @@ const EMPTY: CenariosForm = {
   como_ajudar: '',
   resultados_esperados: '',
   entregas_decisivas: '',
+  usa_crm: '',
+  crm_atual: '',
+  vai_usar_black_crm: '',
 }
+
+// boolean|null (banco) <-> '' | 'sim' | 'nao' (form)
+const boolToOpt = (v: boolean | null | undefined): '' | 'sim' | 'nao' => (v === true ? 'sim' : v === false ? 'nao' : '')
+const optToBool = (v: '' | 'sim' | 'nao'): boolean | null => (v === 'sim' ? true : v === 'nao' ? false : null)
 
 interface Props {
   session?: Session
@@ -56,7 +67,7 @@ export default function CenariosTab({ session, clientId }: Props) {
     async function fetchMetas() {
       const { data } = await supabase
         .from('cliente_metas')
-        .select('faturamento_anual_objetivo, numero_funcionarios, numero_gestores, principais_desafios, meta_2026, como_ajudar, resultados_esperados, entregas_decisivas')
+        .select('faturamento_anual_objetivo, numero_funcionarios, numero_gestores, principais_desafios, meta_2026, como_ajudar, resultados_esperados, entregas_decisivas, usa_crm, crm_atual, vai_usar_black_crm')
         .eq('id_cliente', resolvedClientId)
         .maybeSingle()
       if (data) {
@@ -69,6 +80,9 @@ export default function CenariosTab({ session, clientId }: Props) {
           como_ajudar: data.como_ajudar ?? '',
           resultados_esperados: data.resultados_esperados ?? '',
           entregas_decisivas: data.entregas_decisivas ?? '',
+          usa_crm: boolToOpt(data.usa_crm),
+          crm_atual: data.crm_atual ?? '',
+          vai_usar_black_crm: boolToOpt(data.vai_usar_black_crm),
         })
       }
       setLoading(false)
@@ -81,10 +95,18 @@ export default function CenariosTab({ session, clientId }: Props) {
     setSaving(true)
     setSaved(false)
     const colaboradores_total = (form.numero_funcionarios || 0) + (form.numero_gestores || 0)
+    const { usa_crm, crm_atual, vai_usar_black_crm, ...resto } = form
     const { error } = await supabase
       .from('cliente_metas')
       .upsert(
-        { id_cliente: resolvedClientId, ...form, colaboradores_total },
+        {
+          id_cliente: resolvedClientId,
+          ...resto,
+          colaboradores_total,
+          usa_crm: optToBool(usa_crm),
+          crm_atual: usa_crm === 'sim' ? crm_atual.trim() || null : null,
+          vai_usar_black_crm: optToBool(vai_usar_black_crm),
+        },
         { onConflict: 'id_cliente' }
       )
     setSaving(false)
@@ -157,6 +179,45 @@ export default function CenariosTab({ session, clientId }: Props) {
                   onChange={(e) => setForm(prev => ({ ...prev, numero_gestores: Number(e.target.value) || 0 }))}
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Já usa CRM?</Label>
+                <Select
+                  value={form.usa_crm}
+                  onValueChange={(v) => setForm(prev => ({ ...prev, usa_crm: v as 'sim' | 'nao', crm_atual: v === 'sim' ? prev.crm_atual : '' }))}
+                >
+                  <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sim">Sim</SelectItem>
+                    <SelectItem value="nao">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.usa_crm === 'sim' && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Qual CRM?</Label>
+                  <Input
+                    className="h-11 rounded-xl"
+                    placeholder="Ex.: Pipedrive, RD Station"
+                    value={form.crm_atual}
+                    onChange={(e) => setForm(prev => ({ ...prev, crm_atual: e.target.value }))}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Vai usar a Black CRM?</Label>
+              <Select
+                value={form.vai_usar_black_crm}
+                onValueChange={(v) => setForm(prev => ({ ...prev, vai_usar_black_crm: v as 'sim' | 'nao' }))}
+              >
+                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sim">Sim</SelectItem>
+                  <SelectItem value="nao">Não</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Principais Desafios</Label>

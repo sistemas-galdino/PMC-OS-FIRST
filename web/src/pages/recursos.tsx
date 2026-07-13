@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
+import { PageHeader } from "@/components/layout/page-header"
 
 interface Recurso {
   id: string
@@ -198,23 +199,16 @@ export default function RecursosPage({ session, forceAdmin }: RecursosPageProps)
 
   return (
     <div className="space-y-10 pb-10">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
-      >
-        <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Links Importantes</h1>
-          <p className="text-muted-foreground font-medium text-sm">Ferramentas e acessos disponíveis para sua operação.</p>
-        </div>
-        {isAdmin && (
+      <PageHeader
+        title="Links Importantes"
+        description="Ferramentas e acessos disponíveis para sua operação."
+        action={isAdmin && (
           <Button className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10" onClick={openNew}>
             <Plus className="size-5" />
             <span className="font-bold uppercase tracking-wider text-[11px]">Novo Recurso</span>
           </Button>
         )}
-      </motion.div>
+      />
 
       {Object.keys(quickLinks).length > 0 && (
         <div className="space-y-6">

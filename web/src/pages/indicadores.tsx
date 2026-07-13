@@ -49,7 +49,7 @@ import {
   MoreHorizontalIcon as MoreHorizontal,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
-import { motion } from "framer-motion"
+import { PageHeader } from "@/components/layout/page-header"
 import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
 import { formatCurrency } from "@/lib/format-currency"
 
@@ -206,17 +206,10 @@ export default function IndicadoresPage({ session, clientId }: IndicadoresPagePr
 
   return (
     <div className="space-y-8 pb-10">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.5 }}
-        className="border-l-4 border-primary pl-6 py-2"
-      >
-        <h1 className="text-3xl font-bold tracking-tight">Indicadores</h1>
-        <p className="text-muted-foreground font-medium text-sm mt-1">
-          Métricas mensais de tráfego e faturamento
-        </p>
-      </motion.div>
+      <PageHeader
+        title="Indicadores"
+        description="Métricas mensais de tráfego e faturamento"
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard

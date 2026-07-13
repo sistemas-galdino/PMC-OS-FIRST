@@ -11,7 +11,7 @@ import Convites from "@/components/guardiao/convites"
 import { Resultados } from "@/components/guardiao/resultados"
 import { Ranking } from "@/components/guardiao/ranking"
 import type { Session } from "@supabase/supabase-js"
-import { motion } from "framer-motion"
+import { PageHeader } from "@/components/layout/page-header"
 
 const VALID_TABS = new Set(['visao-geral', 'convites', 'resultados', 'ranking'])
 
@@ -37,17 +37,10 @@ export default function GuardiaoPage({ session, clientId, adminView, hideTabList
 
   return (
     <div className="space-y-8 pb-10">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="border-l-4 border-primary pl-8 py-2"
-      >
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Guardião</h1>
-        <p className="text-muted-foreground font-medium text-sm mt-2">
-          Avaliação e contratação do Guardião de IA da sua empresa
-        </p>
-      </motion.div>
+      <PageHeader
+        title="Guardião"
+        description="Avaliação e contratação do Guardião de IA da sua empresa"
+      />
 
       <Tabs value={tab} onValueChange={onTabChange} className="w-full">
         {!hideTabList && (

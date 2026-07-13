@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
+import { PageHeader } from "@/components/layout/page-header"
 
 interface Ferramenta {
   id: string
@@ -240,23 +241,16 @@ export default function FerramentasPage({ session, forceAdmin }: FerramentasPage
 
   return (
     <div className="space-y-10 pb-10">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
-      >
-        <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Ferramentas de IA</h1>
-          <p className="text-muted-foreground font-medium text-sm">Acesse as melhores ferramentas de inteligência artificial do mercado.</p>
-        </div>
-        {isAdmin && (
+      <PageHeader
+        title="Ferramentas de IA"
+        description="Acesse as melhores ferramentas de inteligência artificial do mercado."
+        action={isAdmin && (
           <Button className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10" onClick={openNew}>
             <Plus className="size-5" />
             <span className="font-bold uppercase tracking-wider text-[11px]">Nova Ferramenta</span>
           </Button>
         )}
-      </motion.div>
+      />
 
       <div className="flex flex-col md:flex-row md:items-center gap-4 bg-muted/10 p-6 rounded-2xl border border-border/50">
         <div className="relative flex-1 max-w-md">
