@@ -50,6 +50,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ComboboxInput } from "@/components/ui/combobox-input"
 import { RegistrarClienteDialog } from "@/components/clientes/registrar-cliente-dialog"
+import { STATUS_CLIENTE } from "@/lib/status-cliente"
 import {
   Dialog,
   DialogContent,
@@ -89,15 +90,6 @@ interface Client {
   ano_treinamento: number | null
   email: string | null
 }
-
-const STATUS_OPTIONS = [
-  'Ativo no Programa',
-  'Aguardando Início',
-  'Onboarding marcado',
-  'Pendente de Onboarding',
-  'Cliente Cancelado',
-  'Desistência de Compra',
-]
 
 const ENGAGEMENT_LABELS: Record<NivelEngajamento, string> = {
   cliente_novo: 'Cliente Novo',
@@ -397,7 +389,7 @@ export default function ClientesPage() {
   const csFilterOptions = hasClientesSemCs ? [...uniqueScs, 'Sem CS'] : uniqueScs
 
   const filterCategories: { key: string; label: string; options: string[] }[] = [
-    { key: 'status', label: 'Status', options: STATUS_OPTIONS },
+    { key: 'status', label: 'Status', options: [...STATUS_CLIENTE] },
     { key: 'cs', label: 'CS Responsável', options: csFilterOptions },
     { key: 'engajamento', label: 'Engajamento', options: Object.values(ENGAGEMENT_LABELS) },
     { key: 'produto', label: 'Produto', options: produtoOptions },
@@ -910,7 +902,7 @@ export default function ClientesPage() {
                   <SelectValue placeholder="Selecionar..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_OPTIONS.map(s => (
+                  {STATUS_CLIENTE.map(s => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1037,13 +1029,13 @@ export default function ClientesPage() {
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            <BulkField label="Status Atual" enabled={bulkStatus !== null} onToggle={() => setBulkStatus(prev => prev === null ? STATUS_OPTIONS[0] : null)}>
+            <BulkField label="Status Atual" enabled={bulkStatus !== null} onToggle={() => setBulkStatus(prev => prev === null ? STATUS_CLIENTE[0] : null)}>
               <Select value={bulkStatus ?? ""} onValueChange={setBulkStatus}>
                 <SelectTrigger className="h-11 rounded-xl border-border bg-background">
                   <SelectValue placeholder="Selecionar..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_OPTIONS.map(s => (
+                  {STATUS_CLIENTE.map(s => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>

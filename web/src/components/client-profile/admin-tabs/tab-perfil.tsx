@@ -14,15 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { UsersIcon, Sparkles2Icon } from "@/components/ui/icons"
-
-const STATUS_OPTIONS = [
-  "Ativo no Programa",
-  "Aguardando Início",
-  "Onboarding marcado",
-  "Pendente de Onboarding",
-  "Cliente Cancelado",
-  "Desistência de Compra",
-] as const
+import { STATUS_CLIENTE } from "@/lib/status-cliente"
 
 const SAUDE_OPTIONS = [
   { v: "saudavel", l: "Saudável" },
@@ -304,7 +296,7 @@ export default function TabPerfil({ clientId }: { clientId: string }) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={SENTINEL_NONE}>—</SelectItem>
-                  {STATUS_OPTIONS.map((s) => (
+                  {STATUS_CLIENTE.map((s) => (
                     <SelectItem key={s} value={s}>
                       {s}
                     </SelectItem>

@@ -20,14 +20,7 @@ import {
 import { UF_OPTIONS } from "@/components/onboarding/step-dados-responsavel"
 import { NICHO_OPTIONS } from "@/components/onboarding/step-dados-negocio"
 import { ComboboxInput } from "@/components/ui/combobox-input"
-
-const STATUS_OPTIONS = [
-  'Ativo no Programa',
-  'Aguardando Início',
-  'Pendente de Onboarding',
-  'Cliente Cancelado',
-  'Desistência de Compra',
-]
+import { STATUS_CLIENTE_CADASTRO } from "@/lib/status-cliente"
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -326,7 +319,7 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
                       <SelectValue placeholder="Selecionar..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {STATUS_OPTIONS.map(s => (
+                      {STATUS_CLIENTE_CADASTRO.map(s => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
                     </SelectContent>

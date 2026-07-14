@@ -9,6 +9,7 @@ import {
   CalendarIcon,
   ClockIcon,
   PlayCircleIcon,
+  FlagIcon,
 } from "@/components/ui/icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -61,6 +62,7 @@ export default function AdminDashboard() {
     onboardingMarcado: 0,
     pendentesOnboarding: 0,
     aguardandoInicio: 0,
+    cicloEncerrado: 0,
     churnRate: 0,
   })
   const [geoData, setGeoData] = useState<any[]>([])
@@ -96,6 +98,7 @@ export default function AdminDashboard() {
           const onboardingMarcado = clients.filter(c => c.status_atual === 'Onboarding marcado').length
           const pendentesOnboarding = clients.filter(c => c.status_atual === 'Pendente de Onboarding').length
           const aguardandoInicio = clients.filter(c => c.status_atual === 'Aguardando Início').length
+          const cicloEncerrado = clients.filter(c => c.status_atual === 'Ciclo encerrado').length
           const churnRate = total > 0 ? (cancelados / total) * 100 : 0
 
           setStats({
@@ -106,6 +109,7 @@ export default function AdminDashboard() {
             onboardingMarcado,
             pendentesOnboarding,
             aguardandoInicio,
+            cicloEncerrado,
             churnRate: Number(churnRate.toFixed(1)),
           })
 
@@ -207,6 +211,7 @@ export default function AdminDashboard() {
     { title: "Onboarding Marcado", value: stats.onboardingMarcado, icon: CalendarIcon, description: "Reunião de onboarding agendada", iconClass: "text-blue-400 bg-blue-500/10" },
     { title: "Pendentes Onboarding", value: stats.pendentesOnboarding, icon: ClockIcon, description: "Aguardando agendamento", iconClass: "text-yellow-400 bg-yellow-500/10" },
     { title: "Vão Iniciar", value: stats.aguardandoInicio, icon: PlayCircleIcon, description: "Aguardando início no programa", iconClass: "text-emerald-400 bg-emerald-500/10" },
+    { title: "Ciclo Encerrado", value: stats.cicloEncerrado, icon: FlagIcon, description: "Completaram o programa e não renovaram", iconClass: "text-muted-foreground bg-muted/30" },
   ]
 
   const cardsVisiveis = detalhada ? cards : cards.filter(c => !c.risco)
