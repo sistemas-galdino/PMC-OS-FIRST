@@ -197,24 +197,28 @@ export default function AdminDashboard() {
   }, [])
 
   if (loading) {
-    return <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <Card key={i} className="h-40 animate-pulse bg-card/40" />)}
+    // Mesmo grid/contagem da visão ativa, pra não pular o layout quando os dados chegam.
+    return <div className={`grid gap-6 grid-cols-1 sm:grid-cols-2 ${detalhada ? "lg:grid-cols-3" : "lg:grid-cols-5"}`}>
+      {Array.from({ length: detalhada ? 9 : 5 }).map((_, i) => <Card key={i} className="h-40 animate-pulse bg-card/40" />)}
     </div>
   }
 
+  // Ordem = leitura em 3 linhas na visão detalhada: base / entrada / saídas.
+  // soDetalhada: card só aparece na visão Detalhada.
   const cards = [
     { title: "Total Clientes", value: stats.total, icon: Users, description: "Base geral de clientes", iconClass: "text-primary bg-primary/10" },
     { title: "Clientes Ativos", value: stats.ativos, icon: TrendingUp, description: "Ativos no programa", iconClass: "text-emerald-400 bg-emerald-500/10" },
-    { title: "Churn Rate", value: stats.churnRate, icon: TrendingDown, description: "Taxa de cancelamento", iconClass: "text-red-400 bg-red-500/10", decimals: 1, suffix: "%", risco: true },
-    { title: "Cancelaram", value: stats.cancelados, icon: XIcon, description: "Clientes cancelados", iconClass: "text-red-400 bg-red-500/10", risco: true },
-    { title: "Desistência de Compra", value: stats.desistencias, icon: ShoppingCartIcon, description: "Desistiram antes de iniciar", iconClass: "text-orange-400 bg-orange-500/10", risco: true },
+    { title: "Churn Rate", value: stats.churnRate, icon: TrendingDown, description: "Taxa de cancelamento", iconClass: "text-red-400 bg-red-500/10", decimals: 1, suffix: "%", soDetalhada: true },
+    { title: "Vão Iniciar", value: stats.aguardandoInicio, icon: PlayCircleIcon, description: "Aguardando início no programa", iconClass: "text-emerald-400 bg-emerald-500/10" },
     { title: "Onboarding Marcado", value: stats.onboardingMarcado, icon: CalendarIcon, description: "Reunião de onboarding agendada", iconClass: "text-blue-400 bg-blue-500/10" },
     { title: "Pendentes Onboarding", value: stats.pendentesOnboarding, icon: ClockIcon, description: "Aguardando agendamento", iconClass: "text-yellow-400 bg-yellow-500/10" },
-    { title: "Vão Iniciar", value: stats.aguardandoInicio, icon: PlayCircleIcon, description: "Aguardando início no programa", iconClass: "text-emerald-400 bg-emerald-500/10" },
-    { title: "Ciclo Encerrado", value: stats.cicloEncerrado, icon: FlagIcon, description: "Completaram o programa e não renovaram", iconClass: "text-muted-foreground bg-muted/30" },
+    { title: "Cancelaram", value: stats.cancelados, icon: XIcon, description: "Clientes cancelados", iconClass: "text-red-400 bg-red-500/10", soDetalhada: true },
+    { title: "Desistência de Compra", value: stats.desistencias, icon: ShoppingCartIcon, description: "Desistiram antes de iniciar", iconClass: "text-orange-400 bg-orange-500/10", soDetalhada: true },
+    { title: "Ciclo Encerrado", value: stats.cicloEncerrado, icon: FlagIcon, description: "Completaram o programa e não renovaram", iconClass: "text-muted-foreground bg-muted/30", soDetalhada: true },
   ]
 
-  const cardsVisiveis = detalhada ? cards : cards.filter(c => !c.risco)
+  // 5 cards em 5 colunas / 9 em 3 — sempre fechando a última linha.
+  const cardsVisiveis = detalhada ? cards : cards.filter(c => !c.soDetalhada)
 
   const container = {
     hidden: { opacity: 0 },
@@ -273,11 +277,11 @@ export default function AdminDashboard() {
         variants={container}
         initial="hidden"
         animate="show"
-        className={`grid gap-6 md:grid-cols-2 ${detalhada ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}
+        className={`grid gap-6 grid-cols-1 sm:grid-cols-2 ${detalhada ? "lg:grid-cols-3" : "lg:grid-cols-5"}`}
       >
         {cardsVisiveis.map((card) => (
-          <motion.div key={card.title} variants={item}>
-            <Card className="hover:shadow-primary/10">
+          <motion.div key={card.title} variants={item} className="h-full">
+            <Card className="h-full hover:shadow-primary/10">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{card.title}</CardTitle>
                 <div className={`p-2.5 rounded-xl ${card.iconClass}`}>
