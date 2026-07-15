@@ -37,6 +37,10 @@ import {
   CompassIcon as Compass,
   FileTextIcon as FileText,
   TargetIcon as Target,
+  MegaphoneIcon as Megaphone,
+  VideoIcon as Video,
+  PackageIcon as Package,
+  TrendingUpIcon as TrendingUp,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -83,59 +87,161 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     }
   }
 
-  type NavChild = { title: string; tab: string; icon: any }
+  type NavChild = { title: string; icon: any; tab?: string; url?: string }
   type NavItem = { title: string; icon: any; url: string; children?: NavChild[] }
+  type NavSection = { label: string | null; items: NavItem[] }
 
-  const adminItems: NavItem[] = [
-    { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
-    { title: "Agente", icon: MessageCircle, url: "/agente" },
-    { title: "Clientes", icon: Users, url: "/clientes" },
-    { title: "CRM", icon: Target, url: "/crm" },
-    { title: "Acessos", icon: ShieldCheck, url: "/acessos" },
-    { title: "Roadmap de Sistemas", icon: Compass, url: "/roadmap-sistemas" },
-    { title: "Central de Atendimentos", icon: MessageSquare, url: "/central-atendimentos" },
-    { title: "Funis", icon: BarChart3, url: "/funis" },
-    { title: "Guardião (Clientes)", icon: ShieldCheck, url: "/guardiao-admin" },
-    { title: "Pendentes Onboarding", icon: Clock, url: "/onboarding" },
-    { title: "Respostas de Onboarding", icon: FileText, url: "/respostas-onboarding" },
-    { title: "Consultores", icon: MessageSquare, url: "/mentores" },
-    { title: "Reunioes Galdino", icon: Calendar, url: "/reunioes-galdino" },
-    { title: "Reunioes Black CRM", icon: Settings, url: "/reunioes-blackcrm" },
-    { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
-    { title: "Ferramentas IA", icon: Sparkles, url: "/ferramentas" },
-    { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
-    { title: "Configurações", icon: Settings, url: "/configuracoes" },
-  ]
-
-  const clientItems: NavItem[] = [
-    { title: "Dashboard", icon: LayoutDashboard, url: "/" },
-    { title: "Informações da Empresa", icon: Building, url: "/informacoes-empresa" },
-    { title: "Mapeamento", icon: Share2, url: "/mapeamento" },
-    { title: "Indicadores", icon: BarChart3, url: "/indicadores" },
-    { title: "Reuniões Consultores", icon: Calendar, url: "/reunioes" },
-    { title: "Reuniões Galdino", icon: Calendar, url: "/reunioes-galdino" },
-    { title: "Reuniões BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },
-    { title: "Ações", icon: CheckSquare, url: "/acoes" },
-    { title: "Trilhas", icon: MapTrilha, url: "/trilhas" },
-    { title: "Central de Vitórias", icon: Trophy, url: "/vitorias" },
-    { title: "Meu Time", icon: Users, url: "/meu-time" },
+  const adminSections: NavSection[] = [
     {
-      title: "Guardião",
-      icon: ShieldCheck,
-      url: "/guardiao",
-      children: [
-        { title: "Visão geral", tab: "visao-geral", icon: Compass },
-        { title: "Convites", tab: "convites", icon: Share2 },
-        { title: "Resultados", tab: "resultados", icon: BarChart3 },
-        { title: "Ranking", tab: "ranking", icon: Trophy },
+      label: "Visão Geral",
+      items: [
+        { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
+        { title: "Visão Geral 2", icon: TrendingUp, url: "/dashboard-2" },
+        { title: "Agente", icon: MessageCircle, url: "/agente" },
       ],
     },
-    { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
-    { title: "Ferramentas IA", icon: Sparkles, url: "/ferramentas" },
-    { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
+    {
+      label: "Clientes & CRM",
+      items: [
+        { title: "Clientes", icon: Users, url: "/clientes" },
+        { title: "CRM", icon: Target, url: "/crm" },
+        { title: "Funis", icon: BarChart3, url: "/funis" },
+        { title: "Acessos", icon: ShieldCheck, url: "/acessos" },
+      ],
+    },
+    {
+      label: "Vendas",
+      items: [
+        { title: "Canais de Vendas", icon: TrendingUp, url: "/canais-vendas" },
+      ],
+    },
+    {
+      label: "Onboarding",
+      items: [
+        { title: "Pendentes Onboarding", icon: Clock, url: "/onboarding" },
+        { title: "Respostas de Onboarding", icon: FileText, url: "/respostas-onboarding" },
+      ],
+    },
+    {
+      label: "Atendimento",
+      items: [
+        { title: "Central de Atendimentos", icon: MessageSquare, url: "/central-atendimentos" },
+        { title: "Consultores", icon: MessageSquare, url: "/mentores" },
+        { title: "Guardião (Clientes)", icon: ShieldCheck, url: "/guardiao-admin" },
+      ],
+    },
+    {
+      label: "Reuniões",
+      items: [
+        { title: "Reunioes Galdino", icon: Calendar, url: "/reunioes-galdino" },
+        { title: "Reunioes Black CRM", icon: Calendar, url: "/reunioes-blackcrm" },
+        { title: "Encontros ao Vivo", icon: Video, url: "/calendario" },
+      ],
+    },
+    {
+      label: "Sistemas",
+      items: [
+        { title: "Roadmap de Sistemas", icon: Compass, url: "/roadmap-sistemas" },
+      ],
+    },
+    {
+      label: "Conteúdo",
+      items: [
+        { title: "Novidades", icon: Megaphone, url: "/novidades-admin" },
+        { title: "Repositório de Vitórias", icon: Trophy, url: "/repositorio-vitorias" },
+        { title: "Estudos de Caso", icon: BookOpen, url: "/estudos-caso-admin" },
+        { title: "Multiplicadores", icon: Package, url: "/multiplicadores-admin" },
+        { title: "Skills", icon: Sparkles, url: "/skills-admin" },
+      ],
+    },
+    {
+      label: "Recursos",
+      items: [
+        { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
+        { title: "Ferramentas IA", icon: Sparkles, url: "/ferramentas" },
+      ],
+    },
+    {
+      label: "Sistema",
+      items: [
+        { title: "Configurações", icon: Settings, url: "/configuracoes" },
+      ],
+    },
   ]
 
-  const items = isAdmin ? adminItems : clientItems
+  const clientSections: NavSection[] = [
+    {
+      label: null,
+      items: [{ title: "Minha Jornada", icon: Compass, url: "/inicio" }],
+    },
+    {
+      label: "Meu Negócio",
+      items: [
+        { title: "Informações da Empresa", icon: Building, url: "/informacoes-empresa" },
+        { title: "Mapeamento", icon: Share2, url: "/mapeamento" },
+      ],
+    },
+    {
+      label: "Execução",
+      items: [
+        { title: "Método MC", icon: Target, url: "/metodo" },
+        { title: "Ações", icon: CheckSquare, url: "/acoes" },
+        { title: "Meu Time", icon: Users, url: "/meu-time" },
+      ],
+    },
+    {
+      label: "Acompanhamento",
+      items: [
+        { title: "Central de Vitórias", icon: Trophy, url: "/vitorias" },
+        {
+          title: "Reuniões",
+          icon: Calendar,
+          url: "/reunioes",
+          children: [
+            { title: "Consultores", icon: Calendar, url: "/reunioes" },
+            { title: "Galdino", icon: Calendar, url: "/reunioes-galdino" },
+            { title: "BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },
+          ],
+        },
+        {
+          title: "Guardião",
+          icon: ShieldCheck,
+          url: "/guardiao",
+          children: [
+            { title: "Visão geral", tab: "visao-geral", icon: Compass },
+            { title: "Convites", tab: "convites", icon: Share2 },
+            { title: "Resultados", tab: "resultados", icon: BarChart3 },
+            { title: "Ranking", tab: "ranking", icon: Trophy },
+          ],
+        },
+      ],
+    },
+    {
+      label: "Comunidade",
+      items: [
+        { title: "Novidades", icon: Megaphone, url: "/novidades" },
+      ],
+    },
+    {
+      label: "Conhecimento",
+      items: [
+        { title: "Trilhas", icon: MapTrilha, url: "/trilhas" },
+        { title: "Estudos de Caso", icon: BookOpen, url: "/estudos-caso" },
+        { title: "Multiplicadores", icon: Package, url: "/multiplicadores" },
+        { title: "Skills", icon: Sparkles, url: "/skills" },
+        { title: "Encontros ao Vivo", icon: Video, url: "/calendario" },
+      ],
+    },
+    {
+      label: "Recursos",
+      items: [
+        { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
+        { title: "Ferramentas IA", icon: Sparkles, url: "/ferramentas" },
+      ],
+    },
+  ]
+
+  const sections: NavSection[] = isAdmin ? adminSections : clientSections
 
   return (
     <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border bg-sidebar/40 text-sidebar-foreground backdrop-blur-xl">
@@ -156,90 +262,99 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
         </div>
       </SidebarHeader>
       <SidebarContent className="px-2">
-        <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold uppercase text-muted-foreground tracking-widest mt-3 px-4">
-            {isAdmin ? "Visão Geral" : "Gestão"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="mt-2 space-y-0.5">
-              {items.map((item, index) => {
-                const active = location.pathname === item.url
+        {sections.map((section, sectionIndex) => (
+          <SidebarGroup key={section.label ?? `section-${sectionIndex}`}>
+            {section.label && (
+              <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold uppercase text-muted-foreground tracking-widest mt-3 px-4">
+                {section.label}
+              </SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu className="mt-2 space-y-0.5">
+                {section.items.map((item, index) => {
+                  const active = location.pathname === item.url
+                  const childRouteActive = item.children?.some(
+                    (c) => c.url ? location.pathname === c.url : (active && currentTab === c.tab)
+                  ) ?? false
 
-                if (item.children) {
-                  return (
-                    <Collapsible
-                      key={item.title}
-                      asChild
-                      defaultOpen={active}
-                      className="group/collapsible"
-                    >
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton
-                            tooltip={item.title}
-                            className="rounded-lg transition-all duration-300 font-medium h-9 px-3 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                          >
-                            <item.icon className="size-4 transition-transform duration-300 group-hover:scale-110" />
-                            <span className="ml-2">{item.title}</span>
-                            <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {item.children.map((child) => {
-                              const childActive = active && currentTab === child.tab
-                              return (
-                                <SidebarMenuSubItem key={child.tab}>
-                                  <SidebarMenuSubButton
-                                    asChild
-                                    className={childActive ? "bg-primary/10 text-primary hover:bg-primary/20 [&>svg]:text-primary" : ""}
-                                  >
-                                    <button
-                                      type="button"
-                                      onClick={() => navigate(`${item.url}?tab=${child.tab}`)}
-                                      className="w-full cursor-pointer"
-                                    >
-                                      <child.icon className="size-4" />
-                                      <span>{child.title}</span>
-                                    </button>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                              )
-                            })}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
-                  )
-                }
-
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <motion.div
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
-                    >
-                      <SidebarMenuButton
-                        tooltip={item.title}
-                        isActive={active}
-                        onClick={() => navigate(item.url)}
-                        className={`rounded-lg transition-all duration-300 font-medium h-9 px-3 ${
-                          active
-                            ? "bg-primary/10 text-primary hover:bg-primary/20"
-                            : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                        }`}
+                  if (item.children) {
+                    return (
+                      <Collapsible
+                        key={item.title}
+                        asChild
+                        defaultOpen={active || childRouteActive}
+                        className="group/collapsible"
                       >
-                        <item.icon className={`size-4 transition-transform duration-300 ${active ? "scale-110" : "group-hover:scale-110"}`} />
-                        <span className="ml-2">{item.title}</span>
-                      </SidebarMenuButton>
-                    </motion.div>
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                        <SidebarMenuItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton
+                              tooltip={item.title}
+                              className="rounded-lg transition-all duration-300 font-medium h-9 px-3 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            >
+                              <item.icon className="size-4 transition-transform duration-300 group-hover:scale-110" />
+                              <span className="ml-2">{item.title}</span>
+                              <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {item.children.map((child) => {
+                                const childActive = child.url
+                                  ? location.pathname === child.url
+                                  : (active && currentTab === child.tab)
+                                return (
+                                  <SidebarMenuSubItem key={child.url ?? child.tab}>
+                                    <SidebarMenuSubButton
+                                      asChild
+                                      className={childActive ? "bg-primary/10 text-primary hover:bg-primary/20 [&>svg]:text-primary" : ""}
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() => navigate(child.url ? child.url : `${item.url}?tab=${child.tab}`)}
+                                        className="w-full cursor-pointer"
+                                      >
+                                        <child.icon className="size-4" />
+                                        <span>{child.title}</span>
+                                      </button>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                )
+                              })}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
+                    )
+                  }
+
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <motion.div
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
+                      >
+                        <SidebarMenuButton
+                          tooltip={item.title}
+                          isActive={active}
+                          onClick={() => navigate(item.url)}
+                          className={`rounded-lg transition-all duration-300 font-medium h-9 px-3 ${
+                            active
+                              ? "bg-primary/10 text-primary hover:bg-primary/20"
+                              : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          }`}
+                        >
+                          <item.icon className={`size-4 transition-transform duration-300 ${active ? "scale-110" : "group-hover:scale-110"}`} />
+                          <span className="ml-2">{item.title}</span>
+                        </SidebarMenuButton>
+                      </motion.div>
+                    </SidebarMenuItem>
+                  )
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
       <SidebarFooter className="p-3 border-t border-border bg-sidebar/20">
         <SidebarMenu>

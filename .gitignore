@@ -11,3 +11,10 @@ scripts/mentor-events.json
 scripts/mentores-events.json
 scripts/reconciliacao-preview.json
 scripts/enrich-semana-rls.sql
+
+# Lixo de workspace (macOS + logs de debug do Playwright)
+.DS_Store
+.playwright-mcp/
+excalidraw.log
+/package-lock.json
+supabase/.temp/

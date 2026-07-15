@@ -11,7 +11,7 @@ import {
   FlagIcon as Flag,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
-import { motion } from "framer-motion"
+import { PageHeader } from "@/components/layout/page-header"
 
 const VALID_TABS = new Set(['cenarios', 'produtos', 'canais', 'objetivos'])
 
@@ -33,15 +33,10 @@ export default function MapeamentoPage({ session, clientId }: Props) {
 
   return (
     <div className="space-y-8 pb-10">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="border-l-4 border-primary pl-8 py-2"
-      >
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Mapeamento Empresarial</h1>
-        <p className="text-muted-foreground font-medium text-sm mt-2">Cenários, produtos e canais de aquisição</p>
-      </motion.div>
+      <PageHeader
+        title="Mapeamento Empresarial"
+        description="Cenários, produtos e canais de aquisição"
+      />
 
       <Tabs value={tab} onValueChange={onTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-4">

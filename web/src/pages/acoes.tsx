@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 import type { Session } from "@supabase/supabase-js"
 import { motion, AnimatePresence } from "framer-motion"
+import { PageHeader } from "@/components/layout/page-header"
 
 interface MeetingWithActions {
   id_unico: string
@@ -91,27 +92,22 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
 
   return (
     <div className="space-y-10 pb-10">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
-      >
-        <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Plano de Ação</h1>
-          <p className="text-muted-foreground font-medium text-sm">Tarefas e direcionamentos estratégicos das suas consultorias.</p>
-        </div>
-        <div className="flex gap-4">
-          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary px-4 py-2 rounded-xl flex items-center gap-2">
-            <CheckCircle2 className="size-4" />
-            <span className="font-bold uppercase text-[10px] tracking-wider">{meetings.length} Reuniões</span>
-          </Badge>
-          <Badge variant="outline" className="bg-muted/10 border-border text-muted-foreground px-4 py-2 rounded-xl flex items-center gap-2">
-            <Calendar className="size-4" />
-            <span className="font-bold uppercase text-[10px] tracking-wider">{totalAcoes} Ações</span>
-          </Badge>
-        </div>
-      </motion.div>
+      <PageHeader
+        title="Plano de Ação"
+        description="Tarefas e direcionamentos estratégicos das suas consultorias."
+        action={
+          <div className="flex gap-4">
+            <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary px-4 py-2 rounded-xl flex items-center gap-2">
+              <CheckCircle2 className="size-4" />
+              <span className="font-bold uppercase text-[10px] tracking-wider">{meetings.length} Reuniões</span>
+            </Badge>
+            <Badge variant="outline" className="bg-muted/10 border-border text-muted-foreground px-4 py-2 rounded-xl flex items-center gap-2">
+              <Calendar className="size-4" />
+              <span className="font-bold uppercase text-[10px] tracking-wider">{totalAcoes} Ações</span>
+            </Badge>
+          </div>
+        }
+      />
 
       <div className="flex flex-col md:flex-row md:items-center gap-4">
         <div className="relative flex-1 max-w-md">

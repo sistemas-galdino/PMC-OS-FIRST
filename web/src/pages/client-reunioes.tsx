@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import { motion } from "framer-motion"
+import { PageHeader } from "@/components/layout/page-header"
 import type { Session } from "@supabase/supabase-js"
 
 interface Meeting {
@@ -150,17 +151,12 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
 
   return (
     <div className="space-y-10 pb-10">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
-      >
-        <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Reuniões Consultores</h1>
-          <p className="text-muted-foreground font-medium text-sm">Histórico de sessões com seus consultores.</p>
-        </div>
-        <div className="flex flex-wrap items-end gap-3">
+      <PageHeader
+        title="Reuniões Consultores"
+        description="Histórico de sessões com seus consultores."
+      />
+
+      <div className="flex flex-wrap items-end gap-3">
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
             <Input
@@ -243,8 +239,7 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
               onChange={(v) => setDateRange(prev => ({ ...prev, to: v }))}
             />
           </div>
-        </div>
-      </motion.div>
+      </div>
 
       <ScrollArea className="h-[calc(100vh-16rem)] pr-6 -mr-6">
         <motion.div

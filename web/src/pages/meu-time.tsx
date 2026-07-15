@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion, AnimatePresence } from "framer-motion"
+import { PageHeader } from "@/components/layout/page-header"
 
 interface Colaborador {
   id: string
@@ -40,10 +41,17 @@ interface Colaborador {
   cargo: string
   whatsapp: string | null
   setor: string
+  nivel: string | null
   guardiao_ia: boolean
   guardiao_crm: boolean
   created_at?: string
 }
+
+const NIVEIS = [
+  { value: "estrategico", label: "Estratégico — direção e decisão" },
+  { value: "tatico", label: "Tático — gestão e coordenação" },
+  { value: "operacional", label: "Operacional — execução no dia a dia" },
+] as const
 
 interface MeuTimePageProps {
   session?: Session
@@ -81,6 +89,7 @@ const emptyForm = {
   cargo: "",
   whatsapp: "",
   setor: "",
+  nivel: "",
   guardiao_ia: false,
   guardiao_crm: false,
 }
@@ -174,6 +183,7 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
       cargo: c.cargo,
       whatsapp: c.whatsapp || "",
       setor: c.setor,
+      nivel: c.nivel || "",
       guardiao_ia: c.guardiao_ia,
       guardiao_crm: c.guardiao_crm,
     })
@@ -191,6 +201,7 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
       cargo: form.cargo.trim(),
       whatsapp: form.whatsapp.trim() || null,
       setor: form.setor,
+      nivel: form.nivel || null,
       guardiao_ia: form.guardiao_ia,
       guardiao_crm: form.guardiao_crm,
       updated_at: new Date().toISOString(),
@@ -223,33 +234,19 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
   return (
     <div className="space-y-8 pb-10">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between border-l-4 border-primary pl-8 py-2"
-      >
-        <div className="flex items-start gap-5">
-          <div className="bg-primary/10 p-3.5 rounded-2xl shrink-0">
-            <Users className="size-8 text-primary" />
-          </div>
-          <div className="flex flex-col gap-2 max-w-2xl">
-            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground leading-tight">
-              Organograma do Time
-            </h1>
-            <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-              Este espaço foi criado para você organizar as pessoas que estão junto com você na execução dentro do programa. Adicione aqui os colaboradores da sua empresa que vão participar ativamente, definindo o papel de cada um. Destaque também quem será o responsável por <span className="text-primary font-semibold">IA</span> e <span className="font-semibold" style={{ color: CRM_COLOR }}>CRM</span> dentro do seu time.
-            </p>
-          </div>
-        </div>
-        <Button
-          className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10 shrink-0"
-          onClick={openNew}
-        >
-          <Plus className="size-5" />
-          <span className="font-bold uppercase tracking-wider text-[11px]">Adicionar Colaborador</span>
-        </Button>
-      </motion.div>
+      <PageHeader
+        title="Organograma do Time"
+        description={<>Este espaço foi criado para você organizar as pessoas que estão junto com você na execução dentro do programa. Adicione aqui os colaboradores da sua empresa que vão participar ativamente, definindo o papel de cada um. Destaque também quem será o responsável por <span className="text-primary font-semibold">IA</span> e <span className="font-semibold" style={{ color: CRM_COLOR }}>CRM</span> dentro do seu time.</>}
+        action={
+          <Button
+            className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10"
+            onClick={openNew}
+          >
+            <Plus className="size-5" />
+            <span className="font-bold uppercase tracking-wider text-[11px]">Adicionar Colaborador</span>
+          </Button>
+        }
+      />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -427,6 +424,14 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
               </SelectTrigger>
               <SelectContent>
                 {SETORES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={form.nivel} onValueChange={(v) => setForm(p => ({ ...p, nivel: v }))}>
+              <SelectTrigger className="h-11 rounded-xl bg-muted/10">
+                <SelectValue placeholder="Nível hierárquico (organograma)" />
+              </SelectTrigger>
+              <SelectContent>
+                {NIVEIS.map(n => <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <div className="space-y-2 pt-1">

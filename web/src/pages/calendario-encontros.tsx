@@ -442,7 +442,7 @@ export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) 
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-black tracking-tight">
-                Calendário de Encontros
+                Encontros ao Vivo
               </h1>
               <p className="text-sm text-muted-foreground font-medium">
                 Encontros ao vivo do Programa Multiplicador de Crescimento

@@ -4,7 +4,6 @@ import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  MapIcon as Map,
   ArrowUpRightIcon as ArrowUpRight,
   ChevronDownIcon as ChevronDown,
   ChevronUp2Icon as ChevronUp,
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion, AnimatePresence } from "framer-motion"
+import { PageHeader } from "@/components/layout/page-header"
 import { TRILHA_IA, PILARES, type Passo, type Tarefa } from "@/data/trilha-ia"
 import TrilhaEvidenciasPage from "@/pages/trilha-evidencias"
 
@@ -124,33 +124,19 @@ export default function TrilhasPage({ session, clientId, embedded }: TrilhasPage
 
   return (
     <div className="space-y-8 pb-10">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
-      >
-        <div className="flex items-start gap-5">
-          <div className="bg-primary/10 p-3.5 rounded-2xl shrink-0">
-            <Map className="size-8 text-primary" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground leading-tight">
-              {TRILHA_IA.titulo}
-            </h1>
-            {TRILHA_IA.subtitulo && (
-              <p className="text-muted-foreground font-medium text-sm">{TRILHA_IA.subtitulo}</p>
-            )}
-          </div>
-        </div>
-        <Button
-          className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10 shrink-0"
-          onClick={handleOpenEvidencias}
-        >
-          <ArrowUpRight className="size-5" />
-          <span className="font-bold uppercase tracking-wider text-[11px]">Evidências</span>
-        </Button>
-      </motion.div>
+      <PageHeader
+        title={TRILHA_IA.titulo}
+        description={TRILHA_IA.subtitulo || undefined}
+        action={
+          <Button
+            className="h-12 gap-2 rounded-xl px-6 shadow-xl shadow-primary/10"
+            onClick={handleOpenEvidencias}
+          >
+            <ArrowUpRight className="size-5" />
+            <span className="font-bold uppercase tracking-wider text-[11px]">Evidências</span>
+          </Button>
+        }
+      />
 
       {/* Progresso na jornada — gamificado */}
       <ProgressoJornadaCard done={totals.done} total={totals.total} pct={totals.pct} />
