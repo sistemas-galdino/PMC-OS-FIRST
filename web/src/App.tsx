@@ -105,6 +105,7 @@ function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [roleResolved, setRoleResolved] = useState(false)
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [needsPassword, setNeedsPassword] = useState(false)
 
@@ -141,36 +142,48 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!session?.user?.email) return
+    if (!session?.user?.email) {
+      // Sem sessão não há role a resolver — libera a renderização (ex.: /login).
+      setRoleResolved(true)
+      return
+    }
     const { email, id } = session.user
 
     let cancelled = false
+    // Nova sessão: segura o roteamento até sabermos se é admin (evita o `/` redirecionar
+    // pra /inicio antes de isAdmin resolver).
+    setRoleResolved(false)
 
     async function checkUserRole() {
-      const [{ data: mentor }, { data: onboarding }] = await Promise.all([
-        supabase
-          .from('mentores')
-          .select('id')
-          .eq('email', email)
-          .maybeSingle(),
-        supabase
-          .from('cliente_onboarding')
-          .select('status, senha_definida')
-          .eq('id_cliente', id)
-          .maybeSingle(),
-      ])
+      try {
+        const [{ data: mentor }, { data: onboarding }] = await Promise.all([
+          supabase
+            .from('mentores')
+            .select('id')
+            .eq('email', email)
+            .maybeSingle(),
+          supabase
+            .from('cliente_onboarding')
+            .select('status, senha_definida')
+            .eq('id_cliente', id)
+            .maybeSingle(),
+        ])
 
-      if (cancelled) return
+        if (cancelled) return
 
-      const admin = !!mentor
-      setIsAdmin(admin)
+        const admin = !!mentor
+        setIsAdmin(admin)
 
-      if (!admin && onboarding && onboarding.status === 'em_andamento') {
-        setNeedsPassword(!onboarding.senha_definida)
-        setNeedsOnboarding(!!onboarding.senha_definida)
-      } else {
-        setNeedsPassword(false)
-        setNeedsOnboarding(false)
+        if (!admin && onboarding && onboarding.status === 'em_andamento') {
+          setNeedsPassword(!onboarding.senha_definida)
+          setNeedsOnboarding(!!onboarding.senha_definida)
+        } else {
+          setNeedsPassword(false)
+          setNeedsOnboarding(false)
+        }
+      } finally {
+        // Sempre libera o roteamento (mesmo se a query falhar, para não travar no spinner).
+        if (!cancelled) setRoleResolved(true)
       }
     }
 
@@ -178,7 +191,7 @@ function App() {
     return () => { cancelled = true }
   }, [session?.user?.id])
 
-  if (loading) {
+  if (loading || (session?.user && !roleResolved)) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-6">
