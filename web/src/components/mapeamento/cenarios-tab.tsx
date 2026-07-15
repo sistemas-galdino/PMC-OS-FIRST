@@ -55,6 +55,10 @@ interface Props {
 
 export default function CenariosTab({ session, clientId }: Props) {
   const resolvedClientId = clientId || session?.user?.id
+  // Só o admin (perfil completo da empresa) recebe clientId por prop; o cliente vê via session.
+  // As perguntas "Como podemos ajudar / Resultados esperados / Entregas decisivas" ficam
+  // ocultas para o cliente e visíveis apenas nessa visão do admin.
+  const isAdminView = Boolean(clientId)
   const moeda = useClienteMoeda(resolvedClientId)
   const moedaSym = currencySymbol(moeda)
   const [form, setForm] = useState<CenariosForm>(EMPTY)
@@ -255,33 +259,37 @@ export default function CenariosTab({ session, clientId }: Props) {
                 onChange={(e) => setForm(prev => ({ ...prev, meta_2026: Number(e.target.value) || 0 }))}
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Como podemos ajudar?</Label>
-              <Textarea
-                className="min-h-[100px]"
-                placeholder="O que você acredita que podemos te ajudar nos próximos 3 meses?"
-                value={form.como_ajudar}
-                onChange={(e) => setForm(prev => ({ ...prev, como_ajudar: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Resultados Esperados</Label>
-              <Textarea
-                className="min-h-[100px]"
-                placeholder="Qual resultado você gostaria de alcançar?"
-                value={form.resultados_esperados}
-                onChange={(e) => setForm(prev => ({ ...prev, resultados_esperados: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Entregas Decisivas</Label>
-              <Textarea
-                className="min-h-[100px]"
-                placeholder="Quais foram as entregas mais determinantes?"
-                value={form.entregas_decisivas}
-                onChange={(e) => setForm(prev => ({ ...prev, entregas_decisivas: e.target.value }))}
-              />
-            </div>
+            {isAdminView && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Como podemos ajudar?</Label>
+                  <Textarea
+                    className="min-h-[100px]"
+                    placeholder="O que você acredita que podemos te ajudar nos próximos 3 meses?"
+                    value={form.como_ajudar}
+                    onChange={(e) => setForm(prev => ({ ...prev, como_ajudar: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Resultados Esperados</Label>
+                  <Textarea
+                    className="min-h-[100px]"
+                    placeholder="Qual resultado você gostaria de alcançar?"
+                    value={form.resultados_esperados}
+                    onChange={(e) => setForm(prev => ({ ...prev, resultados_esperados: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Entregas Decisivas</Label>
+                  <Textarea
+                    className="min-h-[100px]"
+                    placeholder="Quais foram as entregas mais determinantes?"
+                    value={form.entregas_decisivas}
+                    onChange={(e) => setForm(prev => ({ ...prev, entregas_decisivas: e.target.value }))}
+                  />
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

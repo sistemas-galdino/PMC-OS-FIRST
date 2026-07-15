@@ -38,6 +38,9 @@ import {
   FileTextIcon as FileText,
   TargetIcon as Target,
   MegaphoneIcon as Megaphone,
+  VideoIcon as Video,
+  PackageIcon as Package,
+  TrendingUpIcon as TrendingUp,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -93,6 +96,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       label: "Visão Geral",
       items: [
         { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
+        { title: "Visão Geral 2", icon: TrendingUp, url: "/dashboard-2" },
         { title: "Agente", icon: MessageCircle, url: "/agente" },
       ],
     },
@@ -103,6 +107,12 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
         { title: "CRM", icon: Target, url: "/crm" },
         { title: "Funis", icon: BarChart3, url: "/funis" },
         { title: "Acessos", icon: ShieldCheck, url: "/acessos" },
+      ],
+    },
+    {
+      label: "Vendas",
+      items: [
+        { title: "Canais de Vendas", icon: TrendingUp, url: "/canais-vendas" },
       ],
     },
     {
@@ -125,7 +135,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       items: [
         { title: "Reunioes Galdino", icon: Calendar, url: "/reunioes-galdino" },
         { title: "Reunioes Black CRM", icon: Calendar, url: "/reunioes-blackcrm" },
-        { title: "Calendário Encontros", icon: Calendar, url: "/calendario" },
+        { title: "Encontros ao Vivo", icon: Video, url: "/calendario" },
       ],
     },
     {
@@ -140,6 +150,8 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
         { title: "Novidades", icon: Megaphone, url: "/novidades-admin" },
         { title: "Repositório de Vitórias", icon: Trophy, url: "/repositorio-vitorias" },
         { title: "Estudos de Caso", icon: BookOpen, url: "/estudos-caso-admin" },
+        { title: "Multiplicadores", icon: Package, url: "/multiplicadores-admin" },
+        { title: "Skills", icon: Sparkles, url: "/skills-admin" },
       ],
     },
     {
@@ -167,7 +179,6 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       items: [
         { title: "Informações da Empresa", icon: Building, url: "/informacoes-empresa" },
         { title: "Mapeamento", icon: Share2, url: "/mapeamento" },
-        { title: "Indicadores", icon: BarChart3, url: "/indicadores" },
       ],
     },
     {
@@ -190,7 +201,6 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
             { title: "Consultores", icon: Calendar, url: "/reunioes" },
             { title: "Galdino", icon: Calendar, url: "/reunioes-galdino" },
             { title: "BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },
-            { title: "Calendário", icon: Calendar, url: "/calendario" },
           ],
         },
         {
@@ -217,6 +227,9 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       items: [
         { title: "Trilhas", icon: MapTrilha, url: "/trilhas" },
         { title: "Estudos de Caso", icon: BookOpen, url: "/estudos-caso" },
+        { title: "Multiplicadores", icon: Package, url: "/multiplicadores" },
+        { title: "Skills", icon: Sparkles, url: "/skills" },
+        { title: "Encontros ao Vivo", icon: Video, url: "/calendario" },
       ],
     },
     {

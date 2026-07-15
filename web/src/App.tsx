@@ -34,6 +34,12 @@ import NovidadesPage from "@/pages/novidades"
 import NovidadesAdminPage from "@/pages/novidades-admin"
 import EstudosCasoPage from "@/pages/estudos-caso"
 import EstudosCasoAdminPage from "@/pages/estudos-caso-admin"
+import Dashboard2 from "@/pages/dashboard-2"
+import CanaisVendasPage from "@/pages/canais-vendas"
+import MultiplicadoresPage from "@/pages/multiplicadores"
+import MultiplicadoresAdminPage from "@/pages/multiplicadores-admin"
+import SkillsPage from "@/pages/skills"
+import SkillsAdminPage from "@/pages/skills-admin"
 import RepositorioVitoriasPage from "@/pages/repositorio-vitorias"
 import VitoriasPage from "@/pages/vitorias"
 import MeuTimePage from "@/pages/meu-time"
@@ -230,6 +236,12 @@ function App() {
                     <Route path="/novidades-admin" element={isAdmin ? <NovidadesAdminPage /> : <Navigate to="/" replace />} />
                     <Route path="/estudos-caso" element={<EstudosCasoPage session={session} />} />
                     <Route path="/estudos-caso-admin" element={isAdmin ? <EstudosCasoAdminPage /> : <Navigate to="/" replace />} />
+                    <Route path="/dashboard-2" element={isAdmin ? <Dashboard2 /> : <Navigate to="/" replace />} />
+                    <Route path="/canais-vendas" element={isAdmin ? <CanaisVendasPage /> : <Navigate to="/" replace />} />
+                    <Route path="/multiplicadores" element={<MultiplicadoresPage />} />
+                    <Route path="/multiplicadores-admin" element={isAdmin ? <MultiplicadoresAdminPage /> : <Navigate to="/" replace />} />
+                    <Route path="/skills" element={<SkillsPage />} />
+                    <Route path="/skills-admin" element={isAdmin ? <SkillsAdminPage /> : <Navigate to="/" replace />} />
                     <Route path="/repositorio-vitorias" element={isAdmin ? <RepositorioVitoriasPage /> : <Navigate to="/" replace />} />
                     <Route path="/mentores" element={isAdmin ? <MentoresPage isAdmin={isAdmin} /> : <Navigate to="/" replace />} />
                     <Route path="/clientes" element={isAdmin ? <ClientesPage /> : <Navigate to="/" replace />} />
