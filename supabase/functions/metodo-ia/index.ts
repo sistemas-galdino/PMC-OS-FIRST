@@ -96,7 +96,7 @@ async function callLLM(prompt: string): Promise<string> {
       body: JSON.stringify({
         model: p.model,
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
+        temperature: 0.4,
         max_tokens: MAX_TOKENS,
         response_format: { type: "json_object" },
       }),
@@ -111,18 +111,36 @@ async function callLLM(prompt: string): Promise<string> {
 }
 
 function extractJsonObject(text: string): Record<string, unknown> {
-  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+  let cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+  // Isola do primeiro { ao último } (descarta texto solto antes/depois).
+  const s = cleaned.indexOf("{");
+  const e = cleaned.lastIndexOf("}");
+  if (s >= 0 && e > s) cleaned = cleaned.slice(s, e + 1);
   try {
     return JSON.parse(cleaned);
   } catch {
-    const s = cleaned.indexOf("{");
-    const e = cleaned.lastIndexOf("}");
-    if (s >= 0 && e > s) return JSON.parse(cleaned.slice(s, e + 1));
-    throw new Error("A IA não retornou um JSON válido.");
+    // Reparo leve: remove vírgulas finais antes de } ou ] (erro comum de LLM).
+    const noTrailing = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
+    return JSON.parse(noTrailing); // se ainda falhar, o retry no handler tenta uma nova geração
   }
 }
 
-const PERSONA = `Você é o consultor sênior do Método MC (Multiplicador de Crescimento) da PMC, especialista em implementação de IA em empresas: eficiência operacional, redução de custos e crescimento de receita. Tom executivo, direto e prático — nada de genéricos como "implementar melhorias". Responda SEMPRE em português do Brasil e SOMENTE com um JSON válido, sem markdown ao redor, sem texto antes/depois.`;
+// Gera e faz o parse do JSON, com retry: o gpt-4o-mini às vezes devolve JSON inválido
+// (ex.: vírgula faltando entre itens de array). Cada tentativa é uma nova geração (~8-15s).
+async function generateJson(prompt: string, tentativas = 3): Promise<Record<string, unknown>> {
+  let parseErr: unknown;
+  for (let i = 0; i < tentativas; i++) {
+    const raw = await callLLM(prompt); // erros de rede/timeout/provedor propagam (não faz retry aqui)
+    try {
+      return extractJsonObject(raw);
+    } catch (e) {
+      parseErr = e;
+    }
+  }
+  throw parseErr ?? new Error("A IA não retornou um JSON válido.");
+}
+
+const PERSONA = `Você é o consultor sênior do Método MC (Multiplicador de Crescimento) da PMC, especialista em implementação de IA em empresas: eficiência operacional, redução de custos e crescimento de receita. Tom executivo, direto e prático — nada de genéricos como "implementar melhorias". Responda SEMPRE em português do Brasil e SOMENTE com um JSON válido, sem markdown ao redor, sem texto antes/depois. Garanta JSON ESTRITAMENTE válido: vírgula entre TODOS os itens de arrays e objetos; aspas e quebras de linha corretamente escapadas dentro das strings; não use blocos de código (crase tripla) dentro dos valores.`;
 
 function promptInteligenciaFluxos(d: Record<string, unknown>): string {
   return `${PERSONA}
@@ -288,7 +306,7 @@ Deno.serve(async (req) => {
       case "economia_analise": prompt = promptEconomiaAnalise(body); break;
       default: return jsonRes({ error: `tipo inválido: "${tipo}"` }, 400);
     }
-    const out = extractJsonObject(await callLLM(prompt));
+    const out = await generateJson(prompt);
     return jsonRes(out);
   } catch (err) {
     const m = mapError(err);
