@@ -369,7 +369,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
       url: suporteUrl,
     },
     {
-      label: "Seu Grupo de WhatsApp",
+      label: "Grupo de avisos",
       desc: linkGrupoWhatsapp ? "Grupo exclusivo da sua empresa" : "Avisos do Programa",
       icon: Users,
       url: grupoWhatsappUrl,
