@@ -7,17 +7,27 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // Tipos suportados (body.tipo):
 //  - inteligencia_fluxos  {area, mes, ano, documento} -> {dados, informacao, estrategia, receita}
 //  - gargalo_plano        {area, processo, descricao, quem_executa, ferramentas, horas_mes, frequencia}
-//                         -> {analise, causa_raiz, tipo_solucao, prioridade, tarefas[]}
+//                         -> {analise, causa_raiz, tipo_solucao, prioridade, tarefas[], skills[], rotina}
 //  - copiloto_sugestoes   {colaboradores:[{nome,cargo,setor}]} -> {sugestoes:[{colaborador_nome,copiloto_nome,funcao,justificativa}]}
 //  - copiloto_skill       {copiloto_nome, funcao, colaborador_nome, cargo} -> {skill_documento}
 //  - economia_analise     {sistemas:[], copilotos:[], gargalos_resolvidos:[], perfis_custo:[]} ->
 //                         {itens:[{referencia,tipo,natureza,recorrencia,metodo_valoracao,horas_mes,valor_mes,observacao}], resumo}  (modelo IAVS)
+//
+// NOTA: resposta é bloqueante (não-streaming). O gateway público /functions/v1/ do Supabase bufferiza
+// respostas em stream e as mata no teto de ~150s, então o tamanho é limitado pelo PROMPT (ser conciso)
+// + max_tokens + timeout, garantindo geração rápida (~15-30s) e JSON completo.
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+// Teto de segurança da geração. O tamanho real é limitado pelo PROMPT (ser conciso); este cap só evita
+// runaway. Fica com folga sob o teto de wall-clock (~150s) da edge function.
+const MAX_TOKENS = 3000;
+// Corta a chamada ao provedor com folga abaixo do teto da plataforma (deixa a Response voltar como erro tratável).
+const LLM_TIMEOUT_MS = 110_000;
 
 // Detecta o provedor de IA a partir de qualquer chave já configurada no projeto.
 function resolveLLM(): { key: string; base: string; model: string; lovable: boolean } | null {
@@ -53,14 +63,15 @@ function resolveLLM(): { key: string; base: string; model: string; lovable: bool
 
 function mapError(err: unknown): { status: number; message: string } {
   const message = err instanceof Error ? err.message : String(err);
+  if ((err instanceof Error && err.name === "AbortError") || /abort/i.test(message)) {
+    return { status: 504, message: "TIMEOUT: A IA demorou demais para responder. Tente de novo com uma descrição mais enxuta." };
+  }
   if (/429|rate.?limit/i.test(message)) return { status: 429, message: "RATE_LIMIT: A IA está ocupada. Tente novamente em alguns segundos." };
   if (/402|credit|payment/i.test(message)) return { status: 402, message: "CREDITS_EXHAUSTED: Créditos de IA esgotados. Adicione créditos no provedor de IA." };
   return { status: 400, message: `AI_ERROR: ${message}` };
 }
 
-async function callLLM(prompt: string): Promise<string> {
-  const p = resolveLLM();
-  if (!p) throw new Error("Nenhuma chave de IA configurada. Defina OPENAI_API_KEY (ou LOVABLE_API_KEY) nos secrets do Supabase.");
+function llmHeaders(p: { key: string; lovable: boolean }): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Authorization": `Bearer ${p.key}`,
@@ -69,19 +80,34 @@ async function callLLM(prompt: string): Promise<string> {
     headers["Lovable-API-Key"] = p.key;
     headers["X-Lovable-AIG-SDK"] = "pmc-edge";
   }
-  const res = await fetch(`${p.base}/chat/completions`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: p.model,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-    }),
-  });
-  if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => "")}`);
-  const data = await res.json();
-  return data?.choices?.[0]?.message?.content ?? "";
+  return headers;
+}
+
+// Chamada bloqueante ao provedor. Timeout via AbortController (falha limpa em vez de estourar o wall-clock).
+async function callLLM(prompt: string): Promise<string> {
+  const p = resolveLLM();
+  if (!p) throw new Error("Nenhuma chave de IA configurada. Defina OPENAI_API_KEY (ou LOVABLE_API_KEY) nos secrets do Supabase.");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${p.base}/chat/completions`, {
+      method: "POST",
+      headers: llmHeaders(p),
+      body: JSON.stringify({
+        model: p.model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: MAX_TOKENS,
+        response_format: { type: "json_object" },
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => "")}`);
+    const data = await res.json();
+    return data?.choices?.[0]?.message?.content ?? "";
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function extractJsonObject(text: string): Record<string, unknown> {
@@ -132,22 +158,22 @@ Gargalo na área "${d.area || "—"}":
 - Horas gastas por mês: ${d.horas_mes || "—"}
 - Frequência: ${d.frequencia || "—"}
 
-As tarefas devem ser acionáveis em até 30 dias. Além do plano, você deve:
-1) Criar UMA OU MAIS skills de IA que resolvam o gargalo (cada skill com documento completo pronto para colar no Claude).
+Seja CONCISO e direto — o plano inteiro deve ser objetivo, sem enrolação. As tarefas devem ser acionáveis em até 30 dias. Além do plano, você deve:
+1) Criar EXATAMENTE 1 skill de IA — a mais importante para resolver o gargalo — com documento completo porém ENXUTO (no máximo ~350 palavras, pronto para colar no Claude).
 2) Criar uma estrutura de ROTINA apenas se o processo precisar de cadência recorrente para não voltar a acumular; se não precisar, retorne "rotina" com "necessaria": false.
 
 Formato exato:
 {
-  "analise": "análise executiva do gargalo e de como a IA substitui o processo, em 3-5 parágrafos curtos (markdown leve com bullets)",
+  "analise": "análise executiva do gargalo e de como a IA substitui o processo, em 2-3 parágrafos curtos (markdown leve com bullets)",
   "causa_raiz": "frase única identificando a causa raiz",
   "tipo_solucao": "um de: Sistema | Automação | Copiloto de IA | Reorganização de processo | Treinamento",
   "prioridade": "um de: Alta | Média | Baixa",
-  "tarefas": ["3 a 8 próximos passos práticos, verbo no infinitivo"],
+  "tarefas": ["3 a 6 próximos passos práticos, verbo no infinitivo"],
   "skills": [
     {
       "nome": "nome curto da skill (ex.: Skill de Montagem de Propostas)",
       "objetivo": "o que a skill resolve, em 1 frase",
-      "documento": "documento de skill COMPLETO em markdown, pronto para colar no Claude: papel da skill, contexto do negócio a preencher, passo a passo da tarefa, formato de entrada esperado, formato de saída, regras e limites, e 1 exemplo de uso"
+      "documento": "documento de skill ENXUTO em markdown (máx ~350 palavras): papel da skill, contexto do negócio a preencher, passo a passo da tarefa, formato de entrada, formato de saída, regras e limites, e 1 exemplo curto"
     }
   ],
   "rotina": {
