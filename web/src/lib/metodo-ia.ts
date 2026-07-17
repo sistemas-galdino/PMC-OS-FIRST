@@ -56,10 +56,19 @@ export interface EconomiaItemIA {
   observacao: string
 }
 
+// Backstop no cliente: garante que a Promise sempre resolve/rejeita (o botão nunca fica girando pra sempre).
+// O edge já tem seu próprio timeout (~110s); este cobre travas de rede antes de a resposta chegar.
+const INVOKE_TIMEOUT_MS = 120_000
+
 export async function invokeMetodoIA<T>(tipo: MetodoIATipo, payload: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("metodo-ia", {
-    body: { tipo, ...payload },
-  })
+  const call = supabase.functions.invoke("metodo-ia", { body: { tipo, ...payload } })
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(
+      () => reject(new Error("A IA demorou demais para responder. Tente de novo com uma descrição mais enxuta.")),
+      INVOKE_TIMEOUT_MS,
+    ),
+  )
+  const { data, error } = await Promise.race([call, timeout])
   if (error) {
     // FunctionsHttpError: tenta extrair a mensagem amigável do corpo
     const ctx = (error as any)?.context

@@ -58,6 +58,7 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
   const [form, setForm] = useState(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
   const [gerandoId, setGerandoId] = useState<string | null>(null)
+  const [gerandoSeg, setGerandoSeg] = useState(0)
   const [erroIA, setErroIA] = useState<string | null>(null)
   const [abertoId, setAbertoId] = useState<string | null>(null)
   const [skillAberta, setSkillAberta] = useState<string | null>(null)
@@ -80,6 +81,14 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
   }
 
   useEffect(() => { fetchGargalos() }, [clientId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Conta os segundos enquanto a IA gera, pra dar feedback de progresso.
+  useEffect(() => {
+    if (!gerandoId) return
+    setGerandoSeg(0)
+    const t = setInterval(() => setGerandoSeg((s) => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [gerandoId])
 
   async function salvar() {
     if (!form.processo.trim()) return
@@ -115,6 +124,7 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
   async function gerarPlanoIA(g: Gargalo) {
     setGerandoId(g.id)
     setErroIA(null)
+    setAbertoId(g.id) // abre o painel pra mostrar o progresso
     try {
       const plano = await invokeMetodoIA<PlanoGargaloIA>("gargalo_plano", {
         area: g.area, processo: g.processo, descricao: g.descricao,
@@ -250,7 +260,25 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
                     )}
                   </div>
 
-                  {aberto && g.plano_ia && (
+                  {/* IA gerando o plano (progresso) */}
+                  {gerandoId === g.id && (
+                    <div className="rounded-xl bg-muted/20 border border-primary/20 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <BadgeIA />
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-primary animate-pulse">
+                          A IA está montando o plano… {gerandoSeg}s
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="h-3 w-3/4 rounded bg-muted/40 animate-pulse" />
+                        <div className="h-3 w-2/3 rounded bg-muted/40 animate-pulse" />
+                        <div className="h-3 w-1/2 rounded bg-muted/40 animate-pulse" />
+                      </div>
+                      <p className="text-[11px] font-medium text-muted-foreground">Costuma levar de 15 a 40 segundos.</p>
+                    </div>
+                  )}
+
+                  {aberto && g.plano_ia && gerandoId !== g.id && (
                     <div className="rounded-xl bg-muted/20 border border-primary/20 p-4 space-y-4">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <BadgeIA />
