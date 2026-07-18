@@ -3,6 +3,7 @@
 // Blocos que dependem de campos ainda não preenchidos degradam para estado vazio.
 import { useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { isStatusAtivo } from "@/lib/status-cliente"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { motion } from "framer-motion"
@@ -94,7 +95,7 @@ export default function Dashboard2() {
 
   // ---- métricas de status ----
   const total = clientes.length
-  const ativos = clientes.filter((c) => c.status_atual === "Ativo no Programa").length
+  const ativos = clientes.filter((c) => isStatusAtivo(c.status_atual)).length
   const cancelados = clientes.filter((c) => c.status_atual === "Cliente Cancelado").length
   const desistencias = clientes.filter((c) => c.status_atual === "Desistência de Compra").length
   const churnAcum = total > 0 ? (cancelados / total) * 100 : 0
