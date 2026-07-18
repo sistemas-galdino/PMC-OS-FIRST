@@ -4,7 +4,7 @@ import { motion } from "framer-motion"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ArrowLeftIcon, ArrowUpRightIcon, AlertCircleIcon } from "@/components/ui/icons"
+import { ArrowLeftIcon, ArrowUpRightIcon, AlertCircleIcon, ClockIcon } from "@/components/ui/icons"
 import { Spinner } from "@/components/ui/spinner"
 import { PublicoLayout } from "@/components/atendimento-publico/publico-layout"
 import { ConsultorCard } from "@/components/atendimento-publico/consultor-card"
@@ -283,6 +283,11 @@ export default function AtendimentoPublicoPage() {
     >
       <div className="space-y-8">
         <Stepper steps={STEPS} current={step} />
+
+        <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+          <ClockIcon className="size-4 shrink-0" />
+          <span>Todos os horários estão no fuso de Brasília (GMT-3).</span>
+        </div>
 
         <motion.div
           key={step}
