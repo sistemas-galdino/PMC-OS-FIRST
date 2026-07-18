@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { isStatusAtivo } from "@/lib/status-cliente"
 import {
   UsersIcon as Users,
   TrendingUpIcon as TrendingUp,
@@ -92,7 +93,7 @@ export default function AdminDashboard() {
         if (clients) {
           // Calculate Stats
           const total = clients.length
-          const ativos = clients.filter(c => c.status_atual === 'Ativo no Programa').length
+          const ativos = clients.filter(c => isStatusAtivo(c.status_atual)).length
           const cancelados = clients.filter(c => c.status_atual === 'Cliente Cancelado').length
           const desistencias = clients.filter(c => c.status_atual === 'Desistência de Compra').length
           const onboardingMarcado = clients.filter(c => c.status_atual === 'Onboarding marcado').length

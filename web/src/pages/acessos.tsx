@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { isStatusAtivo } from "@/lib/status-cliente"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -145,7 +146,7 @@ export default function AcessosPage() {
     let inativos = 0
     let aguardando = 0
     for (const r of rows) {
-      const isClienteAtivo = r.status_atual === "Ativo no Programa"
+      const isClienteAtivo = isStatusAtivo(r.status_atual)
       if (isClienteAtivo) totalAtivos++
       if (r.last_sign_in_at) {
         jaAcessaram++

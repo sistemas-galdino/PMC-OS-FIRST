@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { isStatusAtivo } from "@/lib/status-cliente"
 import { motion } from "framer-motion"
 import {
   Users,
@@ -204,7 +205,7 @@ export default function CRMPage() {
 
     return {
       total: filteredClients.length,
-      ativos: count((c) => c.status_atual === "Ativo no Programa"),
+      ativos: count((c) => isStatusAtivo(c.status_atual)),
       cancelados: count((c) => c.status_atual === "Cliente Cancelado"),
       emRisco: count((c) => c.em_risco_cancelamento === true),
       engajados: count((c) => c.nivel_engajamento === "ativo_alto" || c.nivel_engajamento === "ativo_medio"),
@@ -284,8 +285,8 @@ export default function CRMPage() {
 
   // ── GUARDIÃO DE IA (snapshot) ───────────────────────────────────────
   const guardiao = useMemo(() => {
-    // Toda a seção Guardião de IA considera apenas clientes Ativos no Programa.
-    const ativos = filteredClients.filter((c) => c.status_atual === "Ativo no Programa")
+    // Toda a seção Guardião de IA considera apenas clientes ativos (1º e 2º ciclo).
+    const ativos = filteredClients.filter((c) => isStatusAtivo(c.status_atual))
     const totalAtivos = ativos.length
     const com = ativos.filter((c) => c.tem_guardiao_ia === "sim").length
     const sem = ativos.filter((c) => c.tem_guardiao_ia !== "sim").length
