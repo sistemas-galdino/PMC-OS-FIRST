@@ -68,13 +68,16 @@ export function StepHorario({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.02 }}
             onClick={() => onChange(slot)}
-            className={`rounded-lg border-2 px-3 py-3 text-sm font-bold tracking-wider transition-all ${
+            className={`rounded-lg border-2 px-3 py-2.5 text-sm font-bold tracking-wider transition-all ${
               selected
                 ? "border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                 : "border-border bg-muted/10 text-foreground hover:border-primary/40 hover:bg-primary/5"
             }`}
           >
-            {slot}
+            <span className="block">{slot}</span>
+            <span className={`block text-[9px] font-semibold tracking-normal ${
+              selected ? "text-primary-foreground/70" : "text-muted-foreground"
+            }`}>GMT-3</span>
           </motion.button>
         )
       })}

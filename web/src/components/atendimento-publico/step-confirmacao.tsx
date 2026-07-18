@@ -30,7 +30,7 @@ export function StepConfirmacao({ consultor, data, horario, duracaoMinutos, iden
 
       <div className="grid grid-cols-2 gap-4">
         <Item icon={<CalendarIcon className="size-4 text-primary" />} label="Data" value={formatarData(data)} />
-        <Item icon={<ClockIcon className="size-4 text-primary" />} label="Horário" value={`${horario} (${duracaoMinutos} min)`} />
+        <Item icon={<ClockIcon className="size-4 text-primary" />} label="Horário" value={`${horario} (GMT-3) · ${duracaoMinutos} min`} />
         <Item icon={<UsersIcon className="size-4 text-primary" />} label="Nome" value={identificacao.nome} />
         <Item icon={<MailIcon className="size-4 text-primary" />} label="Email" value={identificacao.email} />
         <Item icon={<Building2Icon className="size-4 text-primary" />} label="Código" value={identificacao.codigo_cliente} />
