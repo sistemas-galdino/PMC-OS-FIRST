@@ -146,6 +146,10 @@ export function StepData({
                 </button>
               )}
             </div>
+
+            {livres.length > 0 && (
+              <div className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/70">GMT-3</div>
+            )}
           </motion.div>
         )
       })}

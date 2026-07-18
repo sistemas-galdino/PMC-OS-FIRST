@@ -47,7 +47,7 @@ export function StepSucesso({ consultor, data, horario, email, onVoltar }: Props
           <CalendarIcon className="size-4 text-primary shrink-0" />
           <div>
             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Quando</div>
-            <div className="text-sm font-semibold">{formatarData(data)} às {horario} (Horário de Brasília)</div>
+            <div className="text-sm font-semibold">{formatarData(data)} às {horario} (GMT-3)</div>
           </div>
         </div>
 
