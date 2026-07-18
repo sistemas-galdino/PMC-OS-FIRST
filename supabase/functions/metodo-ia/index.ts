@@ -1,4 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { streamObject } from "npm:ai@4";
+import { createOpenAI } from "npm:@ai-sdk/openai@1";
+import { z } from "npm:zod@3";
 
 // Método MC — gerações de IA da tela /metodo (verify_jwt = true).
 // Mesmo provider das funções guardiao-*: OpenAI-compatible (default Lovable AI Gateway),
@@ -13,9 +16,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 //  - economia_analise     {sistemas:[], copilotos:[], gargalos_resolvidos:[], perfis_custo:[]} ->
 //                         {itens:[{referencia,tipo,natureza,recorrencia,metodo_valoracao,horas_mes,valor_mes,observacao}], resumo}  (modelo IAVS)
 //
-// NOTA: resposta é bloqueante (não-streaming). O gateway público /functions/v1/ do Supabase bufferiza
-// respostas em stream e as mata no teto de ~150s, então o tamanho é limitado pelo PROMPT (ser conciso)
-// + max_tokens + timeout, garantindo geração rápida (~15-30s) e JSON completo.
+// GERAÇÃO: os 4 tipos "leves" respondem bloqueante (callLLM, JSON completo, com max_tokens+timeout+retry).
+// O gargalo_plano tem TAMBÉM um caminho STREAMING (body.stream===true) via AI SDK streamObject — mesmo
+// padrão do agente-chat — que transmite o JSON conforme é gerado (o cliente mostra a análise "digitando").
+// Structured outputs (json_schema) garantem JSON sempre válido no caminho streaming.
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -289,6 +293,42 @@ Formato exato:
 }`;
 }
 
+// Schema do plano de gargalo — usado pelo streamObject (structured outputs => JSON sempre válido).
+const planoGargaloSchema = z.object({
+  analise: z.string(),
+  causa_raiz: z.string(),
+  tipo_solucao: z.string(),
+  prioridade: z.string(),
+  tarefas: z.array(z.string()),
+  skills: z.array(z.object({
+    nome: z.string(),
+    objetivo: z.string(),
+    documento: z.string(),
+  })),
+  rotina: z.object({
+    necessaria: z.boolean(),
+    nome: z.string(),
+    cadencia: z.string(),
+    passos: z.array(z.string()),
+  }),
+});
+
+// Caminho STREAMING do gargalo: streamObject devolve a Response na hora e vai transmitindo o JSON
+// conforme a IA gera (mesmo padrão do agente-chat, que flusha corretamente pelo gateway do Supabase).
+// O cliente lê o texto e mostra a análise "digitando"; no fim faz o parse do JSON completo.
+function streamGargaloPlano(prompt: string): Response {
+  const p = resolveLLM();
+  if (!p) throw new Error("Nenhuma chave de IA configurada. Defina OPENAI_API_KEY (ou LOVABLE_API_KEY) nos secrets do Supabase.");
+  const openai = createOpenAI({ apiKey: p.key, baseURL: p.base });
+  const result = streamObject({
+    model: openai(p.model),
+    schema: planoGargaloSchema,
+    prompt,
+    temperature: 0.4,
+  });
+  return result.toTextStreamResponse({ headers: cors });
+}
+
 const jsonRes = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
@@ -306,6 +346,8 @@ Deno.serve(async (req) => {
       case "economia_analise": prompt = promptEconomiaAnalise(body); break;
       default: return jsonRes({ error: `tipo inválido: "${tipo}"` }, 400);
     }
+    // Opt-in: só o gargalo tem streaming (a IA "digitando"). Os outros tipos seguem bloqueantes.
+    if (body.stream === true && tipo === "gargalo_plano") return streamGargaloPlano(prompt);
     const out = await generateJson(prompt);
     return jsonRes(out);
   } catch (err) {

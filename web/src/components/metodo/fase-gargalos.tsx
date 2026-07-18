@@ -20,8 +20,34 @@ import {
   CopyIcon as Copy,
   RefreshCwIcon as RefreshCw,
 } from "@/components/ui/icons"
-import { invokeMetodoIA, type PlanoGargaloIA } from "@/lib/metodo-ia"
+import { streamMetodoIAGargalo, type PlanoGargaloIA } from "@/lib/metodo-ia"
 import { FaseHeader, VazioFase, MarkdownBox, BadgeIA } from "./compartilhados"
+
+// Extrai o valor (parcial) do campo "analise" do JSON que está sendo transmitido, pra mostrar a IA
+// "escrevendo" ao vivo. Enquanto o campo não fechou (sem aspa final não-escapada), devolve o texto atual.
+function extrairAnaliseParcial(acc: string): string {
+  const m = acc.match(/"analise"\s*:\s*"/)
+  if (!m || m.index === undefined) return ""
+  const start = m.index + m[0].length
+  let out = ""
+  for (let i = start; i < acc.length; i++) {
+    const ch = acc[i]
+    if (ch === "\\") {
+      const next = acc[i + 1]
+      if (next === "n") out += "\n"
+      else if (next === "t") out += "\t"
+      else if (next === '"') out += '"'
+      else if (next === "\\") out += "\\"
+      else out += next ?? ""
+      i++
+    } else if (ch === '"') {
+      break // fim do campo analise
+    } else {
+      out += ch
+    }
+  }
+  return out
+}
 
 interface Gargalo {
   id: string
@@ -59,6 +85,7 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
   const [salvando, setSalvando] = useState(false)
   const [gerandoId, setGerandoId] = useState<string | null>(null)
   const [gerandoSeg, setGerandoSeg] = useState(0)
+  const [streamPreview, setStreamPreview] = useState("")
   const [erroIA, setErroIA] = useState<string | null>(null)
   const [abertoId, setAbertoId] = useState<string | null>(null)
   const [skillAberta, setSkillAberta] = useState<string | null>(null)
@@ -124,13 +151,17 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
   async function gerarPlanoIA(g: Gargalo) {
     setGerandoId(g.id)
     setErroIA(null)
-    setAbertoId(g.id) // abre o painel pra mostrar o progresso
+    setStreamPreview("")
+    setAbertoId(g.id) // abre o painel pra mostrar a IA escrevendo
     try {
-      const plano = await invokeMetodoIA<PlanoGargaloIA>("gargalo_plano", {
-        area: g.area, processo: g.processo, descricao: g.descricao,
-        quem_executa: g.quem_executa, ferramentas: g.ferramentas,
-        horas_mes: g.horas_mes, frequencia: g.frequencia,
-      })
+      const plano = await streamMetodoIAGargalo(
+        {
+          area: g.area, processo: g.processo, descricao: g.descricao,
+          quem_executa: g.quem_executa, ferramentas: g.ferramentas,
+          horas_mes: g.horas_mes, frequencia: g.frequencia,
+        },
+        (acc) => setStreamPreview(extrairAnaliseParcial(acc)),
+      )
       await supabase
         .from("metodo_gargalos")
         .update({ plano_ia: plano, status: "analisado", updated_at: new Date().toISOString() })
@@ -141,6 +172,7 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
       setErroIA(e.message || "Erro ao gerar plano com IA.")
     } finally {
       setGerandoId(null)
+      setStreamPreview("")
     }
   }
 
@@ -260,21 +292,27 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
                     )}
                   </div>
 
-                  {/* IA gerando o plano (progresso) */}
+                  {/* IA escrevendo o plano ao vivo (streaming) */}
                   {gerandoId === g.id && (
                     <div className="rounded-xl bg-muted/20 border border-primary/20 p-4 space-y-3">
                       <div className="flex items-center gap-2">
                         <BadgeIA />
                         <span className="text-[11px] font-bold uppercase tracking-widest text-primary animate-pulse">
-                          A IA está montando o plano… {gerandoSeg}s
+                          A IA está escrevendo o plano… {gerandoSeg}s
                         </span>
                       </div>
-                      <div className="space-y-2">
-                        <div className="h-3 w-3/4 rounded bg-muted/40 animate-pulse" />
-                        <div className="h-3 w-2/3 rounded bg-muted/40 animate-pulse" />
-                        <div className="h-3 w-1/2 rounded bg-muted/40 animate-pulse" />
-                      </div>
-                      <p className="text-[11px] font-medium text-muted-foreground">Costuma levar de 15 a 40 segundos.</p>
+                      {streamPreview ? (
+                        <p className="text-[13px] font-medium text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                          {streamPreview}
+                          <span className="ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 bg-primary animate-pulse" />
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="h-3 w-3/4 rounded bg-muted/40 animate-pulse" />
+                          <div className="h-3 w-2/3 rounded bg-muted/40 animate-pulse" />
+                          <div className="h-3 w-1/2 rounded bg-muted/40 animate-pulse" />
+                        </div>
+                      )}
                     </div>
                   )}
 
