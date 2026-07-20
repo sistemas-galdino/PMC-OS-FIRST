@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts"
 import { atualizarEventoEm } from "../_shared/google-calendar.ts"
+import { isAdminUser } from "../_shared/encontros-ao-vivo.ts"
 
 type Origem = "galdino" | "mentoria" | "blackcrm"
 type TabelaDestino = "reunioes_galdino" | "reunioes_mentoria_new" | "reunioes_blackcrm"
@@ -86,9 +87,17 @@ Deno.serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
     })
+
+    // Operação administrativa (Central de Atendimentos): exige admin.
+    const auth = req.headers.get("Authorization") ?? ""
+    const jwt = auth.startsWith("Bearer ") ? auth.slice(7) : ""
+    if (!jwt || !(await isAdminUser(supabase, supabaseUrl, anonKey, jwt))) {
+      return jsonResponse({ error: "Apenas administradores podem reagendar agendamentos" }, 403)
+    }
 
     const tabela = TABELA_ORIGEM[origem]
     const { data: row, error: selErr } = await supabase
@@ -98,7 +107,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle<{ id_unico: string; id_reuniao: string | null; duracao_minutos: number | null }>()
 
     if (selErr) {
-      return jsonResponse({ error: "Erro ao consultar agendamento: " + selErr.message }, 500)
+      console.error("[detalhe]", selErr.message); return jsonResponse({ error: "Erro ao consultar agendamento (detalhe registrado no servidor)" }, 500)
     }
     if (!row) {
       return jsonResponse({ error: "Agendamento não encontrado" }, 404)
@@ -148,12 +157,12 @@ Deno.serve(async (req: Request) => {
       .eq("id_unico", id_unico)
 
     if (updErr) {
-      return jsonResponse({ error: "Erro ao atualizar agendamento: " + updErr.message }, 500)
+      console.error("[detalhe]", updErr.message); return jsonResponse({ error: "Erro ao atualizar agendamento (detalhe registrado no servidor)" }, 500)
     }
 
     return jsonResponse({ ok: true, atualizado_gcal, gcal_erro })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return jsonResponse({ error: msg }, 500)
+    console.error("[erro-interno]", e instanceof Error ? e.message : String(e))
+    return jsonResponse({ error: "Erro interno (detalhe registrado no servidor)" }, 500)
   }
 })

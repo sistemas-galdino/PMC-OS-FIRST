@@ -100,6 +100,12 @@ function lastAccessClass(iso: string | null): string {
 export default function AcessosPage() {
   const navigate = useNavigate()
   const [rows, setRows] = useState<AccessRow[]>([])
+  // Adicionar usuário a uma empresa existente (Fase 2: N logins por empresa)
+  const [showAddUser, setShowAddUser] = useState(false)
+  const [addUserEmpresa, setAddUserEmpresa] = useState("")
+  const [addUserEmail, setAddUserEmail] = useState("")
+  const [addUserBusy, setAddUserBusy] = useState(false)
+  const [addUserResult, setAddUserResult] = useState<{ ok: boolean; msg: string; link?: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
@@ -310,6 +316,26 @@ export default function AcessosPage() {
     )
   }
 
+  async function provisionarUsuario() {
+    if (!addUserEmpresa || !addUserEmail.trim()) return
+    setAddUserBusy(true)
+    setAddUserResult(null)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/provisionar-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
+        body: JSON.stringify({ tipo: "empresa_usuario", email: addUserEmail.trim(), id_cliente: addUserEmpresa, app_url: window.location.origin }),
+      })
+      const data = await res.json()
+      if (!res.ok) setAddUserResult({ ok: false, msg: data.error || "Erro ao provisionar usuário." })
+      else { setAddUserResult({ ok: true, msg: "Usuário criado. Envie o link de acesso:", link: data.invite_link }); setAddUserEmail("") }
+    } catch (e: any) {
+      setAddUserResult({ ok: false, msg: e.message })
+    }
+    setAddUserBusy(false)
+  }
+
   return (
     <div className="space-y-10 pb-10">
       <motion.div
@@ -318,12 +344,64 @@ export default function AcessosPage() {
         transition={{ duration: 0.6 }}
         className="flex flex-col gap-3 border-l-4 border-primary pl-8 py-2"
       >
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Acessos</h1>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">Login & Ativação</Badge>
-          <p className="text-muted-foreground font-medium text-sm">Quem realmente está usando o sistema.</p>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Acessos</h1>
+            <div className="flex items-center gap-3 mt-3">
+              <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">Login & Ativação</Badge>
+              <p className="text-muted-foreground font-medium text-sm">Quem realmente está usando o sistema.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => { setShowAddUser((v) => !v); setAddUserResult(null) }}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-[12px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
+          >
+            + Usuário na empresa
+          </button>
         </div>
       </motion.div>
+
+      {showAddUser && (
+        <Card className="border-primary/20">
+          <CardContent className="p-5 space-y-4">
+            <p className="text-[13px] font-semibold text-foreground">Novo login para uma empresa existente</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <select
+                value={addUserEmpresa} onChange={(e) => setAddUserEmpresa(e.target.value)}
+                className="rounded-lg bg-card border border-border px-3 py-2 text-[13px] text-foreground"
+              >
+                <option value="">Selecione a empresa…</option>
+                {rows.slice().sort((a, b) => (a.nome_empresa || a.nome_cliente || "").localeCompare(b.nome_empresa || b.nome_cliente || "")).map((r) => (
+                  <option key={r.id_cliente} value={r.id_cliente}>{r.nome_empresa || r.nome_cliente || r.id_cliente}</option>
+                ))}
+              </select>
+              <input
+                type="email" placeholder="E-mail do novo usuário" value={addUserEmail}
+                onChange={(e) => setAddUserEmail(e.target.value)}
+                className="rounded-lg bg-card border border-border px-3 py-2 text-[13px] text-foreground"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={provisionarUsuario} disabled={addUserBusy || !addUserEmpresa || !addUserEmail.trim()}
+                className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-[12px] font-bold uppercase tracking-wider disabled:opacity-50"
+              >
+                {addUserBusy ? "Criando…" : "Criar e gerar link"}
+              </button>
+              <span className="text-[11px] text-muted-foreground">Cria um login extra vinculado à mesma empresa. Todos veem os mesmos dados.</span>
+            </div>
+            {addUserResult && (
+              <div className={`rounded-lg p-3 text-[12px] ${addUserResult.ok ? "bg-primary/10 text-foreground" : "bg-destructive/10 text-destructive"}`}>
+                <p className="font-medium">{addUserResult.msg}</p>
+                {addUserResult.link && (
+                  <input readOnly value={addUserResult.link} onFocus={(e) => e.target.select()}
+                    className="mt-2 w-full rounded-md bg-background border border-border px-2 py-1.5 text-[11px] text-muted-foreground font-mono" />
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}

@@ -55,6 +55,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
@@ -65,6 +66,7 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
+  const { can } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -96,7 +98,6 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       label: "Visão Geral",
       items: [
         { title: "Dashboard Principal", icon: LayoutDashboard, url: "/" },
-        { title: "Visão Geral 2", icon: TrendingUp, url: "/dashboard-2" },
         { title: "Agente", icon: MessageCircle, url: "/agente" },
       ],
     },
@@ -104,6 +105,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       label: "Clientes & CRM",
       items: [
         { title: "Clientes", icon: Users, url: "/clientes" },
+        { title: "Radar de Renovação", icon: TrendingUp, url: "/radar-renovacao" },
         { title: "CRM", icon: Target, url: "/crm" },
         { title: "Funis", icon: BarChart3, url: "/funis" },
         { title: "Acessos", icon: ShieldCheck, url: "/acessos" },
@@ -164,6 +166,8 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     {
       label: "Sistema",
       items: [
+        { title: "Registro de Downloads", icon: FileText, url: "/logs-download" },
+        { title: "Time & Permissões", icon: ShieldCheck, url: "/time-permissoes" },
         { title: "Configurações", icon: Settings, url: "/configuracoes" },
       ],
     },
@@ -192,6 +196,9 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     {
       label: "Acompanhamento",
       items: [
+        { title: "Balanço PMC", icon: Trophy, url: "/balanco" },
+        { title: "Meu Relatório", icon: BarChart3, url: "/relatorio" },
+        { title: "Meu Nível", icon: Target, url: "/niveis" },
         { title: "Central de Vitórias", icon: Trophy, url: "/vitorias" },
         {
           title: "Reuniões",
@@ -210,8 +217,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
           children: [
             { title: "Visão geral", tab: "visao-geral", icon: Compass },
             { title: "Convites", tab: "convites", icon: Share2 },
-            { title: "Resultados", tab: "resultados", icon: BarChart3 },
-            { title: "Ranking", tab: "ranking", icon: Trophy },
+            { title: "Candidatos", tab: "candidatos", icon: Users },
           ],
         },
       ],
@@ -220,6 +226,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       label: "Comunidade",
       items: [
         { title: "Novidades", icon: Megaphone, url: "/novidades" },
+        { title: "Ranking dos Guardiões", icon: Trophy, url: "/ranking-guardioes" },
       ],
     },
     {
@@ -241,7 +248,20 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     },
   ]
 
-  const sections: NavSection[] = isAdmin ? adminSections : clientSections
+  // RBAC: esconde do menu admin as seções que o papel não libera.
+  // Mapeia a url do item -> chave em secoes_catalogo (null = sempre visível).
+  const secaoDaUrl = (url: string): string | null => {
+    if (url === "/") return null
+    if (url === "/mentores") return "consultores"
+    if (url === "/time-permissoes") return "permissoes"
+    return url.replace(/^\//, "")
+  }
+  const filtrarAdmin = (secs: NavSection[]): NavSection[] =>
+    secs
+      .map((sec) => ({ ...sec, items: sec.items.filter((it) => { const c = secaoDaUrl(it.url); return c === null || can(c) }) }))
+      .filter((sec) => sec.items.length > 0)
+
+  const sections: NavSection[] = isAdmin ? filtrarAdmin(adminSections) : clientSections
 
   return (
     <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border bg-sidebar/40 text-sidebar-foreground backdrop-blur-xl">

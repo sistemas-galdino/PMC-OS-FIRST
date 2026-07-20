@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -42,13 +43,16 @@ interface Recurso {
 
 interface RecursosPageProps {
   session?: Session
+  clientId?: string
   forceAdmin?: boolean
 }
 
-export default function RecursosPage({ session, forceAdmin }: RecursosPageProps) {
+export default function RecursosPage({ session, clientId, forceAdmin }: RecursosPageProps) {
+  const { isAdmin: isAdminCtx } = useAuth()
+  const isAdmin = forceAdmin ?? isAdminCtx
+  const cid = clientId || session?.user?.id
   const [recursos, setRecursos] = useState<Recurso[]>([])
   const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(forceAdmin ?? false)
   const [showSheet, setShowSheet] = useState(false)
   const [editingRecurso, setEditingRecurso] = useState<Recurso | null>(null)
   const [saving, setSaving] = useState(false)
@@ -58,19 +62,6 @@ export default function RecursosPage({ session, forceAdmin }: RecursosPageProps)
 
   useEffect(() => {
     async function init() {
-      let admin = forceAdmin ?? false
-
-      // Check admin from session if not forced
-      if (!admin && session?.user?.email) {
-        const { data } = await supabase
-          .from('mentores')
-          .select('id')
-          .eq('email', session.user.email)
-          .maybeSingle()
-        admin = !!data
-      }
-      setIsAdmin(admin)
-
       // Fetch recursos
       let query = supabase
         .from('recursos_programa')
@@ -78,7 +69,7 @@ export default function RecursosPage({ session, forceAdmin }: RecursosPageProps)
         .order('categoria', { ascending: true })
         .order('ordem', { ascending: true })
 
-      if (!admin) {
+      if (!isAdmin) {
         query = query.eq('ativo', true)
       }
 
@@ -90,7 +81,7 @@ export default function RecursosPage({ session, forceAdmin }: RecursosPageProps)
     init()
 
     // Fetch configurable links and client SC for non-admin
-    if (session?.user?.id) {
+    if (cid) {
       supabase
         .from('configuracoes_links')
         .select('chave, url')
@@ -105,13 +96,13 @@ export default function RecursosPage({ session, forceAdmin }: RecursosPageProps)
       supabase
         .from('clientes_entrada_new')
         .select('sc')
-        .eq('id_cliente', session.user.id)
+        .eq('id_cliente', cid)
         .maybeSingle()
         .then(({ data }) => {
           if (data) setClientSc(data.sc ?? null)
         })
     }
-  }, [session, forceAdmin])
+  }, [session, isAdmin])
 
   function openNew() {
     setEditingRecurso(null)

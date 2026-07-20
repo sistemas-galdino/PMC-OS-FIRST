@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
+import Dashboard2 from "./dashboard-2"
 import { 
   BarChart, 
   Bar, 
@@ -72,6 +73,7 @@ export default function AdminDashboard() {
   const [canalData, setCanalData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [detalhada, setDetalhada] = useState(false)
+  const [vista, setVista] = useState<"operacional" | "estrategica">("operacional")
 
   useEffect(() => {
     async function fetchStats() {
@@ -254,27 +256,32 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
 
-        <div className="flex gap-1 rounded-xl bg-muted/20 border border-border p-1 self-start">
-          <Button
-            variant={!detalhada ? "default" : "ghost"}
-            size="sm"
-            className="h-7 rounded-lg font-bold text-[11px] uppercase tracking-wider"
-            onClick={() => setDetalhada(false)}
-          >
-            Simples
-          </Button>
-          <Button
-            variant={detalhada ? "default" : "ghost"}
-            size="sm"
-            className="h-7 rounded-lg font-bold text-[11px] uppercase tracking-wider"
-            onClick={() => setDetalhada(true)}
-          >
-            Detalhada
-          </Button>
+        <div className="flex items-center gap-2 self-start flex-wrap">
+          <div className="flex gap-1 rounded-xl bg-muted/20 border border-border p-1">
+            <Button variant={vista === "operacional" ? "default" : "ghost"} size="sm" className="h-7 rounded-lg font-bold text-[11px] uppercase tracking-wider" onClick={() => setVista("operacional")}>
+              Operacional
+            </Button>
+            <Button variant={vista === "estrategica" ? "default" : "ghost"} size="sm" className="h-7 rounded-lg font-bold text-[11px] uppercase tracking-wider" onClick={() => setVista("estrategica")}>
+              Estratégica
+            </Button>
+          </div>
+          {vista === "operacional" && (
+            <div className="flex gap-1 rounded-xl bg-muted/20 border border-border p-1">
+              <Button variant={!detalhada ? "default" : "ghost"} size="sm" className="h-7 rounded-lg font-bold text-[11px] uppercase tracking-wider" onClick={() => setDetalhada(false)}>
+                Simples
+              </Button>
+              <Button variant={detalhada ? "default" : "ghost"} size="sm" className="h-7 rounded-lg font-bold text-[11px] uppercase tracking-wider" onClick={() => setDetalhada(true)}>
+                Detalhada
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
-      <motion.div 
+      {vista === "estrategica" && <Dashboard2 embedded />}
+
+      {vista === "operacional" && (<>
+      <motion.div
         variants={container}
         initial="hidden"
         animate="show"
@@ -482,6 +489,7 @@ export default function AdminDashboard() {
           </Card>
         </motion.div>
       </motion.div>
+      </>)}
     </div>
   )
 }

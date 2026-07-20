@@ -1,7 +1,9 @@
 // Fase 2 — Inteligência Empresarial: por área e por mês, o framework
 // Dados (Dashboard) → Informação (Análise) → Estratégia (Plano de Ação) → Receita (Única Coisa/Rotina).
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
+import { ConfirmDialog } from "@/components/funis/confirm-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,6 +22,10 @@ import {
   ChevronRightIcon as ChevronRight,
   SaveIcon as Save,
   UploadIcon as Upload,
+  CheckCircle2Icon as CheckCircle2,
+  CircleIcon as Circle,
+  Edit3Icon as Edit3,
+  RefreshCwIcon as RefreshCw,
   FileTextIcon as FileDoc,
   XIcon as X,
   ExternalLinkIcon as ExternalLink,
@@ -40,11 +46,14 @@ interface Ciclo {
   documento_nome: string | null
   documento_url: string | null
   gerado_por_ia: boolean
+  fluxos_json: FluxosInteligenciaIA | null
   dados_status: string; dados_conteudo: string | null
   informacao_status: string; informacao_conteudo: string | null
   estrategia_status: string; estrategia_conteudo: string | null
   receita_status: string; receita_conteudo: string | null
 }
+
+interface DocCiclo { id: string; id_ciclo: string; nome: string; url: string | null }
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
 const STATUS_LABEL: Record<string, string> = { pendente: "Pendente", em_andamento: "Em andamento", concluida: "Concluída" }
@@ -70,14 +79,26 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
   const [erroIA, setErroIA] = useState<string | null>(null)
   const [processandoDoc, setProcessandoDoc] = useState(false)
   const [docErro, setDocErro] = useState<string | null>(null)
+  // Autosave: tudo que o cliente digita é salvo sozinho (debounce) — sem risco
+  // de perder trabalho ao trocar de área/ciclo ou fechar a página.
+  const [estadoAuto, setEstadoAuto] = useState<"ocioso" | "salvando" | "salvo">("ocioso")
+  const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [confirmArea, setConfirmArea] = useState<Area | null>(null)
+  const [confirmIA, setConfirmIA] = useState(false)
+  const [novoMes, setNovoMes] = useState(hoje.getMonth() + 1)
+  const [novoAno, setNovoAno] = useState(hoje.getFullYear())
+  const [docs, setDocs] = useState<DocCiclo[]>([])
+  const [editText, setEditText] = useState<Set<string>>(new Set())
 
   async function fetchTudo() {
-    const [{ data: as }, { data: cs }] = await Promise.all([
+    const [{ data: as }, { data: cs }, { data: ds }] = await Promise.all([
       supabase.from("metodo_areas").select("id, nome, descricao").eq("id_cliente", clientId).order("created_at"),
       supabase.from("metodo_area_ciclos").select("*").eq("id_cliente", clientId).order("ano", { ascending: false }).order("mes", { ascending: false }),
+      supabase.from("metodo_ciclo_documentos").select("id, id_ciclo, nome, url").eq("id_cliente", clientId).order("created_at"),
     ])
     setAreas(as ?? [])
     setCiclos(cs ?? [])
+    setDocs(ds ?? [])
     setLoading(false)
   }
 
@@ -102,23 +123,69 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
   }
 
   async function excluirArea(id: string) {
-    await supabase.from("metodo_areas").delete().eq("id", id)
+    const { error } = await supabase.from("metodo_areas").delete().eq("id", id)
+    if (error) {
+      toast.error("Não consegui excluir a área.")
+      return
+    }
     if (areaSel?.id === id) { setAreaSel(null); setCicloSel(null) }
     fetchTudo()
   }
 
-  async function novoCiclo(area: Area) {
-    const existente = ciclos.find((c) => c.id_area === area.id && c.mes === hoje.getMonth() + 1 && c.ano === hoje.getFullYear())
+  async function novoCiclo(area: Area, mes: number, ano: number) {
+    const existente = ciclos.find((c) => c.id_area === area.id && c.mes === mes && c.ano === ano)
     if (existente) { setCicloSel(existente); return }
     const { data, error } = await supabase
       .from("metodo_area_ciclos")
-      .insert({ id_area: area.id, id_cliente: clientId, mes: hoje.getMonth() + 1, ano: hoje.getFullYear() })
+      .insert({ id_area: area.id, id_cliente: clientId, mes, ano })
       .select()
       .single()
-    if (!error && data) {
+    if (error) {
+      toast.error("Não consegui criar o ciclo.")
+      return
+    }
+    if (data) {
       setCiclos((prev) => [data, ...prev])
       setCicloSel(data)
     }
+  }
+
+  // Primeiro uso: cria as áreas clássicas com um clique.
+  async function criarAreasPadrao() {
+    setSalvando(true)
+    const { data, error } = await supabase
+      .from("metodo_areas")
+      .insert([
+        { id_cliente: clientId, nome: "Financeiro", descricao: "Análise mensal do DRE e fluxo de caixa" },
+        { id_cliente: clientId, nome: "Comercial", descricao: "Funil, conversão e receita do mês" },
+        { id_cliente: clientId, nome: "Operação", descricao: "Entrega, qualidade e produtividade" },
+      ])
+      .select()
+    setSalvando(false)
+    if (error) {
+      toast.error("Não consegui criar as áreas.")
+      return
+    }
+    setAreas(data ?? [])
+    if (data?.[0]) setAreaSel(data[0])
+  }
+
+  // Progresso do ciclo: quantas das 4 etapas estão concluídas.
+  function progressoCiclo(c: Ciclo): number {
+    return ETAPAS.filter((e) => (c as any)[`${e.key}_status`] === "concluida").length
+  }
+
+  async function persistirCiclo(ciclo: Ciclo): Promise<boolean> {
+    const { id, id_area, mes, ano, ...campos } = ciclo
+    const { error } = await supabase
+      .from("metodo_area_ciclos")
+      .update({ ...campos, updated_at: new Date().toISOString() })
+      .eq("id", id)
+    if (error) {
+      toast.error("Não consegui salvar o ciclo. Suas últimas alterações podem não ter sido gravadas.")
+      return false
+    }
+    return true
   }
 
   function atualizaCicloLocal(patch: Partial<Ciclo>) {
@@ -126,17 +193,32 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
     const novo = { ...cicloSel, ...patch }
     setCicloSel(novo)
     setCiclos((prev) => prev.map((c) => (c.id === novo.id ? novo : c)))
+    // autosave com debounce
+    setEstadoAuto("salvando")
+    if (autoTimer.current) clearTimeout(autoTimer.current)
+    autoTimer.current = setTimeout(async () => {
+      const ok = await persistirCiclo(novo)
+      setEstadoAuto(ok ? "salvo" : "ocioso")
+    }, 900)
   }
+
+  // Ao trocar de ciclo/área, descarta o timer pendente (o conteúdo já foi
+  // agendado com o objeto certo; só evita indicador órfão).
+  useEffect(() => {
+    setEstadoAuto("ocioso")
+  }, [cicloSel?.id])
 
   async function salvarCiclo() {
     if (!cicloSel) return
     setSalvando(true)
-    const { id, id_area, mes, ano, ...campos } = cicloSel
-    await supabase.from("metodo_area_ciclos").update({ ...campos, updated_at: new Date().toISOString() }).eq("id", id)
+    if (autoTimer.current) clearTimeout(autoTimer.current)
+    const ok = await persistirCiclo(cicloSel)
+    setEstadoAuto(ok ? "salvo" : "ocioso")
     setSalvando(false)
   }
 
-  // Upload do documento: extrai o texto (p/ a IA) e guarda o arquivo original.
+  // Adiciona um documento ao ciclo (vários por ciclo): extrai o texto (p/ a IA)
+  // e guarda o arquivo original no storage.
   async function enviarDocumento(file: File) {
     if (!cicloSel) return
     setDocErro(null)
@@ -147,8 +229,7 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
     setProcessandoDoc(true)
     try {
       const texto = await extrairTextoDocumento(file)
-      // Guarda o arquivo original (best-effort — se falhar, seguimos só com o texto).
-      let documento_url: string | null = cicloSel.documento_url ?? null
+      let url: string | null = null
       const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
       const path = `${clientId}/${cicloSel.id}/${Date.now()}-${safe}`
       const { error: upErr } = await supabase.storage.from(DOC_BUCKET).upload(path, file, {
@@ -156,15 +237,15 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
         upsert: false,
       })
       if (!upErr) {
-        documento_url = supabase.storage.from(DOC_BUCKET).getPublicUrl(path).data.publicUrl
+        url = supabase.storage.from(DOC_BUCKET).getPublicUrl(path).data.publicUrl
       }
-      const patch: Partial<Ciclo> = {
-        documento_texto: texto,
-        documento_nome: file.name,
-        documento_url,
-      }
-      atualizaCicloLocal(patch)
-      await supabase.from("metodo_area_ciclos").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", cicloSel.id)
+      const { data, error } = await supabase
+        .from("metodo_ciclo_documentos")
+        .insert({ id_ciclo: cicloSel.id, id_cliente: clientId, nome: file.name, url, texto })
+        .select("id, id_ciclo, nome, url")
+        .single()
+      if (error) throw new Error(error.message)
+      if (data) setDocs((prev) => [...prev, data])
     } catch (e: any) {
       setDocErro(e.message || "Não consegui ler o documento.")
     } finally {
@@ -172,11 +253,41 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
     }
   }
 
-  async function removerDocumento() {
+  async function removerDocumento(docId: string) {
+    const { error } = await supabase.from("metodo_ciclo_documentos").delete().eq("id", docId)
+    if (error) {
+      toast.error("Não consegui remover o documento.")
+      return
+    }
+    setDocs((prev) => prev.filter((d) => d.id !== docId))
+  }
+
+  // Se já existe conteúdo escrito, confirma antes de a IA sobrescrever.
+  function pedirGerarIA() {
     if (!cicloSel) return
-    const patch: Partial<Ciclo> = { documento_nome: null, documento_url: null }
-    atualizaCicloLocal(patch)
-    await supabase.from("metodo_area_ciclos").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", cicloSel.id)
+    const temConteudo = ETAPAS.some((e) => ((cicloSel as any)[`${e.key}_conteudo`] ?? "").trim().length > 0)
+    if (temConteudo) setConfirmIA(true)
+    else gerarFluxosIA()
+  }
+
+  // Deriva os 4 campos de texto a partir do JSON estruturado (fallback de
+  // edição manual + retrocompatibilidade — a home lê receita_conteudo).
+  function derivarTextos(f: FluxosInteligenciaIA) {
+    const seta = (t: string) => (t === "alta" ? "▲" : t === "queda" ? "▼" : "→")
+    const dados = (f.kpis ?? [])
+      .map((k) => `- **${k.nome}**: ${k.valor}${k.variacao ? ` (${seta(k.tendencia)} ${k.variacao})` : ""}${k.comentario ? ` — ${k.comentario}` : ""}`)
+      .join("\n")
+    const informacao = (f.insights ?? [])
+      .map((i) => `- **[${i.tipo.toUpperCase()}]** ${i.texto}`)
+      .join("\n")
+    const estrategia = (f.acoes ?? [])
+      .map((a) => `- ${a.texto}${a.prazo_dias ? ` (${a.prazo_dias} dias)` : ""}${a.responsavel ? ` — ${a.responsavel}` : ""}`)
+      .join("\n")
+    const uc = f.unica_coisa
+    const receita = uc
+      ? [`**${uc.frase}**`, uc.meta ? `Meta: ${uc.meta}` : "", uc.rotina?.cadencia ? `Rotina (${uc.rotina.cadencia}):` : "", ...(uc.rotina?.passos ?? []).map((p, i) => `${i + 1}. ${p}`)].filter(Boolean).join("\n")
+      : ""
+    return { dados, informacao, estrategia, receita }
   }
 
   async function gerarFluxosIA() {
@@ -184,18 +295,33 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
     setGerandoIA(true)
     setErroIA(null)
     try {
+      // Busca os textos extraídos dos documentos deste ciclo.
+      const idsDocs = docs.filter((d) => d.id_ciclo === cicloSel.id).map((d) => d.id)
+      let documentos: { nome: string; texto: string }[] = []
+      if (idsDocs.length > 0) {
+        const { data } = await supabase
+          .from("metodo_ciclo_documentos")
+          .select("nome, texto")
+          .in("id", idsDocs)
+        documentos = (data ?? []).filter((d: any) => (d.texto ?? "").trim())
+      }
       const fluxos = await invokeMetodoIA<FluxosInteligenciaIA>("inteligencia_fluxos", {
         area: areaSel.nome,
         mes: cicloSel.mes,
         ano: cicloSel.ano,
+        documentos,
         documento: cicloSel.documento_texto || "",
       })
+      const acoes = (fluxos.acoes ?? []).map((a) => ({ ...a, feita: false }))
+      const fluxosComEstado: FluxosInteligenciaIA = { ...fluxos, acoes }
+      const textos = derivarTextos(fluxosComEstado)
       const patch: Partial<Ciclo> = {
         gerado_por_ia: true,
-        dados_conteudo: fluxos.dados, dados_status: "em_andamento",
-        informacao_conteudo: fluxos.informacao, informacao_status: "em_andamento",
-        estrategia_conteudo: fluxos.estrategia, estrategia_status: "em_andamento",
-        receita_conteudo: fluxos.receita, receita_status: "em_andamento",
+        fluxos_json: fluxosComEstado,
+        dados_conteudo: textos.dados, dados_status: "em_andamento",
+        informacao_conteudo: textos.informacao, informacao_status: "em_andamento",
+        estrategia_conteudo: textos.estrategia, estrategia_status: "em_andamento",
+        receita_conteudo: textos.receita, receita_status: "em_andamento",
       }
       atualizaCicloLocal(patch)
       await supabase.from("metodo_area_ciclos").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", cicloSel.id)
@@ -206,7 +332,16 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
     }
   }
 
+  // Checklist do plano de ação: marca/desmarca e persiste no fluxos_json.
+  function toggleAcao(i: number) {
+    const f = cicloSel?.fluxos_json
+    if (!f) return
+    const acoes = (f.acoes ?? []).map((a, j) => (j === i ? { ...a, feita: !a.feita } : a))
+    atualizaCicloLocal({ fluxos_json: { ...f, acoes } })
+  }
+
   const ciclosDaArea = areaSel ? ciclos.filter((c) => c.id_area === areaSel.id) : []
+  const docsDoCiclo = cicloSel ? docs.filter((d) => d.id_ciclo === cicloSel.id) : []
 
   return (
     <div className="space-y-6">
@@ -226,10 +361,23 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
       {loading ? (
         <div className="h-40 rounded-2xl bg-card/40 animate-pulse" />
       ) : areas.length === 0 ? (
-        <VazioFase>
-          Nenhuma área criada. Comece pela área com mais dor — na maioria das empresas, o Financeiro
-          (análise de DRE) é o melhor primeiro ciclo.
-        </VazioFase>
+        <div className="space-y-4">
+          <VazioFase>
+            Nenhuma área criada. Comece pela área com mais dor — na maioria das empresas, o Financeiro
+            (análise de DRE) é o melhor primeiro ciclo.
+          </VazioFase>
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              disabled={salvando}
+              className="h-10 gap-2 rounded-xl font-bold text-xs uppercase tracking-wider hover:border-primary/30 hover:bg-primary/5"
+              onClick={criarAreasPadrao}
+            >
+              <Sparkles className="size-4" />
+              {salvando ? "Criando..." : "Criar áreas padrão (Financeiro, Comercial, Operação)"}
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-4 lg:items-start">
           {/* Áreas */}
@@ -253,7 +401,7 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
                 </div>
                 <Trash2
                   className="size-3.5 text-muted-foreground/0 group-hover:text-muted-foreground/60 hover:!text-destructive shrink-0"
-                  onClick={(e) => { e.stopPropagation(); excluirArea(a.id) }}
+                  onClick={(e) => { e.stopPropagation(); setConfirmArea(a) }}
                 />
               </button>
             ))}
@@ -267,28 +415,55 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
               <>
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {ciclosDaArea.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => setCicloSel(c)}
-                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border transition-all ${
-                          cicloSel?.id === c.id
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-muted/20 border-border text-muted-foreground hover:border-primary/40"
-                        }`}
-                      >
-                        {MESES[c.mes - 1].slice(0, 3)}/{c.ano}
-                      </button>
-                    ))}
+                    {ciclosDaArea.map((c) => {
+                      const prog = progressoCiclo(c)
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => setCicloSel(c)}
+                          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border transition-all inline-flex items-center gap-1.5 ${
+                            cicloSel?.id === c.id
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-muted/20 border-border text-muted-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          {MESES[c.mes - 1].slice(0, 3)}/{c.ano}
+                          <span className={`rounded-full px-1.5 py-px text-[9px] font-bold tabular-nums ${
+                            cicloSel?.id === c.id
+                              ? "bg-primary-foreground/20"
+                              : prog === 4 ? "bg-primary/20 text-primary" : "bg-muted/50"
+                          }`}>
+                            {prog}/4
+                          </span>
+                        </button>
+                      )
+                    })}
                   </div>
-                  <Button
-                    variant="outline" size="sm"
-                    className="h-9 gap-1.5 rounded-xl font-bold text-[11px] uppercase tracking-wider hover:border-primary/30 hover:bg-primary/5"
-                    onClick={() => novoCiclo(areaSel)}
-                  >
-                    <Plus className="size-3.5" />
-                    Ciclo de {MESES[hoje.getMonth()].slice(0, 3)}/{hoje.getFullYear()}
-                  </Button>
+                  {/* Criar ciclo de qualquer mês (o DRE de junho fecha em julho) */}
+                  <div className="flex items-center gap-1.5">
+                    <Select value={String(novoMes)} onValueChange={(v) => setNovoMes(Number(v))}>
+                      <SelectTrigger className="h-9 w-24 rounded-lg text-[11px] font-bold"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {MESES.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m.slice(0, 3)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select value={String(novoAno)} onValueChange={(v) => setNovoAno(Number(v))}>
+                      <SelectTrigger className="h-9 w-20 rounded-lg text-[11px] font-bold"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {[hoje.getFullYear() - 1, hoje.getFullYear(), hoje.getFullYear() + 1].map((a) => (
+                          <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline" size="sm"
+                      className="h-9 gap-1.5 rounded-xl font-bold text-[11px] uppercase tracking-wider hover:border-primary/30 hover:bg-primary/5"
+                      onClick={() => novoCiclo(areaSel, novoMes, novoAno)}
+                    >
+                      <Plus className="size-3.5" />
+                      Criar ciclo
+                    </Button>
+                  </div>
                 </div>
 
                 {!cicloSel ? (
@@ -306,7 +481,13 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
                           <Sparkles className="size-4 text-primary" />
                           Documento da área ({MESES[cicloSel.mes - 1]}/{cicloSel.ano})
                         </CardTitle>
-                        {cicloSel.gerado_por_ia && <BadgeIA />}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-medium text-muted-foreground min-h-4">
+                            {estadoAuto === "salvando" && "Salvando…"}
+                            {estadoAuto === "salvo" && <span className="text-primary">✓ Salvo</span>}
+                          </span>
+                          {cicloSel.gerado_por_ia && <BadgeIA />}
+                        </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {/* Upload do documento (extrai o texto p/ a IA) */}
@@ -315,7 +496,7 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
                             processandoDoc ? "opacity-60 cursor-wait" : "cursor-pointer hover:border-primary/30 hover:bg-primary/5"
                           }`}>
                             <Upload className="size-4" />
-                            {processandoDoc ? "Lendo documento..." : "Enviar documento"}
+                            {processandoDoc ? "Lendo documento..." : "Adicionar documento"}
                             <input
                               type="file"
                               accept={ACCEPT_DOCUMENTO}
@@ -330,40 +511,44 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
                           </label>
                           <span className="text-[11px] font-medium text-muted-foreground">PDF, Excel, CSV ou TXT — o texto entra no campo abaixo.</span>
                         </div>
-                        {cicloSel.documento_nome && (
-                          <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-primary/5 border border-primary/20">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <FileDoc className="size-4 text-primary shrink-0" />
-                              <span className="text-[12px] font-bold text-foreground truncate">{cicloSel.documento_nome}</span>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {cicloSel.documento_url && (
-                                <Button variant="ghost" size="sm" className="size-8 p-0 rounded-lg" onClick={() => window.open(cicloSel.documento_url!, "_blank")}>
-                                  <ExternalLink className="size-4" />
+                        {docsDoCiclo.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {docsDoCiclo.map((doc) => (
+                              <div key={doc.id} className="flex items-center gap-2 pl-2.5 pr-1 py-1.5 rounded-xl bg-primary/5 border border-primary/20 max-w-full">
+                                <FileDoc className="size-4 text-primary shrink-0" />
+                                <span className="text-[12px] font-bold text-foreground truncate max-w-48">{doc.nome}</span>
+                                {doc.url && (
+                                  <Button variant="ghost" size="sm" className="size-7 p-0 rounded-lg" onClick={() => window.open(doc.url!, "_blank")}>
+                                    <ExternalLink className="size-3.5" />
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="sm" className="size-7 p-0 rounded-lg text-muted-foreground hover:text-destructive" onClick={() => removerDocumento(doc.id)}>
+                                  <X className="size-3.5" />
                                 </Button>
-                              )}
-                              <Button variant="ghost" size="sm" className="size-8 p-0 rounded-lg text-muted-foreground hover:text-destructive" onClick={removerDocumento}>
-                                <X className="size-4" />
-                              </Button>
-                            </div>
+                              </div>
+                            ))}
                           </div>
                         )}
                         {docErro && <p className="text-[12px] font-medium text-destructive">{docErro}</p>}
                         <Textarea
-                          className="rounded-xl min-h-28 text-[13px]"
-                          placeholder="Cole o documento da área (ex.: DRE, relatório de vendas, extrato de indicadores...) ou clique em Enviar documento acima. A IA usa este texto para gerar os 4 fluxos."
+                          className="rounded-xl min-h-24 text-[13px]"
+                          placeholder="Texto avulso (opcional): cole dados extras que não estão nos arquivos — a IA analisa junto com os documentos acima."
                           value={cicloSel.documento_texto ?? ""}
                           onChange={(e) => atualizaCicloLocal({ documento_texto: e.target.value })}
                         />
                         {erroIA && <p className="text-[12px] font-medium text-destructive">{erroIA}</p>}
                         <div className="flex items-center gap-2 flex-wrap">
                           <Button
-                            disabled={gerandoIA || !(cicloSel.documento_texto ?? "").trim()}
+                            disabled={gerandoIA || (docsDoCiclo.length === 0 && !(cicloSel.documento_texto ?? "").trim())}
                             className="h-10 gap-2 rounded-xl font-bold text-xs uppercase tracking-wider"
-                            onClick={gerarFluxosIA}
+                            onClick={pedirGerarIA}
                           >
                             <Sparkles className="size-4" />
-                            {gerandoIA ? "Gerando os 4 fluxos..." : "Gerar 4 fluxos com IA"}
+                            {gerandoIA
+                              ? "Analisando..."
+                              : docsDoCiclo.length > 1
+                              ? `Analisar ${docsDoCiclo.length} documentos com IA`
+                              : "Gerar 4 fluxos com IA"}
                           </Button>
                           <Button
                             variant="outline"
@@ -383,16 +568,25 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
                       {ETAPAS.map((etapa, i) => {
                         const status = (cicloSel as any)[`${etapa.key}_status`] as string
                         const conteudo = (cicloSel as any)[`${etapa.key}_conteudo`] as string | null
+                        const destaque = etapa.key === "receita" // a Única Coisa é o clímax do ciclo
                         return (
-                          <Card key={etapa.key} className={status === "concluida" ? "border-primary/30 bg-primary/5" : ""}>
+                          <Card
+                            key={etapa.key}
+                            className={`${destaque ? "md:col-span-2 border-primary/40 bg-primary/[0.05] ring-1 ring-primary/15" : ""} ${status === "concluida" && !destaque ? "border-primary/30 bg-primary/5" : ""}`}
+                          >
                             <CardHeader className="pb-2">
                               <div className="flex items-center justify-between gap-2">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2 flex-wrap">
                                   <span className="font-mono text-xs text-muted-foreground/60">{i + 1}.</span>
                                   <etapa.icon className="size-4 text-primary" />
                                   {etapa.titulo}
                                   <ChevronRight className="size-3 text-muted-foreground/40" />
                                   <span className="text-primary">{etapa.entregavel}</span>
+                                  {destaque && (
+                                    <span className="rounded-lg bg-primary/15 border border-primary/30 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-primary">
+                                      A alavanca do mês
+                                    </span>
+                                  )}
                                 </CardTitle>
                                 <Select
                                   value={status}
@@ -410,18 +604,143 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
                               </div>
                               <p className="text-[11px] font-medium text-muted-foreground">{etapa.desc}</p>
                             </CardHeader>
-                            <CardContent>
-                              {conteudo && conteudo.length > 400 ? (
-                                <div className="max-h-64 overflow-y-auto rounded-xl bg-muted/20 p-3">
-                                  <MarkdownBox>{conteudo}</MarkdownBox>
-                                </div>
-                              ) : null}
-                              <Textarea
-                                className={`rounded-xl text-[13px] ${conteudo && conteudo.length > 400 ? "mt-2 min-h-16" : "min-h-24"}`}
-                                placeholder={`Entregável: ${etapa.entregavel}. Escreva aqui ou gere com IA acima.`}
-                                value={conteudo ?? ""}
-                                onChange={(e) => atualizaCicloLocal({ [`${etapa.key}_conteudo`]: e.target.value } as any)}
-                              />
+                            <CardContent className="space-y-3">
+                              {(() => {
+                                const f = cicloSel.fluxos_json
+                                const rich =
+                                  etapa.key === "dados" ? (f?.kpis?.length ?? 0) > 0 :
+                                  etapa.key === "informacao" ? (f?.insights?.length ?? 0) > 0 :
+                                  etapa.key === "estrategia" ? (f?.acoes?.length ?? 0) > 0 :
+                                  !!f?.unica_coisa
+                                if (!rich || !f) {
+                                  return (
+                                    <>
+                                      {conteudo && conteudo.length > 400 && (
+                                        <div className="max-h-64 overflow-y-auto rounded-xl bg-muted/20 p-3">
+                                          <MarkdownBox>{conteudo}</MarkdownBox>
+                                        </div>
+                                      )}
+                                      <Textarea
+                                        className={`rounded-xl text-[13px] ${conteudo && conteudo.length > 400 ? "min-h-16" : "min-h-24"}`}
+                                        placeholder={`Entregável: ${etapa.entregavel}. Escreva aqui ou gere com IA acima.`}
+                                        value={conteudo ?? ""}
+                                        onChange={(e) => atualizaCicloLocal({ [`${etapa.key}_conteudo`]: e.target.value } as any)}
+                                      />
+                                    </>
+                                  )
+                                }
+                                return (
+                                  <>
+                                    {etapa.key === "dados" && (
+                                      <div className="grid gap-2.5 sm:grid-cols-2">
+                                        {f.kpis.map((k, ki) => (
+                                          <div key={ki} className="rounded-xl bg-muted/20 border border-border/60 p-3">
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">{k.nome}</p>
+                                            <p className="text-xl font-bold tracking-tight text-foreground mt-0.5">{k.valor}</p>
+                                            {k.variacao && (
+                                              <p className={`text-[11px] font-bold mt-0.5 ${k.tendencia === "alta" ? "text-emerald-400" : k.tendencia === "queda" ? "text-rose-400" : "text-muted-foreground"}`}>
+                                                {k.tendencia === "alta" ? "▲" : k.tendencia === "queda" ? "▼" : "→"} {k.variacao}
+                                              </p>
+                                            )}
+                                            {k.comentario && <p className="text-[11px] font-medium text-muted-foreground mt-0.5 line-clamp-2">{k.comentario}</p>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {etapa.key === "informacao" && (
+                                      <div className="space-y-2">
+                                        {f.insights.map((ins, ii) => (
+                                          <div key={ii} className="flex items-start gap-2.5 rounded-xl bg-muted/20 border border-border/60 p-3">
+                                            <span className={`shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase border ${
+                                              ins.tipo === "critico" ? "bg-rose-500/15 text-rose-400 border-rose-500/30" :
+                                              ins.tipo === "atencao" ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
+                                              "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                            }`}>
+                                              {ins.tipo === "critico" ? "Crítico" : ins.tipo === "atencao" ? "Atenção" : "Positivo"}
+                                            </span>
+                                            <p className="text-[13px] font-medium text-foreground leading-relaxed">{ins.texto}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {etapa.key === "estrategia" && (
+                                      <div className="space-y-1">
+                                        {f.acoes.map((ac, ai) => (
+                                          <button
+                                            key={ai}
+                                            type="button"
+                                            onClick={() => toggleAcao(ai)}
+                                            className="w-full flex items-start gap-2.5 rounded-xl p-2.5 text-left hover:bg-muted/30 transition-colors"
+                                          >
+                                            {ac.feita
+                                              ? <CheckCircle2 className="size-4.5 text-primary shrink-0 mt-0.5" />
+                                              : <Circle className="size-4.5 text-muted-foreground/40 shrink-0 mt-0.5" />}
+                                            <span className="min-w-0">
+                                              <span className={`text-[13px] font-medium leading-snug block ${ac.feita ? "line-through text-muted-foreground" : "text-foreground"}`}>{ac.texto}</span>
+                                              <span className="text-[11px] font-medium text-muted-foreground">
+                                                {ac.prazo_dias ? `${ac.prazo_dias} dias` : ""}{ac.prazo_dias && ac.responsavel ? " · " : ""}{ac.responsavel ?? ""}
+                                              </span>
+                                            </span>
+                                          </button>
+                                        ))}
+                                        <p className="text-[11px] font-bold text-primary pl-2.5 pt-1">
+                                          {f.acoes.filter((a) => a.feita).length}/{f.acoes.length} concluídas
+                                        </p>
+                                      </div>
+                                    )}
+                                    {etapa.key === "receita" && f.unica_coisa && (
+                                      <div className="space-y-2.5">
+                                        <p className="text-lg font-bold tracking-tight text-foreground leading-snug">{f.unica_coisa.frase}</p>
+                                        {f.unica_coisa.por_que && (
+                                          <p className="text-[13px] font-medium text-muted-foreground leading-relaxed">{f.unica_coisa.por_que}</p>
+                                        )}
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          {f.unica_coisa.meta && (
+                                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/25 px-2.5 py-1 text-[11px] font-bold text-primary">
+                                              <Target className="size-3.5" /> {f.unica_coisa.meta}
+                                            </span>
+                                          )}
+                                          {f.unica_coisa.rotina?.cadencia && (
+                                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted/30 border border-border px-2.5 py-1 text-[11px] font-bold text-muted-foreground">
+                                              <RefreshCw className="size-3.5" /> {f.unica_coisa.rotina.cadencia}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {(f.unica_coisa.rotina?.passos?.length ?? 0) > 0 && (
+                                          <div className="space-y-1 pt-1">
+                                            {f.unica_coisa.rotina!.passos.map((p, pi) => (
+                                              <div key={pi} className="flex items-start gap-2">
+                                                <span className="font-mono text-[11px] font-bold text-primary mt-0.5">{String(pi + 1).padStart(2, "0")}</span>
+                                                <p className="text-[13px] font-medium text-foreground">{p}</p>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    {/* Edição manual do texto derivado */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditText((prev) => {
+                                        const next = new Set(prev)
+                                        if (next.has(etapa.key)) next.delete(etapa.key)
+                                        else next.add(etapa.key)
+                                        return next
+                                      })}
+                                      className="text-[11px] font-bold text-muted-foreground hover:text-primary inline-flex items-center gap-1"
+                                    >
+                                      <Edit3 className="size-3" /> {editText.has(etapa.key) ? "Fechar edição" : "Editar texto"}
+                                    </button>
+                                    {editText.has(etapa.key) && (
+                                      <Textarea
+                                        className="rounded-xl text-[13px] min-h-24"
+                                        value={conteudo ?? ""}
+                                        onChange={(e) => atualizaCicloLocal({ [`${etapa.key}_conteudo`]: e.target.value } as any)}
+                                      />
+                                    )}
+                                  </>
+                                )
+                              })()}
                             </CardContent>
                           </Card>
                         )
@@ -445,6 +764,24 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
         </div>
       )}
 
+
+      {/* Confirmações */}
+      <ConfirmDialog
+        open={!!confirmArea}
+        onOpenChange={(o) => !o && setConfirmArea(null)}
+        title={`Excluir a área "${confirmArea?.nome}"?`}
+        description="Todos os ciclos mensais dessa área serão excluídos junto. Essa ação não pode ser desfeita."
+        confirmLabel="Excluir área"
+        onConfirm={() => { if (confirmArea) excluirArea(confirmArea.id) }}
+      />
+      <ConfirmDialog
+        open={confirmIA}
+        onOpenChange={setConfirmIA}
+        title="Sobrescrever os fluxos deste ciclo?"
+        description="Este ciclo já tem conteúdo escrito. Gerar com IA vai substituir o texto das 4 etapas."
+        confirmLabel="Gerar e sobrescrever"
+        onConfirm={gerarFluxosIA}
+      />
 
       <Dialog open={showNovaArea} onOpenChange={setShowNovaArea}>
         <DialogContent className="sm:max-w-md">

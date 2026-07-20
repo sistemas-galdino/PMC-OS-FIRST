@@ -21,7 +21,7 @@ const MOTIVOS = [
   { v: "falta_tempo", l: "Falta de tempo" },
   { v: "nao_viu_valor", l: "Não viu valor" },
   { v: "problemas_internos", l: "Problemas internos" },
-  { v: "nao_se_adaptou", l: "Não se adaptou à mentoria" },
+  { v: "nao_se_adaptou", l: "Não se adaptou ao acompanhamento" },
   { v: "falta_implementacao", l: "Falta de implementação" },
   { v: "problema_equipe", l: "Problema com equipe" },
   { v: "expectativa_desalinhada", l: "Expectativa desalinhada" },

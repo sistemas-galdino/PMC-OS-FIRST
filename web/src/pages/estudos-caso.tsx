@@ -19,6 +19,7 @@ import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import { parseVideo, thumbnailImediata, thumbnailVimeo } from "@/lib/video-embed"
 
 interface Metrica { valor: string; label: string }
 
@@ -43,48 +44,26 @@ interface EstudosCasoPageProps {
 }
 
 // --- helpers de vídeo -------------------------------------------------------
-function youtubeId(url: string): string | null {
-  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/)
-  return m ? m[1] : null
-}
-
-function vimeoId(url: string): string | null {
-  const m = url.match(/vimeo\.com\/(\d+)/)
-  return m ? m[1] : null
-}
-
-function thumbnailDe(estudo: EstudoCaso): string | null {
-  if (estudo.thumbnail_url) return estudo.thumbnail_url
-  const yt = estudo.video_url ? youtubeId(estudo.video_url) : null
-  return yt ? `https://img.youtube.com/vi/${yt}/hqdefault.jpg` : null
+// Parsing (Vimeo com hash de privacidade, YouTube, arquivo) vive em lib/video-embed.
+function thumbnailDe(estudo: EstudoCaso, thumbsVimeo?: Map<string, string>): string | null {
+  return estudo.thumbnail_url || thumbnailImediata(estudo.video_url) || thumbsVimeo?.get(estudo.id) || null
 }
 
 function PlayerVideo({ url, titulo }: { url: string; titulo: string }) {
-  const yt = youtubeId(url)
-  if (yt) {
-    return (
-      <iframe
-        className="w-full aspect-video rounded-2xl border border-border"
-        src={`https://www.youtube.com/embed/${yt}`}
-        title={titulo}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-      />
-    )
+  const info = parseVideo(url)
+  if (!info) return null
+  if (info.tipo === "arquivo") {
+    return <video className="w-full aspect-video rounded-2xl border border-border bg-black" src={url} controls />
   }
-  const vm = vimeoId(url)
-  if (vm) {
-    return (
-      <iframe
-        className="w-full aspect-video rounded-2xl border border-border"
-        src={`https://player.vimeo.com/video/${vm}`}
-        title={titulo}
-        allow="autoplay; fullscreen; picture-in-picture"
-        allowFullScreen
-      />
-    )
-  }
-  return <video className="w-full aspect-video rounded-2xl border border-border bg-black" src={url} controls />
+  return (
+    <iframe
+      className="w-full aspect-video rounded-2xl border border-border"
+      src={info.embedUrl}
+      title={titulo}
+      allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+      allowFullScreen
+    />
+  )
 }
 
 // --- página ------------------------------------------------------------------
@@ -93,6 +72,8 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
   const [loading, setLoading] = useState(true)
   const [searchParams, setSearchParams] = useSearchParams()
   const casoId = searchParams.get("caso")
+  // Thumbnails do Vimeo vêm por oEmbed (assíncrono) quando não há thumbnail_url.
+  const [thumbsVimeo, setThumbsVimeo] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
     let cancelled = false
@@ -104,14 +85,22 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
         .order("destaque", { ascending: false })
         .order("data_publicacao", { ascending: false })
       if (cancelled) return
-      setEstudos(
-        (data ?? []).map((e) => ({
-          ...e,
-          tags: Array.isArray(e.tags) ? e.tags : [],
-          metricas: Array.isArray(e.metricas) ? e.metricas : [],
-        }))
-      )
+      const lista = (data ?? []).map((e) => ({
+        ...e,
+        tags: Array.isArray(e.tags) ? e.tags : [],
+        metricas: Array.isArray(e.metricas) ? e.metricas : [],
+      }))
+      setEstudos(lista)
       setLoading(false)
+
+      // Busca as capas do Vimeo dos cases sem thumbnail própria.
+      const pendentes = lista.filter(
+        (e: any) => !e.thumbnail_url && parseVideo(e.video_url)?.tipo === "vimeo"
+      )
+      pendentes.forEach(async (e: any) => {
+        const t = await thumbnailVimeo(e.video_url)
+        if (!cancelled && t) setThumbsVimeo((prev) => new Map(prev).set(e.id, t))
+      })
     }
     load()
     return () => { cancelled = true }
@@ -242,8 +231,8 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
                 <button key={e.id} onClick={() => abrir(e.id)} className="text-left group">
                   <Card className="overflow-hidden hover:border-primary/30 transition-all h-full">
                     <div className="relative aspect-video bg-muted/20 overflow-hidden">
-                      {thumbnailDe(e) ? (
-                        <img src={thumbnailDe(e)!} alt={e.titulo} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      {thumbnailDe(e, thumbsVimeo) ? (
+                        <img src={thumbnailDe(e, thumbsVimeo)!} alt={e.titulo} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-primary/15 to-muted/30" />
                       )}
@@ -330,9 +319,9 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
               <Card className="overflow-hidden h-full hover:border-primary/40 transition-all duration-300 hover:shadow-[0_0_32px_rgba(218,252,103,0.08)]">
                 {/* Thumbnail */}
                 <div className="relative aspect-video bg-muted/20 overflow-hidden">
-                  {thumbnailDe(e) ? (
+                  {thumbnailDe(e, thumbsVimeo) ? (
                     <img
-                      src={thumbnailDe(e)!}
+                      src={thumbnailDe(e, thumbsVimeo)!}
                       alt={e.titulo}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />

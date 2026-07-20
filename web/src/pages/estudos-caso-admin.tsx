@@ -23,6 +23,7 @@ import {
   PlayCircleIcon as PlayCircle,
 } from "@/components/ui/icons"
 import { motion } from "framer-motion"
+import { parseVideo } from "@/lib/video-embed"
 
 interface Metrica { valor: string; label: string }
 
@@ -282,14 +283,57 @@ export default function EstudosCasoAdminPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Vídeo (YouTube, Vimeo ou .mp4)</Label>
-                <Input className="h-11 rounded-xl" placeholder="https://youtube.com/watch?v=..." value={form.video_url} onChange={(ev) => setForm((p) => ({ ...p, video_url: ev.target.value }))} />
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Vídeo (Vimeo, YouTube ou .mp4)</Label>
+                <Input
+                  className="h-11 rounded-xl"
+                  placeholder="Cole o link do Vimeo: https://vimeo.com/123456789/abc123"
+                  value={form.video_url}
+                  onChange={(ev) => setForm((p) => ({ ...p, video_url: ev.target.value }))}
+                />
+                {(() => {
+                  const info = parseVideo(form.video_url)
+                  if (!form.video_url.trim()) {
+                    return <p className="text-[11px] font-medium text-muted-foreground">Aceita link normal ou de vídeo não listado (com hash).</p>
+                  }
+                  if (!info) return null
+                  if (info.tipo === "vimeo") {
+                    return (
+                      <p className="text-[11px] font-bold text-primary">
+                        ✓ Vimeo detectado · ID {info.id}{info.hash ? " · não listado (hash ok)" : ""}
+                      </p>
+                    )
+                  }
+                  if (info.tipo === "youtube") return <p className="text-[11px] font-bold text-primary">✓ YouTube detectado · ID {info.id}</p>
+                  return <p className="text-[11px] font-bold text-amber-400">Link direto de arquivo — será usado no player nativo.</p>
+                })()}
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Capa (opcional)</Label>
-                <Input className="h-11 rounded-xl" placeholder="URL da imagem (YouTube gera sozinho)" value={form.thumbnail_url} onChange={(ev) => setForm((p) => ({ ...p, thumbnail_url: ev.target.value }))} />
+                <Input className="h-11 rounded-xl" placeholder="URL da imagem (Vimeo/YouTube geram sozinho)" value={form.thumbnail_url} onChange={(ev) => setForm((p) => ({ ...p, thumbnail_url: ev.target.value }))} />
               </div>
             </div>
+
+            {/* Pré-visualização do player — confirma que o embed funciona antes de publicar */}
+            {(() => {
+              const info = parseVideo(form.video_url)
+              if (!info || info.tipo === "arquivo") return null
+              return (
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pré-visualização</Label>
+                  <iframe
+                    key={info.embedUrl}
+                    className="w-full aspect-video rounded-xl border border-border"
+                    src={info.embedUrl}
+                    title="Pré-visualização do vídeo"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                  />
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    Se o vídeo não tocar aqui, no Vimeo confira em <strong>Privacidade → Onde pode ser embedado</strong> (permita em qualquer lugar ou adicione o domínio do portal).
+                  </p>
+                </div>
+              )
+            })()}
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tags (separadas por vírgula)</Label>
               <Input className="h-11 rounded-xl" placeholder="Ex.: Automação de Conteúdo, IA Generativa" value={form.tags} onChange={(ev) => setForm((p) => ({ ...p, tags: ev.target.value }))} />

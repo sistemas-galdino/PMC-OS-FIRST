@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -34,7 +35,7 @@ interface LinkRow { tarefa_id: string; link_url: string }
 export default function TrilhasPage({ session, clientId, embedded }: TrilhasPageProps) {
   const navigate = useNavigate()
   const [resolvedClientId, setResolvedClientId] = useState<string | undefined>(clientId || session?.user?.id)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const { isAdmin } = useAuth()
   const [loading, setLoading] = useState(true)
   const [pilaresComEvidencia, setPilaresComEvidencia] = useState<Set<string>>(new Set())
   const [links, setLinks] = useState<Record<string, string>>({})
@@ -54,10 +55,9 @@ export default function TrilhasPage({ session, clientId, embedded }: TrilhasPage
     if (!resolvedClientId) return
     let cancelled = false
     async function fetchAll() {
-      const [{ data: evData }, { data: linkData }, { data: { session: s } }] = await Promise.all([
+      const [{ data: evData }, { data: linkData }] = await Promise.all([
         supabase.from("cliente_pilar_evidencias").select("pilar_id").eq("id_cliente", resolvedClientId),
         supabase.from("trilha_links").select("tarefa_id,link_url"),
-        supabase.auth.getSession(),
       ])
       if (cancelled) return
       const set = new Set<string>((evData || []).map((r: { pilar_id: string }) => r.pilar_id))
@@ -65,10 +65,6 @@ export default function TrilhasPage({ session, clientId, embedded }: TrilhasPage
       const linkMap: Record<string, string> = {}
       ;(linkData || []).forEach((r: LinkRow) => { linkMap[r.tarefa_id] = r.link_url })
       setLinks(linkMap)
-      if (s?.user?.email) {
-        const { data: mentor } = await supabase.from("mentores").select("id").eq("email", s.user.email).maybeSingle()
-        if (!cancelled) setIsAdmin(!!mentor)
-      }
       setLoading(false)
     }
     fetchAll()

@@ -3,17 +3,18 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   ShieldCheckIcon as ShieldCheck,
   SendIcon as Send,
-  BarChart3Icon as BarChart3,
-  TrophyIcon as Trophy,
+  UsersIcon as Users,
 } from "@/components/ui/icons"
 import VisaoGeral from "@/components/guardiao/visao-geral"
 import Convites from "@/components/guardiao/convites"
-import { Resultados } from "@/components/guardiao/resultados"
-import { Ranking } from "@/components/guardiao/ranking"
+import { Candidatos } from "@/components/guardiao/candidatos"
 import type { Session } from "@supabase/supabase-js"
 import { PageHeader } from "@/components/layout/page-header"
 
-const VALID_TABS = new Set(['visao-geral', 'convites', 'resultados', 'ranking'])
+const VALID_TABS = new Set(['visao-geral', 'convites', 'candidatos'])
+// Links antigos (tab=resultados / tab=ranking) caem em Candidatos,
+// abrindo na vista equivalente (lista / funil).
+const LEGADO: Record<string, string> = { resultados: 'candidatos', ranking: 'candidatos' }
 
 interface Props {
   session?: Session
@@ -25,7 +26,9 @@ interface Props {
 export default function GuardiaoPage({ session, clientId, adminView, hideTabList }: Props) {
   const [sp, setSp] = useSearchParams()
   const raw = sp.get('tab') || 'visao-geral'
-  const tab = VALID_TABS.has(raw) ? raw : 'visao-geral'
+  const mapped = LEGADO[raw] ?? raw
+  const tab = VALID_TABS.has(mapped) ? mapped : 'visao-geral'
+  const vistaInicial = raw === 'ranking' ? 'funil' as const : 'lista' as const
 
   const resolvedClientId = clientId || session?.user?.id
 
@@ -44,7 +47,7 @@ export default function GuardiaoPage({ session, clientId, adminView, hideTabList
 
       <Tabs value={tab} onValueChange={onTabChange} className="w-full">
         {!hideTabList && (
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="visao-geral">
             <ShieldCheck className="size-4" />
             <span>Visão geral</span>
@@ -53,28 +56,21 @@ export default function GuardiaoPage({ session, clientId, adminView, hideTabList
             <Send className="size-4" />
             <span>Convites</span>
           </TabsTrigger>
-          <TabsTrigger value="resultados">
-            <BarChart3 className="size-4" />
-            <span>Resultados</span>
-          </TabsTrigger>
-          <TabsTrigger value="ranking">
-            <Trophy className="size-4" />
-            <span>Ranking</span>
+          <TabsTrigger value="candidatos">
+            <Users className="size-4" />
+            <span>Candidatos</span>
           </TabsTrigger>
         </TabsList>
         )}
 
         <TabsContent value="visao-geral" className="mt-8">
-          <VisaoGeral />
+          <VisaoGeral clientId={resolvedClientId} />
         </TabsContent>
         <TabsContent value="convites" className="mt-8">
           <Convites clientId={resolvedClientId} adminView={adminView} />
         </TabsContent>
-        <TabsContent value="resultados" className="mt-8">
-          <Resultados clientId={resolvedClientId} adminView={adminView} session={session} />
-        </TabsContent>
-        <TabsContent value="ranking" className="mt-8">
-          <Ranking clientId={resolvedClientId} adminView={adminView} />
+        <TabsContent value="candidatos" className="mt-8">
+          <Candidatos clientId={resolvedClientId} adminView={adminView} session={session} vistaInicial={vistaInicial} />
         </TabsContent>
       </Tabs>
     </div>

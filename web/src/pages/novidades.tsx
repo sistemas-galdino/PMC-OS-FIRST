@@ -2,7 +2,8 @@
 // Insights, Ofertas...); os clientes curtem e comentam (com respostas). Cada post
 // abre num modal com o conteúdo completo e a thread de comentários.
 import { useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,7 +13,9 @@ import { Dialog, DialogContent } from "@/components/ui/dialog"
 import {
   MegaphoneIcon as Megaphone,
   MessageCircleIcon as MessageCircle,
-  CheckCircle2Icon as ThumbsUp,
+  ThumbsUpIcon as ThumbsUp,
+  Link2Icon as Link2,
+  TrophyIcon as Trophy,
   FlagIcon as Pin,
   SendIcon as Send,
   Trash2Icon as Trash2,
@@ -37,10 +40,13 @@ interface Novidade {
   autor: string | null
   autor_avatar_url: string | null
   categoria: string
+  imagem_url: string | null
   likeCount: number
   comentarioCount: number
   curtido: boolean
 }
+
+interface TopGuardiao { posicao: number; guardiao_nome: string | null; empresa: string | null; pontos: number; oculto: boolean }
 
 interface Comentario {
   id: string
@@ -104,6 +110,14 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
   const [novoTexto, setNovoTexto] = useState("")
   const [replyTo, setReplyTo] = useState<{ id: string; nome: string } | null>(null)
   const [enviando, setEnviando] = useState(false)
+  const [topGuardioes, setTopGuardioes] = useState<TopGuardiao[]>([])
+  // Última visita ao feed (localStorage) — posts publicados depois ganham "NOVO".
+  const [ultimaVisita] = useState<string | null>(() => {
+    const prev = localStorage.getItem("novidades_ultima_visita")
+    localStorage.setItem("novidades_ultima_visita", new Date().toISOString().slice(0, 10))
+    return prev
+  })
+  const navigate = useNavigate()
 
   async function resolverMe(): Promise<Me | null> {
     const { data: { session } } = await supabase.auth.getSession()
@@ -146,6 +160,7 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
         autor: n.autor,
         autor_avatar_url: n.autor_avatar_url,
         categoria: n.categoria || "avisos",
+        imagem_url: n.imagem_url ?? null,
         likeCount: n.likes?.[0]?.count ?? 0,
         comentarioCount: n.comentarios?.[0]?.count ?? 0,
         curtido: curtidas.has(n.id),
@@ -161,6 +176,9 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
       if (cancelled) return
       setMe(m)
       await carregarFeed(m)
+      // Guardiões do mês (top 3 públicos) — cross-link com o ranking.
+      const { data: rk } = await supabase.rpc("ranking_guardioes", { periodo: "mes" })
+      if (!cancelled) setTopGuardioes(((rk ?? []) as TopGuardiao[]).filter((r) => !r.oculto).slice(0, 3))
     }
     init()
     return () => { cancelled = true }
@@ -302,7 +320,7 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
                   {/* topo: autor + pinned */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <Avatar nome={n.autor || "Equipe PMC"} url={n.autor_avatar_url} />
+                      <Avatar nome={n.autor || "Equipe PMC"} url={n.autor_avatar_url || "/galdino-foto.png"} />
                       <div className="min-w-0">
                         <p className="text-[13px] font-bold text-foreground truncate">{n.autor || "Equipe PMC"}</p>
                         <div className="flex items-center gap-2">
@@ -310,6 +328,9 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
                             {new Date(n.data_publicacao + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
                           </span>
                           <TagCategoria slug={n.categoria} />
+                          {ultimaVisita && n.data_publicacao > ultimaVisita && (
+                            <Badge className="rounded-md bg-primary text-primary-foreground px-1.5 py-0 text-[9px] font-bold">NOVO</Badge>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -323,6 +344,11 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
 
                   {/* corpo (clicável) */}
                   <button onClick={() => setSearchParams({ post: n.id })} className="text-left w-full mt-3 group">
+                    {n.imagem_url && (
+                      <div className="rounded-xl overflow-hidden border border-border/60 mb-3">
+                        <img src={n.imagem_url} alt="" loading="lazy" className="w-full max-h-72 object-cover group-hover:scale-[1.01] transition-transform" />
+                      </div>
+                    )}
                     <h2 className="text-lg font-bold tracking-tight text-foreground leading-snug group-hover:text-primary transition-colors">{n.titulo}</h2>
                     {n.resumo && <p className="text-[13px] font-medium text-muted-foreground leading-relaxed line-clamp-2 mt-1">{n.resumo}</p>}
                   </button>
@@ -337,7 +363,7 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
                       {n.likeCount}
                     </button>
                     <button
-                      onClick={() => setSearchParams({ post: n.id })}
+                      onClick={() => setSearchParams({ post: n.id, foco: "1" })}
                       className="flex items-center gap-1.5 text-[13px] font-bold text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <MessageCircle className="size-4" />
@@ -383,6 +409,36 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Guardiões do mês — cross-link com o ranking */}
+          {topGuardioes.length > 0 && (
+            <Card className="border-primary/20">
+              <CardContent className="p-5">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 mb-3">
+                  <Trophy className="size-3.5 text-primary" />
+                  Guardiões do mês
+                </p>
+                <div className="space-y-1">
+                  {topGuardioes.map((g, i) => (
+                    <div key={g.posicao} className="flex items-center gap-2.5 p-2 rounded-xl">
+                      <span className="text-base shrink-0">{["🥇", "🥈", "🥉"][i]}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-bold text-foreground leading-snug truncate">{g.guardiao_nome || "Guardião não definido"}</p>
+                        <p className="text-[10px] font-medium text-muted-foreground truncate">{g.empresa || "Empresa"}</p>
+                      </div>
+                      <span className="text-[12px] font-bold tabular-nums text-primary shrink-0">{g.pontos.toLocaleString("pt-BR")}</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => navigate("/ranking-guardioes")}
+                  className="w-full mt-2 flex items-center justify-center gap-1 text-[11px] font-bold uppercase tracking-wider text-primary hover:underline"
+                >
+                  Ver ranking completo <ChevronRight className="size-3.5" />
+                </button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Em alta */}
           {emAlta.length > 0 && (
@@ -446,9 +502,13 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
           {aberta && (
             <>
               {/* Post */}
-              <div className="p-6 border-b border-border overflow-y-auto">
+              <div className="border-b border-border overflow-y-auto">
+                {aberta.imagem_url && (
+                  <img src={aberta.imagem_url} alt="" className="w-full max-h-80 object-cover" />
+                )}
+                <div className="p-6">
                 <div className="flex items-center gap-3">
-                  <Avatar nome={aberta.autor || "Equipe PMC"} url={aberta.autor_avatar_url} />
+                  <Avatar nome={aberta.autor || "Equipe PMC"} url={aberta.autor_avatar_url || "/galdino-foto.png"} />
                   <div>
                     <p className="text-[13px] font-bold text-foreground">{aberta.autor || "Equipe PMC"}</p>
                     <div className="flex items-center gap-2">
@@ -476,6 +536,17 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
                     <MessageCircle className="size-4" />
                     {aberta.comentarioCount} {aberta.comentarioCount === 1 ? "comentário" : "comentários"}
                   </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/novidades?post=${aberta.id}`)
+                      toast.success("Link do post copiado!")
+                    }}
+                    className="flex items-center gap-1.5 text-[13px] font-bold text-muted-foreground hover:text-primary transition-colors ml-auto"
+                  >
+                    <Link2 className="size-4" />
+                    Copiar link
+                  </button>
+                </div>
                 </div>
               </div>
 
@@ -507,6 +578,7 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
                 <div className="flex items-end gap-2">
                   {me && <Avatar nome={me.nome} url={me.avatar} size="size-9" />}
                   <Textarea
+                    autoFocus={searchParams.get("foco") === "1"}
                     className="rounded-xl min-h-11 text-[13px] flex-1 resize-none"
                     placeholder={replyTo ? "Escreva sua resposta..." : "Escreva um comentário..."}
                     value={novoTexto}
@@ -546,7 +618,7 @@ function ComentarioItem({
   return (
     <div className={isReply ? "pl-6 border-l-2 border-border/50 ml-4" : ""}>
       <div className="flex items-start gap-3 group">
-        <Avatar nome={c.autor_nome || "?"} url={c.autor_avatar_url} size="size-9" />
+        <Avatar nome={c.autor_nome || "?"} url={c.autor_avatar_url || (c.is_admin ? "/galdino-foto.png" : null)} size="size-9" />
         <div className="min-w-0 flex-1">
           <div className="rounded-2xl bg-muted/20 border border-border/50 px-4 py-2.5">
             <div className="flex items-center gap-2 flex-wrap">

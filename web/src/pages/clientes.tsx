@@ -36,7 +36,21 @@ import {
   PlusIcon as Plus,
   FilterIcon,
   XIcon,
+  DownloadIcon as Download,
 } from "@/components/ui/icons"
+import { exportarCsv } from "@/lib/export-csv"
+import { faixaPorPontos } from "@/lib/nivel-pmc"
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  closestCorners,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -118,14 +132,24 @@ const MESES = [
 const currentYear = new Date().getFullYear()
 const ANO_OPTIONS = [currentYear - 1, currentYear, currentYear + 1]
 
-function EngagementBadge({ value }: { value: NivelEngajamento | null }) {
+// Sinais do Radar de Renovação (RPC radar_renovacao) usados na gestão.
+interface RadarInfo {
+  dias_sem_reuniao: number | null
+  faixa: "verde" | "amarelo" | "vermelho"
+  dias_renovacao: number | null
+  score: number
+  motivos: string[]
+}
+
+function EngagementBadge({ value, auto }: { value: NivelEngajamento | null; auto?: boolean }) {
   if (!value) return <span className="text-muted-foreground text-xs">—</span>
   return (
     <Badge
       variant="outline"
+      title={auto ? "Calculado automaticamente (reuniões + atividade). Edite o cliente para fixar manualmente." : "Definido manualmente"}
       className={`rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${ENGAGEMENT_CLASSES[value]}`}
     >
-      {ENGAGEMENT_LABELS[value]}
+      {ENGAGEMENT_LABELS[value]}{auto ? " ·A" : ""}
     </Badge>
   )
 }
@@ -169,7 +193,15 @@ export default function ClientesPage() {
   const [filterMenuOpen, setFilterMenuOpen] = useState(false)
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
   const [filterSearch, setFilterSearch] = useState("")
-  const [sortOrder, setSortOrder] = useState<'az' | 'recent'>('az')
+  const [sortOrder, setSortOrder] = useState<'az' | 'recent' | 'reuniao' | 'pontos'>('az')
+  // Sinais de saúde (Radar de Renovação) e Pontos MC por cliente.
+  const [radar, setRadar] = useState<Map<string, RadarInfo>>(new Map())
+  const [pontosMap, setPontosMap] = useState<Map<string, number>>(new Map())
+  // Vista Lista ↔ Kanban + filtro rápido dos cards de resumo + drawer lateral.
+  const [vista, setVista] = useState<'lista' | 'kanban'>('lista')
+  const [quickFilter, setQuickFilter] = useState<null | 'ativos' | 'semcs' | 'risco' | 'renova' | 'cancelados'>(null)
+  const [drawerClient, setDrawerClient] = useState<Client | null>(null)
+  const [drawerReunioes, setDrawerReunioes] = useState<{ data: string; fonte: string }[]>([])
   const filterRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -234,7 +266,7 @@ export default function ClientesPage() {
 
   useEffect(() => {
     async function fetchClients() {
-      const [{ data: entradaData, error: entradaErr }, { data: emailsData }] = await Promise.all([
+      const [{ data: entradaData, error: entradaErr }, { data: emailsData }, radarRes, pontosRes] = await Promise.all([
         supabase
           .from('clientes_entrada_new')
           .select('*')
@@ -242,7 +274,24 @@ export default function ClientesPage() {
         supabase
           .from('clientes_formulario')
           .select('id_cliente, email'),
+        supabase.rpc('radar_renovacao'),
+        supabase.rpc('admin_clientes_pontos'),
       ])
+
+      const radarMap = new Map<string, RadarInfo>()
+      ;((radarRes.data as any[]) ?? []).forEach((r) => {
+        if (r.id_cliente) radarMap.set(r.id_cliente, {
+          dias_sem_reuniao: r.dias_sem_reuniao,
+          faixa: r.faixa,
+          dias_renovacao: r.dias_renovacao,
+          score: r.score,
+          motivos: r.motivos ?? [],
+        })
+      })
+      setRadar(radarMap)
+      const pMap = new Map<string, number>()
+      ;((pontosRes.data as any[]) ?? []).forEach((r) => { if (r.id_cliente) pMap.set(r.id_cliente, r.pontos ?? 0) })
+      setPontosMap(pMap)
 
       if (entradaData && !entradaErr) {
         const emailByCliente = new Map<string, string | null>(
@@ -259,6 +308,27 @@ export default function ClientesPage() {
 
     fetchClients()
   }, [])
+
+  // Drawer: últimas reuniões do cliente selecionado.
+  useEffect(() => {
+    const dc = drawerClient
+    if (!dc) { setDrawerReunioes([]); return }
+    let cancel = false
+    async function load() {
+      const [m, g] = await Promise.all([
+        supabase.from('reunioes_mentoria_new').select('data_reuniao, mentor').eq('id_cliente', dc!.id_cliente).order('data_reuniao', { ascending: false }).limit(3),
+        supabase.from('reunioes_galdino').select('data_reuniao').eq('id_cliente', dc!.id_cliente).order('data_reuniao', { ascending: false }).limit(3),
+      ])
+      if (cancel) return
+      const lista = [
+        ...((m.data as any[]) ?? []).map((r) => ({ data: r.data_reuniao as string, fonte: (r.mentor as string) || 'Consultor' })),
+        ...((g.data as any[]) ?? []).map((r) => ({ data: r.data_reuniao as string, fonte: 'Galdino' })),
+      ].sort((a, b) => (b.data || '').localeCompare(a.data || '')).slice(0, 4)
+      setDrawerReunioes(lista)
+    }
+    load()
+    return () => { cancel = true }
+  }, [drawerClient])
 
   async function openEdit(client: Client) {
     setEditClient(client)
@@ -359,6 +429,24 @@ export default function ClientesPage() {
     }
   }
 
+  // Engajamento AUTOMÁTICO: derivado dos sinais reais (dias sem reunião, status).
+  // O campo manual nivel_engajamento, quando preenchido, sobrescreve o cálculo.
+  function engajamentoAuto(c: Client): NivelEngajamento {
+    if (c.status_atual?.toLowerCase().includes('cancelad')) return 'cancelado'
+    const r = radar.get(c.id_cliente)
+    if (!r || r.dias_sem_reuniao == null) {
+      return c.status_atual?.toLowerCase().includes('ativo') ? 'cliente_novo' : 'sem_onboarding'
+    }
+    if (r.dias_sem_reuniao <= 10) return 'ativo_alto'
+    if (r.dias_sem_reuniao <= 21) return 'ativo_medio'
+    if (r.dias_sem_reuniao <= 45) return 'desengajado'
+    return 'congelado'
+  }
+  const engajamentoEfetivo = (c: Client): NivelEngajamento => c.nivel_engajamento ?? engajamentoAuto(c)
+  const emRisco = (c: Client) => ['desengajado', 'congelado'].includes(engajamentoEfetivo(c))
+  const diasSemReuniao = (c: Client) => radar.get(c.id_cliente)?.dias_sem_reuniao ?? null
+  const diasRenovacao = (c: Client) => radar.get(c.id_cliente)?.dias_renovacao ?? null
+
   const filteredClients = clients.filter(client => {
     const term = searchTerm.toLowerCase()
     const matchesSearch =
@@ -369,14 +457,30 @@ export default function ClientesPage() {
     const matchesFilters =
       (!filters.cs || (filters.cs === 'Sem CS' ? !client.sc || !client.sc.trim() : client.sc === filters.cs)) &&
       (!filters.status || client.status_atual === filters.status) &&
-      (!filters.engajamento || client.nivel_engajamento === filters.engajamento) &&
+      (!filters.engajamento || engajamentoEfetivo(client) === filters.engajamento) &&
       (!filters.produto || client.produto === filters.produto) &&
       (!filters.unidade || client.unidade_treinamento === filters.unidade) &&
       (!filters.crm || (filters.crm === 'Sim' ? client.tem_crm : !client.tem_crm))
 
-    return matchesSearch && matchesFilters
+    const matchesQuick =
+      quickFilter === null ? true
+      : quickFilter === 'ativos' ? !!client.status_atual?.toLowerCase().includes('ativo')
+      : quickFilter === 'semcs' ? (!client.sc || !client.sc.trim())
+      : quickFilter === 'risco' ? emRisco(client)
+      : quickFilter === 'renova' ? (() => { const d = diasRenovacao(client); return d !== null && d >= 0 && d <= 90 })()
+      : !!client.status_atual?.toLowerCase().includes('cancelad')
+
+    return matchesSearch && matchesFilters && matchesQuick
   }).sort((a, b) => {
     if (sortOrder === 'recent') return b.id_entrada - a.id_entrada
+    if (sortOrder === 'reuniao') {
+      // mais tempo sem reunião primeiro (null = nunca → topo)
+      const da = diasSemReuniao(a); const db = diasSemReuniao(b)
+      return (db ?? 99999) - (da ?? 99999)
+    }
+    if (sortOrder === 'pontos') {
+      return (pontosMap.get(b.id_cliente) ?? 0) - (pontosMap.get(a.id_cliente) ?? 0)
+    }
     return (a.nome_cliente_formatado ?? '').localeCompare(b.nome_cliente_formatado ?? '', 'pt-BR')
   })
 
@@ -418,6 +522,24 @@ export default function ClientesPage() {
   }
 
   const activeFilterCount = Object.keys(filters).length
+
+  function exportar() {
+    exportarCsv("clientes-pmc", [
+      { chave: "codigo_cliente", titulo: "Código" },
+      { chave: "nome_cliente_formatado", titulo: "Cliente" },
+      { chave: "nome_empresa_formatado", titulo: "Empresa" },
+      { chave: "status_atual", titulo: "Status" },
+      { chave: "sc", titulo: "CS" },
+      { chave: "nicho", titulo: "Nicho" },
+      { chave: "estado_uf", titulo: "UF" },
+      { chave: "telefone", titulo: "Telefone" },
+      { chave: "email", titulo: "E-mail" },
+      { chave: "produto", titulo: "Produto" },
+      { chave: "canal_de_venda", titulo: "Canal de venda" },
+      { chave: "nivel_engajamento", titulo: "Engajamento" },
+      { chave: "tem_crm", titulo: "Tem CRM", valor: (c) => (c.tem_crm ? "Sim" : "Não") },
+    ], filteredClients)
+  }
 
   // Bulk selection helpers
   const filteredIds = new Set(filteredClients.map(c => c.id_entrada))
@@ -555,15 +677,59 @@ export default function ClientesPage() {
             <p className="text-muted-foreground font-medium text-sm">Base estratégica de empresários do programa.</p>
           </div>
         </motion.div>
-        <Button
-          onClick={() => setShowRegistrar(true)}
-          size="sm"
-          className="size-10 p-0 rounded-xl shadow-lg shadow-primary/20 shrink-0 mt-2"
-          aria-label="Registrar Novo Cliente"
-        >
-          <Plus className="size-5" />
-        </Button>
+        <div className="flex items-center gap-2 shrink-0 mt-2">
+          <Button
+            onClick={exportar}
+            variant="outline"
+            size="sm"
+            className="h-10 gap-2 rounded-xl font-bold text-xs uppercase tracking-wider"
+          >
+            <Download className="size-4" /> Exportar
+          </Button>
+          <Button
+            onClick={() => setShowRegistrar(true)}
+            size="sm"
+            className="size-10 p-0 rounded-xl shadow-lg shadow-primary/20"
+            aria-label="Registrar Novo Cliente"
+          >
+            <Plus className="size-5" />
+          </Button>
+        </div>
       </div>
+
+      {/* Resumo — cada card é um filtro de 1 clique */}
+      {(() => {
+        const nAtivos = clients.filter(c => c.status_atual?.toLowerCase().includes('ativo')).length
+        const nSemCs = clients.filter(c => !c.sc || !c.sc.trim()).length
+        const nRisco = clients.filter(emRisco).length
+        const nRenova = clients.filter(c => { const d = diasRenovacao(c); return d !== null && d >= 0 && d <= 90 }).length
+        const nCancel = clients.filter(c => c.status_atual?.toLowerCase().includes('cancelad')).length
+        const cards: { key: typeof quickFilter; label: string; n: number; cls: string }[] = [
+          { key: null, label: 'Total', n: clients.length, cls: 'text-foreground' },
+          { key: 'ativos', label: 'Ativos', n: nAtivos, cls: 'text-primary' },
+          { key: 'semcs', label: 'Sem CS', n: nSemCs, cls: nSemCs > 0 ? 'text-amber-400' : 'text-muted-foreground' },
+          { key: 'risco', label: 'Em risco', n: nRisco, cls: nRisco > 0 ? 'text-red-400' : 'text-muted-foreground' },
+          { key: 'renova', label: 'Renovam ≤90d', n: nRenova, cls: nRenova > 0 ? 'text-sky-400' : 'text-muted-foreground' },
+          { key: 'cancelados', label: 'Cancelados', n: nCancel, cls: 'text-muted-foreground' },
+        ]
+        return (
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3 -mt-4">
+            {cards.map((cd) => {
+              const ativo = quickFilter === cd.key
+              return (
+                <button
+                  key={cd.label}
+                  onClick={() => setQuickFilter(ativo && cd.key !== null ? null : cd.key)}
+                  className={`rounded-2xl border p-4 text-left transition-all ${ativo && cd.key !== null ? 'border-primary/50 bg-primary/10 ring-1 ring-primary/20' : 'border-border/50 bg-muted/10 hover:border-primary/30'}`}
+                >
+                  <p className={`text-2xl font-bold tabular-nums ${cd.cls}`}>{cd.n}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">{cd.label}</p>
+                </button>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-center gap-4 bg-muted/10 p-6 rounded-2xl border border-border/50">
@@ -575,6 +741,20 @@ export default function ClientesPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+          </div>
+          <div className="inline-flex rounded-xl border border-border bg-background p-1 shrink-0">
+            <button
+              onClick={() => setVista('lista')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${vista === 'lista' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Lista
+            </button>
+            <button
+              onClick={() => setVista('kanban')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${vista === 'kanban' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Kanban
+            </button>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -747,6 +927,20 @@ export default function ClientesPage() {
         )}
       </AnimatePresence>
 
+      {vista === 'kanban' && (
+        <KanbanClientes
+          clients={filteredClients}
+          engajamentoEfetivo={engajamentoEfetivo}
+          pontosMap={pontosMap}
+          onAbrir={(c) => setDrawerClient(c)}
+          onStatus={async (c, novo) => {
+            setClients(prev => prev.map(x => x.id_entrada === c.id_entrada ? { ...x, status_atual: novo } : x))
+            await supabase.from('clientes_entrada_new').update({ status_atual: novo }).eq('id_entrada', c.id_entrada)
+          }}
+        />
+      )}
+
+      {vista === 'lista' && (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -763,18 +957,32 @@ export default function ClientesPage() {
                   aria-label="Selecionar todos"
                 />
               </TableHead>
-              <TableHead className="w-[70px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">ID</TableHead>
-              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Empresa / Cliente</TableHead>
-              <TableHead className="w-[180px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Status Atual</TableHead>
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">
+                <button className={`uppercase tracking-widest font-bold hover:text-primary transition-colors ${sortOrder === 'az' ? 'text-primary' : ''}`} onClick={() => setSortOrder('az')}>Empresa / Cliente ↕</button>
+              </TableHead>
+              <TableHead className="w-[130px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">
+                <button className={`uppercase tracking-widest font-bold hover:text-primary transition-colors ${sortOrder === 'reuniao' ? 'text-primary' : ''}`} onClick={() => setSortOrder('reuniao')} title="Ordenar por tempo sem reunião">Últ. Reunião ↕</button>
+              </TableHead>
+              <TableHead className="w-[170px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Status Atual</TableHead>
               <TableHead className="w-[140px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">CS Responsável</TableHead>
               <TableHead className="w-[120px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Engajamento</TableHead>
-              <TableHead className="w-[50px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-2">CRM</TableHead>
+              <TableHead className="w-[110px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">
+                <button className={`uppercase tracking-widest font-bold hover:text-primary transition-colors ${sortOrder === 'pontos' ? 'text-primary' : ''}`} onClick={() => setSortOrder('pontos')} title="Ordenar por Pontos MC">Pontos MC ↕</button>
+              </TableHead>
               <TableHead className="w-[60px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 text-right pr-4">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredClients.map((client) => (
-              <TableRow key={client.id_entrada} className="hover:bg-primary/5 border-b border-border/30 transition-colors group">
+            {filteredClients.map((client) => {
+              const dias = diasSemReuniao(client)
+              const renova = diasRenovacao(client)
+              const pontos = pontosMap.get(client.id_cliente) ?? 0
+              return (
+              <TableRow
+                key={client.id_entrada}
+                className="hover:bg-primary/5 border-b border-border/30 transition-colors group cursor-pointer"
+                onClick={() => { setDrawerClient(client); }}
+              >
                 <TableCell className="py-5 pl-4 pr-0" onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selectedIds.has(client.id_entrada)}
@@ -783,13 +991,15 @@ export default function ClientesPage() {
                   />
                 </TableCell>
                 <TableCell className="py-5 px-3">
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {client.codigo_cliente ?? '—'}
-                  </span>
-                </TableCell>
-                <TableCell className="py-5 px-3">
                   <div className="flex flex-col gap-1">
-                    <span className="font-bold text-sm text-foreground tracking-tight truncate">{client.nome_empresa_formatado}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-foreground tracking-tight truncate">{client.nome_empresa_formatado}</span>
+                      {renova !== null && renova >= 0 && renova <= 90 && (
+                        <Badge variant="outline" className={`rounded-md px-1.5 py-0 text-[9px] font-bold shrink-0 ${renova <= 30 ? 'border-red-500/30 text-red-400 bg-red-500/10' : 'border-sky-500/30 text-sky-400 bg-sky-500/10'}`}>
+                          renova em {renova}d
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium truncate">
                       <Briefcase className="size-3 shrink-0 text-primary/60" />
                       <span className="truncate">{client.nome_cliente_formatado}</span>
@@ -797,34 +1007,62 @@ export default function ClientesPage() {
                   </div>
                 </TableCell>
                 <TableCell className="px-3">
-                  <Badge
-                    variant="outline"
-                    className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider max-w-full truncate inline-block ${
-                      client.status_atual?.toLowerCase().includes('ativo')
-                        ? 'border-primary/30 text-primary bg-primary/10'
-                        : 'border-border text-muted-foreground bg-muted/20'
-                    }`}
-                  >
-                    {client.status_atual || 'N/A'}
-                  </Badge>
+                  {dias === null ? (
+                    <span className="text-[11px] font-medium text-muted-foreground/60">nunca</span>
+                  ) : (
+                    <span className={`text-[12px] font-bold tabular-nums ${dias > 30 ? 'text-red-400' : dias > 15 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                      há {dias}d
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="px-3">
+                  {client.status_atual ? (
+                    <Badge
+                      variant="outline"
+                      className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider max-w-full truncate inline-block ${
+                        client.status_atual.toLowerCase().includes('ativo')
+                          ? 'border-primary/30 text-primary bg-primary/10'
+                          : 'border-border text-muted-foreground bg-muted/20'
+                      }`}
+                    >
+                      {client.status_atual}
+                    </Badge>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEdit(client) }}
+                      className="rounded-lg px-2 py-1 text-[10px] font-bold border border-dashed border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors"
+                    >
+                      + Definir status
+                    </button>
+                  )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[11px] font-bold text-primary">
-                      {client.sc?.substring(0, 1) || '?'}
+                  {client.sc?.trim() ? (
+                    <div className="flex items-center gap-3">
+                      <div className="size-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[11px] font-bold text-primary">
+                        {client.sc.substring(0, 1)}
+                      </div>
+                      <span className="text-[12px] font-semibold text-foreground">{client.sc}</span>
                     </div>
-                    <span className="text-[12px] font-semibold text-foreground">{client.sc || 'Não Atribuído'}</span>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEdit(client) }}
+                      className="rounded-lg px-2 py-1 text-[10px] font-bold border border-dashed border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors"
+                    >
+                      + Atribuir CS
+                    </button>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <EngagementBadge value={engajamentoEfetivo(client)} auto={!client.nivel_engajamento} />
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="text-[13px] font-bold tabular-nums text-foreground">{pontos.toLocaleString('pt-BR')}</span>
+                    <span className="text-[10px] font-medium text-muted-foreground">{faixaPorPontos(pontos).faixa.nome}</span>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <EngagementBadge value={client.nivel_engajamento} />
-                </TableCell>
-                <TableCell>
-                  <span className={`text-[11px] font-bold ${client.tem_crm ? 'text-emerald-400' : 'text-muted-foreground'}`}>
-                    {client.tem_crm ? 'Sim' : 'Não'}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right pr-4">
+                <TableCell className="text-right pr-4" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="size-9 p-0 rounded-lg hover:bg-muted">
@@ -863,10 +1101,115 @@ export default function ClientesPage() {
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+              )
+            })}
           </TableBody>
         </Table>
       </motion.div>
+      )}
+
+      {/* Drawer de resumo do cliente (clique na linha/card) */}
+      <Sheet open={!!drawerClient} onOpenChange={(open) => { if (!open) setDrawerClient(null) }}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {drawerClient && (() => {
+            const r = radar.get(drawerClient.id_cliente)
+            const pontos = pontosMap.get(drawerClient.id_cliente) ?? 0
+            const eng = engajamentoEfetivo(drawerClient)
+            return (
+              <div className="space-y-5 pt-2">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Cliente #{drawerClient.codigo_cliente ?? '—'}</p>
+                  <h2 className="text-xl font-bold tracking-tight text-foreground mt-0.5">{drawerClient.nome_empresa_formatado || 'Empresa'}</h2>
+                  <p className="text-[13px] font-medium text-muted-foreground">{drawerClient.nome_cliente_formatado}</p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {drawerClient.status_atual && (
+                    <Badge variant="outline" className="rounded-lg text-[10px] font-bold border-border text-muted-foreground">{drawerClient.status_atual}</Badge>
+                  )}
+                  <EngagementBadge value={eng} auto={!drawerClient.nivel_engajamento} />
+                  <Badge variant="outline" className="rounded-lg text-[10px] font-bold border-primary/30 text-primary bg-primary/10">
+                    {pontos.toLocaleString('pt-BR')} pts MC · {faixaPorPontos(pontos).faixa.nome}
+                  </Badge>
+                </div>
+
+                {/* Saúde (radar) */}
+                <div className="rounded-2xl border border-border bg-muted/10 p-4 space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Saúde do cliente</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className={`text-lg font-bold tabular-nums ${r?.dias_sem_reuniao != null && r.dias_sem_reuniao > 30 ? 'text-red-400' : 'text-foreground'}`}>
+                        {r?.dias_sem_reuniao != null ? `${r.dias_sem_reuniao}d` : '—'}
+                      </p>
+                      <p className="text-[10px] font-medium text-muted-foreground">sem reunião</p>
+                    </div>
+                    <div>
+                      <p className={`text-lg font-bold tabular-nums ${r?.dias_renovacao != null && r.dias_renovacao <= 30 ? 'text-red-400' : 'text-foreground'}`}>
+                        {r?.dias_renovacao != null ? `${r.dias_renovacao}d` : '—'}
+                      </p>
+                      <p className="text-[10px] font-medium text-muted-foreground">para renovação</p>
+                    </div>
+                  </div>
+                  {(r?.motivos?.length ?? 0) > 0 && (
+                    <ul className="space-y-1 pt-1">
+                      {r!.motivos.slice(0, 4).map((mo, i) => (
+                        <li key={i} className="text-[11px] font-medium text-muted-foreground">• {mo}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Últimas reuniões */}
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Últimas reuniões</p>
+                  {drawerReunioes.length === 0 ? (
+                    <p className="text-[12px] font-medium text-muted-foreground">Nenhuma reunião registrada.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {drawerReunioes.map((re, i) => (
+                        <div key={i} className="flex items-center justify-between rounded-xl bg-muted/15 border border-border/50 px-3 py-2">
+                          <span className="text-[12px] font-bold text-foreground">{re.fonte}</span>
+                          <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+                            {re.data ? new Date(re.data + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Contato + obs */}
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Contato</p>
+                  <p className="text-[12px] font-medium text-foreground">{drawerClient.telefone || 'Telefone não cadastrado'}</p>
+                  <p className="text-[12px] font-medium text-muted-foreground">{drawerClient.email || 'E-mail não cadastrado'}</p>
+                  {drawerClient.sc?.trim() && <p className="text-[12px] font-medium text-muted-foreground">CS: <span className="text-foreground font-bold">{drawerClient.sc}</span></p>}
+                </div>
+                {drawerClient.observacoes_cs && (
+                  <div className="rounded-xl bg-muted/10 border border-border/50 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Observações do CS</p>
+                    <p className="text-[12px] font-medium text-foreground/90 leading-relaxed whitespace-pre-wrap">{drawerClient.observacoes_cs}</p>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 pt-1">
+                  <Button className="flex-1 h-10 rounded-xl font-bold text-xs uppercase tracking-wider" onClick={() => navigate('/cliente/' + drawerClient.id_cliente)}>
+                    Perfil completo
+                  </Button>
+                  <Button variant="outline" className="h-10 rounded-xl font-bold text-xs uppercase tracking-wider" onClick={() => { const c = drawerClient; setDrawerClient(null); openEdit(c) }}>
+                    Editar
+                  </Button>
+                  {drawerClient.telefone && (
+                    <Button variant="outline" className="h-10 px-3 rounded-xl" onClick={() => window.open(`https://wa.me/${drawerClient.telefone.replace(/\D/g, '')}`, '_blank')}>
+                      <Phone className="size-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={!!editClient} onOpenChange={(open) => { if (!open) setEditClient(null) }}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-background border-l border-border">
@@ -1181,6 +1524,99 @@ export default function ClientesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Vista Kanban — clientes agrupados por status, arrasta para mudar de coluna.
+function KanbanClientes({ clients, engajamentoEfetivo, pontosMap, onAbrir, onStatus }: {
+  clients: Client[]
+  engajamentoEfetivo: (c: Client) => NivelEngajamento
+  pontosMap: Map<string, number>
+  onAbrir: (c: Client) => void
+  onStatus: (c: Client, novo: string) => void
+}) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  const [activeId, setActiveId] = useState<number | null>(null)
+  const colunas = ['__sem_status', ...STATUS_CLIENTE]
+  const itensDe = (col: string) =>
+    col === '__sem_status' ? clients.filter(c => !c.status_atual) : clients.filter(c => c.status_atual === col)
+
+  function onDragEnd(e: DragEndEvent) {
+    setActiveId(null)
+    const over = e.over?.id as string | undefined
+    if (!over || over === '__sem_status') return
+    const c = clients.find(x => x.id_entrada === Number(e.active.id))
+    if (c && c.status_atual !== over) onStatus(c, over)
+  }
+
+  const ativo = clients.find(c => c.id_entrada === activeId) ?? null
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={(e) => setActiveId(Number(e.active.id))} onDragEnd={onDragEnd}>
+      <div className="flex gap-4 overflow-x-auto pb-4 items-start">
+        {colunas.map((col) => {
+          const itens = itensDe(col)
+          if (col === '__sem_status' && itens.length === 0) return null
+          return <ColunaKanbanClientes key={col} id={col} titulo={col === '__sem_status' ? 'Sem status' : col} itens={itens} engajamentoEfetivo={engajamentoEfetivo} pontosMap={pontosMap} onAbrir={onAbrir} />
+        })}
+      </div>
+      <DragOverlay>
+        {ativo && <CardKanbanCliente c={ativo} engajamentoEfetivo={engajamentoEfetivo} pontosMap={pontosMap} overlay />}
+      </DragOverlay>
+    </DndContext>
+  )
+}
+
+function ColunaKanbanClientes({ id, titulo, itens, engajamentoEfetivo, pontosMap, onAbrir }: {
+  id: string
+  titulo: string
+  itens: Client[]
+  engajamentoEfetivo: (c: Client) => NivelEngajamento
+  pontosMap: Map<string, number>
+  onAbrir: (c: Client) => void
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id })
+  return (
+    <div ref={setNodeRef} className={`w-72 shrink-0 rounded-2xl border transition-colors ${isOver ? 'border-primary/50 bg-primary/5' : 'border-border/60 bg-muted/10'}`}>
+      <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-foreground truncate">{titulo}</p>
+        <span className="text-[11px] font-bold tabular-nums text-muted-foreground">{itens.length}</span>
+      </div>
+      <div className="p-2 space-y-2 min-h-[80px] max-h-[60vh] overflow-y-auto">
+        {itens.map((c) => (
+          <CardKanbanCliente key={c.id_entrada} c={c} engajamentoEfetivo={engajamentoEfetivo} pontosMap={pontosMap} onAbrir={onAbrir} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CardKanbanCliente({ c, engajamentoEfetivo, pontosMap, onAbrir, overlay }: {
+  c: Client
+  engajamentoEfetivo: (cl: Client) => NivelEngajamento
+  pontosMap: Map<string, number>
+  onAbrir?: (cl: Client) => void
+  overlay?: boolean
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: c.id_entrada })
+  const eng = engajamentoEfetivo(c)
+  const pontos = pontosMap.get(c.id_cliente) ?? 0
+  return (
+    <div
+      ref={overlay ? undefined : setNodeRef}
+      {...(overlay ? {} : attributes)}
+      {...(overlay ? {} : listeners)}
+      onClick={() => { if (!overlay && !isDragging) onAbrir?.(c) }}
+      className={`rounded-xl border border-border bg-card p-3 cursor-grab active:cursor-grabbing select-none ${isDragging && !overlay ? 'opacity-40' : ''} ${overlay ? 'shadow-2xl ring-1 ring-primary/30' : 'hover:border-primary/30'} transition-colors`}
+    >
+      <p className="text-[13px] font-bold tracking-tight text-foreground truncate">{c.nome_empresa_formatado || 'Empresa'}</p>
+      <p className="text-[11px] font-medium text-muted-foreground truncate">{c.nome_cliente_formatado}</p>
+      <div className="flex items-center justify-between mt-2">
+        <EngagementBadge value={eng} auto={!c.nivel_engajamento} />
+        <span className="text-[11px] font-bold tabular-nums text-primary">{pontos.toLocaleString('pt-BR')} pts</span>
+      </div>
     </div>
   )
 }

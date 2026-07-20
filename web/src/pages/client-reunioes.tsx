@@ -18,6 +18,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { motion } from "framer-motion"
 import { PageHeader } from "@/components/layout/page-header"
 import type { Session } from "@supabase/supabase-js"
+import { logarDownload } from "@/lib/log-download"
 
 interface Meeting {
   id_unico: string
@@ -285,14 +286,16 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
                         </div>
                         <div className="flex items-center gap-1">
                           {meeting.link_gravacao && (
-                            <a href={meeting.link_gravacao} target="_blank" rel="noopener noreferrer" title="Gravação">
+                            <a href={meeting.link_gravacao} target="_blank" rel="noopener noreferrer" title="Gravação"
+                              onClick={() => logarDownload("gravacao", meeting.id_unico, `Gravação · ${meeting.mentor || "Consultor"}`, meeting.link_gravacao)}>
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
                                 <VideoIcon className="size-3.5" />
                               </Button>
                             </a>
                           )}
                           {meeting.link_geminidoc && (
-                            <a href={meeting.link_geminidoc} target="_blank" rel="noopener noreferrer" title="Transcrição">
+                            <a href={meeting.link_geminidoc} target="_blank" rel="noopener noreferrer" title="Transcrição"
+                              onClick={() => logarDownload("arquivo", meeting.id_unico, `Transcrição · ${meeting.mentor || "Consultor"}`, meeting.link_geminidoc)}>
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
                                 <FileTextIcon className="size-3.5" />
                               </Button>

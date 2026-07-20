@@ -58,7 +58,7 @@ function saudeBucket(v: string | null): "risco" | "atencao" | "saudavel" | null 
   return "saudavel"
 }
 
-export default function Dashboard2() {
+export default function Dashboard2({ embedded = false }: { embedded?: boolean } = {}) {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [metas, setMetas] = useState<any[]>([])
   const [ultimoContato, setUltimoContato] = useState<Record<string, string>>({})
@@ -199,15 +199,17 @@ export default function Dashboard2() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-col gap-3 border-l-4 border-primary pl-8 py-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Visão Geral 2</h1>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">Estratégica</Badge>
-            <p className="text-muted-foreground font-medium text-sm">Crescimento, receita, risco e funil — {anoAtual}</p>
+      {!embedded && (
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col gap-3 border-l-4 border-primary pl-8 py-2">
+            <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Visão Geral</h1>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">Estratégica</Badge>
+              <p className="text-muted-foreground font-medium text-sm">Crescimento, receita, risco e funil — {anoAtual}</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* KPIs */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">

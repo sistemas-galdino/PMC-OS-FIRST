@@ -22,6 +22,7 @@ import {
   CalendarIcon as Calendar,
 } from "@/components/ui/icons"
 import { FaseHeader, VazioFase } from "./compartilhados"
+import { MetodoNotas } from "./metodo-notas"
 
 const FOTO_BUCKET = "guardiao-fotos"
 
@@ -283,6 +284,12 @@ export function FaseGuardiao({ clientId, assessmentUrl }: {
             </CardContent>
           </Card>
         </div>
+        <MetodoNotas
+          clientId={clientId}
+          chave="guardiao"
+          titulo="Melhorias da rotina"
+          placeholder="Anote aqui as melhorias, ajustes e ideias que surgirem na rotina do Guardião — o que funcionou, o que testar, o que padronizar…"
+        />
       </section>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>

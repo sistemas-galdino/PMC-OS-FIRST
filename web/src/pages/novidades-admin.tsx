@@ -34,6 +34,7 @@ interface Novidade {
   publicado: boolean
   autor: string | null
   categoria: string
+  imagem_url: string | null
 }
 
 function hojeIso() {
@@ -49,6 +50,7 @@ const FORM_VAZIO = {
   publicado: true,
   autor: "",
   categoria: "avisos",
+  imagem_url: "",
 }
 
 function formatarData(iso: string): string {
@@ -62,6 +64,7 @@ export default function NovidadesAdminPage() {
   const [editando, setEditando] = useState<Novidade | null>(null)
   const [form, setForm] = useState(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
+  const [uploadandoImg, setUploadandoImg] = useState(false)
 
   async function fetchNovidades() {
     const { data } = await supabase
@@ -92,8 +95,27 @@ export default function NovidadesAdminPage() {
       publicado: n.publicado,
       autor: n.autor ?? "",
       categoria: n.categoria ?? "avisos",
+      imagem_url: n.imagem_url ?? "",
     })
     setShowForm(true)
+  }
+
+  // Upload da imagem de capa para o bucket público novidades-imagens.
+  async function onUploadImagem(file: File) {
+    setUploadandoImg(true)
+    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
+    const path = `${Date.now()}-${safe}`
+    const { error } = await supabase.storage.from("novidades-imagens").upload(path, file, {
+      contentType: file.type || undefined,
+      upsert: false,
+    })
+    if (error) {
+      alert("Falha no upload: " + error.message)
+    } else {
+      const { data } = supabase.storage.from("novidades-imagens").getPublicUrl(path)
+      setForm((f) => ({ ...f, imagem_url: data.publicUrl }))
+    }
+    setUploadandoImg(false)
   }
 
   async function salvar() {
@@ -108,6 +130,7 @@ export default function NovidadesAdminPage() {
       publicado: form.publicado,
       autor: form.autor.trim() || null,
       categoria: form.categoria,
+      imagem_url: form.imagem_url.trim() || null,
       updated_at: new Date().toISOString(),
     }
     const { error } = editando
@@ -263,6 +286,32 @@ export default function NovidadesAdminPage() {
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Autor (opcional)</Label>
                 <Input className="h-11 rounded-xl" placeholder="Ex.: Equipe PMC" value={form.autor} onChange={(e) => setForm((p) => ({ ...p, autor: e.target.value }))} />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Imagem de capa (opcional)</Label>
+              {form.imagem_url ? (
+                <div className="relative rounded-xl overflow-hidden border border-border">
+                  <img src={form.imagem_url} alt="" className="w-full max-h-48 object-cover" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="absolute top-2 right-2 h-8 rounded-lg text-xs font-bold bg-background/80 backdrop-blur"
+                    onClick={() => setForm((p) => ({ ...p, imagem_url: "" }))}
+                  >
+                    Remover
+                  </Button>
+                </div>
+              ) : (
+                <label className={`flex items-center justify-center gap-2 h-24 rounded-xl border border-dashed border-border cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors text-[13px] font-medium text-muted-foreground ${uploadandoImg ? "opacity-50 pointer-events-none" : ""}`}>
+                  {uploadandoImg ? "Enviando imagem..." : "Clique para enviar a imagem de capa (JPG/PNG)"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadImagem(f); e.target.value = "" }}
+                  />
+                </label>
+              )}
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Conteúdo (aceita markdown)</Label>

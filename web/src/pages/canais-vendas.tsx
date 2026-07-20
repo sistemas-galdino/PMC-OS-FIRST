@@ -11,7 +11,9 @@ import {
   SaveIcon as Save,
   TrendingUpIcon as TrendingUp,
 } from "@/components/ui/icons"
-import { CANAIS, PRODUTOS, periodosDaVisao, type Visao } from "@/data/canais-vendas"
+import { CANAIS, PRODUTOS, MESES, periodosDaVisao, type Visao } from "@/data/canais-vendas"
+import { exportarCsv } from "@/lib/export-csv"
+import { DownloadIcon as Download } from "@/components/ui/icons"
 
 const ANO_ATUAL = 2026
 const CONSOLIDADO = "consolidado"
@@ -144,6 +146,22 @@ export default function CanaisVendasPage() {
     }
   }
 
+  function exportar() {
+    const rotulo = consolidado ? "consolidado" : produto
+    const linhas = CANAIS.flatMap((canal) =>
+      todosMeses.map((mes) => {
+        const c = get(mes, canal.slug)
+        return { canal: canal.label, mes: MESES[mes - 1], planejado: c.planejado, realizado: c.realizado }
+      })
+    )
+    exportarCsv(`canais-vendas-${rotulo}-${ano}`, [
+      { chave: "canal", titulo: "Canal" },
+      { chave: "mes", titulo: "Mês" },
+      { chave: "planejado", titulo: "Planejado" },
+      { chave: "realizado", titulo: "Realizado" },
+    ], linhas)
+  }
+
   const editavel = visao === "mensal" && !consolidado
 
   return (
@@ -164,6 +182,13 @@ export default function CanaisVendasPage() {
             <span className="px-3 text-sm font-bold tabular-nums">{ano}</span>
             <button onClick={() => setAno((a) => a + 1)} className="px-2.5 py-2 hover:bg-muted/40"><ChevronRight className="size-4" /></button>
           </div>
+          <Button
+            variant="outline"
+            onClick={exportar}
+            className="h-10 gap-2 rounded-xl font-bold text-xs uppercase tracking-wider"
+          >
+            <Download className="size-4" /> Exportar
+          </Button>
           {editavel && (
             <Button
               onClick={salvar}

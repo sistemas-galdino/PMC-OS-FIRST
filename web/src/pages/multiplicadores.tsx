@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/icons"
 import { ItemThumb, COR } from "@/components/biblioteca/biblioteca-ui"
 import { TIPOS, CATEGORIAS, tipoLabel, type Multiplicador } from "@/data/multiplicadores"
+import { logarDownload } from "@/lib/log-download"
 
 function normalizar(row: any): Multiplicador {
   return {
@@ -253,7 +254,12 @@ function DetalheMultiplicador({ m }: { m: Multiplicador }) {
 
         {m.importar_url ? (
           <Button asChild className="w-full h-11 gap-2 rounded-xl font-bold">
-            <a href={m.importar_url} target="_blank" rel="noreferrer">
+            <a
+              href={m.importar_url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => logarDownload("multiplicador", m.slug, m.nome, m.importar_url)}
+            >
               <ArrowUpRight className="size-4" />
               Importar no Claude
             </a>

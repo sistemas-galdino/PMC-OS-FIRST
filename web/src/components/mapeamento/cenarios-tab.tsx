@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { celebrarPontosMC } from "@/components/pontos-mc-splash"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -65,6 +66,8 @@ export default function CenariosTab({ session, clientId }: Props) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  // Se já havia metas gravadas, a área já pontuou — o splash é só na primeira vez.
+  const [tinhaMetas, setTinhaMetas] = useState(false)
 
   useEffect(() => {
     if (!resolvedClientId) { setLoading(false); return }
@@ -75,6 +78,7 @@ export default function CenariosTab({ session, clientId }: Props) {
         .eq('id_cliente', resolvedClientId)
         .maybeSingle()
       if (data) {
+        setTinhaMetas(true)
         setForm({
           faturamento_anual_objetivo: data.faturamento_anual_objetivo ?? 0,
           numero_funcionarios: data.numero_funcionarios ?? 0,
@@ -115,6 +119,8 @@ export default function CenariosTab({ session, clientId }: Props) {
       )
     setSaving(false)
     if (!error) {
+      if (!isAdminView && !tinhaMetas) celebrarPontosMC(25, 'Mapeamento · Cenários & Metas preenchido')
+      setTinhaMetas(true)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
       window.dispatchEvent(new CustomEvent('cliente-metas-updated'))

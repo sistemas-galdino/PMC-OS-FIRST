@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,15 +20,18 @@ import {
   UsersIcon as Users,
   VideoIcon as Video,
   UserCheckIcon as UserCheck,
-  MessageSquareIcon as MessageSquare,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
-import { ETAPAS_METODO } from "@/data/etapas-metodo"
+import { ETAPAS_METODO, type SinalEtapa } from "@/data/etapas-metodo"
+import { calcularNivel, faixaPorPontos, NIVEIS } from "@/lib/nivel-pmc"
+import { celebrarPontosMC } from "@/components/pontos-mc-splash"
 import { conselhoAleatorio } from "@/data/conselhos-galdino"
 import { GraficoFaturamentoMensal } from "@/components/dashboard/grafico-faturamento-mensal"
 import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
 import { currencySymbol } from "@/lib/format-currency"
+import { useConquistas } from "@/hooks/use-conquistas"
+import { arquetipoDaBadge, iconeDaBadge, RARIDADE } from "@/data/badges-mc"
 
 interface InicioPageProps {
   session?: Session
@@ -51,6 +55,18 @@ interface ReuniaoRealizada {
   mentor: string | null
   data_reuniao: string
   cliente_compareceu: boolean | null
+}
+
+// Ação pendente extraída do array acoes_cliente de uma reunião (Galdino/consultor).
+interface AcaoReuniao {
+  id_reuniao: string
+  origem: "galdino" | "consultor"
+  fonte: string          // "Galdino" ou nome do consultor
+  data_reuniao: string
+  indice: number         // posição no array acoes_cliente (para gravar de volta)
+  acao: string
+  prazo: string | null
+  acoes_cliente: any[]    // array completo (para persistir a mudança de status)
 }
 
 interface GuardiaoIA {
@@ -118,6 +134,12 @@ function whatsappUrl(telefone: string): string {
   return `https://wa.me/${telefone.replace(/\D/g, "")}`
 }
 
+// Uma ação de reunião está concluída? (aceita variações de status usadas no sistema)
+function acaoConcluida(status: unknown): boolean {
+  const s = String(status ?? "").toLowerCase()
+  return s.includes("conclu") || s === "done" || s === "feito"
+}
+
 function CountUp({ value, prefix = "", suffix = "" }: { value: number; prefix?: string; suffix?: string }) {
   const [displayValue, setDisplayValue] = useState(0)
 
@@ -162,12 +184,30 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
   const [reunioesRealizadas, setReunioesRealizadas] = useState<ReuniaoRealizada[]>([])
   const [reunioesCount, setReunioesCount] = useState({ galdino: 0, consultores: 0, blackcrm: 0 })
   const [etapasConcluidas, setEtapasConcluidas] = useState<Set<number>>(new Set())
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [sinais, setSinais] = useState<Set<SinalEtapa>>(new Set())
+  const [vitoriasCount, setVitoriasCount] = useState(0)
+  const [mapeamentoCount, setMapeamentoCount] = useState(0)
+  const [unicaCoisa, setUnicaCoisa] = useState<{ texto: string; mes: number; ano: number; area: string | null } | null>(null)
+  const [valorAno, setValorAno] = useState(0) // IAVS — mesmo cálculo da Fase 6/Relatório
+  const [acoesReuniao, setAcoesReuniao] = useState<AcaoReuniao[]>([])
+  const [salvandoAcao, setSalvandoAcao] = useState<string | null>(null)
+  const { isAdmin } = useAuth()
   const [savingEtapa, setSavingEtapa] = useState<number | null>(null)
   const [metas, setMetas] = useState({ faturamento_anual: 0, meta_2026: 0, receita_mensal: 0, colaboradores: 0 })
   const [conselho, setConselho] = useState(() => conselhoAleatorio())
   const moeda = useClienteMoeda(resolvedClientId)
   const moedaPrefix = `${currencySymbol(moeda)} `
+  // Conquistas: avalia/concede badges no load do portal (silencioso — o sino
+  // avisa; a página Meu Nível celebra). Só na visão do próprio cliente.
+  const conquistas = useConquistas(!clientId && !!resolvedClientId, false)
+  const badgesRecentes = useMemo(() => {
+    const porSlug = new Map(conquistas.catalogo.map((b) => [b.slug, b]))
+    return [...conquistas.ganhas.entries()]
+      .sort((a, b) => b[1].localeCompare(a[1]))
+      .slice(0, 3)
+      .map(([slug]) => porSlug.get(slug))
+      .filter(Boolean) as typeof conquistas.catalogo
+  }, [conquistas.ganhas, conquistas.catalogo])
 
   const hoje = new Date()
 
@@ -180,7 +220,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
       const ano = hoje.getFullYear()
       const hojeIso = hoje.toISOString().slice(0, 10)
 
-      const [clienteRes, linksRes, encontrosRes, reunioesRes, etapasRes, metasRes, sessionRes, galdinoCountRes, consultoresCountRes, blackcrmCountRes] = await Promise.all([
+      const [clienteRes, linksRes, encontrosRes, reunioesRes, etapasRes, metasRes, galdinoCountRes, consultoresCountRes, blackcrmCountRes] = await Promise.all([
         supabase
           .from("clientes_entrada_new")
           .select("nome_cliente_formatado, nome_empresa_formatado, sc, data, created_at, tem_guardiao_ia, guardiao_ia_nome, guardiao_ia_cargo, guardiao_ia_telefone, link_grupo_whatsapp")
@@ -210,7 +250,6 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
           .select("faturamento_anual_objetivo, faturamento_mensal_objetivo, meta_2026, numero_funcionarios, numero_gestores, colaboradores_total")
           .eq("id_cliente", resolvedClientId)
           .maybeSingle(),
-        supabase.auth.getSession(),
         supabase.from("reunioes_galdino").select("id_unico", { count: "exact", head: true }).eq("id_cliente", resolvedClientId),
         supabase.from("reunioes_mentoria_new").select("id_unico", { count: "exact", head: true }).eq("id_cliente", resolvedClientId),
         supabase.from("reunioes_blackcrm").select("id_unico", { count: "exact", head: true }).eq("id_cliente", resolvedClientId),
@@ -272,10 +311,98 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
         colaboradores: (numFunc || numGest) ? numFunc + numGest : goals?.colaboradores_total ?? 0,
       })
 
-      const email = sessionRes.data.session?.user?.email
-      if (email) {
-        const { data: mentor } = await supabase.from("mentores").select("id").eq("email", email).maybeSingle()
-        if (!cancelled) setIsAdmin(!!mentor)
+      // Sinais de conclusão automática: uma etapa fica concluída quando o
+      // cliente já tem dados na fase correspondente do Método (ou reuniões).
+      const cnt = (tabela: string) =>
+        supabase.from(tabela).select("id", { count: "exact", head: true }).eq("id_cliente", resolvedClientId)
+      // Mapeamento (id_cliente porque cliente_objetivos_programa não tem coluna id)
+      const cntMap = (tabela: string) =>
+        supabase.from(tabela).select("id_cliente", { count: "exact", head: true }).eq("id_cliente", resolvedClientId)
+      const [g, a, ga, cp, si, ec, vit, ecoRes, ucRes, mMetas, mProd, mCanais, mObj] = await Promise.all([
+        cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
+        cnt("metodo_copilotos"), cnt("metodo_sistemas"), cnt("metodo_economias"),
+        cnt("cliente_vitorias"),
+        supabase
+          .from("metodo_economias")
+          .select("valor_mes, natureza, recorrencia, capacidade_nova")
+          .eq("id_cliente", resolvedClientId),
+        // Única Coisa mais recente (Fase 2) — o foco do mês na home
+        supabase
+          .from("metodo_area_ciclos")
+          .select("receita_conteudo, mes, ano, metodo_areas(nome)")
+          .eq("id_cliente", resolvedClientId)
+          .not("receita_conteudo", "is", null)
+          .order("ano", { ascending: false })
+          .order("mes", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        cntMap("cliente_metas"), cntMap("cliente_produtos"),
+        cntMap("cliente_canais"), cntMap("cliente_objetivos_programa"),
+      ])
+      if (!cancelled) {
+        const s = new Set<SinalEtapa>()
+        if ((g.count ?? 0) > 0) s.add("guardiao")
+        if ((a.count ?? 0) > 0) s.add("areas")
+        if ((ga.count ?? 0) > 0) s.add("gargalos")
+        if ((cp.count ?? 0) > 0) s.add("copilotos")
+        if ((si.count ?? 0) > 0) s.add("sistemas")
+        if ((ec.count ?? 0) > 0) s.add("economias")
+        const totalReunioes = (galdinoCountRes.count ?? 0) + (consultoresCountRes.count ?? 0) + (blackcrmCountRes.count ?? 0)
+        if (totalReunioes > 0) s.add("reunioes")
+        setSinais(s)
+        setVitoriasCount(vit.count ?? 0)
+        setMapeamentoCount([mMetas, mProd, mCanais, mObj].filter((r) => (r.count ?? 0) > 0).length)
+        // Valor gerado no ano (IAVS) — mesma fórmula da Fase 6/Relatório.
+        const nEco = (x: unknown) => Number(x || 0)
+        const okEco = (ecoRes.data ?? []).filter((e: any) => !e.capacidade_nova)
+        const somaEco = (fn: (e: any) => boolean) => okEco.filter(fn).reduce((acc: number, e: any) => acc + nEco(e.valor_mes), 0)
+        const mensalEco = somaEco((e) => (e.natureza === "custo_evitado" || e.natureza === "tempo_liberado") && e.recorrencia === "mensal")
+        const unicoEco = somaEco((e) => (e.natureza === "custo_evitado" || e.natureza === "tempo_liberado") && e.recorrencia === "unico")
+        const decisaoEco = somaEco((e) => e.natureza === "valor_decisao")
+        setValorAno(mensalEco * 12 + unicoEco + decisaoEco)
+        const uc: any = ucRes.data
+        if (uc?.receita_conteudo?.trim()) {
+          setUnicaCoisa({
+            texto: uc.receita_conteudo.trim(),
+            mes: uc.mes,
+            ano: uc.ano,
+            area: uc.metodo_areas?.nome ?? null,
+          })
+        }
+      }
+
+      // Ações pendentes das reuniões (Galdino + consultores) para o card de foco.
+      const [acGaldino, acConsult] = await Promise.all([
+        supabase.from("reunioes_galdino").select("id_unico, data_reuniao, acoes_cliente").eq("id_cliente", resolvedClientId).order("data_reuniao", { ascending: false }),
+        supabase.from("reunioes_mentoria_new").select("id_unico, data_reuniao, mentor, acoes_cliente").eq("id_cliente", resolvedClientId).order("data_reuniao", { ascending: false }),
+      ])
+      if (!cancelled) {
+        const extrair = (rows: any[], origem: "galdino" | "consultor"): AcaoReuniao[] =>
+          (rows ?? []).flatMap((r) => {
+            const arr = Array.isArray(r.acoes_cliente) ? r.acoes_cliente : []
+            return arr
+              .map((it: any, indice: number) => ({ it, indice }))
+              .filter(({ it }: any) => typeof it === "object" && it?.acao && !acaoConcluida(it.status))
+              .map(({ it, indice }: any) => ({
+                id_reuniao: r.id_unico,
+                origem,
+                fonte: origem === "galdino" ? "Galdino" : (r.mentor || "Consultor"),
+                data_reuniao: r.data_reuniao,
+                indice,
+                acao: it.acao,
+                prazo: it.prazo || null,
+                acoes_cliente: arr,
+              }))
+          })
+        const todas = [...extrair(acGaldino.data ?? [], "galdino"), ...extrair(acConsult.data ?? [], "consultor")]
+        // Ordena por prazo (as com prazo primeiro, mais próximas no topo), depois por data da reunião.
+        todas.sort((a, b) => {
+          if (a.prazo && b.prazo) return a.prazo.localeCompare(b.prazo)
+          if (a.prazo) return -1
+          if (b.prazo) return 1
+          return (b.data_reuniao || "").localeCompare(a.data_reuniao || "")
+        })
+        setAcoesReuniao(todas)
       }
 
       setLoading(false)
@@ -335,14 +462,58 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
     setSavingEtapa(null)
   }
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.1 } },
+  // Marca uma ação de reunião como concluída — grava o array inteiro de volta
+  // na reunião de origem (mesmo modelo da tela de detalhe) e remove da lista.
+  async function concluirAcao(a: AcaoReuniao) {
+    if (salvandoAcao) return
+    const chave = `${a.id_reuniao}:${a.indice}`
+    setSalvandoAcao(chave)
+    const atualizado = a.acoes_cliente.map((it: any, i: number) =>
+      i === a.indice ? { ...(typeof it === "object" ? it : { acao: it }), status: "concluido" } : it
+    )
+    const tabela = a.origem === "galdino" ? "reunioes_galdino" : "reunioes_mentoria_new"
+    const { error } = await supabase.from(tabela).update({ acoes_cliente: atualizado }).eq("id_unico", a.id_reuniao)
+    if (!error) {
+      setAcoesReuniao((prev) => prev.filter((x) => !(x.id_reuniao === a.id_reuniao && x.indice === a.indice)))
+    }
+    setSalvandoAcao(null)
   }
-  const item = {
-    hidden: { y: 20, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" as const } },
-  }
+
+  // Uma etapa está concluída se o admin marcou manualmente OU se o cliente já
+  // tem dados na fase correspondente (conclusão automática por uso real).
+  const etapaConcluida = (e: (typeof ETAPAS_METODO)[number]) =>
+    etapasConcluidas.has(e.numero) || sinais.has(e.sinal)
+  const totalConcluidas = ETAPAS_METODO.filter(etapaConcluida).length
+  const pctConcluido = Math.round((totalConcluidas / ETAPAS_METODO.length) * 100)
+  // Etapa atual = primeira não concluída (guia o "continuar de onde parou").
+  const etapaAtual = ETAPAS_METODO.find((e) => !etapaConcluida(e))?.numero ?? null
+  // Próximo encontro ao vivo (a lista já vem do mês atual, sem cancelados, em ordem).
+  const proximoEncontro = encontros.find((e) => e.data_encontro >= hoje.toISOString().slice(0, 10)) ?? null
+  // Nível PMC — gamificação unificada (jornada + fases + reuniões + vitórias).
+  const totalReunioes = reunioesCount.galdino + reunioesCount.consultores + reunioesCount.blackcrm
+  const fasesComDados = [...sinais].filter((s) => s !== "reunioes").length
+  const nivel = calcularNivel({ etapas: totalConcluidas, fases: fasesComDados, mapeamento: mapeamentoCount, reunioes: totalReunioes, vitorias: vitoriasCount })
+
+  // Splash de boas-vindas: se os Pontos MC subiram desde a última visita (deste
+  // aparelho), celebra a diferença — e, se cruzou de nível, mostra o level-up.
+  // Não dispara na visão do admin (clientId por prop) nem na primeira visita.
+  // IMPORTANTE: estes hooks precisam vir ANTES do return de loading (ordem de hooks).
+  const splashDisparado = useRef(false)
+  useEffect(() => {
+    if (loading || splashDisparado.current || clientId || !resolvedClientId) return
+    splashDisparado.current = true
+    const chave = `pmc:pontos-vistos:${resolvedClientId}`
+    const guardado = localStorage.getItem(chave)
+    if (guardado !== null) {
+      const anterior = Number(guardado)
+      if (Number.isFinite(anterior) && nivel.pontos > anterior) {
+        const idxNovo = faixaPorPontos(nivel.pontos).indice
+        const subiuNivel = idxNovo > faixaPorPontos(anterior).indice
+        celebrarPontosMC(nivel.pontos - anterior, "desde a sua última visita", subiuNivel ? NIVEIS[idxNovo].nome : undefined)
+      }
+    }
+    localStorage.setItem(chave, String(nivel.pontos))
+  }, [loading, nivel.pontos, clientId, resolvedClientId])
 
   if (loading) {
     return (
@@ -357,8 +528,6 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
     )
   }
 
-  const totalConcluidas = etapasConcluidas.size
-  const pctConcluido = Math.round((totalConcluidas / ETAPAS_METODO.length) * 100)
   const grupoWhatsappUrl = linkGrupoWhatsapp || quickLinks.grupo_avisos
 
   const contatos = [
@@ -378,7 +547,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
 
   const reunioes = [
     {
-      label: "Reunião com Mentores",
+      label: "Reunião com Consultores",
       desc: "Agende com seu consultor",
       icon: Calendar,
       url: "/agendar",
@@ -393,557 +562,664 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
     },
   ].filter((r) => r.url)
 
+  const nivelFaixa = NIVEIS[nivel.indice]
+
   return (
-    <div className="space-y-10">
-      {/* Saudação + contatos */}
-      <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="lg:col-span-2 flex flex-col gap-3 border-l-4 border-primary pl-8 py-2"
-        >
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            {WEEKDAYS[hoje.getDay()]}, {hoje.getDate()} de {MONTHS[hoje.getMonth()]} de {hoje.getFullYear()}
-          </p>
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-            {saudacao()}{nomeEmpresa ? `, ${nomeEmpresa}` : nomeCliente ? `, ${nomeCliente.split(" ")[0]}` : ""}! 👋
-          </h1>
-          <div className="flex items-center gap-3 flex-wrap">
-            {semanaPrograma !== null && (
-              <Badge className="rounded-lg bg-primary/10 text-primary border-primary/20 px-3 py-1 text-[10px] font-bold">
-                SEMANA {semanaPrograma} DO PROGRAMA
-              </Badge>
-            )}
-            <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">PORTAL DO CLIENTE</Badge>
-            <p className="text-muted-foreground font-medium text-sm">
-              {nomeCliente ? `${nomeCliente} — ` : ""}Sua central do Programa Multiplicador de Crescimento.
-            </p>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="space-y-3"
-        >
-          {contatos.map((c) => (
-            <Button
-              key={c.label}
-              variant="outline"
-              className="w-full justify-between h-[64px] rounded-xl hover:border-primary/30 hover:bg-primary/5 group"
-              onClick={() => window.open(c.url, "_blank")}
-            >
-              <div className="flex items-center gap-4">
-                <div className="bg-primary/10 p-2.5 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  <c.icon className="size-5" />
-                </div>
-                <div className="flex flex-col items-start gap-0.5">
-                  <span className="font-bold text-sm tracking-tight">{c.label}</span>
-                  <span className="text-[11px] text-muted-foreground font-medium">{c.desc}</span>
-                </div>
-              </div>
-              <ExternalLink className="size-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
-            </Button>
-          ))}
-        </motion.div>
-      </div>
-
-      {/* O Conselho do Galdino */}
+    <div className="space-y-6">
+      {/* Saudação compacta */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.15 }}
+        transition={{ duration: 0.4 }}
+        className="border-l-4 border-primary pl-5 py-1"
       >
-        <Card className="overflow-hidden border-primary/20">
-          <CardContent className="p-0">
-            <div className="flex flex-col sm:flex-row items-stretch">
-              <div className="sm:w-40 lg:w-48 shrink-0 bg-primary/5 flex items-center justify-center p-6">
-                <img
-                  src="/galdino-foto.png"
-                  alt="Galdino Rodrigues"
-                  className="size-28 lg:size-36 rounded-full object-cover object-top ring-2 ring-primary/30 shadow-[0_0_24px_rgba(218,252,103,0.15)]"
-                  onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = "none" }}
-                />
-              </div>
-              <div className="flex-1 p-6 lg:p-8 flex flex-col justify-center gap-4">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <p className="text-xs font-bold uppercase tracking-widest text-primary">O Conselho do Galdino</p>
-                  <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0.5 text-[10px] font-bold uppercase">
-                    {conselho.tema}
-                  </Badge>
-                </div>
-                <blockquote className="text-xl lg:text-2xl font-bold tracking-tight text-foreground leading-snug">
-                  “{conselho.frase}”
-                </blockquote>
-                <div>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          {WEEKDAYS[hoje.getDay()]}, {hoje.getDate()} de {MONTHS[hoje.getMonth()]} de {hoje.getFullYear()}
+        </p>
+        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground mt-1">
+          {saudacao()}{nomeEmpresa ? `, ${nomeEmpresa}` : nomeCliente ? `, ${nomeCliente.split(" ")[0]}` : ""}! 👋
+        </h1>
+        <div className="flex items-center gap-2 flex-wrap mt-2">
+          {semanaPrograma !== null && (
+            <Badge className="rounded-lg bg-primary/10 text-primary border-primary/20 px-2.5 py-0.5 text-[10px] font-bold">
+              SEMANA {semanaPrograma} DO PROGRAMA
+            </Badge>
+          )}
+          <span className="text-[12px] text-muted-foreground font-medium">
+            Sua central do Programa Multiplicador de Crescimento.
+          </span>
+        </div>
+      </motion.div>
+
+      {/* Layout de duas colunas: conteúdo principal + trilho lateral */}
+      <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
+        {/* ============ COLUNA PRINCIPAL ============ */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Seu foco de hoje — Única Coisa + próximo passo */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Seu foco de hoje</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Única Coisa do mês (Fase 2) */}
+              {unicaCoisa ? (
+                <Card
+                  className="border-primary/40 bg-primary/[0.06] cursor-pointer hover:border-primary/60 transition-colors"
+                  onClick={() => navigate("/metodo?fase=2")}
+                  title="Abrir a Fase 2 — Inteligência Empresarial"
+                >
+                  <CardContent className="p-5 flex flex-col gap-2 h-full">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-primary/15 p-2 rounded-lg shrink-0">
+                        <Target className="size-4 text-primary" />
+                      </div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-primary leading-tight">
+                        Sua Única Coisa · {["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][unicaCoisa.mes - 1]}/{unicaCoisa.ano}
+                        {unicaCoisa.area ? ` · ${unicaCoisa.area}` : ""}
+                      </p>
+                    </div>
+                    <p className="text-[14px] font-medium text-foreground leading-relaxed line-clamp-4">
+                      {unicaCoisa.texto.replace(/[#*_>`-]/g, "").slice(0, 220)}
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate("/metodo?fase=2")}>
+                  <CardContent className="p-5 flex flex-col gap-2 h-full">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-muted/40 p-2 rounded-lg shrink-0">
+                        <Target className="size-4 text-muted-foreground" />
+                      </div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sua Única Coisa</p>
+                    </div>
+                    <p className="text-[13px] font-medium text-muted-foreground leading-relaxed">
+                      Rode o ciclo do mês na Fase 2 para definir a alavanca do seu negócio.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Próximo passo da jornada */}
+              <Card
+                className="cursor-pointer hover:border-primary/40 transition-colors"
+                onClick={() => navigate(etapaAtual ? ETAPAS_METODO[etapaAtual - 1].rota : "/relatorio")}
+              >
+                <CardContent className="p-5 flex flex-col gap-2 h-full">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-primary/10 p-2 rounded-lg shrink-0">
+                      <CheckCircle2 className="size-4 text-primary" />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Próximo passo da jornada</p>
+                  </div>
+                  {etapaAtual ? (
+                    <>
+                      <p className="text-[15px] font-bold text-foreground leading-snug">
+                        {String(etapaAtual).padStart(2, "0")} · {ETAPAS_METODO[etapaAtual - 1].titulo}
+                      </p>
+                      <p className="text-[12px] font-medium text-muted-foreground leading-relaxed line-clamp-2">
+                        {ETAPAS_METODO[etapaAtual - 1].objetivo}
+                      </p>
+                      <span className="inline-flex items-center gap-1 text-[12px] font-bold text-primary mt-auto pt-1">
+                        Continuar <ChevronRight className="size-3.5" />
+                      </span>
+                    </>
+                  ) : (
+                    <p className="text-[14px] font-medium text-primary">Jornada completa — veja seu relatório 🎉</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </motion.div>
+
+          {/* Suas ações das reuniões — pendentes (Galdino + consultores) */}
+          {acoesReuniao.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.03 }}>
+              <Card>
+                <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base font-semibold">Suas ações das reuniões</CardTitle>
+                    <CardDescription className="text-[11px] font-medium">
+                      {acoesReuniao.length} tarefa{acoesReuniao.length === 1 ? "" : "s"} combinada{acoesReuniao.length === 1 ? "" : "s"} com o Galdino e os consultores
+                    </CardDescription>
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 -ml-2 gap-1.5 rounded-lg text-xs font-bold text-muted-foreground hover:text-primary hover:bg-primary/5"
-                    onClick={() => setConselho(conselhoAleatorio())}
+                    className="text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5"
+                    onClick={() => navigate("/acoes")}
                   >
-                    Próximo conselho
+                    Ver todas
                   </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-1.5">
+                  {acoesReuniao.slice(0, 5).map((a) => {
+                    const chave = `${a.id_reuniao}:${a.indice}`
+                    const salvando = salvandoAcao === chave
+                    const rota = a.origem === "galdino" ? `/reuniao-galdino/${a.id_reuniao}` : `/reuniao/${a.id_reuniao}?tab=acoes`
+                    const prazoVencido = a.prazo ? a.prazo < hoje.toISOString().slice(0, 10) : false
+                    return (
+                      <div key={chave} className="flex items-start gap-3 rounded-xl p-2.5 hover:bg-muted/20 transition-colors">
+                        <button
+                          type="button"
+                          onClick={() => concluirAcao(a)}
+                          disabled={salvando}
+                          title="Marcar como concluída"
+                          className="shrink-0 mt-0.5 text-muted-foreground/40 hover:text-primary transition-colors disabled:opacity-40"
+                        >
+                          <Circle className="size-5" />
+                        </button>
+                        <button type="button" onClick={() => navigate(rota)} className="min-w-0 flex-1 text-left">
+                          <p className="text-[13px] font-medium text-foreground leading-snug">{a.acao}</p>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              {a.origem === "galdino" ? <Video className="size-3" /> : <MessageCircle className="size-3" />}
+                              {a.fonte}
+                            </span>
+                            <span className="text-[10px] font-medium text-muted-foreground/60">
+                              {new Date(a.data_reuniao + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                            </span>
+                            {a.prazo && (
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${prazoVencido ? "text-rose-400" : "text-primary"}`}>
+                                <Clock className="size-3" />
+                                {new Date(a.prazo + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      </div>
+                    )
+                  })}
+                  {acoesReuniao.length > 5 && (
+                    <button
+                      type="button"
+                      onClick={() => navigate("/acoes")}
+                      className="w-full pt-1 text-[12px] font-bold text-primary hover:underline"
+                    >
+                      + {acoesReuniao.length - 5} outra{acoesReuniao.length - 5 === 1 ? "" : "s"} ação{acoesReuniao.length - 5 === 1 ? "" : "ões"}
+                    </button>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
-      {/* KPIs do negócio */}
-      <motion.div variants={container} initial="hidden" animate="show" className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <motion.div variants={item}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Faturamento Anual</CardTitle>
-              <div className="bg-primary/10 p-2.5 rounded-xl">
-                <TrendingUp className="size-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tracking-tight mb-2">
-                {(() => { const s = scaleCurrency(metas.faturamento_anual); return <CountUp value={s.value} prefix={moedaPrefix} suffix={s.suffix} /> })()}
-              </div>
-              <p className="text-[11px] font-medium text-muted-foreground">Status Atual do Negócio</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Meta 2026</CardTitle>
-              <div className="bg-primary/10 p-2.5 rounded-xl">
-                <Target className="size-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tracking-tight mb-2">
-                {(() => { const s = scaleCurrency(metas.meta_2026); return <CountUp value={s.value} prefix={moedaPrefix} suffix={s.suffix} /> })()}
-              </div>
-              <Badge variant="ghost" className="px-2 py-0.5 rounded-lg text-primary font-bold text-[10px]">
-                Faltam {(100 - (Math.round((metas.faturamento_anual / metas.meta_2026) * 100) || 0)).toFixed(1)}% para o objetivo
-              </Badge>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Receita Mensal</CardTitle>
-              <div className="bg-primary/10 p-2.5 rounded-xl">
-                <TrendingUp className="size-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tracking-tight mb-2">
-                {(() => { const s = scaleCurrency(metas.receita_mensal); return <CountUp value={s.value} prefix={moedaPrefix} suffix={s.suffix} /> })()}
-              </div>
-              <p className="text-[11px] font-medium text-muted-foreground">Produtos & Recorrência</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Colaboradores</CardTitle>
-              <div className="bg-primary/10 p-2.5 rounded-xl">
-                <Users className="size-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tracking-tight mb-2">
-                <CountUp value={metas.colaboradores} />
-              </div>
-              <p className="text-[11px] font-medium text-muted-foreground">Equipe Estratégica</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
-
-      {/* Sua Jornada no PMC — reuniões */}
-      {(() => {
-        const totalReu = reunioesCount.galdino + reunioesCount.consultores + reunioesCount.blackcrm
-        const marcos = [
-          { label: "Reuniões com o Galdino", valor: reunioesCount.galdino, icon: Video, desc: "Mentoria direta com o Galdino" },
-          { label: "Reuniões com Consultores", valor: reunioesCount.consultores, icon: MessageSquare, desc: "Acompanhamento dos consultores" },
-          { label: "Reuniões BlackCRM", valor: reunioesCount.blackcrm, icon: Target, desc: "Time BlackCRM", esconderSeZero: true },
-        ].filter((m) => !(m.esconderSeZero && m.valor === 0))
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
-          >
+          {/* Jornada das 7 etapas — densa */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.05 }}>
             <Card>
               <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between">
                 <div className="space-y-1">
-                  <CardTitle className="text-base font-semibold">Sua Jornada no PMC</CardTitle>
+                  <CardTitle className="text-base font-semibold">Jornada do Método PMC</CardTitle>
                   <CardDescription className="text-[11px] font-medium">
-                    {totalReu} reuni{totalReu === 1 ? "ão" : "ões"} ao longo da sua jornada
+                    {totalConcluidas} de {ETAPAS_METODO.length} etapas concluídas
                   </CardDescription>
                 </div>
                 <Badge className="rounded-lg bg-primary/10 text-primary border-primary/20 px-3 py-1 text-[10px] font-bold">
-                  {totalReu} NO TOTAL
+                  {pctConcluido}% DA JORNADA
                 </Badge>
               </CardHeader>
-              <CardContent className="pt-6">
-                <div className="relative">
-                  {/* trilho da jornada */}
-                  <div className="hidden md:block absolute left-0 right-0 top-7 h-px bg-border" />
-                  <div className="grid gap-6 md:grid-cols-3 relative">
-                    {marcos.map((m, i) => (
-                      <motion.div
-                        key={m.label}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 + i * 0.1 }}
-                        className="flex flex-col items-center text-center gap-2"
+              <CardContent className="pt-5">
+                <div className="h-2 w-full rounded-full bg-muted/30 mb-5 overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pctConcluido}%` }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    className="h-full rounded-full bg-primary"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  {ETAPAS_METODO.map((etapa) => {
+                    const done = etapaConcluida(etapa)
+                    const atual = etapa.numero === etapaAtual
+                    return (
+                      <div
+                        key={etapa.numero}
+                        className={`flex items-center gap-3 rounded-xl border transition-all ${
+                          atual && !done
+                            ? "bg-primary/[0.07] border-primary/40 ring-1 ring-primary/20 p-3.5"
+                            : done
+                            ? "bg-primary/[0.04] border-primary/15 p-2.5"
+                            : "bg-muted/20 border-transparent hover:border-border/60 p-2.5"
+                        }`}
                       >
-                        <div className={`size-14 rounded-2xl flex items-center justify-center shrink-0 relative z-10 ${
-                          m.valor > 0 ? "bg-primary text-primary-foreground" : "bg-muted/40 text-muted-foreground border border-border"
-                        }`}>
-                          <m.icon className="size-6" />
+                        <button
+                          type="button"
+                          onClick={() => toggleEtapa(etapa.numero)}
+                          disabled={!isAdmin}
+                          title={isAdmin ? "Marcar/desmarcar (admin)" : undefined}
+                          className={`rounded-full p-0.5 shrink-0 transition-colors ${isAdmin ? "cursor-pointer hover:bg-primary/10" : "cursor-default"}`}
+                        >
+                          {done
+                            ? <CheckCircle2 className="size-5 text-primary" />
+                            : <Circle className={`size-5 ${atual ? "text-primary/50" : "text-muted-foreground/30"}`} />}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] font-bold tracking-tight text-foreground flex items-center gap-2">
+                            <span className="text-muted-foreground/50 font-mono text-[11px]">0{etapa.numero}</span>
+                            <span className="truncate">{etapa.titulo}</span>
+                            {atual && !done && (
+                              <Badge className="px-1.5 py-0 rounded-md bg-primary/15 text-primary border-primary/30 font-bold text-[9px] shrink-0">
+                                VOCÊ ESTÁ AQUI
+                              </Badge>
+                            )}
+                          </p>
+                          {atual && !done && (
+                            <p className="text-[12px] font-medium text-muted-foreground leading-relaxed mt-1">
+                              {etapa.objetivo}
+                            </p>
+                          )}
                         </div>
-                        <div className="text-3xl font-bold tracking-tight text-foreground">
-                          <CountUp value={m.valor} />
-                        </div>
-                        <div>
-                          <p className="text-[13px] font-bold tracking-tight text-foreground">{m.label}</p>
-                          <p className="text-[11px] font-medium text-muted-foreground">{m.desc}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+                        <Button
+                          variant={atual && !done ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => navigate(etapa.rota)}
+                          className={`shrink-0 h-8 gap-1 rounded-lg font-bold text-[11px] uppercase tracking-wider ${atual && !done ? "" : "text-muted-foreground hover:text-primary px-2"}`}
+                        >
+                          {done ? "Rever" : atual ? "Continuar" : etapa.cta}
+                          <ChevronRight className="size-3.5" />
+                        </Button>
+                      </div>
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>
           </motion.div>
-        )
-      })()}
 
-      {/* Faturamento mensal */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <GraficoFaturamentoMensal clientId={resolvedClientId} />
-      </motion.div>
-
-
-      {/* Cronograma do mês + coluna lateral */}
-      <motion.div variants={container} initial="hidden" animate="show" className="grid gap-6 lg:grid-cols-3 lg:items-start">
-        <motion.div variants={item} className="lg:col-span-2 space-y-6">
-          <Card className="min-h-[420px] flex flex-col">
-            <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between">
-              <div className="space-y-1">
-                <CardTitle className="text-base font-semibold">Cronograma de {MONTHS[hoje.getMonth()]}</CardTitle>
-                <CardDescription className="text-[11px] font-medium">
-                  Eventos ao vivo da agenda do PMC neste mês
-                </CardDescription>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5"
-                onClick={() => navigate("/calendario")}
-              >
-                Calendário Completo
-              </Button>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-5 flex-1 max-h-[560px] overflow-y-auto scrollbar-hide">
-              {encontrosPorDia.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                  <Calendar className="size-8 text-muted-foreground/30" />
-                  <p className="text-sm font-medium text-muted-foreground">Nenhum evento agendado para este mês.</p>
+          {/* Cronograma do mês */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }}>
+            <Card className="flex flex-col">
+              <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between">
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-semibold">Cronograma de {MONTHS[hoje.getMonth()]}</CardTitle>
+                  <CardDescription className="text-[11px] font-medium">
+                    Eventos ao vivo da agenda do PMC neste mês
+                  </CardDescription>
                 </div>
-              )}
-              {encontrosPorDia.map(([dia, lista]) => {
-                const data = parseDataBr(dia)
-                const isToday =
-                  data.getDate() === hoje.getDate() &&
-                  data.getMonth() === hoje.getMonth() &&
-                  data.getFullYear() === hoje.getFullYear()
-                const isPast = !isToday && data < hoje
-                return (
-                  <div key={dia} className={isPast ? "opacity-50" : ""}>
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-sm font-bold tracking-tight text-foreground">
-                        {String(data.getDate()).padStart(2, "0")} — {WEEKDAYS[data.getDay()]}
-                      </span>
-                      {isToday && (
-                        <Badge className="rounded-lg bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-bold">
-                          HOJE
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      {lista.map((e) => (
-                        <div
-                          key={e.id_unico}
-                          className="flex items-center justify-between gap-4 p-4 rounded-xl bg-muted/20 border border-transparent hover:border-primary/20 hover:bg-muted/30 transition-all"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className={`size-2 rounded-full shrink-0 ${TIPO_DOTS[e.tipo_encontro] ?? "bg-muted-foreground"}`} />
-                            <div className="min-w-0">
-                              <p className="text-[13px] font-bold tracking-tight text-foreground truncate">
-                                {e.titulo_formatado || TIPO_LABELS[e.tipo_encontro] || e.tipo_encontro}
-                              </p>
-                              <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
-                                <Clock className="size-3" />
-                                {e.horario_inicio} – {e.horario_fim}
-                                <span className="text-muted-foreground/50">·</span>
-                                {TIPO_LABELS[e.tipo_encontro] ?? "Encontro"}
-                              </p>
-                            </div>
-                          </div>
-                          {e.status === "realizado" && e.link_gravacao ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 gap-1.5 rounded-lg text-xs font-bold text-primary hover:text-primary hover:bg-primary/5 shrink-0"
-                              onClick={() => window.open(e.link_gravacao!, "_blank")}
-                            >
-                              <PlayCircle className="size-3.5" />
-                              Gravação
-                            </Button>
-                          ) : e.link_google_meet ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 gap-1.5 rounded-lg text-xs font-bold text-primary hover:text-primary hover:bg-primary/5 shrink-0"
-                              onClick={() => window.open(e.link_google_meet!, "_blank")}
-                            >
-                              <Video className="size-3.5" />
-                              Entrar
-                            </Button>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between">
-              <div className="space-y-1">
-                <CardTitle className="text-base font-semibold">Reuniões Realizadas</CardTitle>
-                <CardDescription className="text-[11px] font-medium">
-                  Suas últimas sessões com os consultores
-                </CardDescription>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5"
-                onClick={() => navigate("/reunioes")}
-              >
-                Ver Todas
-              </Button>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-2">
-              {reunioesRealizadas.length === 0 && (
-                <p className="text-sm font-medium text-muted-foreground text-center py-6">
-                  Nenhuma reunião realizada ainda.
-                </p>
-              )}
-              {reunioesRealizadas.map((r) => (
-                <div
-                  key={r.id_unico}
-                  className="flex items-center justify-between gap-4 p-4 rounded-xl bg-muted/20 border border-transparent hover:border-primary/20 hover:bg-muted/30 transition-all cursor-pointer"
-                  onClick={() => navigate(`/reuniao/${r.id_unico}`)}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="bg-primary/10 rounded-full p-1 shrink-0">
-                      <CheckCircle2 className="size-4 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-bold tracking-tight text-foreground truncate">
-                        {r.mentor || "Consultor PMC"}
-                      </p>
-                      <p className="text-[11px] font-medium text-muted-foreground">
-                        {new Date(r.data_reuniao + "T00:00:00").toLocaleDateString("pt-BR")}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="size-4 text-muted-foreground/50 shrink-0" />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item} className="space-y-6">
-          <Card>
-            <CardHeader className="border-b border-border/50">
-              <CardTitle className="text-base font-semibold">Marque sua Reunião</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              {reunioes.map((r) => (
                 <Button
-                  key={r.label}
-                  variant="outline"
-                  className="w-full justify-between h-[72px] rounded-xl hover:border-primary/30 hover:bg-primary/5 group"
-                  onClick={() => (r.internal ? navigate(r.url) : window.open(r.url, "_blank"))}
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5"
+                  onClick={() => navigate("/calendario")}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="bg-primary/10 p-2.5 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                      <r.icon className="size-5" />
-                    </div>
-                    <div className="flex flex-col items-start gap-0.5">
-                      <span className="font-bold text-sm tracking-tight">{r.label}</span>
-                      <span className="text-[11px] text-muted-foreground font-medium">{r.desc}</span>
-                    </div>
-                  </div>
-                  <ExternalLink className="size-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
+                  Calendário Completo
                 </Button>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="border-b border-border/50">
-              <CardTitle className="text-base font-semibold">Seu Guardião da IA</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {guardiao ? (
-                <div className="flex items-start gap-4">
-                  <div className="bg-primary/10 p-2.5 rounded-lg shrink-0">
-                    <ShieldCheck className="size-5 text-primary" />
+              </CardHeader>
+              <CardContent className="pt-5 space-y-5 flex-1 max-h-[460px] overflow-y-auto scrollbar-hide">
+                {encontrosPorDia.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
+                    <Calendar className="size-8 text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">Nenhum evento agendado para este mês.</p>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold tracking-tight text-foreground">{guardiao.nome}</p>
-                    {guardiao.cargo && (
-                      <p className="text-[11px] font-medium text-muted-foreground">{guardiao.cargo}</p>
-                    )}
-                    {guardiao.telefone && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 h-9 w-full gap-2 rounded-xl text-xs font-bold hover:border-primary/30 hover:bg-primary/5"
-                        onClick={() => window.open(whatsappUrl(guardiao.telefone!), "_blank")}
-                      >
-                        <MessageCircle className="size-3.5" />
-                        Chamar no WhatsApp
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-[13px] font-medium text-muted-foreground leading-relaxed">
-                  Seu Guardião da IA ainda não foi definido. Fale com sua CS para indicar quem será o
-                  responsável pela implementação de IA na sua empresa.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="border-b border-border/50">
-              <CardTitle className="text-base font-semibold">
-                {csNome ? `Suporte — ${csNome}` : "Suporte Rápido"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <p className="text-[13px] font-medium text-muted-foreground leading-relaxed">
-                Precisa de ajuda? Fale com a sua CS{csNome ? ` ${csNome}` : ""} — ela responde direto no WhatsApp.
-              </p>
-              {suporteUrl && (
-                <Button
-                  className="w-full mt-4 h-11 rounded-xl font-bold uppercase tracking-wider text-xs gap-2"
-                  onClick={() => window.open(suporteUrl, "_blank")}
-                >
-                  <MessageCircle className="size-4" />
-                  Chamar no WhatsApp
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
-
-      {/* Jornada das 7 etapas */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <Card>
-          <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-base font-semibold">Jornada do Método PMC</CardTitle>
-              <CardDescription className="text-[11px] font-medium">
-                {totalConcluidas} de {ETAPAS_METODO.length} etapas concluídas
-              </CardDescription>
-            </div>
-            <Badge className="rounded-lg bg-primary/10 text-primary border-primary/20 px-3 py-1 text-[10px] font-bold">
-              {pctConcluido}% DA JORNADA
-            </Badge>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="h-2 w-full rounded-full bg-muted/30 mb-8 overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${pctConcluido}%` }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                className="h-full rounded-full bg-primary"
-              />
-            </div>
-            <div className="grid gap-3">
-              {ETAPAS_METODO.map((etapa, index) => {
-                const done = etapasConcluidas.has(etapa.numero)
-                return (
-                  <motion.div
-                    key={etapa.numero}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + index * 0.08 }}
-                    className={`flex items-start gap-4 p-4 rounded-xl border transition-all ${
-                      done
-                        ? "bg-primary/5 border-primary/20"
-                        : "bg-muted/20 border-transparent hover:border-border/60"
-                    } ${isAdmin ? "cursor-pointer" : ""}`}
-                    onClick={() => toggleEtapa(etapa.numero)}
-                    title={isAdmin ? "Clique para marcar/desmarcar (admin)" : undefined}
-                  >
-                    {done ? (
-                      <div className="bg-primary/10 rounded-full p-1 mt-0.5 shrink-0">
-                        <CheckCircle2 className="size-5 text-primary" />
-                      </div>
-                    ) : (
-                      <div className="rounded-full p-1 mt-0.5 shrink-0">
-                        <Circle className="size-5 text-muted-foreground/30" />
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold tracking-tight text-foreground">
-                        <span className="text-muted-foreground/60 font-mono text-xs mr-2">0{etapa.numero}</span>
-                        {etapa.titulo}
-                        {done && (
-                          <Badge variant="ghost" className="ml-2 px-2 py-0 rounded-lg text-primary font-bold text-[10px]">
-                            CONCLUÍDA
+                )}
+                {encontrosPorDia.map(([dia, lista]) => {
+                  const data = parseDataBr(dia)
+                  const isToday =
+                    data.getDate() === hoje.getDate() &&
+                    data.getMonth() === hoje.getMonth() &&
+                    data.getFullYear() === hoje.getFullYear()
+                  const isPast = !isToday && data < hoje
+                  return (
+                    <div key={dia} className={isPast ? "opacity-50" : ""}>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-sm font-bold tracking-tight text-foreground">
+                          {String(data.getDate()).padStart(2, "0")} — {WEEKDAYS[data.getDay()]}
+                        </span>
+                        {isToday && (
+                          <Badge className="rounded-lg bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-bold">
+                            HOJE
                           </Badge>
                         )}
-                      </p>
-                      <p className="text-[12px] font-medium text-muted-foreground leading-relaxed mt-0.5">
-                        {etapa.objetivo}
-                      </p>
+                      </div>
+                      <div className="space-y-2">
+                        {lista.map((e) => (
+                          <div
+                            key={e.id_unico}
+                            className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-muted/20 border border-transparent hover:border-primary/20 hover:bg-muted/30 transition-all"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className={`size-2 rounded-full shrink-0 ${TIPO_DOTS[e.tipo_encontro] ?? "bg-muted-foreground"}`} />
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-bold tracking-tight text-foreground truncate">
+                                  {e.titulo_formatado || TIPO_LABELS[e.tipo_encontro] || e.tipo_encontro}
+                                </p>
+                                <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+                                  <Clock className="size-3" />
+                                  {e.horario_inicio} – {e.horario_fim}
+                                  <span className="text-muted-foreground/50">·</span>
+                                  {TIPO_LABELS[e.tipo_encontro] ?? "Encontro"}
+                                </p>
+                              </div>
+                            </div>
+                            {e.status === "realizado" && e.link_gravacao ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1.5 rounded-lg text-xs font-bold text-primary hover:text-primary hover:bg-primary/5 shrink-0"
+                                onClick={() => window.open(e.link_gravacao!, "_blank")}
+                              >
+                                <PlayCircle className="size-3.5" />
+                                Gravação
+                              </Button>
+                            ) : e.link_google_meet ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1.5 rounded-lg text-xs font-bold text-primary hover:text-primary hover:bg-primary/5 shrink-0"
+                                onClick={() => window.open(e.link_google_meet!, "_blank")}
+                              >
+                                <Video className="size-3.5" />
+                                Entrar
+                              </Button>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </motion.div>
-                )
-              })}
+                  )
+                })}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Reuniões realizadas */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.15 }}>
+            <Card>
+              <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between">
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-semibold">Reuniões realizadas</CardTitle>
+                  <CardDescription className="text-[11px] font-medium">
+                    {(reunioesCount.galdino + reunioesCount.consultores + reunioesCount.blackcrm)} no total · Galdino {reunioesCount.galdino} · Consultores {reunioesCount.consultores}{reunioesCount.blackcrm > 0 ? ` · BlackCRM ${reunioesCount.blackcrm}` : ""}
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5"
+                  onClick={() => navigate("/reunioes")}
+                >
+                  Ver Todas
+                </Button>
+              </CardHeader>
+              <CardContent className="pt-5 space-y-2">
+                {reunioesRealizadas.length === 0 && (
+                  <p className="text-sm font-medium text-muted-foreground text-center py-6">
+                    Nenhuma reunião realizada ainda.
+                  </p>
+                )}
+                {reunioesRealizadas.map((r) => (
+                  <div
+                    key={r.id_unico}
+                    className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-muted/20 border border-transparent hover:border-primary/20 hover:bg-muted/30 transition-all cursor-pointer"
+                    onClick={() => navigate(`/reuniao/${r.id_unico}`)}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="bg-primary/10 rounded-full p-1 shrink-0">
+                        <CheckCircle2 className="size-4 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-bold tracking-tight text-foreground truncate">
+                          {r.mentor || "Consultor PMC"}
+                        </p>
+                        <p className="text-[11px] font-medium text-muted-foreground">
+                          {new Date(r.data_reuniao + "T00:00:00").toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="size-4 text-muted-foreground/50 shrink-0" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        {/* ============ TRILHO LATERAL (sticky) ============ */}
+        <div className="space-y-5 lg:sticky lg:top-6">
+          {/* Nível PMC compacto com arquétipo */}
+          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}>
+            <Card
+              onClick={() => navigate("/niveis")}
+              title="Como funciona o nível PMC"
+              className="cursor-pointer hover:border-primary/40 transition-colors border-primary/20 overflow-hidden"
+            >
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="size-14 rounded-2xl overflow-hidden border border-primary/25 bg-primary/5 shrink-0 flex items-center justify-center">
+                    <img
+                      src={nivelFaixa.imagem}
+                      alt=""
+                      className="size-full object-cover"
+                      onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = "none" }}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Seu nível no PMC</p>
+                    <p className="text-lg font-bold tracking-tight text-foreground leading-tight">{nivel.nome}</p>
+                    <p className="text-[12px] font-bold text-primary tabular-nums">{nivel.pontos.toLocaleString("pt-BR")} pts MC</p>
+                  </div>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted/40 overflow-hidden mt-3">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${nivel.pctProximo}%` }} />
+                </div>
+                {nivel.proximoEm != null && (
+                  <p className="text-[11px] font-medium text-muted-foreground mt-1.5">+{nivel.proximoEm} Pontos MC para o próximo nível</p>
+                )}
+                {badgesRecentes.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Conquistas</span>
+                    <div className="flex items-center gap-1.5">
+                      {badgesRecentes.map((b) => {
+                        const arq = arquetipoDaBadge(b.icone)
+                        const Icone = iconeDaBadge(b.icone)
+                        const rar = RARIDADE[b.raridade] ?? RARIDADE.bronze
+                        return (
+                          <div key={b.slug} title={b.nome} className="relative size-8 shrink-0">
+                            <img src={rar.medalha} alt="" className="size-full object-contain" />
+                            <div className="absolute inset-0 flex items-center justify-center pt-0.5">
+                              {arq
+                                ? <img src={arq} alt="" className="size-3.5 rounded-full object-cover" />
+                                : <Icone className={`size-3 ${rar.texto}`} />}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <span className="ml-auto text-[10px] font-bold text-primary">{conquistas.ganhas.size} 🏅</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Próximo encontro ao vivo */}
+          {proximoEncontro && (
+            <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.05 }}>
+              <Card className="border-primary/20">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="bg-primary/10 p-2 rounded-lg shrink-0">
+                      <Video className="size-4 text-primary" />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Próximo encontro ao vivo</p>
+                  </div>
+                  <p className="text-[14px] font-bold text-foreground leading-snug line-clamp-2">{proximoEncontro.titulo_formatado}</p>
+                  <p className="text-[12px] font-medium text-muted-foreground mt-0.5">
+                    {proximoEncontro.data_encontro.slice(8, 10)}/{proximoEncontro.data_encontro.slice(5, 7)} · {(proximoEncontro.horario_inicio ?? "").slice(0, 5)}
+                  </p>
+                  <Button
+                    size="sm"
+                    className="h-9 w-full gap-1.5 rounded-lg font-bold text-[11px] uppercase tracking-wider mt-3"
+                    onClick={() => proximoEncontro.link_google_meet ? window.open(proximoEncontro.link_google_meet, "_blank") : navigate("/calendario")}
+                  >
+                    {proximoEncontro.link_google_meet ? "Entrar no encontro" : "Ver agenda"}
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Valor gerado (IAVS) — compacto */}
+          {valorAno > 0 && (
+            <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.1 }}>
+              <Card
+                className="border-primary/40 bg-primary/[0.06] cursor-pointer hover:border-primary/60 transition-colors"
+                onClick={() => navigate("/relatorio")}
+                title="Ver meu relatório"
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="bg-primary/15 p-2 rounded-lg shrink-0">
+                      <TrendingUp className="size-4 text-primary" />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary leading-tight">O método já gerou</p>
+                  </div>
+                  <p className="text-2xl font-bold tracking-tight text-foreground">
+                    {valorAno.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
+                  </p>
+                  <p className="text-[11px] font-bold text-muted-foreground">para a sua empresa no último ano</p>
+                  <span className="inline-flex items-center gap-1 text-[12px] font-bold text-primary mt-2">
+                    Ver meu relatório <ChevronRight className="size-3.5" />
+                  </span>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Atalhos — contatos + marcar reunião */}
+          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.15 }}>
+            <Card>
+              <CardHeader className="border-b border-border/50">
+                <CardTitle className="text-base font-semibold">Atalhos</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-2.5">
+                {[...contatos, ...reunioes].map((a: any) => (
+                  <Button
+                    key={a.label}
+                    variant="outline"
+                    className="w-full justify-between h-[58px] rounded-xl hover:border-primary/30 hover:bg-primary/5 group"
+                    onClick={() => (a.internal ? navigate(a.url) : window.open(a.url, "_blank"))}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="bg-primary/10 p-2 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
+                        <a.icon className="size-4" />
+                      </div>
+                      <div className="flex flex-col items-start gap-0.5 min-w-0">
+                        <span className="font-bold text-[13px] tracking-tight truncate max-w-[150px]">{a.label}</span>
+                        <span className="text-[11px] text-muted-foreground font-medium truncate max-w-[150px]">{a.desc}</span>
+                      </div>
+                    </div>
+                    <ExternalLink className="size-4 text-muted-foreground/50 group-hover:text-primary transition-colors shrink-0" />
+                  </Button>
+                ))}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Seu Guardião da IA */}
+          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.2 }}>
+            <Card>
+              <CardHeader className="border-b border-border/50">
+                <CardTitle className="text-base font-semibold">Seu Guardião da IA</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {guardiao ? (
+                  <div className="flex items-start gap-3">
+                    <div className="bg-primary/10 p-2 rounded-lg shrink-0">
+                      <ShieldCheck className="size-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-bold tracking-tight text-foreground">{guardiao.nome}</p>
+                      {guardiao.cargo && (
+                        <p className="text-[11px] font-medium text-muted-foreground">{guardiao.cargo}</p>
+                      )}
+                      {guardiao.telefone && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3 h-9 w-full gap-2 rounded-xl text-xs font-bold hover:border-primary/30 hover:bg-primary/5"
+                          onClick={() => window.open(whatsappUrl(guardiao.telefone!), "_blank")}
+                        >
+                          <MessageCircle className="size-3.5" />
+                          Chamar no WhatsApp
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[12px] font-medium text-muted-foreground leading-relaxed">
+                    Seu Guardião da IA ainda não foi definido. Fale com sua CS para indicar quem será o responsável pela implementação de IA na sua empresa.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* O Conselho do Galdino — compacto */}
+          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.25 }}>
+            <Card className="border-primary/20">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <img
+                    src="/galdino-foto.png"
+                    alt="Galdino Rodrigues"
+                    className="size-12 rounded-full object-cover object-top ring-2 ring-primary/30 shrink-0"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none" }}
+                  />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary">O Conselho do Galdino</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{conselho.tema}</p>
+                  </div>
+                </div>
+                <blockquote className="text-[15px] font-bold tracking-tight text-foreground leading-snug">
+                  “{conselho.frase}”
+                </blockquote>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 -ml-2 mt-2 gap-1.5 rounded-lg text-xs font-bold text-muted-foreground hover:text-primary hover:bg-primary/5"
+                  onClick={() => setConselho(conselhoAleatorio())}
+                >
+                  Próximo conselho
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Resultados do negócio — indicadores + gráfico (largura total) */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="space-y-4">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Resultados do seu negócio</p>
+        <Card>
+          <CardContent className="p-5 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-5">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Faturamento anual</p>
+              <p className="text-xl font-bold tracking-tight text-foreground mt-1">
+                {(() => { const s = scaleCurrency(metas.faturamento_anual); return <CountUp value={s.value} prefix={moedaPrefix} suffix={s.suffix} /> })()}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Meta 2026</p>
+              <p className="text-xl font-bold tracking-tight text-foreground mt-1">
+                {(() => { const s = scaleCurrency(metas.meta_2026); return <CountUp value={s.value} prefix={moedaPrefix} suffix={s.suffix} /> })()}
+              </p>
+              {metas.meta_2026 > 0 && (
+                <p className="text-[10px] font-bold text-primary mt-0.5">
+                  Faltam {(100 - (Math.round((metas.faturamento_anual / metas.meta_2026) * 100) || 0)).toFixed(1)}%
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Receita mensal</p>
+              <p className="text-xl font-bold tracking-tight text-foreground mt-1">
+                {(() => { const s = scaleCurrency(metas.receita_mensal); return <CountUp value={s.value} prefix={moedaPrefix} suffix={s.suffix} /> })()}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Colaboradores</p>
+              <p className="text-xl font-bold tracking-tight text-foreground mt-1"><CountUp value={metas.colaboradores} /></p>
             </div>
           </CardContent>
         </Card>
+        <GraficoFaturamentoMensal clientId={resolvedClientId} />
       </motion.div>
     </div>
   )

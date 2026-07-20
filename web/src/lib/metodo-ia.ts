@@ -31,11 +31,39 @@ export interface PlanoGargaloIA {
   rotina?: RotinaIA | null
 }
 
+// Fase 2 v2 — fluxos ESTRUTURADOS (KPIs, insights, ações, única coisa).
+export interface KpiIA {
+  nome: string
+  valor: string
+  variacao: string | null
+  tendencia: "alta" | "queda" | "estavel"
+  comentario: string | null
+}
+
+export interface InsightIA {
+  tipo: "critico" | "atencao" | "positivo"
+  texto: string
+}
+
+export interface AcaoIA {
+  texto: string
+  prazo_dias: number | null
+  responsavel: string | null
+  feita?: boolean // estado do checklist (mantido no fluxos_json do ciclo)
+}
+
+export interface UnicaCoisaIA {
+  frase: string
+  por_que: string | null
+  meta: string | null
+  rotina: { cadencia: string | null; passos: string[] } | null
+}
+
 export interface FluxosInteligenciaIA {
-  dados: string
-  informacao: string
-  estrategia: string
-  receita: string
+  kpis: KpiIA[]
+  insights: InsightIA[]
+  acoes: AcaoIA[]
+  unica_coisa: UnicaCoisaIA | null
 }
 
 export interface SugestaoCopilotoIA {
