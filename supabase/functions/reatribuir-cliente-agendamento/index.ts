@@ -33,6 +33,7 @@ interface Linha {
   cliente_telefone: string | null
   observacoes: string | null
   tipo_reuniao?: "implementacao" | "tutoria" | null
+  assunto?: string | null
 }
 
 Deno.serve(async (req: Request) => {
@@ -79,9 +80,9 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ ok: false, error: "Código não encontrado no cadastro" }, 200)
     }
 
-    // 2. Lê a linha atual (campos pro evento). tipo_reuniao só existe no blackcrm.
+    // 2. Lê a linha atual (campos pro evento). tipo_reuniao/assunto só existem no blackcrm.
     const colunas = "id_reuniao, pessoa, cliente_email, cliente_telefone, observacoes" +
-      (origem === "blackcrm" ? ", tipo_reuniao" : "")
+      (origem === "blackcrm" ? ", tipo_reuniao, assunto" : "")
     const { data: row, error: selErr } = await supabase
       .from(tabela)
       .select(colunas)
@@ -139,6 +140,7 @@ Deno.serve(async (req: Request) => {
         tipo_reuniao: row.tipo_reuniao ?? null,
         cliente_nome: row.pessoa ?? "Cliente",
         empresa: empresaFinal,
+        assunto: row.assunto ?? null,
       })
       const description = descricaoEvento({
         cliente_nome: row.pessoa ?? "Cliente",
@@ -147,6 +149,7 @@ Deno.serve(async (req: Request) => {
         empresa: empresaFinal,
         observacoes: row.observacoes ?? null,
         codigo_cliente: matchCli.codigo_cliente,
+        assunto: row.assunto ?? null,
       })
 
       const candidatos: string[] = []

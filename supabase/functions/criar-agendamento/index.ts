@@ -13,6 +13,13 @@ interface Body {
   codigo_cliente: number
   cliente_telefone?: string | null
   observacoes?: string | null
+  assunto?: string | null // slug do tipo de reunião escolhido (quando o consultor tem 2+)
+}
+
+interface TipoReuniao {
+  slug: string
+  label: string
+  descricao?: string
 }
 
 interface Consultor {
@@ -23,6 +30,7 @@ interface Consultor {
   email_calendar: string
   tabela_destino: "reunioes_galdino" | "reunioes_mentoria_new" | "reunioes_blackcrm"
   tipo_reuniao: "implementacao" | "tutoria" | null
+  tipos_reuniao: TipoReuniao[] | null
   duracao_padrao_minutos: number
   ativo: boolean
   cor_agenda: number | null
@@ -89,6 +97,7 @@ Deno.serve(async (req: Request) => {
       cliente_email,
       cliente_telefone,
       observacoes,
+      assunto,
     } = body
 
     if (!slug || !data || !horario || !cliente_nome || !cliente_email) {
@@ -147,6 +156,22 @@ Deno.serve(async (req: Request) => {
 
     if (cErr || !consultor) {
       return jsonResponse({ error: "Consultor não encontrado ou inativo" }, 404)
+    }
+
+    // Assunto (tipo de reunião escolhido pelo cliente). Nunca confiar no texto
+    // do cliente: o front manda o SLUG e resolvemos o label a partir da lista
+    // configurada no consultor. Com 2+ tipos, escolher é obrigatório; com 1,
+    // aplica o único; com 0, fica null (fluxo antigo).
+    const tiposReuniao = Array.isArray(consultor.tipos_reuniao) ? consultor.tipos_reuniao : []
+    let assuntoLabel: string | null = null
+    if (tiposReuniao.length >= 2) {
+      const escolhido = tiposReuniao.find(t => t.slug === (assunto ?? "").trim())
+      if (!escolhido) {
+        return jsonResponse({ error: "Escolha um tipo de reunião válido para este consultor" }, 400)
+      }
+      assuntoLabel = escolhido.label
+    } else if (tiposReuniao.length === 1) {
+      assuntoLabel = tiposReuniao[0].label
     }
 
     const dataDate = new Date(data + "T00:00:00")
@@ -282,6 +307,7 @@ Deno.serve(async (req: Request) => {
     } else if (consultor.tabela_destino === "reunioes_blackcrm") {
       base.responsavel = consultor.nome
       base.tipo_reuniao = consultor.tipo_reuniao ?? "tutoria"
+      base.assunto = assuntoLabel
     }
 
     const { error: insErr } = await supabase
@@ -324,6 +350,7 @@ Deno.serve(async (req: Request) => {
           tipo_reuniao: consultor.tipo_reuniao,
           cliente_nome,
           empresa: empresaFinal,
+          assunto: assuntoLabel,
         }),
         description: descricaoEvento({
           cliente_nome,
@@ -332,6 +359,7 @@ Deno.serve(async (req: Request) => {
           empresa: empresaFinal,
           observacoes: observacoes ?? null,
           codigo_cliente: matchCli.codigo_cliente,
+          assunto: assuntoLabel,
         }),
         start: { dateTime: startISO, timeZone: TZ },
         end: { dateTime: endISO, timeZone: TZ },

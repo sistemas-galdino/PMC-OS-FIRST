@@ -26,6 +26,15 @@ export const DIAS_SEMANA = [
   { value: 6, label: "Sábado", curto: "Sáb" },
 ] as const
 
+// Tipo de reunião (assunto) que o cliente pode escolher na agenda de um consultor.
+// Quando o consultor tem 2+, o link público mostra um passo de escolha antes dos
+// horários; com 0 ou 1, vai direto pra data (fluxo padrão).
+export interface TipoReuniao {
+  slug: string
+  label: string
+  descricao?: string
+}
+
 export interface Consultor {
   id: string
   nome: string
@@ -34,6 +43,7 @@ export interface Consultor {
   email_calendar: string
   tabela_destino: TabelaDestino
   tipo_reuniao: "implementacao" | "tutoria" | null
+  tipos_reuniao: TipoReuniao[] | null
   especialidade: string | null
   descricao: string | null
   avatar_url: string | null
@@ -119,6 +129,7 @@ export interface AgendamentoCentral {
   cliente_compareceu: boolean | null
   criado_em: string | null
   atualizado_em: string | null
+  assunto: string | null // tipo de reunião escolhido (só reuniões blackcrm do link público)
 }
 
 // Status "efetivo" da reunião, derivado de data + comparecimento — porque as reuniões

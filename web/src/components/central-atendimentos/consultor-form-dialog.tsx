@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { slugify, EMAILS_CALENDAR_VALIDOS, CORES_AGENDA_GOOGLE } from "@/lib/atendimentos"
-import type { Consultor, TabelaDestino } from "@/lib/atendimentos"
+import type { Consultor, TabelaDestino, TipoReuniao } from "@/lib/atendimentos"
 
 interface Props {
   open: boolean
@@ -35,6 +35,7 @@ const initialForm = {
   email_calendar: "mentor@rafaelgaldino.com.br",
   tabela_destino: "reunioes_mentoria_new" as TabelaDestino,
   tipo_reuniao: "" as "" | "implementacao" | "tutoria",
+  tipos_reuniao: [] as TipoReuniao[],
   especialidade: "",
   descricao: "",
   avatar_url: "",
@@ -59,6 +60,7 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
           email_calendar: consultor.email_calendar,
           tabela_destino: consultor.tabela_destino,
           tipo_reuniao: (consultor.tipo_reuniao ?? "") as "" | "implementacao" | "tutoria",
+          tipos_reuniao: consultor.tipos_reuniao ?? [],
           especialidade: consultor.especialidade ?? "",
           descricao: consultor.descricao ?? "",
           avatar_url: consultor.avatar_url ?? "",
@@ -83,6 +85,25 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
     }))
   }
 
+  // Tipos de reunião (assunto): o slug é derivado do label automaticamente.
+  function addTipo() {
+    setForm(f => ({ ...f, tipos_reuniao: [...f.tipos_reuniao, { slug: "", label: "", descricao: "" }] }))
+  }
+  function updateTipo(i: number, patch: Partial<TipoReuniao>) {
+    setForm(f => ({
+      ...f,
+      tipos_reuniao: f.tipos_reuniao.map((t, idx) => {
+        if (idx !== i) return t
+        const next = { ...t, ...patch }
+        if (patch.label !== undefined) next.slug = slugify(patch.label)
+        return next
+      }),
+    }))
+  }
+  function removeTipo(i: number) {
+    setForm(f => ({ ...f, tipos_reuniao: f.tipos_reuniao.filter((_, idx) => idx !== i) }))
+  }
+
   async function handleSave() {
     if (!form.nome.trim() || !form.slug.trim() || !form.email_calendar.trim()) {
       alert("Nome, slug e email do calendar são obrigatórios")
@@ -96,6 +117,14 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
       email_calendar: form.email_calendar.trim(),
       tabela_destino: form.tabela_destino,
       tipo_reuniao: form.tipo_reuniao || null,
+      // Limpa linhas vazias e garante slug a partir do label.
+      tipos_reuniao: form.tipos_reuniao
+        .filter(t => t.label.trim())
+        .map(t => ({
+          slug: (t.slug || slugify(t.label)).trim(),
+          label: t.label.trim(),
+          ...(t.descricao?.trim() ? { descricao: t.descricao.trim() } : {}),
+        })),
       especialidade: form.especialidade.trim() || null,
       descricao: form.descricao.trim() || null,
       avatar_url: form.avatar_url.trim() || null,
@@ -210,6 +239,28 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2 rounded-lg border border-border/60 p-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tipos de reunião (assunto)</Label>
+              <Button variant="outline" size="sm" onClick={addTipo}>+ Adicionar tipo</Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Com 2 ou mais tipos, o cliente escolhe o assunto antes de ver os horários (ex.: Léo → BlackCRM / Vídeos com IA). Com 0 ou 1, o fluxo vai direto pra data.
+            </p>
+            {form.tipos_reuniao.length === 0 && (
+              <p className="text-[11px] text-muted-foreground/70 italic">Nenhum tipo — o cliente não escolhe assunto.</p>
+            )}
+            {form.tipos_reuniao.map((t, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <div className="flex-1 space-y-1.5">
+                  <Input value={t.label} onChange={e => updateTipo(i, { label: e.target.value })} placeholder="Label (ex: BlackCRM)" />
+                  <Input value={t.descricao ?? ""} onChange={e => updateTipo(i, { descricao: e.target.value })} placeholder="Descrição (opcional)" />
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => removeTipo(i)} className="text-muted-foreground">Remover</Button>
+              </div>
+            ))}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

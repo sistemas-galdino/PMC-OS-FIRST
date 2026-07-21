@@ -9,6 +9,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { PublicoLayout } from "@/components/atendimento-publico/publico-layout"
 import { ConsultorCard } from "@/components/atendimento-publico/consultor-card"
 import { Stepper } from "@/components/atendimento-publico/stepper"
+import { StepAssunto } from "@/components/atendimento-publico/step-assunto"
 import { StepData } from "@/components/atendimento-publico/step-data"
 import { StepHorario } from "@/components/atendimento-publico/step-horario"
 import { StepIdentificacao, type IdentificacaoForm } from "@/components/atendimento-publico/step-identificacao"
@@ -17,7 +18,18 @@ import { StepSucesso } from "@/components/atendimento-publico/step-sucesso"
 import { mapaOcupadosPorData, isoData, HORIZONTE_DIAS, duracaoDoSlot } from "@/lib/atendimentos"
 import type { Consultor, Disponibilidade, ExcecaoConsultor, Feriado } from "@/lib/atendimentos"
 
-const STEPS = ["Data", "Horário", "Você", "Confirmação"]
+// Passos do wizard. O passo "assunto" só entra quando o consultor oferece 2+
+// tipos de reunião na mesma agenda (ex.: Leonardo → BlackCRM / Vídeos com IA);
+// consultor com 0 ou 1 tipo vai direto pra "data" (fluxo padrão).
+type StepKey = "assunto" | "data" | "horario" | "identificacao" | "confirmacao"
+
+const STEP_LABELS: Record<StepKey, string> = {
+  assunto: "Assunto",
+  data: "Data",
+  horario: "Horário",
+  identificacao: "Você",
+  confirmacao: "Confirmação",
+}
 
 const initialIdent: IdentificacaoForm = {
   nome: "",
@@ -47,6 +59,7 @@ export default function AtendimentoPublicoPage() {
   const [erroFatal, setErroFatal] = useState<string | null>(null)
 
   const [step, setStep] = useState(0)
+  const [assuntoEscolhido, setAssuntoEscolhido] = useState<string | null>(null)
   const [dataEscolhida, setDataEscolhida] = useState<string | null>(null)
   const [horarioEscolhido, setHorarioEscolhido] = useState<string | null>(null)
   const [ident, setIdent] = useState<IdentificacaoForm>(initialIdent)
@@ -63,7 +76,7 @@ export default function AtendimentoPublicoPage() {
           .from("consultores_atendimento")
           // Só colunas públicas: anon não tem grant em email/email_calendar/
           // tabela_destino/nomes_match (ver migration 20260609_hardening_link_publico).
-          .select("id,nome,slug,especialidade,descricao,avatar_url,accent,duracao_padrao_minutos,ordem,ativo,tipo_reuniao")
+          .select("id,nome,slug,especialidade,descricao,avatar_url,accent,duracao_padrao_minutos,ordem,ativo,tipo_reuniao,tipos_reuniao")
           .eq("slug", slug)
           .eq("ativo", true)
           .maybeSingle()
@@ -105,6 +118,10 @@ export default function AtendimentoPublicoPage() {
         ])
 
         setConsultor(c as Consultor)
+        // Consultor com exatamente 1 tipo → pré-seleciona (o passo de assunto não
+        // aparece; só entra com 2+). Com 0 tipos, segue null (fluxo padrão).
+        const tiposC = (c as Consultor).tipos_reuniao ?? []
+        if (tiposC.length === 1) setAssuntoEscolhido(tiposC[0].slug)
         setDisponibilidade((d as Disponibilidade[]) ?? [])
         setExcecoes((exs as ExcecaoConsultor[]) ?? [])
         setFeriados((fs as Feriado[]) ?? [])
@@ -116,7 +133,7 @@ export default function AtendimentoPublicoPage() {
       } else {
         const { data: cs } = await supabase
           .from("consultores_atendimento")
-          .select("id,nome,slug,especialidade,descricao,avatar_url,accent,duracao_padrao_minutos,ordem,ativo,tipo_reuniao")
+          .select("id,nome,slug,especialidade,descricao,avatar_url,accent,duracao_padrao_minutos,ordem,ativo,tipo_reuniao,tipos_reuniao")
           .eq("ativo", true)
           .order("ordem", { ascending: true })
         setConsultores((cs as Consultor[]) ?? [])
@@ -131,6 +148,17 @@ export default function AtendimentoPublicoPage() {
     () => (dataEscolhida ? Array.from(ocupadosPorData.get(dataEscolhida) ?? []) : []),
     [ocupadosPorData, dataEscolhida],
   )
+
+  // Passos ativos: só inclui "assunto" quando o consultor tem 2+ tipos de reunião.
+  const stepKeys = useMemo<StepKey[]>(() => {
+    const temEscolha = (consultor?.tipos_reuniao?.length ?? 0) >= 2
+    return temEscolha
+      ? ["assunto", "data", "horario", "identificacao", "confirmacao"]
+      : ["data", "horario", "identificacao", "confirmacao"]
+  }, [consultor])
+  const stepKey = stepKeys[step] ?? stepKeys[stepKeys.length - 1]
+  const lastStep = stepKeys.length - 1
+  const tiposConsultor = consultor?.tipos_reuniao ?? []
 
   async function submeter() {
     if (!consultor || !dataEscolhida || !horarioEscolhido) return
@@ -166,6 +194,7 @@ export default function AtendimentoPublicoPage() {
           codigo_cliente: Number(ident.codigo_cliente.trim()),
           cliente_telefone: ident.telefone.trim() || null,
           observacoes: ident.observacoes.trim() || null,
+          assunto: assuntoEscolhido ?? null,
         }),
       })
       const json = await res.json().catch(() => ({} as { error?: string }))
@@ -183,9 +212,10 @@ export default function AtendimentoPublicoPage() {
   }
 
   function avancar() {
-    if (step === 0 && !dataEscolhida) return
-    if (step === 1 && !horarioEscolhido) return
-    if (step === 2) {
+    if (stepKey === "assunto" && !assuntoEscolhido) return
+    if (stepKey === "data" && !dataEscolhida) return
+    if (stepKey === "horario" && !horarioEscolhido) return
+    if (stepKey === "identificacao") {
       if (!ident.nome.trim() || !ident.email.trim()) {
         setErro("Preencha nome e email")
         return
@@ -205,11 +235,12 @@ export default function AtendimentoPublicoPage() {
   }
 
   const canAdvance = useMemo(() => {
-    if (step === 0) return !!dataEscolhida
-    if (step === 1) return !!horarioEscolhido
-    if (step === 2) return !!ident.nome.trim() && !!ident.email.trim() && codigoValido(ident.codigo_cliente)
+    if (stepKey === "assunto") return !!assuntoEscolhido
+    if (stepKey === "data") return !!dataEscolhida
+    if (stepKey === "horario") return !!horarioEscolhido
+    if (stepKey === "identificacao") return !!ident.nome.trim() && !!ident.email.trim() && codigoValido(ident.codigo_cliente)
     return true
-  }, [step, dataEscolhida, horarioEscolhido, ident])
+  }, [stepKey, assuntoEscolhido, dataEscolhida, horarioEscolhido, ident])
 
   if (loading) {
     return (
@@ -282,7 +313,7 @@ export default function AtendimentoPublicoPage() {
       subtitle={consultor.descricao ?? `Escolha a melhor data e horário para conversar com ${consultor.nome}.`}
     >
       <div className="space-y-8">
-        <Stepper steps={STEPS} current={step} />
+        <Stepper steps={stepKeys.map(k => STEP_LABELS[k])} current={step} />
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
           <ClockIcon className="size-4 shrink-0" />
@@ -296,7 +327,19 @@ export default function AtendimentoPublicoPage() {
           transition={{ duration: 0.3 }}
           className="space-y-4"
         >
-          {step === 0 && (
+          {stepKey === "assunto" && (
+            <StepAssunto
+              tipos={tiposConsultor}
+              value={assuntoEscolhido}
+              onSelecionar={slug => {
+                setErro(null)
+                setAssuntoEscolhido(slug)
+                setStep(stepKeys.indexOf("data"))
+              }}
+            />
+          )}
+
+          {stepKey === "data" && (
             <StepData
               disponibilidade={disponibilidade}
               excecoes={excecoes}
@@ -309,18 +352,18 @@ export default function AtendimentoPublicoPage() {
                 setErro(null)
                 setDataEscolhida(iso)
                 setHorarioEscolhido(null)
-                setStep(1)
+                setStep(stepKeys.indexOf("horario"))
               }}
               onSelecionarHorario={(iso, slot) => {
                 setErro(null)
                 setDataEscolhida(iso)
                 setHorarioEscolhido(slot)
-                setStep(2)
+                setStep(stepKeys.indexOf("identificacao"))
               }}
             />
           )}
 
-          {step === 1 && dataEscolhida && (
+          {stepKey === "horario" && dataEscolhida && (
             <StepHorario
               disponibilidade={disponibilidade}
               excecoes={excecoes}
@@ -333,11 +376,11 @@ export default function AtendimentoPublicoPage() {
             />
           )}
 
-          {step === 2 && (
+          {stepKey === "identificacao" && (
             <StepIdentificacao value={ident} onChange={setIdent} />
           )}
 
-          {step === 3 && dataEscolhida && horarioEscolhido && (
+          {stepKey === "confirmacao" && dataEscolhida && horarioEscolhido && (
             <StepConfirmacao
               consultor={consultor}
               data={dataEscolhida}
@@ -370,7 +413,7 @@ export default function AtendimentoPublicoPage() {
             Voltar
           </Button>
 
-          {step < 3 ? (
+          {step < lastStep ? (
             <Button onClick={avancar} disabled={!canAdvance} className="gap-2" size="lg">
               Continuar
               <ArrowUpRightIcon className="size-4" />
