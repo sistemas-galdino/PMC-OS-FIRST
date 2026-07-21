@@ -5,6 +5,7 @@ export const STATUS_CLIENTE = [
   "Aguardando Início",
   "Onboarding marcado",
   "Pendente de Onboarding",
+  "Congelado", // trancou o programa por um período — nem ativo, nem cancelado, nem desistiu
   "Cliente Cancelado",
   "Desistência de Compra",
   "Ciclo encerrado", // completou o período do programa e não renovou

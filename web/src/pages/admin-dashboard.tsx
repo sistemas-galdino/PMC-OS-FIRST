@@ -11,6 +11,7 @@ import {
   ClockIcon,
   PlayCircleIcon,
   FlagIcon,
+  SnowflakeIcon,
 } from "@/components/ui/icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -64,6 +65,7 @@ export default function AdminDashboard() {
     pendentesOnboarding: 0,
     aguardandoInicio: 0,
     cicloEncerrado: 0,
+    congelado: 0,
     churnRate: 0,
   })
   const [geoData, setGeoData] = useState<any[]>([])
@@ -100,6 +102,7 @@ export default function AdminDashboard() {
           const pendentesOnboarding = clients.filter(c => c.status_atual === 'Pendente de Onboarding').length
           const aguardandoInicio = clients.filter(c => c.status_atual === 'Aguardando Início').length
           const cicloEncerrado = clients.filter(c => c.status_atual === 'Ciclo encerrado').length
+          const congelado = clients.filter(c => c.status_atual === 'Congelado').length
           const churnRate = total > 0 ? (cancelados / total) * 100 : 0
 
           setStats({
@@ -111,6 +114,7 @@ export default function AdminDashboard() {
             pendentesOnboarding,
             aguardandoInicio,
             cicloEncerrado,
+            congelado,
             churnRate: Number(churnRate.toFixed(1)),
           })
 
@@ -199,8 +203,8 @@ export default function AdminDashboard() {
 
   if (loading) {
     // Mesmo grid/contagem da visão ativa, pra não pular o layout quando os dados chegam.
-    return <div className={`grid gap-6 grid-cols-1 sm:grid-cols-2 ${detalhada ? "lg:grid-cols-3" : "lg:grid-cols-5"}`}>
-      {Array.from({ length: detalhada ? 9 : 5 }).map((_, i) => <Card key={i} className="h-40 animate-pulse bg-card/40" />)}
+    return <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+      {Array.from({ length: detalhada ? 10 : 5 }).map((_, i) => <Card key={i} className="h-40 animate-pulse bg-card/40" />)}
     </div>
   }
 
@@ -216,9 +220,10 @@ export default function AdminDashboard() {
     { title: "Cancelaram", value: stats.cancelados, icon: XIcon, description: "Clientes cancelados", iconClass: "text-red-400 bg-red-500/10", soDetalhada: true },
     { title: "Desistência de Compra", value: stats.desistencias, icon: ShoppingCartIcon, description: "Desistiram antes de iniciar", iconClass: "text-orange-400 bg-orange-500/10", soDetalhada: true },
     { title: "Ciclo Encerrado", value: stats.cicloEncerrado, icon: FlagIcon, description: "Completaram o programa e não renovaram", iconClass: "text-muted-foreground bg-muted/30", soDetalhada: true },
+    { title: "Congelados", value: stats.congelado, icon: SnowflakeIcon, description: "Trancaram o programa temporariamente", iconClass: "text-sky-400 bg-sky-500/10", soDetalhada: true },
   ]
 
-  // 5 cards em 5 colunas / 9 em 3 — sempre fechando a última linha.
+  // Simples = 5 cards (1 linha de 5) / Detalhada = 10 cards (2 linhas de 5) — sempre fechando a última linha.
   const cardsVisiveis = detalhada ? cards : cards.filter(c => !c.soDetalhada)
 
   const container = {
@@ -278,7 +283,7 @@ export default function AdminDashboard() {
         variants={container}
         initial="hidden"
         animate="show"
-        className={`grid gap-6 grid-cols-1 sm:grid-cols-2 ${detalhada ? "lg:grid-cols-3" : "lg:grid-cols-5"}`}
+        className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5"
       >
         {cardsVisiveis.map((card) => (
           <motion.div key={card.title} variants={item} className="h-full">
