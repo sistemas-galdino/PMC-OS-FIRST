@@ -103,6 +103,7 @@ export default function BalancoPage({ session, clientId }: Props) {
     let cancel = false
 
     async function carregar() {
+      try {
       const reunioes = (t: string) =>
         supabase.from(t).select("ganho, nps, acoes_cliente, cliente_compareceu, data_reuniao").eq("id_cliente", cid)
 
@@ -205,7 +206,11 @@ export default function BalancoPage({ session, clientId }: Props) {
         vitorias,
         valorVitorias,
       })
-      setLoading(false)
+      } catch (e) {
+        if (!cancel) console.error(e)
+      } finally {
+        if (!cancel) setLoading(false)
+      }
     }
 
     carregar()
@@ -339,7 +344,7 @@ export default function BalancoPage({ session, clientId }: Props) {
                   <CardContent className="p-5">
                     <div className="flex items-center gap-2 mb-2.5">
                       <Badge className="rounded-md bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-bold">{g.origem}</Badge>
-                      {g.data && <span className="text-[11px] text-muted-foreground font-medium">{g.data}</span>}
+                      {g.data && <span className="text-[11px] text-muted-foreground font-medium">{formatarData(g.data)}</span>}
                     </div>
                     <p className="text-[13px] text-foreground/90 leading-relaxed line-clamp-5">{g.texto}</p>
                   </CardContent>

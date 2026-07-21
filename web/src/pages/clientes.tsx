@@ -934,8 +934,13 @@ export default function ClientesPage() {
           pontosMap={pontosMap}
           onAbrir={(c) => setDrawerClient(c)}
           onStatus={async (c, novo) => {
+            const anterior = c.status_atual
             setClients(prev => prev.map(x => x.id_entrada === c.id_entrada ? { ...x, status_atual: novo } : x))
-            await supabase.from('clientes_entrada_new').update({ status_atual: novo }).eq('id_entrada', c.id_entrada)
+            const { error } = await supabase.from('clientes_entrada_new').update({ status_atual: novo }).eq('id_entrada', c.id_entrada)
+            if (error) {
+              console.error('Falha ao atualizar status do cliente:', error)
+              setClients(prev => prev.map(x => x.id_entrada === c.id_entrada ? { ...x, status_atual: anterior } : x))
+            }
           }}
         />
       )}

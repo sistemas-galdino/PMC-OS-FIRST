@@ -47,6 +47,7 @@ export default function RelatorioPage({ session, clientId }: Props) {
   useEffect(() => {
     if (!cid) return
     async function carregar() {
+      try {
       const countFase = (t: string) =>
         supabase.from(t).select("id", { count: "exact", head: true }).eq("id_cliente", cid)
       const [
@@ -85,7 +86,11 @@ export default function RelatorioPage({ session, clientId }: Props) {
         horasLiberadas,
         valorAno,
       })
-      setLoading(false)
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoading(false)
+      }
     }
     carregar()
   }, [cid])

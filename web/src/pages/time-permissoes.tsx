@@ -27,7 +27,7 @@ interface Membro { id: number; nome: string | null; email: string | null; papel:
 interface Override { mentor_id: number; secao_chave: string; permitir: boolean }
 
 export default function TimePermissoesPage() {
-  const { isSuperAdmin } = useAuth()
+  const { isSuperAdmin, user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [papeis, setPapeis] = useState<Papel[]>([])
   const [secoes, setSecoes] = useState<Secao[]>([])
@@ -94,7 +94,11 @@ export default function TimePermissoesPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setAddResult({ ok: false, msg: data.error || "Erro ao provisionar membro." })
+        const bruto = String(data.error || "")
+        const jaExiste = res.status === 409 || res.status === 422 || /(already|exist|regist|duplic|já (existe|cadastr|tem))/i.test(bruto)
+        setAddResult({ ok: false, msg: jaExiste
+          ? "Esse e-mail já tem login. Peça para a pessoa acessar, ou vincule pelo painel."
+          : (bruto || "Erro ao provisionar membro.") })
       } else {
         setAddResult({ ok: true, msg: "Membro criado. Envie o link de acesso:", link: data.invite_link })
         setAddEmail(""); setAddNome("")
@@ -257,6 +261,7 @@ export default function TimePermissoesPage() {
             const p = papelDe(m.papel)
             const aberto = expandido === m.id
             const nSecoes = p?.is_full ? secoes.length : secoes.filter((s) => temSecao(m, s.chave)).length
+            const ehEu = !!user?.email && !!m.email && m.email.toLowerCase() === user.email.toLowerCase()
             return (
               <Card key={m.id}>
                 <CardContent className="p-0">
@@ -270,7 +275,8 @@ export default function TimePermissoesPage() {
                     {/* Papel */}
                     <select
                       value={m.papel}
-                      disabled={!isSuperAdmin || salvando}
+                      disabled={!isSuperAdmin || salvando || ehEu}
+                      title={ehEu ? "Você não pode alterar o seu próprio papel" : undefined}
                       onChange={(e) => trocarPapel(m, e.target.value)}
                       className="rounded-lg bg-card border border-border px-3 py-1.5 text-[12px] font-semibold text-foreground disabled:opacity-60"
                     >

@@ -27,9 +27,11 @@ Deno.serve(async (req: Request) => {
 
     // O chamador é do time? Qual papel?
     const { data: mentor } = await admin
-      .from("mentores").select("papel, papeis(is_full)").eq("email", user.email).maybeSingle()
+      .from("mentores").select("papel, papeis(is_full, is_super)").eq("email", user.email).maybeSingle()
     if (!mentor) return jsonResponse({ error: "apenas o time pode provisionar acessos" }, 403)
-    const isFull = (mentor as { papeis?: { is_full?: boolean } }).papeis?.is_full ?? false
+    const papeisCaller = (mentor as { papeis?: { is_full?: boolean; is_super?: boolean } }).papeis
+    const isFull = papeisCaller?.is_full ?? false
+    const isSuper = papeisCaller?.is_super ?? false
 
     const body = await req.json().catch(() => ({}))
     const tipo = String(body.tipo ?? "")
@@ -52,6 +54,14 @@ Deno.serve(async (req: Request) => {
       if (!isFull) return jsonResponse({ error: "só Admin ou Super Admin adicionam membros do time" }, 403)
       const nome = body.nome ? String(body.nome) : null
       const papel = body.papel ? String(body.papel) : "consultor"
+      // Valida o papel e impede escalonamento: papel privilegiado (is_full/is_super) só por Super Admin.
+      const { data: papelRow } = await admin
+        .from("papeis").select("is_full, is_super").eq("chave", papel).maybeSingle()
+      if (!papelRow) return jsonResponse({ error: `papel inválido: ${papel}` }, 400)
+      const papelPrivilegiado = Boolean(papelRow.is_full || papelRow.is_super)
+      if (papelPrivilegiado && !isSuper) {
+        return jsonResponse({ error: "apenas Super Admin pode criar membro com papel privilegiado (Admin/Super Admin)" }, 403)
+      }
       const { userId, link } = await criarLoginEGerarLink()
       const { error: insErr } = await admin.from("mentores").upsert({ email, nome, papel }, { onConflict: "email" })
       if (insErr) return jsonResponse({ error: `login criado mas falhou ao vincular: ${insErr.message}` }, 500)

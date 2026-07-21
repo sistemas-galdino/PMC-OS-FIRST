@@ -64,6 +64,7 @@ export default function NiveisPage({ session, clientId }: Props) {
   useEffect(() => {
     if (!cid) return
     async function carregar() {
+      try {
       const cnt = (t: string, col = "id") => supabase.from(t).select(col, { count: "exact", head: true }).eq("id_cliente", cid)
       const [etapasRes, g, a, ga, cp, si, ec, vit, rg, rm, rb, mMetas, mProd, mCanais, mObj] = await Promise.all([
         supabase.from("cliente_etapas_metodo").select("etapa, concluida").eq("id_cliente", cid),
@@ -92,7 +93,11 @@ export default function NiveisPage({ session, clientId }: Props) {
       const mapeamento = [mMetas, mProd, mCanais, mObj].filter((r) => (r.count ?? 0) > 0).length
 
       setSinaisN({ etapas, fases, mapeamento, reunioes, vitorias: vit.count ?? 0 })
-      setLoading(false)
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoading(false)
+      }
     }
     carregar()
   }, [cid])

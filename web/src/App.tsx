@@ -164,7 +164,7 @@ function AppRoutes() {
                     <Route path="/niveis" element={<NiveisPage session={session} clientId={cid} />} />
                     <Route path="/metodo" element={<MetodoPage session={session} clientId={cid} />} />
                     <Route path="/novidades" element={<NovidadesPage session={session} clientId={cid} />} />
-                    <Route path="/ranking-guardioes" element={<RankingGuardioesPage />} />
+                    <Route path="/ranking-guardioes" element={<RankingGuardioesPage clientId={cid} />} />
                     <Route path="/novidades-admin" element={<RequireSecao secao="novidades-admin"><NovidadesAdminPage /></RequireSecao>} />
                     <Route path="/logs-download" element={<RequireSecao secao="logs-download"><LogsDownloadPage /></RequireSecao>} />
                     <Route path="/estudos-caso" element={<EstudosCasoPage session={session} clientId={cid} />} />
