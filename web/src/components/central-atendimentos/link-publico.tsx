@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { LinkIcon, CopyIcon, CheckIcon, ExternalLinkIcon } from "@/components/ui/icons"
-import { iniciais } from "@/lib/atendimentos"
+import { ConsultorAvatar } from "@/components/consultor-avatar"
 import type { Consultor } from "@/lib/atendimentos"
 
 interface Props {
@@ -68,9 +68,7 @@ export function LinkPublico({ consultores }: Props) {
               <Card key={c.id} className="hover:border-primary/30 transition-all">
                 <CardContent className="p-5 space-y-4">
                   <div className="flex items-center gap-3">
-                    <div className="size-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                      {iniciais(c.nome)}
-                    </div>
+                    <ConsultorAvatar nome={c.nome} url={c.avatar_url} className="size-11 rounded-xl text-sm" />
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-sm text-foreground truncate">{c.nome}</div>
                       {c.especialidade && (

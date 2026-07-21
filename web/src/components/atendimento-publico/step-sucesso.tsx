@@ -2,7 +2,8 @@ import { motion } from "framer-motion"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2Icon, MailIcon, CalendarIcon } from "@/components/ui/icons"
-import { formatarData, iniciais } from "@/lib/atendimentos"
+import { formatarData } from "@/lib/atendimentos"
+import { ConsultorAvatar } from "@/components/consultor-avatar"
 import type { Consultor } from "@/lib/atendimentos"
 
 interface Props {
@@ -32,9 +33,7 @@ export function StepSucesso({ consultor, data, horario, email, onVoltar }: Props
 
       <Card className="w-full p-5 space-y-4 mb-8 text-left">
         <div className="flex items-center gap-3 pb-4 border-b border-border">
-          <div className="size-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-            {iniciais(consultor.nome)}
-          </div>
+          <ConsultorAvatar nome={consultor.nome} url={consultor.avatar_url} className="size-11 rounded-xl text-sm" />
           <div>
             <div className="font-bold text-sm">{consultor.nome}</div>
             {consultor.especialidade && (

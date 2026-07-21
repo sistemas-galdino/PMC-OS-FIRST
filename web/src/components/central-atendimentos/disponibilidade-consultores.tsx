@@ -22,7 +22,8 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import { motion, AnimatePresence } from "framer-motion"
-import { DIAS_SEMANA, iniciais } from "@/lib/atendimentos"
+import { DIAS_SEMANA } from "@/lib/atendimentos"
+import { ConsultorAvatar } from "@/components/consultor-avatar"
 import type {
   Consultor,
   Disponibilidade,
@@ -192,9 +193,7 @@ export function DisponibilidadeConsultores({
             <Card key={c.id} className={!c.ativo ? "opacity-60" : ""}>
               <CardContent className="p-0">
                 <div className="flex items-center gap-4 p-5">
-                  <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                    {iniciais(c.nome)}
-                  </div>
+                  <ConsultorAvatar nome={c.nome} url={c.avatar_url} className="size-12 rounded-xl text-sm" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sm text-foreground">{c.nome}</span>

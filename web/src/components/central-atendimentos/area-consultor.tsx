@@ -21,7 +21,8 @@ import {
   ExternalLinkIcon,
   UserCheckIcon,
 } from "@/components/ui/icons"
-import { iniciais, statusEfetivo, nomesDoConsultor, STATUS_EFETIVO_BADGE, STATUS_EFETIVO_LABEL } from "@/lib/atendimentos"
+import { statusEfetivo, nomesDoConsultor, STATUS_EFETIVO_BADGE, STATUS_EFETIVO_LABEL } from "@/lib/atendimentos"
+import { ConsultorAvatar } from "@/components/consultor-avatar"
 import type { Consultor, AgendamentoCentral } from "@/lib/atendimentos"
 
 interface Props {
@@ -136,9 +137,7 @@ export function AreaConsultor({ consultores, agendamentos, onExcluir, onReagenda
       <Card>
         <CardContent className="p-5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
-            <div className="size-12 rounded-xl bg-primary/15 text-primary font-bold text-sm flex items-center justify-center shrink-0">
-              {iniciais(selecionado.nome)}
-            </div>
+            <ConsultorAvatar nome={selecionado.nome} url={selecionado.avatar_url} className="size-12 rounded-xl text-sm" />
             <div className="min-w-0">
               <div className="font-bold text-foreground truncate">{selecionado.nome}</div>
               <div className="text-xs text-primary/80 font-medium truncate">{descricaoConsultor(selecionado)}</div>

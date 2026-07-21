@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card"
 import { CalendarIcon, ClockIcon, UsersIcon, MailIcon, Building2Icon } from "@/components/ui/icons"
-import { formatarData, iniciais } from "@/lib/atendimentos"
+import { formatarData } from "@/lib/atendimentos"
+import { ConsultorAvatar } from "@/components/consultor-avatar"
 import type { Consultor } from "@/lib/atendimentos"
 import type { IdentificacaoForm } from "./step-identificacao"
 
@@ -16,9 +17,7 @@ export function StepConfirmacao({ consultor, data, horario, duracaoMinutos, iden
   return (
     <Card className="p-6 space-y-6 max-w-xl">
       <div className="flex items-center gap-4 pb-5 border-b border-border">
-        <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold">
-          {iniciais(consultor.nome)}
-        </div>
+        <ConsultorAvatar nome={consultor.nome} url={consultor.avatar_url} className="size-14 rounded-2xl" />
         <div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Consultor</div>
           <div className="text-lg font-bold tracking-tight text-foreground">{consultor.nome}</div>

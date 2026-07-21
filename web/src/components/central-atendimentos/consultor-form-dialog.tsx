@@ -20,6 +20,9 @@ import {
 } from "@/components/ui/select"
 import { slugify, EMAILS_CALENDAR_VALIDOS, CORES_AGENDA_GOOGLE } from "@/lib/atendimentos"
 import type { Consultor, TabelaDestino, TipoReuniao } from "@/lib/atendimentos"
+import { supabase } from "@/lib/supabase"
+import { UploadIcon, XIcon } from "@/components/ui/icons"
+import { ConsultorAvatar } from "@/components/consultor-avatar"
 
 interface Props {
   open: boolean
@@ -49,9 +52,13 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
   const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
   const [slugTouched, setSlugTouched] = useState(false)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [uploadErro, setUploadErro] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
+      setAvatarFile(null)
+      setUploadErro(null)
       if (consultor) {
         setForm({
           nome: consultor.nome,
@@ -110,6 +117,21 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
       return
     }
     setSaving(true)
+    // Se o admin escolheu uma foto, sobe pro bucket admin-only e usa a URL pública.
+    let avatarUrlFinal = form.avatar_url.trim() || null
+    if (avatarFile) {
+      const safe = avatarFile.name.replace(/[^a-zA-Z0-9._-]/g, "_")
+      const path = `${form.slug.trim() || slugify(form.nome) || "consultor"}/${Date.now()}-${crypto.randomUUID()}-${safe}`
+      const { error: upErr } = await supabase.storage
+        .from("consultor-avatares")
+        .upload(path, avatarFile, { contentType: avatarFile.type || undefined, upsert: true })
+      if (upErr) {
+        setUploadErro("Falha ao subir a foto: " + upErr.message)
+        setSaving(false)
+        return
+      }
+      avatarUrlFinal = supabase.storage.from("consultor-avatares").getPublicUrl(path).data.publicUrl
+    }
     const payload: Partial<Consultor> = {
       nome: form.nome.trim(),
       slug: form.slug.trim(),
@@ -127,7 +149,7 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
         })),
       especialidade: form.especialidade.trim() || null,
       descricao: form.descricao.trim() || null,
-      avatar_url: form.avatar_url.trim() || null,
+      avatar_url: avatarUrlFinal,
       cor_agenda: form.cor_agenda,
       duracao_padrao_minutos: form.duracao_padrao_minutos,
       ativo: form.ativo,
@@ -265,8 +287,44 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Avatar URL</Label>
-              <Input value={form.avatar_url} onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))} placeholder="https://..." />
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Foto do consultor</Label>
+              <div className="flex items-center gap-3">
+                <ConsultorAvatar
+                  nome={form.nome || "?"}
+                  url={avatarFile ? URL.createObjectURL(avatarFile) : (form.avatar_url.trim() || null)}
+                  className="size-14 rounded-xl text-base"
+                />
+                <div className="flex flex-col gap-1.5">
+                  <label className="inline-flex items-center gap-2 h-8 px-2.5 rounded-lg border border-border text-[11px] font-bold uppercase tracking-wider cursor-pointer hover:border-primary/30 hover:bg-primary/5 transition-colors">
+                    <UploadIcon className="size-3.5" />
+                    {avatarFile || form.avatar_url ? "Trocar foto" : "Enviar foto"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => { setAvatarFile(e.target.files?.[0] ?? null); setUploadErro(null) }}
+                    />
+                  </label>
+                  {(avatarFile || form.avatar_url) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 px-2 justify-start text-[11px] font-bold text-muted-foreground hover:text-destructive"
+                      onClick={() => { setAvatarFile(null); setForm(f => ({ ...f, avatar_url: "" })) }}
+                    >
+                      <XIcon className="size-3.5" />
+                      Remover
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {uploadErro && <p className="text-[11px] font-medium text-destructive">{uploadErro}</p>}
+              <Input
+                value={form.avatar_url}
+                onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))}
+                placeholder="ou cole uma URL https://..."
+                className="text-xs"
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ordem</Label>
