@@ -125,7 +125,7 @@ GRANT SELECT ON public.agendamentos_central TO authenticated;
 -- ============================================
 UPDATE public.consultores_atendimento
 SET tipos_reuniao = '[
-  {"slug":"blackcrm","label":"BlackCRM","descricao":"Tutoria e implementação do Black CRM."},
+  {"slug":"blackcrm","label":"BlackCRM","descricao":"Tutoria do Black CRM."},
   {"slug":"videos-ia","label":"Consultoria de vídeos com IA","descricao":"Criação de vídeos com inteligência artificial."}
 ]'::jsonb
 WHERE slug = 'leo';

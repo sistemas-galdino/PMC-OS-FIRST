@@ -315,10 +315,12 @@ export default function AtendimentoPublicoPage() {
       <div className="space-y-8">
         <Stepper steps={stepKeys.map(k => STEP_LABELS[k])} current={step} />
 
-        <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-          <ClockIcon className="size-4 shrink-0" />
-          <span>Todos os horários estão no fuso de Brasília (GMT-3).</span>
-        </div>
+        {stepKey !== "assunto" && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+            <ClockIcon className="size-4 shrink-0" />
+            <span>Todos os horários estão no fuso de Brasília (GMT-3).</span>
+          </div>
+        )}
 
         <motion.div
           key={step}
