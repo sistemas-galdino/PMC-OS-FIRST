@@ -17,6 +17,7 @@ import {
   CalendarIcon,
   UserCheckIcon,
   Trash2Icon,
+  MessageSquareIcon,
 } from "@/components/ui/icons"
 import {
   isoData,
@@ -527,6 +528,20 @@ function AgendamentoDetalhe({
             {(ag.horario ?? "").slice(0, 5) || "Sem horário"}
             {ag.duracao_minutos ? ` (${ag.duracao_minutos}min)` : ""}
           </div>
+
+          {ag.assunto && (
+            <div className="flex items-center gap-2 text-sm text-foreground">
+              <FileTextIcon className="size-4 text-muted-foreground" />
+              {ag.assunto}
+            </div>
+          )}
+
+          {ag.observacoes && (
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <MessageSquareIcon className="size-4 mt-0.5 shrink-0" />
+              <span className="whitespace-pre-wrap">{ag.observacoes}</span>
+            </div>
+          )}
 
           {(ag.link_meet || aguardandoMeet || ag.link_gravacao || ag.link_geminidoc) && (
             <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
