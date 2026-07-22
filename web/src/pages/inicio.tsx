@@ -550,8 +550,8 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
       label: "Reunião com Consultores",
       desc: "Agende com seu consultor",
       icon: Calendar,
-      url: "/agendar",
-      internal: true,
+      url: "/atendimento",
+      internal: false,
     },
     {
       label: "Reunião com Galdino",
