@@ -40,6 +40,10 @@ Deno.serve(async (req: Request) => {
     if (!email) return jsonResponse({ error: "email é obrigatório" }, 400)
 
     // Cria o auth user + link de convite (definição de senha).
+    // Monta um link "bonito" no domínio do próprio app (appUrl) levando o token_hash
+    // direto pra /ativar-conta (que chama verifyOtp). Sem isso, o action_link é uma URL
+    // crua do Supabase (…supabase.co/auth/v1/verify?…) e a página não recebe token_hash,
+    // deixando o botão "Ativar conta" travado. Fallback: action_link quando faltar appUrl/hash.
     async function criarLoginEGerarLink(): Promise<{ userId: string; link: string }> {
       const { data, error } = await admin.auth.admin.generateLink({
         type: "invite",
@@ -47,7 +51,11 @@ Deno.serve(async (req: Request) => {
         options: appUrl ? { redirectTo: `${appUrl}/ativar-conta` } : undefined,
       })
       if (error) throw new Error(error.message)
-      return { userId: data.user!.id, link: data.properties?.action_link ?? "" }
+      const hashed = data.properties?.hashed_token
+      const link = appUrl && hashed
+        ? `${appUrl}/ativar-conta?token_hash=${hashed}&type=invite`
+        : (data.properties?.action_link ?? "")
+      return { userId: data.user!.id, link }
     }
 
     if (tipo === "membro") {

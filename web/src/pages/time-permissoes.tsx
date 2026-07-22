@@ -19,6 +19,7 @@ import {
   CheckCircle2Icon as CheckCircle2,
   AlertCircleIcon as AlertCircle,
   PlusIcon as Plus,
+  Trash2Icon as Trash2,
 } from "@/components/ui/icons"
 
 interface Papel { chave: string; nome: string; descricao: string | null; is_full: boolean; is_super: boolean; ordem: number }
@@ -42,6 +43,10 @@ export default function TimePermissoesPage() {
   const [addNome, setAddNome] = useState("")
   const [addPapel, setAddPapel] = useState("consultor")
   const [addResult, setAddResult] = useState<{ ok: boolean; msg: string; link?: string } | null>(null)
+  // Excluir membro (Super Admin) — confirmação inline por linha.
+  const [confirmarRemover, setConfirmarRemover] = useState<number | null>(null)
+  const [removendo, setRemovendo] = useState<number | null>(null)
+  const [removerErro, setRemoverErro] = useState<string | null>(null)
 
   async function carregar() {
     const [pRes, sRes, mRes, tRes, oRes] = await Promise.all([
@@ -115,6 +120,30 @@ export default function TimePermissoesPage() {
     const { error } = await supabase.from("mentores").update({ papel: novo }).eq("id", m.id)
     if (!error) setMembros((prev) => prev.map((x) => x.id === m.id ? { ...x, papel: novo } : x))
     setSalvando(false)
+  }
+
+  // Exclui o membro por completo (equipe + login) via edge function service-role.
+  async function removerMembro(m: Membro) {
+    setRemovendo(m.id)
+    setRemoverErro(null)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/remover-membro`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
+        body: JSON.stringify({ id: m.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setRemoverErro(String(data.error || "Erro ao excluir membro."))
+      } else {
+        setMembros((prev) => prev.filter((x) => x.id !== m.id))
+        setConfirmarRemover(null)
+      }
+    } catch (e) {
+      setRemoverErro((e as Error).message)
+    }
+    setRemovendo(null)
   }
 
   async function toggleSecao(m: Membro, secao: string) {
@@ -295,7 +324,42 @@ export default function TimePermissoesPage() {
                     >
                       Seções <ChevronRight className={`size-4 transition-transform ${aberto ? "rotate-90" : ""}`} />
                     </button>
+
+                    {/* Excluir membro + login (Super Admin, menos você mesmo) */}
+                    {isSuperAdmin && !ehEu && (
+                      confirmarRemover === m.id ? (
+                        <div className="inline-flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] font-semibold text-destructive">Excluir de vez?</span>
+                          <button
+                            onClick={() => removerMembro(m)}
+                            disabled={removendo === m.id}
+                            className="rounded-md bg-destructive px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-50"
+                          >
+                            {removendo === m.id ? "Excluindo…" : "Sim, excluir"}
+                          </button>
+                          <button
+                            onClick={() => { setConfirmarRemover(null); setRemoverErro(null) }}
+                            disabled={removendo === m.id}
+                            className="rounded-md border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground disabled:opacity-50"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setConfirmarRemover(m.id); setRemoverErro(null) }}
+                          title="Excluir membro e login"
+                          className="inline-flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      )
+                    )}
                   </div>
+
+                  {confirmarRemover === m.id && removerErro && (
+                    <div className="px-4 pb-3 -mt-1 text-[11px] font-semibold text-destructive">{removerErro}</div>
+                  )}
 
                   {/* Editor de seções */}
                   {aberto && !p?.is_full && (
