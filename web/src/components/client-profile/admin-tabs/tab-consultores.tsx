@@ -215,7 +215,7 @@ export default function TabConsultores({ clientId }: { clientId: string }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold text-foreground">
-                          {r.mentor || "Sem mentor definido"}
+                          {r.mentor || "Sem consultor definido"}
                         </span>
                         {realizada ? (
                           <span className="inline-flex items-center rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-emerald-400">

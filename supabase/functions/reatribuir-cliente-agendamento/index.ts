@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts"
 import { atualizarEventoEm } from "../_shared/google-calendar.ts"
 import { tituloEvento, descricaoEvento, type TabelaDestino } from "../_shared/agendamento-evento.ts"
+import { isAdminUser } from "../_shared/encontros-ao-vivo.ts"
 
 type Origem = "galdino" | "mentoria" | "blackcrm"
 
@@ -58,9 +59,17 @@ Deno.serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
     })
+
+    // Operação administrativa (Central de Atendimentos): exige admin.
+    const auth = req.headers.get("Authorization") ?? ""
+    const jwt = auth.startsWith("Bearer ") ? auth.slice(7) : ""
+    if (!jwt || !(await isAdminUser(supabase, supabaseUrl, anonKey, jwt))) {
+      return jsonResponse({ error: "Apenas administradores podem reatribuir agendamentos" }, 403)
+    }
 
     const tabela = TABELA_ORIGEM[origem]
 
@@ -72,7 +81,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle<{ id_cliente: string; empresa_nome: string | null; codigo_cliente: number }>()
 
     if (cliErr) {
-      return jsonResponse({ error: "Erro ao consultar cadastro: " + cliErr.message }, 500)
+      console.error("[detalhe]", cliErr.message); return jsonResponse({ error: "Erro ao consultar cadastro (detalhe registrado no servidor)" }, 500)
     }
     if (!matchCli) {
       // Falha de validação esperada (admin digitou código que não existe):
@@ -90,7 +99,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle<Linha>()
 
     if (selErr) {
-      return jsonResponse({ error: "Erro ao consultar agendamento: " + selErr.message }, 500)
+      console.error("[detalhe]", selErr.message); return jsonResponse({ error: "Erro ao consultar agendamento (detalhe registrado no servidor)" }, 500)
     }
     if (!row) {
       return jsonResponse({ error: "Agendamento não encontrado" }, 404)
@@ -109,7 +118,7 @@ Deno.serve(async (req: Request) => {
       .eq("id_unico", id_unico)
 
     if (updErr) {
-      return jsonResponse({ error: "Erro ao reatribuir no banco: " + updErr.message }, 500)
+      console.error("[detalhe]", updErr.message); return jsonResponse({ error: "Erro ao reatribuir no banco (detalhe registrado no servidor)" }, 500)
     }
 
     // 4. Atualiza título/descrição do evento no Google Calendar com a nova empresa/código.
@@ -180,7 +189,7 @@ Deno.serve(async (req: Request) => {
 
     return jsonResponse({ ok: true, empresa: empresaFinal, atualizado_gcal, gcal_erro })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return jsonResponse({ error: msg }, 500)
+    console.error("[erro-interno]", e instanceof Error ? e.message : String(e))
+    return jsonResponse({ error: "Erro interno (detalhe registrado no servidor)" }, 500)
   }
 })

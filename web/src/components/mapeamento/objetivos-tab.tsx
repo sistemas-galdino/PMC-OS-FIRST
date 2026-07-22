@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { celebrarPontosMC } from "@/components/pontos-mc-splash"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -113,11 +114,13 @@ export default function ObjetivosTab({ session, clientId }: Props) {
 
   async function persist(key: string, patch: Partial<ObjetivoRecord>) {
     if (!resolvedClientId) return
+    // Antes desta gravação a área estava vazia? (para pontuar só a primeira vez)
+    const primeiraGravacao = Object.keys(records).length === 0
     const current = records[key] || { objetivo_key: key, prioridade: 'nao_prioridade' as Prioridade, observacoes: '' }
     const next: ObjetivoRecord = { ...current, ...patch }
     setRecords(prev => ({ ...prev, [key]: next }))
     setSavingKey(key)
-    await supabase
+    const { error } = await supabase
       .from('cliente_objetivos_programa')
       .upsert(
         {
@@ -128,6 +131,7 @@ export default function ObjetivosTab({ session, clientId }: Props) {
         },
         { onConflict: 'id_cliente,objetivo_key' }
       )
+    if (!error && primeiraGravacao && !clientId) celebrarPontosMC(25, 'Mapeamento · Objetivos preenchido')
     setSavingKey(null)
   }
 

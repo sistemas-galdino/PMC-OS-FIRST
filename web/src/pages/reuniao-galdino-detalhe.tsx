@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -47,8 +48,8 @@ export default function ReuniaoGaldinoDetalhePage({ isAdmin: isAdminProp = false
   const [meeting, setMeeting] = useState<Meeting | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>("resumo")
-  const [isAdminLocal, setIsAdminLocal] = useState(false)
-  const isAdmin = isAdminProp || isAdminLocal
+  const { isAdmin: isAdminCtx } = useAuth()
+  const isAdmin = isAdminProp || isAdminCtx
 
   useEffect(() => {
     async function fetchMeeting() {
@@ -63,13 +64,6 @@ export default function ReuniaoGaldinoDetalhePage({ isAdmin: isAdminProp = false
       setLoading(false)
     }
     fetchMeeting()
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user?.email) {
-        supabase.from('mentores').select('id').eq('email', session.user.email).maybeSingle()
-          .then(({ data }) => setIsAdminLocal(!!data))
-      }
-    })
   }, [id])
 
   if (loading) {

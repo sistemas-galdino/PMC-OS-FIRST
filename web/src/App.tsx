@@ -1,65 +1,70 @@
-import { useEffect, useState, Component } from "react"
+import { Component, lazy, Suspense } from "react"
 import type { ReactNode } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
-import { supabase } from "@/lib/supabase"
-import LoginPage from "@/pages/login"
-import AdminDashboard from "@/pages/admin-dashboard"
-import MentoresPage from "@/pages/mentores"
-import ClientesPage from "@/pages/clientes"
-import AcessosPage from "@/pages/acessos"
-import MapeamentoPage from "@/pages/mapeamento"
-import IndicadoresPage from "@/pages/indicadores"
-import AcoesPage from "@/pages/acoes"
-import OnboardingPage from "@/pages/onboarding"
-import ClientProfilePage from "@/pages/client-profile"
-import ClientReunioesPage from "@/pages/client-reunioes"
-import DefinirSenhaPage from "@/pages/definir-senha"
-import AtivarContaPage from "@/pages/ativar-conta"
-import RecuperarSenhaPage from "@/pages/recuperar-senha"
-import TrocarSenhaPage from "@/pages/trocar-senha"
-import CadastroPage from "@/pages/cadastro"
-import ReuniaoDetalhePage from "@/pages/reuniao-detalhe"
-import ReunioesGaldinoPage from "@/pages/reunioes-galdino"
-import ReuniaoGaldinoDetalhePage from "@/pages/reuniao-galdino-detalhe"
-import ReunioesBlackCRMPage from "@/pages/reunioes-blackcrm"
-import ReuniaoBlackCRMDetalhePage from "@/pages/reuniao-blackcrm-detalhe"
-import RecursosPage from "@/pages/recursos"
-import FerramentasPage from "@/pages/ferramentas"
-import CalendarioEncontrosPage from "@/pages/calendario-encontros"
-import ConfiguracoesPage from "@/pages/configuracoes"
-import AgendarPage from "@/pages/agendar"
-import InicioPage from "@/pages/inicio"
-import MetodoPage from "@/pages/metodo"
-import NovidadesPage from "@/pages/novidades"
-import NovidadesAdminPage from "@/pages/novidades-admin"
-import EstudosCasoPage from "@/pages/estudos-caso"
-import EstudosCasoAdminPage from "@/pages/estudos-caso-admin"
-import Dashboard2 from "@/pages/dashboard-2"
-import CanaisVendasPage from "@/pages/canais-vendas"
-import MultiplicadoresPage from "@/pages/multiplicadores"
-import MultiplicadoresAdminPage from "@/pages/multiplicadores-admin"
-import SkillsPage from "@/pages/skills"
-import SkillsAdminPage from "@/pages/skills-admin"
-import RepositorioVitoriasPage from "@/pages/repositorio-vitorias"
-import VitoriasPage from "@/pages/vitorias"
-import MeuTimePage from "@/pages/meu-time"
-import TrilhasPage from "@/pages/trilhas"
-import TrilhaEvidenciasPage from "@/pages/trilha-evidencias"
-import InformacoesEmpresaPage from "@/pages/informacoes-empresa"
-import RoadmapSistemasPage from "@/pages/roadmap-sistemas"
-import CentralAtendimentosPage from "@/pages/central-atendimentos"
-import AtendimentoPublicoPage from "@/pages/atendimento-publico"
-import FunisPage from "@/pages/funis"
-import RespostasOnboardingPage from "@/pages/respostas-onboarding"
-import CRMPage from "@/pages/crm"
-import AgentePage from "@/pages/agente"
-import GuardiaoPage from "@/pages/guardiao"
-import GuardiaoResponderPage from "@/pages/guardiao-responder"
-import GuardiaoAdminPage from "@/pages/guardiao-admin"
-import type { Session } from "@supabase/supabase-js"
+import { AuthProvider, useAuth } from "@/lib/auth-context"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
-// import { BackgroundShader } from "@/components/ui/background-shader" // fallback: shader padrão
 import { BackgroundShaderPaper } from "@/components/ui/background-shader-paper"
+
+const LoginPage = lazy(() => import("@/pages/login"))
+const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"))
+const MentoresPage = lazy(() => import("@/pages/mentores"))
+const ClientesPage = lazy(() => import("@/pages/clientes"))
+const AcessosPage = lazy(() => import("@/pages/acessos"))
+const MapeamentoPage = lazy(() => import("@/pages/mapeamento"))
+const IndicadoresPage = lazy(() => import("@/pages/indicadores"))
+const AcoesPage = lazy(() => import("@/pages/acoes"))
+const OnboardingPage = lazy(() => import("@/pages/onboarding"))
+const ClientProfilePage = lazy(() => import("@/pages/client-profile"))
+const ClientReunioesPage = lazy(() => import("@/pages/client-reunioes"))
+const DefinirSenhaPage = lazy(() => import("@/pages/definir-senha"))
+const AtivarContaPage = lazy(() => import("@/pages/ativar-conta"))
+const RecuperarSenhaPage = lazy(() => import("@/pages/recuperar-senha"))
+const TrocarSenhaPage = lazy(() => import("@/pages/trocar-senha"))
+const CadastroPage = lazy(() => import("@/pages/cadastro"))
+const ReuniaoDetalhePage = lazy(() => import("@/pages/reuniao-detalhe"))
+const ReunioesGaldinoPage = lazy(() => import("@/pages/reunioes-galdino"))
+const ReuniaoGaldinoDetalhePage = lazy(() => import("@/pages/reuniao-galdino-detalhe"))
+const ReunioesBlackCRMPage = lazy(() => import("@/pages/reunioes-blackcrm"))
+const ReuniaoBlackCRMDetalhePage = lazy(() => import("@/pages/reuniao-blackcrm-detalhe"))
+const RecursosPage = lazy(() => import("@/pages/recursos"))
+const FerramentasPage = lazy(() => import("@/pages/ferramentas"))
+const CalendarioEncontrosPage = lazy(() => import("@/pages/calendario-encontros"))
+const ConfiguracoesPage = lazy(() => import("@/pages/configuracoes"))
+const AgendarPage = lazy(() => import("@/pages/agendar"))
+const InicioPage = lazy(() => import("@/pages/inicio"))
+const RelatorioPage = lazy(() => import("@/pages/relatorio"))
+const BalancoPage = lazy(() => import("@/pages/balanco"))
+const RadarRenovacaoPage = lazy(() => import("@/pages/radar-renovacao"))
+const NiveisPage = lazy(() => import("@/pages/niveis"))
+const MetodoPage = lazy(() => import("@/pages/metodo"))
+const NovidadesPage = lazy(() => import("@/pages/novidades"))
+const RankingGuardioesPage = lazy(() => import("@/pages/ranking-guardioes"))
+const LogsDownloadPage = lazy(() => import("@/pages/logs-download"))
+const NovidadesAdminPage = lazy(() => import("@/pages/novidades-admin"))
+const EstudosCasoPage = lazy(() => import("@/pages/estudos-caso"))
+const EstudosCasoAdminPage = lazy(() => import("@/pages/estudos-caso-admin"))
+const CanaisVendasPage = lazy(() => import("@/pages/canais-vendas"))
+const MultiplicadoresPage = lazy(() => import("@/pages/multiplicadores"))
+const MultiplicadoresAdminPage = lazy(() => import("@/pages/multiplicadores-admin"))
+const SkillsPage = lazy(() => import("@/pages/skills"))
+const SkillsAdminPage = lazy(() => import("@/pages/skills-admin"))
+const RepositorioVitoriasPage = lazy(() => import("@/pages/repositorio-vitorias"))
+const VitoriasPage = lazy(() => import("@/pages/vitorias"))
+const MeuTimePage = lazy(() => import("@/pages/meu-time"))
+const TrilhasPage = lazy(() => import("@/pages/trilhas"))
+const TrilhaEvidenciasPage = lazy(() => import("@/pages/trilha-evidencias"))
+const InformacoesEmpresaPage = lazy(() => import("@/pages/informacoes-empresa"))
+const RoadmapSistemasPage = lazy(() => import("@/pages/roadmap-sistemas"))
+const CentralAtendimentosPage = lazy(() => import("@/pages/central-atendimentos"))
+const AtendimentoPublicoPage = lazy(() => import("@/pages/atendimento-publico"))
+const FunisPage = lazy(() => import("@/pages/funis"))
+const RespostasOnboardingPage = lazy(() => import("@/pages/respostas-onboarding"))
+const CRMPage = lazy(() => import("@/pages/crm"))
+const AgentePage = lazy(() => import("@/pages/agente"))
+const GuardiaoPage = lazy(() => import("@/pages/guardiao"))
+const GuardiaoResponderPage = lazy(() => import("@/pages/guardiao-responder"))
+const GuardiaoAdminPage = lazy(() => import("@/pages/guardiao-admin"))
+const TimePermissoesPage = lazy(() => import("@/pages/time-permissoes"))
 
 // Error Boundary to catch any component crashes
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: any }> {
@@ -88,7 +93,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
           <pre className="bg-muted/30 p-6 rounded-2xl border border-border text-muted-foreground text-xs overflow-auto max-w-2xl text-left mb-10 w-full">
             {this.state.error?.toString()}
           </pre>
-          <button 
+          <button
             onClick={() => { localStorage.clear(); window.location.reload(); }}
             className="bg-primary text-primary-foreground px-8 py-3.5 rounded-xl font-bold uppercase text-[11px] tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-transform"
           >
@@ -101,137 +106,47 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 }
 
-function App() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [roleResolved, setRoleResolved] = useState(false)
-  const [needsOnboarding, setNeedsOnboarding] = useState(false)
-  const [needsPassword, setNeedsPassword] = useState(false)
-
-  useEffect(() => {
-    let mounted = true
-
-    async function initialize() {
-      try {
-        const { data: { session: s } } = await supabase.auth.getSession()
-        if (mounted) {
-          setSession(s)
-          setLoading(false)
-        }
-      } catch (err) {
-        console.error("Session check error:", err)
-        if (mounted) setLoading(false)
-      }
-    }
-
-    initialize()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-      if (mounted && event !== 'TOKEN_REFRESHED') {
-        setSession(s)
-      }
-    })
-
-    document.documentElement.classList.add("dark")
-
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!session?.user?.email) {
-      // Sem sessão não há role a resolver — libera a renderização (ex.: /login).
-      setRoleResolved(true)
-      return
-    }
-    const { email, id } = session.user
-
-    let cancelled = false
-    // Nova sessão: segura o roteamento até sabermos se é admin (evita o `/` redirecionar
-    // pra /inicio antes de isAdmin resolver).
-    setRoleResolved(false)
-
-    async function checkUserRole() {
-      try {
-        const [{ data: mentor }, { data: onboarding }] = await Promise.all([
-          supabase
-            .from('mentores')
-            .select('id')
-            .eq('email', email)
-            .maybeSingle(),
-          supabase
-            .from('cliente_onboarding')
-            .select('status, senha_definida')
-            .eq('id_cliente', id)
-            .maybeSingle(),
-        ])
-
-        if (cancelled) return
-
-        const admin = !!mentor
-        setIsAdmin(admin)
-
-        if (!admin && onboarding && onboarding.status === 'em_andamento') {
-          setNeedsPassword(!onboarding.senha_definida)
-          setNeedsOnboarding(!!onboarding.senha_definida)
-        } else {
-          setNeedsPassword(false)
-          setNeedsOnboarding(false)
-        }
-      } finally {
-        // Sempre libera o roteamento (mesmo se a query falhar, para não travar no spinner).
-        if (!cancelled) setRoleResolved(true)
-      }
-    }
-
-    checkUserRole()
-    return () => { cancelled = true }
-  }, [session?.user?.id])
-
-  if (loading || (session?.user && !roleResolved)) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-6">
-          <div className="size-16 relative">
-            <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
-            <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-          <div className="font-bold tracking-[0.4em] text-sm text-foreground uppercase animate-pulse">
-            PMC OS
-          </div>
+function PmcSpinner() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-6">
+        <div className="size-16 relative">
+          <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+          <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+        <div className="font-bold tracking-[0.4em] text-sm text-foreground uppercase animate-pulse">
+          PMC OS
         </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
+
+// Guarda por seção (RBAC): precisa ser time E ter a seção liberada no papel.
+function RequireSecao({ secao, children }: { secao: string; children: ReactNode }) {
+  const { isAdmin, can } = useAuth()
+  if (!isAdmin) return <Navigate to="/" replace />
+  return can(secao) ? <>{children}</> : <Navigate to="/" replace />
+}
+
+function AppRoutes() {
+  const { session, isAdmin, needsPassword, needsOnboarding, loading, idCliente } = useAuth()
+  // Portal do cliente: resolve a empresa (cliente legado OU 2º usuário vinculado).
+  // Só passa quando NÃO é admin (admin usa clientId por rota/params). undefined
+  // deixa a página cair no session.user.id (comportamento legado).
+  const cid = !isAdmin && idCliente ? idCliente : undefined
+
+  if (loading) return <PmcSpinner />
 
   return (
-    <ErrorBoundary>
-      <BackgroundShaderPaper />
-      <BrowserRouter>
+    <BrowserRouter>
+      <Suspense fallback={<PmcSpinner />}>
         <Routes>
-          <Route
-            path="/login"
-            element={!session ? <LoginPage /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/definir-senha"
-            element={<DefinirSenhaPage />}
-          />
-          <Route
-            path="/ativar-conta"
-            element={<AtivarContaPage />}
-          />
-          <Route
-            path="/recuperar-senha"
-            element={<RecuperarSenhaPage />}
-          />
-          <Route
-            path="/cadastro"
-            element={session ? <CadastroPage session={session} /> : <Navigate to="/login" replace />}
-          />
+          <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/" replace />} />
+          <Route path="/definir-senha" element={<DefinirSenhaPage />} />
+          <Route path="/ativar-conta" element={<AtivarContaPage />} />
+          <Route path="/recuperar-senha" element={<RecuperarSenhaPage />} />
+          <Route path="/cadastro" element={session ? <CadastroPage session={session} /> : <Navigate to="/login" replace />} />
           <Route path="/atendimento" element={<AtendimentoPublicoPage />} />
           <Route path="/atendimento/:slug" element={<AtendimentoPublicoPage />} />
           <Route path="/guardiao/r/:token" element={<GuardiaoResponderPage />} />
@@ -243,54 +158,61 @@ function App() {
                 <DashboardLayout isAdmin={isAdmin}>
                   <Routes>
                     <Route path="/" element={isAdmin ? <AdminDashboard /> : <Navigate to="/inicio" replace />} />
-                    <Route path="/inicio" element={<InicioPage session={session} />} />
-                    <Route path="/metodo" element={<MetodoPage session={session} />} />
-                    <Route path="/novidades" element={<NovidadesPage session={session} />} />
-                    <Route path="/novidades-admin" element={isAdmin ? <NovidadesAdminPage /> : <Navigate to="/" replace />} />
-                    <Route path="/estudos-caso" element={<EstudosCasoPage session={session} />} />
-                    <Route path="/estudos-caso-admin" element={isAdmin ? <EstudosCasoAdminPage /> : <Navigate to="/" replace />} />
-                    <Route path="/dashboard-2" element={isAdmin ? <Dashboard2 /> : <Navigate to="/" replace />} />
-                    <Route path="/canais-vendas" element={isAdmin ? <CanaisVendasPage /> : <Navigate to="/" replace />} />
+                    <Route path="/inicio" element={<InicioPage session={session} clientId={cid} />} />
+                    <Route path="/relatorio" element={<RelatorioPage session={session} clientId={cid} />} />
+                    <Route path="/balanco" element={<BalancoPage session={session} clientId={cid} />} />
+                    <Route path="/niveis" element={<NiveisPage session={session} clientId={cid} />} />
+                    <Route path="/metodo" element={<MetodoPage session={session} clientId={cid} />} />
+                    <Route path="/novidades" element={<NovidadesPage session={session} clientId={cid} />} />
+                    <Route path="/ranking-guardioes" element={<RankingGuardioesPage clientId={cid} />} />
+                    <Route path="/novidades-admin" element={<RequireSecao secao="novidades-admin"><NovidadesAdminPage /></RequireSecao>} />
+                    <Route path="/logs-download" element={<RequireSecao secao="logs-download"><LogsDownloadPage /></RequireSecao>} />
+                    <Route path="/estudos-caso" element={<EstudosCasoPage session={session} clientId={cid} />} />
+                    <Route path="/estudos-caso-admin" element={<RequireSecao secao="estudos-caso-admin"><EstudosCasoAdminPage /></RequireSecao>} />
+                    <Route path="/dashboard-2" element={<Navigate to="/" replace />} />
+                    <Route path="/canais-vendas" element={<RequireSecao secao="canais-vendas"><CanaisVendasPage /></RequireSecao>} />
                     <Route path="/multiplicadores" element={<MultiplicadoresPage />} />
-                    <Route path="/multiplicadores-admin" element={isAdmin ? <MultiplicadoresAdminPage /> : <Navigate to="/" replace />} />
+                    <Route path="/multiplicadores-admin" element={<RequireSecao secao="multiplicadores-admin"><MultiplicadoresAdminPage /></RequireSecao>} />
                     <Route path="/skills" element={<SkillsPage />} />
-                    <Route path="/skills-admin" element={isAdmin ? <SkillsAdminPage /> : <Navigate to="/" replace />} />
-                    <Route path="/repositorio-vitorias" element={isAdmin ? <RepositorioVitoriasPage /> : <Navigate to="/" replace />} />
-                    <Route path="/mentores" element={isAdmin ? <MentoresPage isAdmin={isAdmin} /> : <Navigate to="/" replace />} />
-                    <Route path="/clientes" element={isAdmin ? <ClientesPage /> : <Navigate to="/" replace />} />
-                    <Route path="/acessos" element={isAdmin ? <AcessosPage /> : <Navigate to="/" replace />} />
-                    <Route path="/mapeamento" element={<MapeamentoPage session={session} />} />
+                    <Route path="/skills-admin" element={<RequireSecao secao="skills-admin"><SkillsAdminPage /></RequireSecao>} />
+                    <Route path="/repositorio-vitorias" element={<RequireSecao secao="repositorio-vitorias"><RepositorioVitoriasPage /></RequireSecao>} />
+                    <Route path="/mentores" element={<RequireSecao secao="consultores"><MentoresPage isAdmin={isAdmin} /></RequireSecao>} />
+                    <Route path="/clientes" element={<RequireSecao secao="clientes"><ClientesPage /></RequireSecao>} />
+                    <Route path="/radar-renovacao" element={<RequireSecao secao="radar-renovacao"><RadarRenovacaoPage /></RequireSecao>} />
+                    <Route path="/acessos" element={<RequireSecao secao="acessos"><AcessosPage /></RequireSecao>} />
+                    <Route path="/mapeamento" element={<MapeamentoPage session={session} clientId={cid} />} />
                     <Route path="/produtos" element={<Navigate to="/mapeamento?tab=produtos" replace />} />
                     <Route path="/canais" element={<Navigate to="/mapeamento?tab=canais" replace />} />
-                    <Route path="/indicadores" element={<IndicadoresPage session={session} />} />
-                    <Route path="/acoes" element={<AcoesPage session={session} />} />
-                    <Route path="/reunioes" element={<ClientReunioesPage session={session} />} />
-                    <Route path="/cliente/:id" element={isAdmin ? <ClientProfilePage /> : <Navigate to="/" replace />} />
+                    <Route path="/indicadores" element={<IndicadoresPage session={session} clientId={cid} />} />
+                    <Route path="/acoes" element={<AcoesPage session={session} clientId={cid} />} />
+                    <Route path="/reunioes" element={<ClientReunioesPage session={session} clientId={cid} />} />
+                    <Route path="/cliente/:id" element={<RequireSecao secao="clientes"><ClientProfilePage /></RequireSecao>} />
                     <Route path="/reuniao/:id" element={<ReuniaoDetalhePage isAdmin={isAdmin} />} />
                     <Route path="/reunioes-galdino" element={<ReunioesGaldinoPage session={session} isAdmin={isAdmin} />} />
                     <Route path="/reuniao-galdino/:id" element={<ReuniaoGaldinoDetalhePage isAdmin={isAdmin} />} />
                     <Route path="/reunioes-blackcrm" element={<ReunioesBlackCRMPage session={session} isAdmin={isAdmin} />} />
                     <Route path="/reuniao-blackcrm/:id" element={<ReuniaoBlackCRMDetalhePage isAdmin={isAdmin} />} />
-                    <Route path="/recursos" element={<RecursosPage session={session} />} />
+                    <Route path="/recursos" element={<RecursosPage session={session} clientId={cid} />} />
                     <Route path="/ferramentas" element={<FerramentasPage session={session} forceAdmin={isAdmin} />} />
                     <Route path="/calendario" element={<CalendarioEncontrosPage isAdmin={isAdmin} />} />
-                    <Route path="/onboarding" element={isAdmin ? <OnboardingPage /> : <Navigate to="/" replace />} />
-                    <Route path="/configuracoes" element={isAdmin ? <ConfiguracoesPage /> : <Navigate to="/" replace />} />
+                    <Route path="/onboarding" element={<RequireSecao secao="onboarding"><OnboardingPage /></RequireSecao>} />
+                    <Route path="/configuracoes" element={<RequireSecao secao="configuracoes"><ConfiguracoesPage /></RequireSecao>} />
+                    <Route path="/time-permissoes" element={<RequireSecao secao="permissoes"><TimePermissoesPage /></RequireSecao>} />
                     <Route path="/trocar-senha" element={<TrocarSenhaPage />} />
                     <Route path="/agendar" element={<AgendarPage />} />
-                    <Route path="/vitorias" element={<VitoriasPage session={session} />} />
-                    <Route path="/meu-time" element={<MeuTimePage session={session} />} />
-                    <Route path="/trilhas" element={<TrilhasPage session={session} />} />
-                    <Route path="/trilhas/evidencias" element={<TrilhaEvidenciasPage session={session} />} />
-                    <Route path="/informacoes-empresa" element={<InformacoesEmpresaPage session={session} />} />
-                    <Route path="/roadmap-sistemas" element={isAdmin ? <RoadmapSistemasPage /> : <Navigate to="/" replace />} />
-                    <Route path="/central-atendimentos" element={isAdmin ? <CentralAtendimentosPage /> : <Navigate to="/" replace />} />
-                    <Route path="/funis" element={isAdmin ? <FunisPage /> : <Navigate to="/" replace />} />
-                    <Route path="/respostas-onboarding" element={isAdmin ? <RespostasOnboardingPage /> : <Navigate to="/" replace />} />
-                    <Route path="/crm" element={isAdmin ? <CRMPage /> : <Navigate to="/" replace />} />
-                    <Route path="/agente" element={isAdmin ? <AgentePage /> : <Navigate to="/" replace />} />
-                    <Route path="/guardiao" element={<GuardiaoPage session={session} hideTabList />} />
-                    <Route path="/guardiao-admin" element={isAdmin ? <GuardiaoAdminPage /> : <Navigate to="/" replace />} />
+                    <Route path="/vitorias" element={<VitoriasPage session={session} clientId={cid} />} />
+                    <Route path="/meu-time" element={<MeuTimePage session={session} clientId={cid} />} />
+                    <Route path="/trilhas" element={<TrilhasPage session={session} clientId={cid} />} />
+                    <Route path="/trilhas/evidencias" element={<TrilhaEvidenciasPage session={session} clientId={cid} />} />
+                    <Route path="/informacoes-empresa" element={<InformacoesEmpresaPage session={session} clientId={cid} />} />
+                    <Route path="/roadmap-sistemas" element={<RequireSecao secao="roadmap-sistemas"><RoadmapSistemasPage /></RequireSecao>} />
+                    <Route path="/central-atendimentos" element={<RequireSecao secao="central-atendimentos"><CentralAtendimentosPage /></RequireSecao>} />
+                    <Route path="/funis" element={<RequireSecao secao="funis"><FunisPage /></RequireSecao>} />
+                    <Route path="/respostas-onboarding" element={<RequireSecao secao="respostas-onboarding"><RespostasOnboardingPage /></RequireSecao>} />
+                    <Route path="/crm" element={<RequireSecao secao="crm"><CRMPage /></RequireSecao>} />
+                    <Route path="/agente" element={<RequireSecao secao="agente"><AgentePage /></RequireSecao>} />
+                    <Route path="/guardiao" element={<GuardiaoPage session={session} clientId={cid} hideTabList />} />
+                    <Route path="/guardiao-admin" element={<RequireSecao secao="guardiao-admin"><GuardiaoAdminPage /></RequireSecao>} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </DashboardLayout>
@@ -298,7 +220,18 @@ function App() {
             ) : <Navigate to="/login" replace />}
           />
         </Routes>
-      </BrowserRouter>
+      </Suspense>
+    </BrowserRouter>
+  )
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <AuthProvider>
+        <BackgroundShaderPaper />
+        <AppRoutes />
+      </AuthProvider>
     </ErrorBoundary>
   )
 }

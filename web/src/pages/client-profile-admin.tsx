@@ -12,6 +12,7 @@ import TabAtividades from "@/components/client-profile/admin-tabs/tab-atividades
 import TabHistorico from "@/components/client-profile/admin-tabs/tab-historico"
 import TabRenovacao from "@/components/client-profile/admin-tabs/tab-renovacao"
 import TabVitorias from "@/components/client-profile/admin-tabs/tab-vitorias"
+import BalancoPage from "@/pages/balanco"
 import TabComunicacao from "@/components/client-profile/admin-tabs/tab-comunicacao"
 import TabCancelamento from "@/components/client-profile/admin-tabs/tab-cancelamento"
 
@@ -24,6 +25,7 @@ const ADMIN_TABS = [
   { key: "atividades", label: "Atividades", Component: TabAtividades },
   { key: "historico", label: "Histórico", Component: TabHistorico },
   { key: "renovacao", label: "Renovação", Component: TabRenovacao },
+  { key: "balanco", label: "Balanço", Component: BalancoPage },
   { key: "vitorias", label: "Vitórias", Component: TabVitorias },
   { key: "comunicacao", label: "Comunicação", Component: TabComunicacao },
   { key: "cancelamento", label: "Cancelamento", Component: TabCancelamento },

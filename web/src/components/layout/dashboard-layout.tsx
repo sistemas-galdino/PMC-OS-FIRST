@@ -2,8 +2,12 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/s
 import { AppSidebar } from "./app-sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { FloatingAgente } from "@/components/agente/floating-agente"
+import { PontosMCSplash } from "@/components/pontos-mc-splash"
+import { NotificationBell } from "./notification-bell"
+import { CommandPalette, CommandPaletteTrigger } from "./command-palette"
 import { motion, AnimatePresence } from "framer-motion"
 import { useLocation } from "react-router-dom"
+import { useAuth } from "@/lib/auth-context"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -12,6 +16,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, isAdmin }: DashboardLayoutProps) {
   const location = useLocation()
+  const { can } = useAuth()
 
   return (
     <TooltipProvider>
@@ -21,6 +26,11 @@ export function DashboardLayout({ children, isAdmin }: DashboardLayoutProps) {
           <div className="absolute top-4 left-4 z-50">
             <SidebarTrigger className="text-primary hover:bg-primary/10 transition-colors shadow-lg bg-background/20 backdrop-blur-md border border-border/50" />
           </div>
+          <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+            <CommandPaletteTrigger />
+            <NotificationBell />
+          </div>
+          <CommandPalette isAdmin={isAdmin} />
           <main className="flex-1 overflow-y-auto">
             <AnimatePresence mode="popLayout">
               <motion.div
@@ -29,7 +39,7 @@ export function DashboardLayout({ children, isAdmin }: DashboardLayoutProps) {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                className="p-6 lg:p-10"
+                className="p-6 pt-16 lg:p-10"
               >
                 <div className="mx-auto max-w-7xl">
                   {children}
@@ -37,7 +47,8 @@ export function DashboardLayout({ children, isAdmin }: DashboardLayoutProps) {
               </motion.div>
             </AnimatePresence>
           </main>
-          {isAdmin && <FloatingAgente />}
+          {can("agente") && <FloatingAgente />}
+          {!isAdmin && <PontosMCSplash />}
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>

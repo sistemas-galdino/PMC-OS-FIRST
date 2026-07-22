@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useSearchParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -46,8 +47,8 @@ export default function ReuniaoDetalhePage({ isAdmin: isAdminProp = false }: { i
   const [loading, setLoading] = useState(true)
   const initialTab = (searchParams.get('tab') as Tab) || "resumo"
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
-  const [isAdminLocal, setIsAdminLocal] = useState(false)
-  const isAdmin = isAdminProp || isAdminLocal
+  const { isAdmin: isAdminCtx } = useAuth()
+  const isAdmin = isAdminProp || isAdminCtx
 
   useEffect(() => {
     async function fetchMeeting() {
@@ -62,14 +63,6 @@ export default function ReuniaoDetalhePage({ isAdmin: isAdminProp = false }: { i
       setLoading(false)
     }
     fetchMeeting()
-
-    // Check admin
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user?.email) {
-        supabase.from('mentores').select('id').eq('email', session.user.email).maybeSingle()
-          .then(({ data }) => setIsAdminLocal(!!data))
-      }
-    })
   }, [id])
 
   if (loading) {

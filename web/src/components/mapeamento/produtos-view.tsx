@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { celebrarPontosMC } from "@/components/pontos-mc-splash"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -142,6 +143,8 @@ export default function ProdutosView({ session, clientId }: ProdutosViewProps) {
         .select()
         .single()
       if (!error && data) {
+        // Primeira entrada da área → o cliente acabou de ganhar os Pontos MC dela.
+        if (!clientId && products.length === 0) celebrarPontosMC(25, 'Mapeamento · Produtos preenchido')
         setProducts(prev => [...prev, data])
         setShowSheet(false)
       }

@@ -22,6 +22,7 @@ interface MeetingWithActions {
   mentor: string
   ganho: string | null
   acoes_count: number
+  origem: "consultor" | "galdino"
 }
 
 export default function AcoesPage({ session, clientId }: { session?: Session, clientId?: string }) {
@@ -41,23 +42,41 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
         .maybeSingle()
 
       if (clientEntry) {
-        const { data: rawMeetings } = await supabase
-          .from('reunioes_mentoria_new')
-          .select('id_unico, data_reuniao, mentor, acoes_cliente, ganho')
-          .eq('id_cliente', clientEntry.id_cliente)
-          .order('data_reuniao', { ascending: false })
+        // Ações vêm de DUAS fontes: reuniões de consultores e reuniões do Galdino.
+        const [consultRes, galdinoRes] = await Promise.all([
+          supabase
+            .from('reunioes_mentoria_new')
+            .select('id_unico, data_reuniao, mentor, acoes_cliente, ganho')
+            .eq('id_cliente', clientEntry.id_cliente)
+            .order('data_reuniao', { ascending: false }),
+          supabase
+            .from('reunioes_galdino')
+            .select('id_unico, data_reuniao, acoes_cliente, ganho')
+            .eq('id_cliente', clientEntry.id_cliente)
+            .order('data_reuniao', { ascending: false }),
+        ])
 
-        const withActions = (rawMeetings || [])
-          .filter(m => Array.isArray(m.acoes_cliente) && m.acoes_cliente.length > 0)
-          .map(m => ({
-            id_unico: m.id_unico,
-            data_reuniao: m.data_reuniao,
-            mentor: m.mentor,
-            ganho: m.ganho,
-            acoes_count: Array.isArray(m.acoes_cliente) ? m.acoes_cliente.length : 0,
-          }))
+        const comAcoes = (m: any) => Array.isArray(m.acoes_cliente) && m.acoes_cliente.length > 0
+        const consult: MeetingWithActions[] = (consultRes.data || []).filter(comAcoes).map((m: any) => ({
+          id_unico: m.id_unico,
+          data_reuniao: m.data_reuniao,
+          mentor: m.mentor || 'Consultor PMC',
+          ganho: m.ganho,
+          acoes_count: m.acoes_cliente.length,
+          origem: 'consultor' as const,
+        }))
+        const galdino: MeetingWithActions[] = (galdinoRes.data || []).filter(comAcoes).map((m: any) => ({
+          id_unico: m.id_unico,
+          data_reuniao: m.data_reuniao,
+          mentor: 'Galdino',
+          ganho: m.ganho,
+          acoes_count: m.acoes_cliente.length,
+          origem: 'galdino' as const,
+        }))
 
-        setMeetings(withActions)
+        const todas = [...consult, ...galdino].sort((a, b) =>
+          (b.data_reuniao || '').localeCompare(a.data_reuniao || ''))
+        setMeetings(todas)
       }
 
       setLoading(false)
@@ -94,7 +113,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
     <div className="space-y-10 pb-10">
       <PageHeader
         title="Plano de Ação"
-        description="Tarefas e direcionamentos estratégicos das suas consultorias."
+        description="Tarefas e direcionamentos das suas reuniões com o Galdino e os consultores."
         action={
           <div className="flex gap-4">
             <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary px-4 py-2 rounded-xl flex items-center gap-2">
@@ -138,11 +157,15 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
               <p className="font-bold text-muted-foreground uppercase tracking-widest text-sm">Nenhuma ação encontrada</p>
             </motion.div>
           ) : (
-            filtered.map((meeting) => (
-              <motion.div key={meeting.id_unico} variants={item} layout>
+            filtered.map((meeting) => {
+              const rota = meeting.origem === 'galdino'
+                ? `/reuniao-galdino/${meeting.id_unico}`
+                : `/reuniao/${meeting.id_unico}?tab=acoes`
+              return (
+              <motion.div key={meeting.origem + meeting.id_unico} variants={item} layout>
                 <Card
                   className="group hover:border-primary/30 transition-all duration-300 cursor-pointer"
-                  onClick={() => navigate(`/reuniao/${meeting.id_unico}?tab=acoes`)}
+                  onClick={() => navigate(rota)}
                 >
                   <CardContent className="p-0 flex flex-col md:flex-row md:items-center">
                     <div className="p-6 flex-1 space-y-3">
@@ -153,7 +176,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="size-1.5 rounded-full bg-primary/40" />
-                          Consultor: <span className="text-foreground">{meeting.mentor}</span>
+                          {meeting.origem === 'galdino' ? 'Reunião com' : 'Consultor:'} <span className="text-foreground">{meeting.mentor}</span>
                         </div>
                         <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg">
                           {meeting.acoes_count} {meeting.acoes_count === 1 ? 'ação' : 'ações'}
@@ -170,7 +193,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
                         variant="outline"
                         size="sm"
                         className="w-full h-10 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:border-primary/30 gap-2"
-                        onClick={(e) => { e.stopPropagation(); navigate(`/reuniao/${meeting.id_unico}?tab=acoes`) }}
+                        onClick={(e) => { e.stopPropagation(); navigate(rota) }}
                       >
                         Ver Ações
                         <ChevronRight className="size-4" />
@@ -179,7 +202,8 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
                   </CardContent>
                 </Card>
               </motion.div>
-            ))
+              )
+            })
           )}
         </AnimatePresence>
       </motion.div>

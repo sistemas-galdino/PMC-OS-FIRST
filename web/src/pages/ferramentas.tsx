@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -74,9 +75,10 @@ const EMPTY_FORM: FormState = {
 }
 
 export default function FerramentasPage({ session, forceAdmin }: FerramentasPageProps) {
+  const { isAdmin: isAdminCtx } = useAuth()
+  const isAdmin = forceAdmin ?? isAdminCtx
   const [ferramentas, setFerramentas] = useState<Ferramenta[]>([])
   const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(forceAdmin ?? false)
   const [search, setSearch] = useState("")
   const [showSheet, setShowSheet] = useState(false)
   const [editing, setEditing] = useState<Ferramenta | null>(null)
@@ -86,24 +88,13 @@ export default function FerramentasPage({ session, forceAdmin }: FerramentasPage
 
   useEffect(() => {
     async function init() {
-      let admin = forceAdmin ?? false
-      if (!admin && session?.user?.email) {
-        const { data } = await supabase
-          .from("mentores")
-          .select("id")
-          .eq("email", session.user.email)
-          .maybeSingle()
-        admin = !!data
-      }
-      setIsAdmin(admin)
-
       let query = supabase
         .from("ferramentas_ia")
         .select("*")
         .order("categoria", { ascending: true })
         .order("ordem", { ascending: true })
 
-      if (!admin) query = query.eq("ativo", true)
+      if (!isAdmin) query = query.eq("ativo", true)
 
       const { data, error } = await query
       if (error) console.error("ferramentas_ia fetch error:", error)
@@ -111,7 +102,7 @@ export default function FerramentasPage({ session, forceAdmin }: FerramentasPage
       setLoading(false)
     }
     init()
-  }, [session, forceAdmin])
+  }, [session, isAdmin])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()

@@ -481,13 +481,18 @@ export function FaseEngenharia({ clientId }: { clientId: string }) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Custo evitado</CardTitle>
+            <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Economia recorrente</CardTitle>
             <div className="bg-primary/10 p-2.5 rounded-xl"><Banknote className="size-4 text-primary" /></div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold tracking-tight">{fmtBRL(kpis.custoMes)}<span className="text-base text-muted-foreground font-semibold">/mês</span></div>
-            {kpis.custoUnico > 0 && (
-              <p className="text-[11px] font-bold text-primary mt-1">+ {fmtBRL(kpis.custoUnico)} único</p>
+            <div className="text-3xl font-bold tracking-tight">{fmtBRL(kpis.custoMes + kpis.tempoMes)}<span className="text-base text-muted-foreground font-semibold">/mês</span></div>
+            <p className="text-[11px] font-bold text-primary mt-1">
+              {fmtBRL(kpis.custoMes)} custo evitado + {fmtBRL(kpis.tempoMes)} tempo
+            </p>
+            {(kpis.custoUnico + kpis.tempoUnico) > 0 && (
+              <p className="text-[11px] font-medium text-muted-foreground mt-0.5">
+                + {fmtBRL(kpis.custoUnico + kpis.tempoUnico)} em ganhos únicos
+              </p>
             )}
           </CardContent>
         </Card>

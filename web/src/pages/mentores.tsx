@@ -102,7 +102,7 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
       if (data && !error) {
         const visiveis = (data as Meeting[]).filter(m => !isReuniaoSemCliente(m))
         const grouped = visiveis.reduce((acc: Record<string, Meeting[]>, meeting: Meeting) => {
-          const mentor = meeting.mentor || "Sem Mentor"
+          const mentor = meeting.mentor || "Sem consultor"
           if (!acc[mentor]) acc[mentor] = []
           acc[mentor].push(meeting)
           return acc
@@ -151,7 +151,7 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
 
   const filteredMentors = Object.entries(
     filteredMeetings.reduce((acc: Record<string, Meeting[]>, meeting) => {
-      const mentor = meeting.mentor || "Sem Mentor"
+      const mentor = meeting.mentor || "Sem consultor"
       if (!acc[mentor]) acc[mentor] = []
       acc[mentor].push(meeting)
       return acc

@@ -263,16 +263,13 @@ export function FaseCopilotos({ clientId }: { clientId: string }) {
             const membros = porNivel[key]
             return (
               <div key={key} className="relative">
-                {/* linha conectora vertical entre as faixas do organograma */}
-                {idx < NIVEIS.length - 1 && (
-                  <div className="absolute left-4 top-8 bottom-0 w-px bg-border/40" aria-hidden />
-                )}
                 <div className="flex items-center gap-3 mb-5">
+                  <div className="h-px flex-1 bg-border/40" />
                   <div className="flex items-center gap-2.5 rounded-xl border border-border bg-muted/10 pl-2.5 pr-3.5 py-1.5">
                     <span className="grid size-6 place-items-center rounded-lg bg-primary/15 text-[10px] font-mono font-bold text-primary">
                       {idx + 1}
                     </span>
-                    <div className="leading-tight">
+                    <div className="leading-tight text-left">
                       <p className="text-[11px] font-bold uppercase tracking-widest text-foreground">{label}</p>
                       <p className="text-[10px] font-medium text-muted-foreground">{hint}</p>
                     </div>
@@ -283,11 +280,11 @@ export function FaseCopilotos({ clientId }: { clientId: string }) {
                   <div className="h-px flex-1 bg-border/40" />
                 </div>
                 {membros.length === 0 ? (
-                  <p className="pl-4 text-[11px] font-medium text-muted-foreground/60 italic">
+                  <p className="text-center text-[11px] font-medium text-muted-foreground/60 italic">
                     Nenhum colaborador neste nível.
                   </p>
                 ) : (
-                  <div className="flex flex-wrap gap-x-10 gap-y-8 pl-4">
+                  <div className="flex flex-wrap justify-center gap-x-10 gap-y-8">
                     {membros.map((colab) => {
                       const cps = copilotosDe(colab.id)
                       const n = cps.length

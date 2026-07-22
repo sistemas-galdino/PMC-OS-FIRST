@@ -108,9 +108,26 @@ function normalizarSite(site: string): string {
   return /^https?:\/\//i.test(s) ? s : `https://${s}`;
 }
 
+// Anti-SSRF: só hosts públicos com nome de domínio. Bloqueia IPs literais,
+// localhost e domínios internos — o fetch roda no servidor e não pode ser
+// usado para alcançar serviços privados/metadata.
+function hostPermitido(url: string): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  if (!host || host === "localhost" || host.endsWith(".localhost")) return false;
+  if (host.endsWith(".local") || host.endsWith(".internal") || !host.includes(".")) return false;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return false; // IPv4 literal
+  if (host.includes(":") || host.startsWith("[")) return false; // IPv6 literal
+  return true;
+}
+
 async function coletarSite(site: string): Promise<{ ok: boolean; texto: string }> {
   const url = normalizarSite(site);
-  if (!url) return { ok: false, texto: "" };
+  if (!url || !hostPermitido(url)) return { ok: false, texto: "" };
   const html = await fetchTexto(url);
   if (!html) return { ok: false, texto: "" };
   const desc = metaConteudo(html, "description") || metaConteudo(html, "og:description");

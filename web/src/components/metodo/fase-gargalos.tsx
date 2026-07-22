@@ -1,13 +1,14 @@
 // Fase 3 — Mapeamento de Gargalos: processos que consomem >10h viram planos de ação com IA.
+// Visualização em KANBAN por status; arraste o card entre colunas para mudar de etapa.
+// Clique no card para abrir o detalhe (plano da IA, skills, rotina).
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   PlusIcon as Plus,
@@ -20,8 +21,11 @@ import {
   CopyIcon as Copy,
   RefreshCwIcon as RefreshCw,
 } from "@/components/ui/icons"
+import {
+  DndContext, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent,
+} from "@dnd-kit/core"
 import { streamMetodoIAGargalo, type PlanoGargaloIA } from "@/lib/metodo-ia"
-import { FaseHeader, VazioFase, MarkdownBox, BadgeIA } from "./compartilhados"
+import { FaseHeader, MarkdownBox, BadgeIA } from "./compartilhados"
 
 // Extrai o valor (parcial) do campo "analise" do JSON que está sendo transmitido, pra mostrar a IA
 // "escrevendo" ao vivo. Enquanto o campo não fechou (sem aspa final não-escapada), devolve o texto atual.
@@ -62,12 +66,12 @@ interface Gargalo {
   plano_ia: PlanoGargaloIA | null
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  mapeado: "Mapeado",
-  analisado: "Analisado pela IA",
-  em_implementacao: "Em implementação",
-  resolvido: "Resolvido",
-}
+const COLUNAS: { key: string; label: string }[] = [
+  { key: "mapeado", label: "Mapeado" },
+  { key: "analisado", label: "Analisado pela IA" },
+  { key: "em_implementacao", label: "Em implementação" },
+  { key: "resolvido", label: "Resolvido" },
+]
 
 const PRIORIDADE_COR: Record<string, string> = {
   Alta: "bg-rose-500/15 text-rose-400 border-rose-500/30",
@@ -87,9 +91,11 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
   const [gerandoSeg, setGerandoSeg] = useState(0)
   const [streamPreview, setStreamPreview] = useState("")
   const [erroIA, setErroIA] = useState<string | null>(null)
-  const [abertoId, setAbertoId] = useState<string | null>(null)
+  const [detalheId, setDetalheId] = useState<string | null>(null)
   const [skillAberta, setSkillAberta] = useState<string | null>(null)
   const [copiado, setCopiado] = useState<string | null>(null)
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
   function copiarSkill(chave: string, texto: string) {
     navigator.clipboard.writeText(texto)
@@ -140,19 +146,21 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
 
   async function excluir(id: string) {
     await supabase.from("metodo_gargalos").delete().eq("id", id)
+    setDetalheId((d) => (d === id ? null : d))
     fetchGargalos()
   }
 
   async function mudarStatus(g: Gargalo, status: string) {
-    await supabase.from("metodo_gargalos").update({ status, updated_at: new Date().toISOString() }).eq("id", g.id)
+    if (g.status === status) return
     setGargalos((prev) => prev.map((x) => (x.id === g.id ? { ...x, status } : x)))
+    await supabase.from("metodo_gargalos").update({ status, updated_at: new Date().toISOString() }).eq("id", g.id)
   }
 
   async function gerarPlanoIA(g: Gargalo) {
     setGerandoId(g.id)
     setErroIA(null)
     setStreamPreview("")
-    setAbertoId(g.id) // abre o painel pra mostrar a IA escrevendo
+    setDetalheId(g.id) // abre o detalhe pra mostrar a IA escrevendo
     try {
       const plano = await streamMetodoIAGargalo(
         {
@@ -164,10 +172,9 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
       )
       await supabase
         .from("metodo_gargalos")
-        .update({ plano_ia: plano, status: "analisado", updated_at: new Date().toISOString() })
+        .update({ plano_ia: plano, status: g.status === "mapeado" ? "analisado" : g.status, updated_at: new Date().toISOString() })
         .eq("id", g.id)
-      setGargalos((prev) => prev.map((x) => (x.id === g.id ? { ...x, plano_ia: plano, status: "analisado" } : x)))
-      setAbertoId(g.id)
+      setGargalos((prev) => prev.map((x) => (x.id === g.id ? { ...x, plano_ia: plano, status: x.status === "mapeado" ? "analisado" : x.status } : x)))
     } catch (e: any) {
       setErroIA(e.message || "Erro ao gerar plano com IA.")
     } finally {
@@ -176,7 +183,16 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
     }
   }
 
+  function onDragEnd(e: DragEndEvent) {
+    const { active, over } = e
+    if (!over) return
+    const g = gargalos.find((x) => x.id === active.id)
+    const novo = String(over.id)
+    if (g && COLUNAS.some((c) => c.key === novo)) mudarStatus(g, novo)
+  }
+
   const horasTotais = gargalos.reduce((acc, g) => acc + (Number(g.horas_mes) || 0), 0)
+  const detalhe = detalheId ? gargalos.find((g) => g.id === detalheId) ?? null : null
 
   return (
     <div className="space-y-6">
@@ -190,7 +206,7 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
       <p className="text-[15px] font-medium text-muted-foreground leading-relaxed max-w-3xl">
         Escolha uma área e mapeie os processos que consomem <strong className="text-foreground">10 horas ou mais</strong>.
         Para cada gargalo, clique em <strong className="text-foreground">Gerar plano com IA</strong> — a IA devolve a análise,
-        a causa raiz e o passo a passo para substituir aquele processo usando IA.
+        a causa raiz e o passo a passo para substituir aquele processo usando IA. Arraste o card entre as colunas para mudar de etapa.
       </p>
 
       {gargalos.length > 0 && (
@@ -214,220 +230,203 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
       {loading ? (
         <div className="h-40 rounded-2xl bg-card/40 animate-pulse" />
       ) : gargalos.length === 0 ? (
-        <VazioFase>
-          Nenhum gargalo mapeado. Pergunte ao seu time: "qual tarefa consome mais de 10 horas por mês
-          na frente do computador?" — e comece por ela.
-        </VazioFase>
+        <div className="rounded-2xl border border-dashed border-border p-8 text-center">
+          <p className="text-sm font-medium text-muted-foreground max-w-md mx-auto">
+            Nenhum gargalo mapeado. Pergunte ao seu time: "qual tarefa consome mais de 10 horas por mês
+            na frente do computador?" — e comece por ela.
+          </p>
+        </div>
       ) : (
-        <div className="space-y-3">
-          {gargalos.map((g) => {
-            const aberto = abertoId === g.id
-            return (
-              <Card key={g.id} className={g.status === "resolvido" ? "border-primary/30 bg-primary/5" : ""}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <CardTitle className="text-sm font-bold tracking-tight">{g.processo}</CardTitle>
-                        {g.area && (
-                          <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0 text-[10px] font-bold uppercase">
-                            {g.area}
-                          </Badge>
-                        )}
-                        {g.horas_mes ? (
-                          <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0 text-[10px] font-bold gap-1">
-                            <Clock className="size-3" />
-                            {Number(g.horas_mes).toLocaleString("pt-BR")}h/mês
-                          </Badge>
-                        ) : null}
-                        {g.plano_ia?.prioridade && (
-                          <Badge className={`rounded-lg px-2 py-0 text-[10px] font-bold border ${PRIORIDADE_COR[g.plano_ia.prioridade] ?? "bg-muted/20 text-muted-foreground border-border"}`}>
-                            {g.plano_ia.prioridade.toUpperCase()}
-                          </Badge>
-                        )}
-                      </div>
-                      {g.descricao && <p className="text-[12px] font-medium text-muted-foreground mt-1 line-clamp-2">{g.descricao}</p>}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Select value={g.status} onValueChange={(v) => mudarStatus(g, v)}>
-                        <SelectTrigger className="h-8 w-44 rounded-lg text-[11px] font-bold">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(STATUS_LABEL).map(([v, l]) => (
-                            <SelectItem key={v} value={v}>{l}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost" size="sm"
-                        className="size-8 p-0 rounded-lg text-muted-foreground hover:text-destructive"
-                        onClick={() => excluir(g.id)}
+        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+            {COLUNAS.map((col) => (
+              <Coluna
+                key={col.key}
+                col={col}
+                itens={gargalos.filter((g) => g.status === col.key)}
+                onAbrir={setDetalheId}
+              />
+            ))}
+          </div>
+        </DndContext>
+      )}
+
+      {/* Detalhe do gargalo (plano da IA, skills, rotina) */}
+      <Dialog open={!!detalhe} onOpenChange={(o) => !o && setDetalheId(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[88vh] overflow-y-auto">
+          {detalhe && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="pr-6">{detalhe.processo}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {detalhe.area && (
+                    <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0 text-[10px] font-bold uppercase">{detalhe.area}</Badge>
+                  )}
+                  {detalhe.horas_mes ? (
+                    <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0 text-[10px] font-bold gap-1">
+                      <Clock className="size-3" />{Number(detalhe.horas_mes).toLocaleString("pt-BR")}h/mês
+                    </Badge>
+                  ) : null}
+                  {detalhe.plano_ia?.prioridade && (
+                    <Badge className={`rounded-lg px-2 py-0 text-[10px] font-bold border ${PRIORIDADE_COR[detalhe.plano_ia.prioridade] ?? "bg-muted/20 text-muted-foreground border-border"}`}>
+                      {detalhe.plano_ia.prioridade.toUpperCase()}
+                    </Badge>
+                  )}
+                  <div className="ml-auto flex items-center gap-1.5">
+                    {/* Mover de etapa */}
+                    {COLUNAS.map((c) => (
+                      <button
+                        key={c.key}
+                        onClick={() => mudarStatus(detalhe, c.key)}
+                        className={`text-[10px] font-bold uppercase px-2 py-1 rounded-lg border transition-colors ${detalhe.status === c.key ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
                       >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
+                        {c.label}
+                      </button>
+                    ))}
                   </div>
-                </CardHeader>
-                <CardContent className="pt-0 space-y-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Button
-                      size="sm"
-                      disabled={gerandoId === g.id}
-                      className="h-9 gap-2 rounded-xl font-bold text-[11px] uppercase tracking-wider"
-                      onClick={() => gerarPlanoIA(g)}
-                    >
-                      <Sparkles className="size-3.5" />
-                      {gerandoId === g.id ? "Gerando plano..." : g.plano_ia ? "Gerar novo plano com IA" : "Gerar plano com IA"}
-                    </Button>
-                    {g.plano_ia && (
-                      <Button
-                        variant="ghost" size="sm"
-                        className="h-9 gap-1.5 rounded-xl font-bold text-[11px] uppercase tracking-wider text-primary hover:text-primary hover:bg-primary/5"
-                        onClick={() => setAbertoId(aberto ? null : g.id)}
-                      >
-                        <ChevronDown className={`size-4 transition-transform ${aberto ? "rotate-180" : ""}`} />
-                        {aberto ? "Fechar plano" : "Ver plano da IA"}
-                      </Button>
+                </div>
+
+                {detalhe.descricao && <p className="text-[13px] font-medium text-muted-foreground">{detalhe.descricao}</p>}
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    disabled={gerandoId === detalhe.id}
+                    className="h-9 gap-2 rounded-xl font-bold text-[11px] uppercase tracking-wider"
+                    onClick={() => gerarPlanoIA(detalhe)}
+                  >
+                    <Sparkles className="size-3.5" />
+                    {gerandoId === detalhe.id ? "Gerando plano..." : detalhe.plano_ia ? "Gerar novo plano com IA" : "Gerar plano com IA"}
+                  </Button>
+                  <Button
+                    variant="ghost" size="sm"
+                    className="h-9 gap-1.5 rounded-xl font-bold text-[11px] uppercase tracking-wider text-muted-foreground hover:text-destructive ml-auto"
+                    onClick={() => excluir(detalhe.id)}
+                  >
+                    <Trash2 className="size-3.5" /> Excluir
+                  </Button>
+                </div>
+
+                {/* IA escrevendo o plano ao vivo (streaming) */}
+                {gerandoId === detalhe.id && (
+                  <div className="rounded-xl bg-muted/20 border border-primary/20 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <BadgeIA />
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-primary animate-pulse">
+                        A IA está escrevendo o plano… {gerandoSeg}s
+                      </span>
+                    </div>
+                    {streamPreview ? (
+                      <p className="text-[13px] font-medium text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                        {streamPreview}
+                        <span className="ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 bg-primary animate-pulse" />
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="h-3 w-3/4 rounded bg-muted/40 animate-pulse" />
+                        <div className="h-3 w-2/3 rounded bg-muted/40 animate-pulse" />
+                        <div className="h-3 w-1/2 rounded bg-muted/40 animate-pulse" />
+                      </div>
                     )}
                   </div>
+                )}
 
-                  {/* IA escrevendo o plano ao vivo (streaming) */}
-                  {gerandoId === g.id && (
-                    <div className="rounded-xl bg-muted/20 border border-primary/20 p-4 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <BadgeIA />
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-primary animate-pulse">
-                          A IA está escrevendo o plano… {gerandoSeg}s
-                        </span>
-                      </div>
-                      {streamPreview ? (
-                        <p className="text-[13px] font-medium text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                          {streamPreview}
-                          <span className="ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 bg-primary animate-pulse" />
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="h-3 w-3/4 rounded bg-muted/40 animate-pulse" />
-                          <div className="h-3 w-2/3 rounded bg-muted/40 animate-pulse" />
-                          <div className="h-3 w-1/2 rounded bg-muted/40 animate-pulse" />
-                        </div>
-                      )}
+                {detalhe.plano_ia && gerandoId !== detalhe.id && (
+                  <div className="rounded-xl bg-muted/20 border border-primary/20 p-4 space-y-4">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <BadgeIA />
+                      <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0.5 text-[10px] font-bold">
+                        SOLUÇÃO: {detalhe.plano_ia.tipo_solucao?.toUpperCase()}
+                      </Badge>
                     </div>
-                  )}
-
-                  {aberto && g.plano_ia && gerandoId !== g.id && (
-                    <div className="rounded-xl bg-muted/20 border border-primary/20 p-4 space-y-4">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <BadgeIA />
-                        <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0.5 text-[10px] font-bold">
-                          SOLUÇÃO: {g.plano_ia.tipo_solucao?.toUpperCase()}
-                        </Badge>
+                    {detalhe.plano_ia.causa_raiz && (
+                      <p className="text-[13px] font-bold text-foreground">
+                        Causa raiz: <span className="font-medium text-muted-foreground">{detalhe.plano_ia.causa_raiz}</span>
+                      </p>
+                    )}
+                    <MarkdownBox>{detalhe.plano_ia.analise || ""}</MarkdownBox>
+                    {Array.isArray(detalhe.plano_ia.tarefas) && detalhe.plano_ia.tarefas.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Próximos passos (30 dias)</p>
+                        {detalhe.plano_ia.tarefas.map((t, i) => (
+                          <div key={i} className="flex items-start gap-2">
+                            <span className="font-mono text-[11px] font-bold text-primary mt-0.5">{String(i + 1).padStart(2, "0")}</span>
+                            <p className="text-[13px] font-medium text-foreground">{t}</p>
+                          </div>
+                        ))}
                       </div>
-                      {g.plano_ia.causa_raiz && (
-                        <p className="text-[13px] font-bold text-foreground">
-                          Causa raiz: <span className="font-medium text-muted-foreground">{g.plano_ia.causa_raiz}</span>
-                        </p>
-                      )}
-                      <MarkdownBox>{g.plano_ia.analise || ""}</MarkdownBox>
-                      {Array.isArray(g.plano_ia.tarefas) && g.plano_ia.tarefas.length > 0 && (
-                        <div className="space-y-1.5">
-                          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Próximos passos (30 dias)</p>
-                          {g.plano_ia.tarefas.map((t, i) => (
-                            <div key={i} className="flex items-start gap-2">
-                              <span className="font-mono text-[11px] font-bold text-primary mt-0.5">{String(i + 1).padStart(2, "0")}</span>
-                              <p className="text-[13px] font-medium text-foreground">{t}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    )}
 
-                      {/* Skills geradas pela IA */}
-                      {Array.isArray(g.plano_ia.skills) && g.plano_ia.skills.length > 0 && (
-                        <div className="space-y-2 pt-1">
-                          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                            <Bot className="size-3.5 text-primary" />
-                            Skills para resolver ({g.plano_ia.skills.length})
-                          </p>
-                          {g.plano_ia.skills.map((s, i) => {
-                            const chave = `${g.id}-${i}`
-                            const aberta = skillAberta === chave
-                            return (
-                              <div key={chave} className="rounded-xl bg-background/40 border border-border p-3">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="text-[13px] font-bold text-foreground flex items-center gap-1.5">
-                                      <Bot className="size-3.5 text-primary shrink-0" />
-                                      {s.nome}
-                                    </p>
-                                    {s.objetivo && <p className="text-[12px] font-medium text-muted-foreground mt-0.5">{s.objetivo}</p>}
-                                  </div>
-                                  {s.documento && (
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <Button
-                                        variant="ghost" size="sm"
-                                        className="h-8 gap-1.5 rounded-lg text-[11px] font-bold text-primary hover:text-primary hover:bg-primary/5"
-                                        onClick={() => copiarSkill(chave, s.documento!)}
-                                      >
-                                        <Copy className="size-3.5" />
-                                        {copiado === chave ? "Copiado!" : "Copiar"}
-                                      </Button>
-                                      <Button
-                                        variant="ghost" size="sm"
-                                        className="size-8 p-0 rounded-lg text-muted-foreground"
-                                        onClick={() => setSkillAberta(aberta ? null : chave)}
-                                      >
-                                        <ChevronDown className={`size-4 transition-transform ${aberta ? "rotate-180" : ""}`} />
-                                      </Button>
-                                    </div>
-                                  )}
+                    {Array.isArray(detalhe.plano_ia.skills) && detalhe.plano_ia.skills.length > 0 && (
+                      <div className="space-y-2 pt-1">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                          <Bot className="size-3.5 text-primary" />
+                          Skills para resolver ({detalhe.plano_ia.skills.length})
+                        </p>
+                        {detalhe.plano_ia.skills.map((s, i) => {
+                          const chave = `${detalhe.id}-${i}`
+                          const aberta = skillAberta === chave
+                          return (
+                            <div key={chave} className="rounded-xl bg-background/40 border border-border p-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-[13px] font-bold text-foreground flex items-center gap-1.5">
+                                    <Bot className="size-3.5 text-primary shrink-0" />{s.nome}
+                                  </p>
+                                  {s.objetivo && <p className="text-[12px] font-medium text-muted-foreground mt-0.5">{s.objetivo}</p>}
                                 </div>
-                                {aberta && s.documento && (
-                                  <div className="mt-3 rounded-lg bg-muted/20 border border-border p-3">
-                                    <MarkdownBox>{s.documento}</MarkdownBox>
+                                {s.documento && (
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-lg text-[11px] font-bold text-primary hover:text-primary hover:bg-primary/5" onClick={() => copiarSkill(chave, s.documento!)}>
+                                      <Copy className="size-3.5" />{copiado === chave ? "Copiado!" : "Copiar"}
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="size-8 p-0 rounded-lg text-muted-foreground" onClick={() => setSkillAberta(aberta ? null : chave)}>
+                                      <ChevronDown className={`size-4 transition-transform ${aberta ? "rotate-180" : ""}`} />
+                                    </Button>
                                   </div>
                                 )}
                               </div>
-                            )
-                          })}
-                        </div>
-                      )}
-
-                      {/* Rotina sugerida pela IA */}
-                      {g.plano_ia.rotina?.necessaria && (g.plano_ia.rotina.nome || (g.plano_ia.rotina.passos?.length ?? 0) > 0) && (
-                        <div className="rounded-xl bg-background/40 border border-primary/20 p-3 space-y-2">
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <p className="text-[13px] font-bold text-foreground flex items-center gap-1.5">
-                              <RefreshCw className="size-3.5 text-primary shrink-0" />
-                              {g.plano_ia.rotina.nome || "Rotina recomendada"}
-                            </p>
-                            {g.plano_ia.rotina.cadencia && (
-                              <Badge variant="outline" className="rounded-lg border-primary/30 text-primary px-2 py-0 text-[10px] font-bold uppercase">
-                                {g.plano_ia.rotina.cadencia}
-                              </Badge>
-                            )}
-                          </div>
-                          {Array.isArray(g.plano_ia.rotina.passos) && g.plano_ia.rotina.passos.length > 0 && (
-                            <div className="space-y-1.5">
-                              {g.plano_ia.rotina.passos.map((p, i) => (
-                                <div key={i} className="flex items-start gap-2">
-                                  <span className="font-mono text-[11px] font-bold text-primary mt-0.5">{String(i + 1).padStart(2, "0")}</span>
-                                  <p className="text-[13px] font-medium text-foreground">{p}</p>
-                                </div>
-                              ))}
+                              {aberta && s.documento && (
+                                <div className="mt-3 rounded-lg bg-muted/20 border border-border p-3"><MarkdownBox>{s.documento}</MarkdownBox></div>
+                              )}
                             </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {detalhe.plano_ia.rotina?.necessaria && (detalhe.plano_ia.rotina.nome || (detalhe.plano_ia.rotina.passos?.length ?? 0) > 0) && (
+                      <div className="rounded-xl bg-background/40 border border-primary/20 p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <p className="text-[13px] font-bold text-foreground flex items-center gap-1.5">
+                            <RefreshCw className="size-3.5 text-primary shrink-0" />
+                            {detalhe.plano_ia.rotina.nome || "Rotina recomendada"}
+                          </p>
+                          {detalhe.plano_ia.rotina.cadencia && (
+                            <Badge variant="outline" className="rounded-lg border-primary/30 text-primary px-2 py-0 text-[10px] font-bold uppercase">{detalhe.plano_ia.rotina.cadencia}</Badge>
                           )}
                         </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
-
+                        {Array.isArray(detalhe.plano_ia.rotina.passos) && detalhe.plano_ia.rotina.passos.length > 0 && (
+                          <div className="space-y-1.5">
+                            {detalhe.plano_ia.rotina.passos.map((p, i) => (
+                              <div key={i} className="flex items-start gap-2">
+                                <span className="font-mono text-[11px] font-bold text-primary mt-0.5">{String(i + 1).padStart(2, "0")}</span>
+                                <p className="text-[13px] font-medium text-foreground">{p}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-lg">
@@ -476,5 +475,69 @@ export function FaseGargalos({ clientId }: { clientId: string }) {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+// ---- Coluna do kanban (área que recebe o card) ----
+function Coluna({ col, itens, onAbrir }: { col: { key: string; label: string }; itens: Gargalo[]; onAbrir: (id: string) => void }) {
+  const { setNodeRef, isOver } = useDroppable({ id: col.key })
+  const resolvido = col.key === "resolvido"
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-2xl border p-3 min-h-[160px] transition-colors ${isOver ? "border-primary/50 bg-primary/5" : "border-border bg-muted/10"}`}
+    >
+      <div className="flex items-center justify-between px-1 pb-3">
+        <div className="flex items-center gap-2">
+          <span className={`size-2 rounded-full ${resolvido ? "bg-primary" : "bg-muted-foreground/40"}`} />
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{col.label}</p>
+        </div>
+        <span className="text-[11px] font-bold text-muted-foreground bg-muted/40 rounded-full px-2 py-0.5 tabular-nums">{itens.length}</span>
+      </div>
+      <div className="space-y-2">
+        {itens.map((g) => <CardGargalo key={g.id} g={g} onAbrir={onAbrir} />)}
+        {itens.length === 0 && (
+          <p className="text-[11px] text-muted-foreground/50 text-center py-6">Arraste um card aqui</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---- Card arrastável ----
+function CardGargalo({ g, onAbrir }: { g: Gargalo; onAbrir: (id: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: g.id })
+  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      onClick={() => onAbrir(g.id)}
+      className={`cursor-grab active:cursor-grabbing touch-none select-none transition-shadow ${isDragging ? "opacity-50 shadow-xl" : "hover:border-primary/30"}`}
+    >
+      <CardContent className="p-3.5 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[13px] font-bold tracking-tight text-foreground leading-snug line-clamp-2">{g.processo}</p>
+          {g.plano_ia && <Bot className="size-3.5 text-primary shrink-0 mt-0.5" />}
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {g.area && (
+            <Badge variant="outline" className="rounded-md border-border text-muted-foreground px-1.5 py-0 text-[9px] font-bold uppercase">{g.area}</Badge>
+          )}
+          {g.horas_mes ? (
+            <Badge variant="outline" className="rounded-md border-border text-muted-foreground px-1.5 py-0 text-[9px] font-bold gap-0.5">
+              <Clock className="size-2.5" />{Number(g.horas_mes).toLocaleString("pt-BR")}h
+            </Badge>
+          ) : null}
+          {g.plano_ia?.prioridade && (
+            <Badge className={`rounded-md px-1.5 py-0 text-[9px] font-bold border ${PRIORIDADE_COR[g.plano_ia.prioridade] ?? "bg-muted/20 text-muted-foreground border-border"}`}>
+              {g.plano_ia.prioridade.toUpperCase()}
+            </Badge>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   )
 }

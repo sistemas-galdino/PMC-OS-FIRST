@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/icons"
 import { ItemThumb, COR } from "@/components/biblioteca/biblioteca-ui"
 import { CATEGORIAS, type SkillPMC } from "@/data/skills-pmc"
+import { logarDownload } from "@/lib/log-download"
 
 function normalizar(row: any): SkillPMC {
   return {
@@ -202,7 +203,11 @@ function BotaoBaixar({ skill }: { skill: SkillPMC }) {
   }
   return (
     <Button asChild className="w-full h-10 gap-2 rounded-xl font-bold text-xs">
-      <a href={skill.arquivo_url} download onClick={(e) => e.stopPropagation()}>
+      <a
+        href={skill.arquivo_url}
+        download
+        onClick={(e) => { e.stopPropagation(); logarDownload("skill", skill.slug, skill.nome, skill.arquivo_url) }}
+      >
         <Download className="size-4" /> Baixar skill
       </a>
     </Button>

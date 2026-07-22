@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { celebrarPontosMC } from "@/components/pontos-mc-splash"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -232,6 +233,8 @@ export default function VitoriasPage({ session, clientId }: VitoriasPageProps) {
         .select()
         .single()
       if (!error && data) {
+        // Cada vitória vale Pontos MC — celebra sempre (só na visão do cliente).
+        if (!clientId) celebrarPontosMC(30, 'Vitória registrada')
         setVitorias(prev => [data, ...prev])
         setShowSheet(false)
       }

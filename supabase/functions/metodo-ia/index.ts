@@ -147,24 +147,49 @@ async function generateJson(prompt: string, tentativas = 3): Promise<Record<stri
 const PERSONA = `Você é o consultor sênior do Método MC (Multiplicador de Crescimento) da PMC, especialista em implementação de IA em empresas: eficiência operacional, redução de custos e crescimento de receita. Tom executivo, direto e prático — nada de genéricos como "implementar melhorias". Responda SEMPRE em português do Brasil e SOMENTE com um JSON válido, sem markdown ao redor, sem texto antes/depois. Garanta JSON ESTRITAMENTE válido: vírgula entre TODOS os itens de arrays e objetos; aspas e quebras de linha corretamente escapadas dentro das strings; não use blocos de código (crase tripla) dentro dos valores.`;
 
 function promptInteligenciaFluxos(d: Record<string, unknown>): string {
+  // Aceita múltiplos documentos ({documentos:[{nome,texto}]}) e/ou o texto
+  // avulso legado ({documento}). Divide o orçamento de contexto entre eles.
+  const docs = Array.isArray(d.documentos) ? (d.documentos as { nome?: string; texto?: string }[]) : [];
+  const avulso = String(d.documento || "").trim();
+  const fontes: { nome: string; texto: string }[] = [
+    ...docs
+      .filter((x) => (x?.texto || "").trim())
+      .map((x, i) => ({ nome: String(x.nome || `Documento ${i + 1}`), texto: String(x.texto) })),
+    ...(avulso ? [{ nome: "Texto colado", texto: avulso }] : []),
+  ];
+  const orcamento = Math.max(3000, Math.floor(16000 / Math.max(fontes.length, 1)));
+  const blocoDocs = fontes.length
+    ? fontes.map((f) => `--- DOCUMENTO: ${f.nome} ---\n${f.texto.slice(0, orcamento)}`).join("\n\n")
+    : "—";
+
   return `${PERSONA}
 
-FASE 2 do Método MC — Inteligência Empresarial. O cliente enviou o documento de uma área da empresa para o ciclo mensal. Gere os 4 fluxos do framework Dados → Informação → Estratégia → Receita.
+FASE 2 do Método MC — Inteligência Empresarial. O cliente enviou ${fontes.length || "nenhum"} documento(s) de uma área da empresa para o ciclo mensal. Analise TODOS em conjunto (cruze os dados entre eles quando fizer sentido) e gere o framework Dados → Informação → Estratégia → Receita em formato ESTRUTURADO.
 
 Área: ${d.area || "—"}
 Competência: ${d.mes || "—"}/${d.ano || "—"}
-Documento da área:
-"""
-${String(d.documento || "—").slice(0, 12000)}
-"""
 
-Formato exato:
+${blocoDocs}
+
+Regras:
+- Extraia números REAIS dos documentos; nunca invente valores. Se um indicador não estiver nos documentos, não o inclua.
+- "variacao" só quando o documento permitir comparar (ex.: mês anterior presente); senão use null.
+- Prazos das ações em dias corridos a partir de hoje (número).
+- A "unica_coisa" é UMA alavanca só — a de maior impacto, específica e mensurável.
+
+Formato exato (JSON):
 {
-  "dados": "entregável DASHBOARD: especifique as métricas/KPIs que a área deve acompanhar, como organizá-los visualmente e a fonte de cada dado (markdown leve com bullets)",
-  "informacao": "entregável ANÁLISE: analise os dados do documento — padrões, anomalias, comparativos e o que os números estão dizendo (markdown leve)",
-  "estrategia": "entregável PLANO DE AÇÃO: 5-8 ações práticas priorizadas com responsável sugerido e prazo em dias (markdown leve com bullets)",
-  "receita": "entregável ÚNICA COISA: a alavanca de maior impacto desta área neste mês e a ROTINA semanal para executá-la (markdown leve)"
-}`;
+  "kpis": [{ "nome": "string", "valor": "string formatado (ex.: R$ 412 mil, 14,2%)", "variacao": "string curta (ex.: +8% vs mês ant.) ou null", "tendencia": "alta" | "queda" | "estavel", "comentario": "string curta ou null" }],
+  "insights": [{ "tipo": "critico" | "atencao" | "positivo", "texto": "1-2 frases com a evidência numérica" }],
+  "acoes": [{ "texto": "ação prática e específica", "prazo_dias": 15, "responsavel": "sugestão de papel (ex.: Financeiro, Guardião da IA) ou null" }],
+  "unica_coisa": {
+    "frase": "a alavanca do mês em uma frase direta",
+    "por_que": "por que essa é a alavanca (1-2 frases)",
+    "meta": "meta numérica do mês (ex.: margem de volta a 16%)",
+    "rotina": { "cadencia": "ex.: semanal, toda segunda, 30 min", "passos": ["passo 1", "passo 2"] }
+  }
+}
+Limites: 4-8 kpis, 3-6 insights, 4-8 acoes.`;
 }
 
 function promptGargaloPlano(d: Record<string, unknown>): string {
