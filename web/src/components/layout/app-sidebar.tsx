@@ -41,6 +41,7 @@ import {
   VideoIcon as Video,
   PackageIcon as Package,
   TrendingUpIcon as TrendingUp,
+  RefreshCwIcon as RefreshCw,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -194,10 +195,26 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       ],
     },
     {
+      label: "Guardião de IA",
+      items: [
+        {
+          title: "Guardião",
+          icon: ShieldCheck,
+          url: "/guardiao",
+          children: [
+            { title: "Assessment", tab: "visao-geral", icon: Compass },
+            { title: "Convites", tab: "convites", icon: Share2 },
+            { title: "Candidatos", tab: "candidatos", icon: Users },
+          ],
+        },
+        { title: "Rotinas e Rituais", icon: RefreshCw, url: "/rotinas" },
+        { title: "Tarefas", icon: CheckSquare, url: "/tarefas" },
+      ],
+    },
+    {
       label: "Acompanhamento",
       items: [
         { title: "Balanço PMC", icon: Trophy, url: "/balanco" },
-        { title: "Meu Relatório", icon: BarChart3, url: "/relatorio" },
         { title: "Meu Nível", icon: Target, url: "/niveis" },
         { title: "Central de Vitórias", icon: Trophy, url: "/vitorias" },
         {
@@ -208,16 +225,6 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
             { title: "Consultores", icon: Calendar, url: "/reunioes" },
             { title: "Galdino", icon: Calendar, url: "/reunioes-galdino" },
             { title: "BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },
-          ],
-        },
-        {
-          title: "Guardião",
-          icon: ShieldCheck,
-          url: "/guardiao",
-          children: [
-            { title: "Visão geral", tab: "visao-geral", icon: Compass },
-            { title: "Convites", tab: "convites", icon: Share2 },
-            { title: "Candidatos", tab: "candidatos", icon: Users },
           ],
         },
       ],

@@ -39,6 +39,8 @@ interface Sistema {
 const STATUS_LABEL: Record<string, string> = { ideia: "Ideia", em_construcao: "Em construção", ativo: "Ativo" }
 const PLATAFORMAS = ["Claude", "Lovable", "Outro"]
 const FORM_VAZIO = { nome: "", descricao: "", url: "", plataforma: "", categoria: "", integracoes: "", status: "ativo", print_url: "" }
+// Categorias padronizadas (usadas nos contadores do Balanço PMC).
+const CATEGORIA_OPCOES = ["Dashboard", "Site", "Sistema", "Automação", "Análise", "Outro"]
 
 export function FaseTorre({ clientId }: { clientId: string }) {
   const [sistemas, setSistemas] = useState<Sistema[]>([])
@@ -323,7 +325,12 @@ export function FaseTorre({ clientId }: { clientId: string }) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Categoria</Label>
-                <Input className="h-11 rounded-xl" placeholder="Ex.: Dashboards" value={form.categoria} onChange={(e) => setForm((p) => ({ ...p, categoria: e.target.value }))} />
+                <Select value={form.categoria} onValueChange={(v) => setForm((p) => ({ ...p, categoria: v }))}>
+                  <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Tipo do sistema" /></SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIA_OPCOES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Integrações</Label>

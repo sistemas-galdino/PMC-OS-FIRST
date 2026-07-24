@@ -27,7 +27,7 @@ const ROTAS_CLIENTE: Destino[] = [
   { label: "Encontros ao Vivo", url: "/calendario", grupo: "Conhecimento" },
   { label: "Links Importantes", url: "/recursos", grupo: "Recursos" },
   { label: "Ferramentas IA", url: "/ferramentas", grupo: "Recursos" },
-  { label: "Meu Relatório", url: "/relatorio", grupo: "Acompanhamento" },
+  { label: "Balanço PMC", url: "/balanco", grupo: "Acompanhamento" },
   { label: "Meu Nível PMC", url: "/niveis", grupo: "Acompanhamento" },
 ]
 

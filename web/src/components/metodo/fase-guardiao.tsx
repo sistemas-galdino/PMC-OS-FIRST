@@ -20,9 +20,11 @@ import {
   XIcon as X,
   ClockIcon as Clock,
   CalendarIcon as Calendar,
+  ChevronRightIcon as ChevronRight,
 } from "@/components/ui/icons"
-import { FaseHeader, VazioFase } from "./compartilhados"
+import { FaseHeader } from "./compartilhados"
 import { MetodoNotas } from "./metodo-notas"
+import { GuiaGuardiao } from "@/components/guardiao/guia-guardiao"
 
 const FOTO_BUCKET = "guardiao-fotos"
 
@@ -156,10 +158,12 @@ export function FaseGuardiao({ clientId, assessmentUrl }: {
         </Button>
       </FaseHeader>
 
-      <p className="text-[15px] font-medium text-muted-foreground leading-relaxed max-w-3xl">
-        O Guardião é a ponte entre a tecnologia e a estratégia: ele executa a IA para que você fique no
-        comando do negócio. A empresa pode ter mais de um.
-      </p>
+      {guardioes.length > 0 && (
+        <p className="text-[15px] font-medium text-muted-foreground leading-relaxed max-w-3xl">
+          O Guardião é a ponte entre a tecnologia e a estratégia: ele executa a IA para que você fique no
+          comando do negócio. A empresa pode ter mais de um.
+        </p>
+      )}
 
       {/* Seção: guardiões cadastrados */}
       <section className="space-y-3">
@@ -183,10 +187,36 @@ export function FaseGuardiao({ clientId, assessmentUrl }: {
       {loading ? (
         <div className="h-32 rounded-2xl bg-card/40 animate-pulse" />
       ) : guardioes.length === 0 ? (
-        <VazioFase>
-          Nenhum guardião cadastrado ainda. Esse é o primeiro passo do método: defina quem vai executar
-          a IA na sua empresa e cadastre os dados dele aqui.
-        </VazioFase>
+        // Ainda não escolheu o guardião → traz o guia completo de como encontrar.
+        <GuiaGuardiao
+          onIr={(tab) => navigate(`/guardiao?tab=${tab}`)}
+          slotAcoes={
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                onClick={() => (assessmentUrl ? window.open(assessmentUrl, "_blank") : navigate("/guardiao?tab=convites"))}
+                className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3.5 text-left hover:bg-primary/10 transition-colors"
+              >
+                <ShieldCheck className="size-5 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-bold text-foreground">Ainda não sei quem é</p>
+                  <p className="text-[12px] font-medium text-muted-foreground">Fazer o teste do Guardião</p>
+                </div>
+                <ChevronRight className="size-4 text-primary shrink-0" />
+              </button>
+              <button
+                onClick={abrirNovo}
+                className="flex items-center gap-3 rounded-xl border border-border p-3.5 text-left hover:border-primary/30 transition-colors"
+              >
+                <Plus className="size-5 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-bold text-foreground">Já sei quem é</p>
+                  <p className="text-[12px] font-medium text-muted-foreground">Cadastrar o guardião direto</p>
+                </div>
+                <ChevronRight className="size-4 text-muted-foreground shrink-0" />
+              </button>
+            </div>
+          }
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {guardioes.map((g) => (

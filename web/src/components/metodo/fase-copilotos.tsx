@@ -54,9 +54,18 @@ interface Copiloto {
   skill_documento: string | null
   status: string
   origem: string
+  rotina: string | null
 }
 
 const STATUS_LABEL: Record<string, string> = { ideia: "Ideia", em_criacao: "Em criação", ativo: "Ativo" }
+// Cadência da rotina que a skill executa.
+const ROTINA_OPCOES = [
+  { chave: "diario", label: "Diária" },
+  { chave: "semanal", label: "Semanal" },
+  { chave: "quinzenal", label: "Quinzenal" },
+  { chave: "mensal", label: "Mensal" },
+]
+const ROTINA_LABEL: Record<string, string> = Object.fromEntries(ROTINA_OPCOES.map((o) => [o.chave, o.label]))
 
 function iniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/)
@@ -69,7 +78,7 @@ export function FaseCopilotos({ clientId }: { clientId: string }) {
   const [copilotos, setCopilotos] = useState<Copiloto[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ colaborador_id: "", nome: "", funcao: "", url: "" })
+  const [form, setForm] = useState({ colaborador_id: "", nome: "", funcao: "", url: "", rotina: "" })
   const [salvando, setSalvando] = useState(false)
   const [detalhe, setDetalhe] = useState<Copiloto | null>(null)
   const [gerandoSkill, setGerandoSkill] = useState(false)
@@ -111,11 +120,12 @@ export function FaseCopilotos({ clientId }: { clientId: string }) {
       nome: form.nome.trim(),
       funcao: form.funcao.trim() || null,
       url: form.url.trim() || null,
+      rotina: form.rotina || null,
     })
     setSalvando(false)
     if (!error) {
       setShowForm(false)
-      setForm({ colaborador_id: "", nome: "", funcao: "", url: "" })
+      setForm({ colaborador_id: "", nome: "", funcao: "", url: "", rotina: "" })
       fetchTudo()
     }
   }
@@ -130,6 +140,13 @@ export function FaseCopilotos({ clientId }: { clientId: string }) {
     await supabase.from("metodo_copilotos").update({ status, updated_at: new Date().toISOString() }).eq("id", cp.id)
     setCopilotos((prev) => prev.map((x) => (x.id === cp.id ? { ...x, status } : x)))
     setDetalhe((prev) => (prev?.id === cp.id ? { ...prev, status } : prev))
+  }
+
+  async function mudarRotina(cp: Copiloto, rotina: string) {
+    const val = rotina || null
+    await supabase.from("metodo_copilotos").update({ rotina: val, updated_at: new Date().toISOString() }).eq("id", cp.id)
+    setCopilotos((prev) => prev.map((x) => (x.id === cp.id ? { ...x, rotina: val } : x)))
+    setDetalhe((prev) => (prev?.id === cp.id ? { ...prev, rotina: val } : prev))
   }
 
   async function gerarSkill(cp: Copiloto) {
@@ -310,11 +327,11 @@ export function FaseCopilotos({ clientId }: { clientId: string }) {
                               return (
                                 <button
                                   key={cp.id}
-                                  title={cp.nome}
+                                  title={cp.rotina ? `${cp.nome} · rotina ${ROTINA_LABEL[cp.rotina] ?? cp.rotina}` : cp.nome}
                                   onClick={() => setDetalhe(cp)}
                                   className={`absolute size-7 rounded-full flex items-center justify-center -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-125 ${
                                     cp.status === "ativo" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground border border-border"
-                                  }`}
+                                  } ${cp.rotina ? "ring-2 ring-amber-400/70" : ""}`}
                                   style={{ left: x, top: y }}
                                 >
                                   <Bot className="size-3.5" />
@@ -396,6 +413,17 @@ export function FaseCopilotos({ clientId }: { clientId: string }) {
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Link do co-piloto</Label>
               <Input className="h-11 rounded-xl" placeholder="https://... (projeto no Claude, ferramenta)" value={form.url} onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))} />
             </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Rotina — com que frequência ele executa</Label>
+              <Select value={form.rotina} onValueChange={(v) => setForm((p) => ({ ...p, rotina: v }))}>
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder="Sem rotina — roda só quando precisar" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROTINA_OPCOES.map((o) => <SelectItem key={o.chave} value={o.chave}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button disabled={salvando || !form.nome.trim()} className="w-full h-11 rounded-xl font-bold uppercase tracking-wider text-xs" onClick={salvar}>
@@ -431,6 +459,15 @@ export function FaseCopilotos({ clientId }: { clientId: string }) {
                       {Object.entries(STATUS_LABEL).map(([v, l]) => (
                         <SelectItem key={v} value={v}>{l}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={detalhe.rotina ?? "sem"} onValueChange={(v) => mudarRotina(detalhe, v === "sem" ? "" : v)}>
+                    <SelectTrigger className="h-8 w-40 rounded-lg text-[11px] font-bold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sem">Sem rotina</SelectItem>
+                      {ROTINA_OPCOES.map((o) => <SelectItem key={o.chave} value={o.chave}>Rotina {o.label.toLowerCase()}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

@@ -30,6 +30,8 @@ import {
   CalendarIcon as Calendar,
   ArrowUpRightIcon as ArrowUpRight,
   CheckCircle2Icon as CheckCircle2,
+  ClockIcon as Clock,
+  TrendingUpIcon as TrendingUp,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 
@@ -91,7 +93,23 @@ interface Balanco {
   // Camada 2 — Resultado
   vitorias: Vitoria[]
   valorVitorias: number
+  // Construído no Método MC
+  skills: number
+  rotinas: number
+  sistemas: number
+  dashboards: number
+  sites: number
+  // Valor gerado / avanço (fundido do Meu Relatório)
+  valorAno: number
+  economiaMensal: number
+  horasLiberadas: number
+  fasesFeitas: boolean[]
 }
+
+const FASES_METODO = [
+  "Guardião da IA", "Inteligência Empresarial", "Mapeamento de Gargalos",
+  "Co-Pilotos", "Sistemas / Torre de Comando", "Engenharia Operacional",
+]
 
 export default function BalancoPage({ session, clientId }: Props) {
   const cid = clientId || session?.user?.id
@@ -107,7 +125,8 @@ export default function BalancoPage({ session, clientId }: Props) {
       const reunioes = (t: string) =>
         supabase.from(t).select("ganho, nps, acoes_cliente, cliente_compareceu, data_reuniao").eq("id_cliente", cid)
 
-      const [entrada, form, rg, rm, rb, vit, enc] = await Promise.all([
+      const cnt = (t: string) => supabase.from(t).select("id", { count: "exact", head: true }).eq("id_cliente", cid)
+      const [entrada, form, rg, rm, rb, vit, enc, cop, sis, eco, mg, ma, mga] = await Promise.all([
         supabase
           .from("clientes_entrada_new")
           .select("nome_cliente, nome_empresa, data, nivel_multiplicador, renovacao_data")
@@ -131,6 +150,12 @@ export default function BalancoPage({ session, clientId }: Props) {
           .from("encontros_ao_vivo")
           .select("data_hora_inicio_iso, status")
           .eq("status", "realizado"),
+        // Construído no Método MC: skills/co-pilotos (com rotina) e sistemas (por categoria)
+        supabase.from("metodo_copilotos").select("rotina").eq("id_cliente", cid),
+        supabase.from("metodo_sistemas").select("categoria").eq("id_cliente", cid),
+        // Valor gerado (economia/IAVS) — fundido do antigo "Meu Relatório"
+        supabase.from("metodo_economias").select("valor_mes, natureza, recorrencia, capacidade_nova, horas_mes").eq("id_cliente", cid),
+        cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
       ])
 
       if (cancel) return
@@ -182,6 +207,36 @@ export default function BalancoPage({ session, clientId }: Props) {
         return d !== null && (!entryDate || d >= entryDate)
       }).length
 
+      // Construído no Método MC
+      const copRows = (cop.data ?? []) as any[]
+      const sisRows = (sis.data ?? []) as any[]
+      const skills = copRows.length
+      const rotinas = copRows.filter((c) => typeof c.rotina === "string" && c.rotina.trim() !== "").length
+      const sistemas = sisRows.length
+      const dashboards = sisRows.filter((s) => /dashboard/i.test(s.categoria || "")).length
+      const sites = sisRows.filter((s) => /site/i.test(s.categoria || "")).length
+
+      // Valor gerado pelo Método (IAVS) — mesma fórmula do antigo Meu Relatório.
+      // Recorrente conta ×12 no ano; únicos e decisões entram uma vez; ignora
+      // "capacidade nova" (receita potencial, não economia).
+      const ecoRows = (eco.data ?? []) as any[]
+      const okEco = ecoRows.filter((e) => !e.capacidade_nova)
+      const somEco = (fn: (e: any) => boolean, campo: string) => okEco.filter(fn).reduce((acc, e) => acc + toNum(e[campo]), 0)
+      const custoMes = somEco((e) => e.natureza === "custo_evitado" && e.recorrencia === "mensal", "valor_mes")
+      const custoUnico = somEco((e) => e.natureza === "custo_evitado" && e.recorrencia === "unico", "valor_mes")
+      const tempoMes = somEco((e) => e.natureza === "tempo_liberado" && e.recorrencia === "mensal", "valor_mes")
+      const tempoUnico = somEco((e) => e.natureza === "tempo_liberado" && e.recorrencia === "unico", "valor_mes")
+      const decisaoEco = somEco((e) => e.natureza === "valor_decisao", "valor_mes")
+      const horasLiberadas = somEco((e) => e.natureza === "tempo_liberado" && e.recorrencia === "mensal", "horas_mes")
+      const economiaMensal = custoMes + tempoMes
+      const valorAno = (custoMes + tempoMes) * 12 + custoUnico + tempoUnico + decisaoEco
+
+      // Avanço no Método MC (6 fases com dados).
+      const fasesFeitas = [
+        (mg.count ?? 0) > 0, (ma.count ?? 0) > 0, (mga.count ?? 0) > 0,
+        copRows.length > 0, sisRows.length > 0, ecoRows.length > 0,
+      ]
+
       setB({
         nome: (e?.nome_cliente || f?.nome || "").split(" ")[0] || "",
         empresa: e?.nome_empresa || f?.empresa_nome || "",
@@ -205,6 +260,15 @@ export default function BalancoPage({ session, clientId }: Props) {
         ganhos,
         vitorias,
         valorVitorias,
+        skills,
+        rotinas,
+        sistemas,
+        dashboards,
+        sites,
+        valorAno,
+        economiaMensal,
+        horasLiberadas,
+        fasesFeitas,
       })
       } catch (e) {
         if (!cancel) console.error(e)
@@ -233,6 +297,9 @@ export default function BalancoPage({ session, clientId }: Props) {
 
   const totalReunioes = b.reunioesGaldino + b.reunioesMentoria + b.reunioesBlackcrm
   const temResultado = b.valorVitorias > 0 || b.vitorias.length > 0
+  const valorHeadline = Math.max(b.valorVitorias, b.valorAno)  // maior sinal de valor
+  const fasesComDados = b.fasesFeitas.filter(Boolean).length
+  const pctMetodo = Math.round((fasesComDados / FASES_METODO.length) * 100)
   const ano = anoDe(b.entrada)
 
   return (
@@ -252,16 +319,17 @@ export default function BalancoPage({ session, clientId }: Props) {
         <Card className="border-primary/25 overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />
           <CardContent className="p-8 relative">
-            {b.valorVitorias > 0 ? (
+            {valorHeadline > 0 ? (
               <div className="space-y-3">
                 <p className="text-[12px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                   <Zap className="size-4" /> O que o PMC gerou para o seu negócio
                 </p>
                 <p className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight">
-                  <span className="text-primary">{brl(b.valorVitorias)}</span>
+                  <span className="text-primary">{brl(valorHeadline)}</span>
                 </p>
                 <p className="text-[15px] font-medium text-muted-foreground max-w-2xl leading-relaxed">
-                  Em ganho registrado nas suas <span className="font-bold text-foreground">{num(b.vitorias.length)} vitórias</span>, ao longo de <span className="font-bold text-foreground">{num(totalReunioes)} reuniões</span> estratégicas no programa.
+                  Somando o valor gerado pelo Método (economia recorrente e decisões)
+                  {b.vitorias.length > 0 ? <> e o ganho das suas <span className="font-bold text-foreground">{num(b.vitorias.length)} vitórias</span></> : null}, ao longo de <span className="font-bold text-foreground">{num(totalReunioes)} reuniões</span> no programa.
                 </p>
               </div>
             ) : (
@@ -280,6 +348,18 @@ export default function BalancoPage({ session, clientId }: Props) {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* VALOR GERADO PELO MÉTODO — economia/horas (fundido do Meu Relatório) */}
+      {(b.valorAno > 0 || b.horasLiberadas > 0) && (
+        <div className="space-y-4">
+          <SectionTitle icon={Banknote} texto="Valor gerado pelo Método" sub="A economia e as horas que a IA já devolveu para a sua empresa." />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Destaque icon={Banknote} cor="text-emerald-400 bg-emerald-500/10" valor={brl(b.valorAno)} label="Valor gerado no ano" />
+            <Destaque icon={TrendingUp} cor="text-emerald-400 bg-emerald-500/10" valor={brl(b.economiaMensal)} label="Economia recorrente / mês" />
+            <Destaque icon={Clock} cor="text-sky-400 bg-sky-500/10" valor={`${num(b.horasLiberadas)}h`} label="Horas economizadas / mês" />
+          </div>
+        </div>
+      )}
 
       {/* ONDE VOCÊ COMEÇOU — o retrato de entrada, nas palavras do cliente */}
       {(b.objetivoEntrada || b.faturamentoEntrada || b.metaFaturamento > 0) && (
@@ -332,6 +412,50 @@ export default function BalancoPage({ session, clientId }: Props) {
           </div>
         )}
       </div>
+
+      {/* CONSTRUÍDO NO MÉTODO MC — skills, rotinas e sistemas que saíram do papel */}
+      {(b.skills > 0 || b.sistemas > 0) && (
+        <div className="space-y-4">
+          <SectionTitle icon={Zap} texto="O que você construiu no Método MC" sub="Skills, rotinas e sistemas que saíram do papel dentro do programa." />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Destaque icon={Zap} cor="text-violet-400 bg-violet-500/10" valor={num(b.skills)} label="Skills / co-pilotos" />
+            <Destaque icon={Calendar} cor="text-amber-400 bg-amber-500/10" valor={num(b.rotinas)} label="Rotinas em execução" />
+            <Destaque icon={Target} cor="text-sky-400 bg-sky-500/10" valor={num(b.sistemas)} label="Sistemas construídos" />
+            {(b.dashboards + b.sites) > 0 && (
+              <Destaque icon={Star} cor="text-emerald-400 bg-emerald-500/10" valor={num(b.dashboards + b.sites)} label="Dashboards e sites" />
+            )}
+          </div>
+          {(b.dashboards > 0 || b.sites > 0) && (
+            <p className="text-[12px] text-muted-foreground">
+              Dos sistemas: <span className="font-bold text-foreground">{num(b.dashboards)}</span> dashboard{b.dashboards !== 1 ? "s" : ""} · <span className="font-bold text-foreground">{num(b.sites)}</span> site{b.sites !== 1 ? "s" : ""}.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* AVANÇO NO MÉTODO MC — fases com dados (fundido do Meu Relatório) */}
+      {fasesComDados > 0 && (
+        <div className="space-y-3">
+          <SectionTitle icon={Target} texto="Avanço no Método MC" sub={`${fasesComDados} de ${FASES_METODO.length} fases com dados registrados.`} />
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div className="h-2 w-full rounded-full bg-muted/30 overflow-hidden">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pctMetodo}%` }} />
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {FASES_METODO.map((nomeFase, i) => (
+                  <div key={nomeFase} className="flex items-center gap-2.5 py-1.5">
+                    {b.fasesFeitas[i]
+                      ? <CheckCircle2 className="size-4 text-primary shrink-0" />
+                      : <div className="size-4 rounded-full border-2 border-muted-foreground/25 shrink-0" />}
+                    <span className={`text-[13px] ${b.fasesFeitas[i] ? "font-bold text-foreground" : "font-medium text-muted-foreground"}`}>{nomeFase}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* O QUE SUAS REUNIÕES GERARAM — a camada qualitativa (campo `ganho`) */}
       {b.ganhos.length > 0 && (
