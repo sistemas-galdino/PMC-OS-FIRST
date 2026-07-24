@@ -59,14 +59,14 @@ export default function NiveisPage({ session, clientId }: Props) {
   const cid = clientId || session?.user?.id
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
-  const [sinaisN, setSinaisN] = useState<SinaisNivel>({ etapas: 0, fases: 0, mapeamento: 0, reunioes: 0, vitorias: 0 })
+  const [sinaisN, setSinaisN] = useState<SinaisNivel>({ etapas: 0, fases: 0, mapeamento: 0, reunioes: 0, vitorias: 0, convites: 0, candidatos: 0, guardiaoContratado: 0, tarefas: 0 })
 
   useEffect(() => {
     if (!cid) return
     async function carregar() {
       try {
       const cnt = (t: string, col = "id") => supabase.from(t).select(col, { count: "exact", head: true }).eq("id_cliente", cid)
-      const [etapasRes, g, a, ga, cp, si, ec, vit, rg, rm, rb, mMetas, mProd, mCanais, mObj] = await Promise.all([
+      const [etapasRes, g, a, ga, cp, si, ec, vit, rg, rm, rb, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk] = await Promise.all([
         supabase.from("cliente_etapas_metodo").select("etapa, concluida").eq("id_cliente", cid),
         cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
         cnt("metodo_copilotos"), cnt("metodo_sistemas"), cnt("metodo_economias"),
@@ -75,6 +75,11 @@ export default function NiveisPage({ session, clientId }: Props) {
         // Mapeamento (cliente_objetivos_programa não tem coluna id — conta por id_cliente)
         cnt("cliente_metas", "id_cliente"), cnt("cliente_produtos", "id_cliente"),
         cnt("cliente_canais", "id_cliente"), cnt("cliente_objetivos_programa", "id_cliente"),
+        // Guardião de IA: convites enviados, candidatos avaliados, contratados, tarefas concluídas
+        cnt("guardiao_invites"),
+        supabase.from("guardiao_invites").select("id", { count: "exact", head: true }).eq("id_cliente", cid).eq("status", "concluido"),
+        supabase.from("guardiao_invites").select("id", { count: "exact", head: true }).eq("id_cliente", cid).eq("stage", "contratado_guardiao"),
+        supabase.from("metodo_tarefas").select("id", { count: "exact", head: true }).eq("id_cliente", cid).eq("status", "concluido"),
       ])
 
       const manual = new Set<number>((etapasRes.data ?? []).filter((r: any) => r.concluida).map((r: any) => r.etapa))
@@ -92,7 +97,13 @@ export default function NiveisPage({ session, clientId }: Props) {
       const fases = [...sinaisSet].filter((s) => s !== "reunioes").length
       const mapeamento = [mMetas, mProd, mCanais, mObj].filter((r) => (r.count ?? 0) > 0).length
 
-      setSinaisN({ etapas, fases, mapeamento, reunioes, vitorias: vit.count ?? 0 })
+      setSinaisN({
+        etapas, fases, mapeamento, reunioes, vitorias: vit.count ?? 0,
+        convites: gConv.count ?? 0,
+        candidatos: gCand.count ?? 0,
+        guardiaoContratado: gContr.count ?? 0,
+        tarefas: tOk.count ?? 0,
+      })
       } catch (e) {
         console.error(e)
       } finally {
@@ -146,7 +157,7 @@ export default function NiveisPage({ session, clientId }: Props) {
       {/* Como ganhar pontos */}
       <div>
         <h2 className="text-lg font-bold tracking-tight text-foreground mb-1">Como ganhar Pontos MC</h2>
-        <p className="text-sm text-muted-foreground font-medium mb-4">Quatro fontes somam para o seu nível. Quanto mais você usa o método, mais sobe.</p>
+        <p className="text-sm text-muted-foreground font-medium mb-4">Cada ação do método soma para o seu nível — inclusive toda a jornada do Guardião de IA. Quanto mais você usa, mais sobe.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           {FONTES_PONTOS.map((f) => (
             <Card key={f.chave} className="group hover:border-primary/30 transition-colors">

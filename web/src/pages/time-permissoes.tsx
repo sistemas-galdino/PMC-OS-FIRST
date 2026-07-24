@@ -42,6 +42,9 @@ export default function TimePermissoesPage() {
   const [addNome, setAddNome] = useState("")
   const [addPapel, setAddPapel] = useState("consultor")
   const [addResult, setAddResult] = useState<{ ok: boolean; msg: string; link?: string } | null>(null)
+  // Editar nome / remover
+  const [editNomeId, setEditNomeId] = useState<number | null>(null)
+  const [editNomeVal, setEditNomeVal] = useState("")
 
   async function carregar() {
     const [pRes, sRes, mRes, tRes, oRes] = await Promise.all([
@@ -107,6 +110,24 @@ export default function TimePermissoesPage() {
     } catch (e) {
       setAddResult({ ok: false, msg: (e as Error).message })
     }
+    setSalvando(false)
+  }
+
+  async function salvarNome(m: Membro) {
+    const novo = editNomeVal.trim() || null
+    setSalvando(true)
+    const { error } = await supabase.from("mentores").update({ nome: novo }).eq("id", m.id)
+    if (!error) setMembros((prev) => prev.map((x) => x.id === m.id ? { ...x, nome: novo } : x))
+    setEditNomeId(null)
+    setSalvando(false)
+  }
+
+  async function removerMembro(m: Membro) {
+    if (m.email && user?.email && m.email.toLowerCase() === user.email.toLowerCase()) return
+    if (!window.confirm(`Remover ${m.nome || m.email} do time? A pessoa perde todo o acesso de admin imediatamente.`)) return
+    setSalvando(true)
+    const { error } = await supabase.from("mentores").delete().eq("id", m.id)
+    if (!error) setMembros((prev) => prev.filter((x) => x.id !== m.id))
     setSalvando(false)
   }
 
@@ -268,7 +289,26 @@ export default function TimePermissoesPage() {
                   {/* Linha do membro */}
                   <div className="p-4 flex items-center gap-4 flex-wrap">
                     <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-bold text-foreground truncate">{m.nome || m.email || "—"}</p>
+                      {editNomeId === m.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={editNomeVal} onChange={(e) => setEditNomeVal(e.target.value)} autoFocus
+                            onKeyDown={(e) => { if (e.key === "Enter") salvarNome(m); if (e.key === "Escape") setEditNomeId(null) }}
+                            placeholder="Nome"
+                            className="rounded-md bg-card border border-primary/40 px-2 py-1 text-[13px] text-foreground"
+                          />
+                          <button onClick={() => salvarNome(m)} className="text-[11px] font-bold uppercase tracking-wider text-primary">Salvar</button>
+                          <button onClick={() => setEditNomeId(null)} className="text-[11px] uppercase tracking-wider text-muted-foreground">Cancelar</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <p className="text-[14px] font-bold text-foreground truncate">{m.nome || m.email || "—"}</p>
+                          {isSuperAdmin && (
+                            <button onClick={() => { setEditNomeId(m.id); setEditNomeVal(m.nome || "") }}
+                              className="text-[11px] text-muted-foreground hover:text-primary shrink-0">editar</button>
+                          )}
+                        </div>
+                      )}
                       {m.email && <p className="text-[12px] text-muted-foreground truncate">{m.email}</p>}
                     </div>
 
@@ -295,6 +335,20 @@ export default function TimePermissoesPage() {
                     >
                       Seções <ChevronRight className={`size-4 transition-transform ${aberto ? "rotate-90" : ""}`} />
                     </button>
+
+                    {isSuperAdmin && (() => {
+                      const ehVoce = !!(m.email && user?.email && m.email.toLowerCase() === user.email.toLowerCase())
+                      return (
+                        <button
+                          onClick={() => removerMembro(m)}
+                          disabled={salvando || ehVoce}
+                          title={ehVoce ? "Você não pode remover a si mesmo" : "Remover do time"}
+                          className="text-[11px] font-semibold uppercase tracking-wider text-destructive/80 hover:text-destructive disabled:opacity-30 disabled:hover:text-destructive/80"
+                        >
+                          Remover
+                        </button>
+                      )
+                    })()}
                   </div>
 
                   {/* Editor de seções */}

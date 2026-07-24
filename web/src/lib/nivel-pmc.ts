@@ -8,6 +8,11 @@ export interface SinaisNivel {
   mapeamento: number  // áreas do Mapeamento preenchidas (0..4)
   reunioes: number    // reuniões realizadas
   vitorias: number    // vitórias registradas
+  // Guardião de IA — a Fase 1 vira jornada completa: encontrar → avaliar → contratar → operar.
+  convites: number            // convites do assessment do Guardião enviados
+  candidatos: number          // candidatos que responderam o assessment
+  guardiaoContratado: number  // Guardiões efetivamente contratados (estágio final do funil)
+  tarefas: number             // tarefas do Guardião concluídas (rotinas + avulsas)
 }
 
 export interface NivelPMC {
@@ -33,6 +38,10 @@ export const FONTES_PONTOS: FontePontos[] = [
   { chave: "mapeamento", label: "Área do Mapeamento preenchida", pontos: 25, descricao: "Cada uma das 4 áreas do Mapeamento do seu negócio que você preenche: Cenários & Metas, Produtos, Canais e Objetivos.", rota: "/mapeamento" },
   { chave: "vitorias", label: "Vitória registrada", pontos: 30, descricao: "Cada conquista que você registra na Central de Vitórias.", rota: "/vitorias" },
   { chave: "reunioes", label: "Reunião realizada", pontos: 15, descricao: "Cada reunião que você participa (Galdino, consultores ou BlackCRM).", rota: "/reunioes" },
+  { chave: "convites", label: "Convite do Guardião enviado", pontos: 20, descricao: "Cada convite do assessment do Guardião que você dispara para um candidato — interno ou externo.", rota: "/guardiao?tab=convites" },
+  { chave: "candidatos", label: "Candidato avaliado", pontos: 35, descricao: "Cada pessoa que responde o assessment do Guardião e entra no seu funil de seleção.", rota: "/guardiao?tab=candidatos" },
+  { chave: "guardiaoContratado", label: "Guardião contratado", pontos: 200, descricao: "O grande marco da Fase 1: você conduziu o funil até contratar o seu Guardião da IA.", rota: "/guardiao?tab=candidatos" },
+  { chave: "tarefas", label: "Tarefa do Guardião concluída", pontos: 10, descricao: "Cada tarefa que o Guardião conclui no cockpit — das rotinas diárias/semanais/quinzenais/mensais ou avulsas.", rota: "/tarefas" },
 ]
 
 // Os níveis, do menor pro maior (minimo = ponto de entrada no nível).
@@ -62,7 +71,7 @@ export const NIVEIS: FaixaNivel[] = [
   },
   {
     nome: "Construtor",
-    minimo: 150,
+    minimo: 200,
     icone: "zap",
     imagem: "/niveis/construtor.png",
     cor: "sky",
@@ -72,7 +81,7 @@ export const NIVEIS: FaixaNivel[] = [
   },
   {
     nome: "Multiplicador",
-    minimo: 400,
+    minimo: 550,
     icone: "trending",
     imagem: "/niveis/multiplicador.png",
     cor: "violet",
@@ -82,7 +91,7 @@ export const NIVEIS: FaixaNivel[] = [
   },
   {
     nome: "Arquiteto",
-    minimo: 800,
+    minimo: 1100,
     icone: "building",
     imagem: "/niveis/arquiteto.png",
     cor: "amber",
@@ -92,7 +101,7 @@ export const NIVEIS: FaixaNivel[] = [
   },
   {
     nome: "Mestre PMC",
-    minimo: 1400,
+    minimo: 2000,
     icone: "award",
     imagem: "/niveis/mestre.png",
     cor: "lime",
@@ -113,7 +122,7 @@ export function faixaPorPontos(pontos: number): { indice: number; faixa: FaixaNi
 }
 
 export function calcularPontos(s: SinaisNivel): number {
-  return FONTES_PONTOS.reduce((total, f) => total + s[f.chave] * f.pontos, 0)
+  return FONTES_PONTOS.reduce((total, f) => total + (s[f.chave] ?? 0) * f.pontos, 0)
 }
 
 export function calcularNivel(s: SinaisNivel): NivelPMC {
