@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { Fragment, useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { isStatusAtivo } from "@/lib/status-cliente"
 import { useNavigate } from "react-router-dom"
@@ -42,6 +42,10 @@ import {
   UserCheckIcon as UserCheck,
   CopyIcon as Copy,
   MessageCircleIcon as MessageCircle,
+  ChevronDownIcon as ChevronDown,
+  ChevronRightIcon as ChevronRight,
+  Trash2Icon as Trash2,
+  SendIcon as Send,
 } from "@/components/ui/icons"
 
 interface AccessRow {
@@ -63,7 +67,27 @@ interface AccessRow {
   qtd_convites_reenviados: number
 }
 
+// Um login (acesso) de uma empresa — retornado por get_empresa_acessos.
+// Cada empresa (id_cliente) pode ter N: 1 principal (dono) + N vinculados.
+interface LoginRow {
+  id_cliente: string
+  auth_user_id: string
+  email: string | null
+  papel: string | null
+  tipo: "principal" | "vinculado"
+  last_sign_in_at: string | null
+  criado_em: string | null
+}
+
 type TabKey = "todos" | "nunca" | "ativos" | "inativos" | "aguardando"
+
+function papelLabel(login: LoginRow): string {
+  if (login.tipo === "principal") return "Dono"
+  const p = (login.papel || "").toLowerCase()
+  if (p.includes("guard")) return "Guardião"
+  if (p === "colaborador" || !p) return "Colaborador"
+  return login.papel as string
+}
 
 const DAY = 24 * 60 * 60 * 1000
 const THRESHOLD_ATIVO = 14 * DAY
@@ -116,19 +140,49 @@ export default function AcessosPage() {
   const [confirmRow, setConfirmRow] = useState<AccessRow | null>(null)
   const [inviteResult, setInviteResult] = useState<{ row: AccessRow; link: string } | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
+  // Logins (acessos) por empresa — Fase 2 multiusuário.
+  const [loginsByCliente, setLoginsByCliente] = useState<Map<string, LoginRow[]>>(new Map())
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [confirmRemover, setConfirmRemover] = useState<{ login: LoginRow; row: AccessRow } | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [resendingLoginId, setResendingLoginId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const { data, error } = await supabase.rpc("get_client_access_overview")
+      const [overview, acessos] = await Promise.all([
+        supabase.rpc("get_client_access_overview"),
+        supabase.rpc("get_empresa_acessos"),
+      ])
       if (cancelled) return
-      if (error) {
-        console.error("get_client_access_overview error:", error)
-        setError(error.message || "Erro ao carregar dados de acesso")
+      if (overview.error) {
+        console.error("get_client_access_overview error:", overview.error)
+        setError(overview.error.message || "Erro ao carregar dados de acesso")
         setLoading(false)
         return
       }
-      setRows((data as AccessRow[]) ?? [])
+      setRows((overview.data as AccessRow[]) ?? [])
+      if (acessos.error) {
+        // Não bloqueia a tela: só perde a contagem/expansão de logins.
+        console.error("get_empresa_acessos error:", acessos.error)
+      } else {
+        const map = new Map<string, LoginRow[]>()
+        for (const l of (acessos.data as LoginRow[]) ?? []) {
+          const arr = map.get(l.id_cliente) ?? []
+          arr.push(l)
+          map.set(l.id_cliente, arr)
+        }
+        // Ordena: principal (dono) primeiro, depois por criação.
+        for (const arr of map.values()) {
+          arr.sort((a, b) => {
+            if (a.tipo !== b.tipo) return a.tipo === "principal" ? -1 : 1
+            const at = a.criado_em ? new Date(a.criado_em).getTime() : 0
+            const bt = b.criado_em ? new Date(b.criado_em).getTime() : 0
+            return at - bt
+          })
+        }
+        setLoginsByCliente(map)
+      }
       setLoading(false)
     }
     load()
@@ -273,6 +327,76 @@ export default function AcessosPage() {
     const msg = `${nome}, aqui está o link pra você acessar o sistema PMC OS: ${link}`
     const url = `https://wa.me/?text=${encodeURIComponent(msg)}`
     window.open(url, "_blank", "noopener,noreferrer")
+  }
+
+  function toggleExpand(idCliente: string) {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(idCliente)) next.delete(idCliente)
+      else next.add(idCliente)
+      return next
+    })
+  }
+
+  async function callGerenciarAcesso(login: LoginRow, acao: "remover" | "reenviar") {
+    const { data: { session } } = await supabase.auth.getSession()
+    const accessToken = session?.access_token
+    if (!accessToken) throw new Error("Sessão expirada. Faça login novamente.")
+    const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gerenciar-acesso`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${accessToken}`,
+        "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        acao,
+        auth_user_id: login.auth_user_id,
+        id_cliente: login.id_cliente,
+        app_url: window.location.origin,
+      }),
+    })
+    const data = await resp.json()
+    if (!resp.ok) throw new Error(data.error || `Erro ${resp.status}`)
+    return data
+  }
+
+  async function removerAcesso() {
+    const alvo = confirmRemover
+    if (!alvo) return
+    setRemovingId(alvo.login.auth_user_id)
+    try {
+      await callGerenciarAcesso(alvo.login, "remover")
+      setLoginsByCliente(prev => {
+        const next = new Map(prev)
+        const arr = (next.get(alvo.login.id_cliente) ?? []).filter(l => l.auth_user_id !== alvo.login.auth_user_id)
+        next.set(alvo.login.id_cliente, arr)
+        return next
+      })
+      setConfirmRemover(null)
+      setToast({ type: "ok", msg: "Acesso removido com sucesso" })
+    } catch (e: any) {
+      setToast({ type: "err", msg: e.message || "Erro ao remover acesso" })
+    } finally {
+      setRemovingId(null)
+    }
+  }
+
+  async function reenviarAcesso(login: LoginRow, row: AccessRow) {
+    setResendingLoginId(login.auth_user_id)
+    try {
+      const data = await callGerenciarAcesso(login, "reenviar")
+      if (data.invite_link) {
+        setInviteResult({ row, link: data.invite_link })
+        setLinkCopied(false)
+      } else {
+        setToast({ type: "ok", msg: data.message || "Link gerado" })
+      }
+    } catch (e: any) {
+      setToast({ type: "err", msg: e.message || "Erro ao reenviar link" })
+    } finally {
+      setResendingLoginId(null)
+    }
   }
 
   const cards = [
@@ -506,17 +630,52 @@ export default function AcessosPage() {
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map(row => (
-              <TableRow key={row.id_entrada} className="hover:bg-primary/5 border-b border-border/30 transition-colors">
+            {filtered.map(row => {
+              const logins = loginsByCliente.get(row.id_cliente) ?? []
+              const isOpen = expanded.has(row.id_cliente)
+              return (
+              <Fragment key={row.id_entrada}>
+              <TableRow className="hover:bg-primary/5 border-b border-border/30 transition-colors">
                 <TableCell className="py-4 px-4">
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="font-bold text-sm text-foreground truncate">{row.nome_cliente || "—"}</span>
-                    <span className="text-[11px] text-muted-foreground truncate">{row.nome_empresa || "—"}</span>
-                    {row.email ? (
-                      <a href={`mailto:${row.email}`} className="text-[11px] text-muted-foreground/80 hover:text-primary transition-colors truncate mt-0.5">
-                        {row.email}
-                      </a>
-                    ) : null}
+                  <div className="flex items-start gap-2 min-w-0">
+                    {logins.length > 0 && (
+                      <button
+                        onClick={() => toggleExpand(row.id_cliente)}
+                        className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                        title={isOpen ? "Ocultar acessos" : "Ver acessos da empresa"}
+                      >
+                        {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                      </button>
+                    )}
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-bold text-sm text-foreground truncate">{row.nome_cliente || "—"}</span>
+                        {logins.length > 0 && (
+                          <button
+                            onClick={() => toggleExpand(row.id_cliente)}
+                            title="Ver acessos da empresa"
+                          >
+                            <Badge
+                              variant="outline"
+                              className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider gap-1 cursor-pointer ${
+                                logins.length >= 2
+                                  ? "border-primary/30 text-primary bg-primary/10"
+                                  : "border-border text-muted-foreground bg-muted/20"
+                              }`}
+                            >
+                              <Users className="size-2.5" />
+                              {logins.length} {logins.length === 1 ? "acesso" : "acessos"}
+                            </Badge>
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground truncate">{row.nome_empresa || "—"}</span>
+                      {row.email ? (
+                        <a href={`mailto:${row.email}`} className="text-[11px] text-muted-foreground/80 hover:text-primary transition-colors truncate mt-0.5">
+                          {row.email}
+                        </a>
+                      ) : null}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="px-3 hidden md:table-cell">
@@ -594,7 +753,94 @@ export default function AcessosPage() {
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              {isOpen && (
+                <TableRow className="border-b border-border/30 bg-muted/10 hover:bg-muted/10">
+                  <TableCell colSpan={4} className="py-3 px-4">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                        Acessos desta empresa ({logins.length})
+                      </span>
+                      {logins.map(login => (
+                        <div
+                          key={login.auth_user_id}
+                          className="flex flex-wrap items-center gap-3 rounded-lg border border-border/50 bg-background/60 px-3 py-2"
+                        >
+                          <Badge
+                            variant="outline"
+                            className={`shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                              login.tipo === "principal"
+                                ? "border-primary/30 text-primary bg-primary/10"
+                                : "border-border text-muted-foreground bg-muted/20"
+                            }`}
+                          >
+                            {papelLabel(login)}
+                          </Badge>
+                          <span className="text-[12px] font-medium text-foreground truncate min-w-0 flex-1">
+                            {login.email || "—"}
+                          </span>
+                          <span className={`text-[11px] font-semibold shrink-0 ${lastAccessClass(login.last_sign_in_at)}`}>
+                            {formatRelativeTime(login.last_sign_in_at)}
+                          </span>
+                          {login.tipo === "vinculado" ? (
+                            confirmRemover?.login.auth_user_id === login.auth_user_id ? (
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[11px] text-muted-foreground">Excluir de vez?</span>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  disabled={removingId === login.auth_user_id}
+                                  onClick={removerAcesso}
+                                  className="h-7 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider"
+                                >
+                                  {removingId === login.auth_user_id ? "Excluindo..." : "Sim, excluir"}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={removingId === login.auth_user_id}
+                                  onClick={() => setConfirmRemover(null)}
+                                  className="h-7 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider"
+                                >
+                                  Cancelar
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={resendingLoginId === login.auth_user_id}
+                                  onClick={() => reenviarAcesso(login, row)}
+                                  className="h-7 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider gap-1.5"
+                                  title="Gerar novo link de acesso"
+                                >
+                                  <Send className="size-3" />
+                                  {resendingLoginId === login.auth_user_id ? "Gerando..." : "Reenviar"}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setConfirmRemover({ login, row })}
+                                  className="h-7 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  title="Excluir este acesso"
+                                >
+                                  <Trash2 className="size-3" />
+                                  Excluir
+                                </Button>
+                              </div>
+                            )
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground shrink-0 italic">login principal</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+              </Fragment>
+              )
+            })}
           </TableBody>
         </Table>
       </motion.div>
