@@ -245,6 +245,23 @@ export async function deletarEventoEm(opts: {
   return true
 }
 
+export async function buscarEventoEm(opts: {
+  subject: string
+  calendarId: string
+  eventId: string
+}) {
+  const token = await getAccessTokenAs(opts.subject, [SCOPES.CALENDAR_EVENTS])
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(opts.calendarId)}/events/${encodeURIComponent(opts.eventId)}`
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Calendar buscarEventoEm (${res.status}): ${text}`)
+  }
+  return await res.json()
+}
+
 export async function buscarEvento(emailCalendar: string, eventId: string) {
   const token = await getAccessTokenAs(emailCalendar, [SCOPES.CALENDAR_EVENTS])
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(emailCalendar)}/events/${encodeURIComponent(eventId)}`
