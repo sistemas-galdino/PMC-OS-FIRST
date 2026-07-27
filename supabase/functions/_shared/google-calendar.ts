@@ -245,6 +245,44 @@ export async function deletarEventoEm(opts: {
   return true
 }
 
+// Lista eventos de um período. Diferente de listarEventosIncremental (que é
+// baseado em syncToken e assume subject == calendarId), aceita calendário
+// secundário via subject separado. Somente leitura.
+export async function listarEventosPeriodoEm(opts: {
+  subject: string
+  calendarId: string
+  timeMin: string
+  timeMax: string
+}): Promise<Array<Record<string, unknown>>> {
+  const token = await getAccessTokenAs(opts.subject, [SCOPES.CALENDAR_EVENTS])
+  const items: Array<Record<string, unknown>> = []
+  let pageToken: string | undefined
+
+  do {
+    const params = new URLSearchParams()
+    params.set("timeMin", opts.timeMin)
+    params.set("timeMax", opts.timeMax)
+    params.set("singleEvents", "true")
+    params.set("maxResults", "250")
+    if (pageToken) params.set("pageToken", pageToken)
+
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(opts.calendarId)}/events?${params.toString()}`
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Calendar listarEventosPeriodoEm (${res.status}): ${text}`)
+    }
+    const data = await res.json() as {
+      items?: Array<Record<string, unknown>>
+      nextPageToken?: string
+    }
+    if (data.items) items.push(...data.items)
+    pageToken = data.nextPageToken
+  } while (pageToken)
+
+  return items
+}
+
 export async function buscarEventoEm(opts: {
   subject: string
   calendarId: string
