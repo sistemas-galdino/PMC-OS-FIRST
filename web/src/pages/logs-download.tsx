@@ -18,11 +18,20 @@ interface LogRow {
   id: string
   cliente_nome: string | null
   empresa: string | null
+  auth_user_id: string | null
   tipo: string
   recurso_nome: string | null
   recurso_id: string | null
   url: string | null
   created_at: string
+}
+
+// Qual login (acesso) baixou. Uma empresa tem N logins: o principal (dono) e os
+// vinculados (colaboradores) — get_empresa_acessos devolve os dois com e-mail.
+interface AcessoRow {
+  auth_user_id: string
+  email: string | null
+  tipo: "principal" | "vinculado"
 }
 
 const TIPO_META: Record<string, { label: string; cls: string }> = {
@@ -38,26 +47,50 @@ const dt = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-digi
 
 export default function LogsDownloadPage() {
   const [rows, setRows] = useState<LogRow[]>([])
+  const [acessos, setAcessos] = useState<Map<string, AcessoRow>>(new Map())
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState("")
   const [tipoFiltro, setTipoFiltro] = useState<string>("todos")
 
   useEffect(() => {
-    supabase
-      .from("download_logs")
-      .select("id, cliente_nome, empresa, tipo, recurso_nome, recurso_id, url, created_at")
-      .order("created_at", { ascending: false })
-      .limit(1000)
-      .then(({ data }) => { setRows((data ?? []) as LogRow[]); setLoading(false) })
+    let cancelado = false
+    async function carregar() {
+      const [logs, acessos] = await Promise.all([
+        supabase
+          .from("download_logs")
+          .select("id, cliente_nome, empresa, auth_user_id, tipo, recurso_nome, recurso_id, url, created_at")
+          .order("created_at", { ascending: false })
+          .limit(1000),
+        supabase.rpc("get_empresa_acessos"),
+      ])
+      if (cancelado) return
+      setRows((logs.data ?? []) as LogRow[])
+      // Mapa auth_user_id -> acesso, pra mostrar QUAL login baixou.
+      // Se falhar, a tela segue funcionando sem o e-mail.
+      const mapa = new Map<string, AcessoRow>()
+      for (const a of ((acessos.data ?? []) as AcessoRow[])) {
+        if (a.auth_user_id) mapa.set(a.auth_user_id, a)
+      }
+      setAcessos(mapa)
+      setLoading(false)
+    }
+    carregar()
+    return () => { cancelado = true }
   }, [])
+
+  // E-mail do login que baixou (quando conhecido). Colaborador = login vinculado.
+  const emailDoAcesso = (r: LogRow) => (r.auth_user_id ? acessos.get(r.auth_user_id)?.email ?? null : null)
+  const ehColaborador = (r: LogRow) =>
+    r.auth_user_id ? acessos.get(r.auth_user_id)?.tipo === "vinculado" : false
 
   const tiposPresentes = useMemo(() => Array.from(new Set(rows.map((r) => r.tipo))), [rows])
   const filtradas = useMemo(() => rows.filter((r) => {
     if (tipoFiltro !== "todos" && r.tipo !== tipoFiltro) return false
     if (!busca.trim()) return true
     const q = busca.toLowerCase()
-    return [r.cliente_nome, r.empresa, r.recurso_nome, r.tipo].some((v) => (v ?? "").toLowerCase().includes(q))
-  }), [rows, tipoFiltro, busca])
+    return [r.cliente_nome, r.empresa, r.recurso_nome, r.tipo, emailDoAcesso(r)]
+      .some((v) => (v ?? "").toLowerCase().includes(q))
+  }), [rows, tipoFiltro, busca, acessos])
 
   const porTipo = useMemo(() => {
     const m: Record<string, number> = {}
@@ -72,6 +105,7 @@ export default function LogsDownloadPage() {
         { chave: "created_at", titulo: "Data", valor: (r) => dt(r.created_at) },
         { chave: "empresa", titulo: "Empresa", valor: (r) => r.empresa ?? "" },
         { chave: "cliente_nome", titulo: "Cliente", valor: (r) => r.cliente_nome ?? "" },
+        { chave: "auth_user_id", titulo: "Acesso", valor: (r) => emailDoAcesso(r) ?? "" },
         { chave: "tipo", titulo: "Tipo", valor: (r) => TIPO_META[r.tipo]?.label ?? r.tipo },
         { chave: "recurso_nome", titulo: "Recurso", valor: (r) => r.recurso_nome ?? "" },
         { chave: "url", titulo: "URL", valor: (r) => r.url ?? "" },
@@ -136,8 +170,20 @@ export default function LogsDownloadPage() {
                     <Badge variant="outline" className={`rounded-md text-[10px] font-bold shrink-0 w-28 justify-center ${meta.cls}`}>{meta.label}</Badge>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-foreground truncate">{r.recurso_nome || r.recurso_id || "—"}</p>
-                      <p className="text-[11px] font-medium text-muted-foreground truncate">
-                        {r.empresa || "—"}{r.cliente_nome ? ` · ${r.cliente_nome}` : ""}
+                      <p className="text-[11px] font-medium text-muted-foreground truncate flex items-center gap-1.5">
+                        <span className="truncate">
+                          {r.empresa || "—"}{r.cliente_nome ? ` · ${r.cliente_nome}` : ""}
+                          {emailDoAcesso(r) ? ` · ${emailDoAcesso(r)}` : ""}
+                        </span>
+                        {ehColaborador(r) && (
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 rounded-md px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider border-border text-muted-foreground bg-muted/20"
+                            title="Download feito por um acesso vinculado (colaborador), não pelo login principal"
+                          >
+                            colaborador
+                          </Badge>
+                        )}
                       </p>
                     </div>
                     {r.url && (
