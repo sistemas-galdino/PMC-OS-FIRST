@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -27,6 +28,10 @@ export default function CadastroPage({ session }: Props) {
   const [submitted, setSubmitted] = useState(false)
 
   const form = useForm<OnboardingFormData>({
+    // Valida contra o schema da etapa atual. Sem este resolver o trigger() do
+    // handleNext sempre respondia "válido" e NENHUM campo era exigido de fato —
+    // os asteriscos dos rótulos eram decorativos.
+    resolver: zodResolver(stepSchemas[currentStep - 1]) as never,
     defaultValues: {
       pais: 'BR',
       ia_interesses: [],

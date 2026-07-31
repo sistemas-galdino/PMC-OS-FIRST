@@ -30,8 +30,9 @@ export function StepExpectativas({ register, errors, setValue, watch }: Props) {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Principal motivo que poderia ter impedido a entrada</Label>
+        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Principal motivo que poderia ter impedido a entrada *</Label>
         <Input {...register('motivo_impedimento')} placeholder="O que quase fez você não entrar" className="bg-muted/10 border-border" />
+        {errors.motivo_impedimento && <p className="text-xs text-destructive font-medium">{errors.motivo_impedimento.message}</p>}
       </div>
 
       <div className="space-y-2">

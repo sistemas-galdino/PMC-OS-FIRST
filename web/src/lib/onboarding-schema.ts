@@ -38,7 +38,9 @@ export const step4Schema = z.object({
 
 export const step5Schema = z.object({
   expectativas: z.string().min(10, 'Descreva suas expectativas'),
-  motivo_impedimento: z.string().optional(),
+  // Campo de linha única (os demais desta etapa são dissertativos e pedem 10):
+  // respostas curtas e legítimas como "Preço" precisam passar.
+  motivo_impedimento: z.string().min(3, 'Descreva o motivo'),
   como_conheceu: z.string().min(1, 'Selecione como conheceu'),
   motivo_entrada: z.string().min(10, 'Descreva o motivo'),
   tres_entregas: z.string().min(10, 'Descreva as 3 entregas'),

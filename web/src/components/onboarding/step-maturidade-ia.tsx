@@ -47,7 +47,8 @@ export function StepMaturidadeIA({ errors, setValue, watch }: Props) {
 
       <div className="space-y-4">
         {IA_QUESTIONS.map(({ field, label }) => (
-          <div key={field} className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/30">
+          <div key={field} className="p-4 rounded-xl border border-border/50 bg-card/30 space-y-2">
+            <div className="flex items-center justify-between">
             <span className="text-sm text-foreground font-medium pr-4">{label}</span>
             <div className="flex gap-2 shrink-0">
               <button
@@ -73,6 +74,9 @@ export function StepMaturidadeIA({ errors, setValue, watch }: Props) {
                 Não
               </button>
             </div>
+            </div>
+            {/* Sem isto, uma pergunta não respondida barra o envio sem dizer por quê. */}
+            {errors[field] && <p className="text-xs text-destructive font-medium">{errors[field]?.message}</p>}
           </div>
         ))}
       </div>
