@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+// Campo numérico digitado e depois apagado chega como "": a coerção o
+// converteria em 0, que satisfaz o min(0) e passaria batido. Tratar como não
+// informado faz cair na mensagem de campo obrigatório.
+const vazioParaIndefinido = (v: unknown) => (v === '' || v === null ? undefined : v)
+
 export const step1Schema = z.object({
   pais: z.enum(['BR', 'US']).default('BR'),
   nome_completo: z.string().min(3, 'Nome completo é obrigatório'),
@@ -24,16 +29,28 @@ export const step2Schema = z.object({
 })
 
 export const step3Schema = z.object({
-  faturamento_anual: z.coerce.number({ message: 'Informe o faturamento anual' }).min(0, 'Informe um valor válido'),
-  numero_funcionarios: z.coerce.number({ message: 'Informe a quantidade' }).int('Use um número inteiro').min(0, 'Informe um valor válido'),
-  numero_gestores: z.coerce.number({ message: 'Informe a quantidade' }).int('Use um número inteiro').min(0, 'Informe um valor válido'),
+  faturamento_anual: z.preprocess(
+    vazioParaIndefinido,
+    z.coerce.number({ message: 'Informe o faturamento anual' }).min(0, 'Informe um valor válido'),
+  ),
+  numero_funcionarios: z.preprocess(
+    vazioParaIndefinido,
+    z.coerce.number({ message: 'Informe a quantidade' }).int('Use um número inteiro').min(0, 'Informe um valor válido'),
+  ),
+  numero_gestores: z.preprocess(
+    vazioParaIndefinido,
+    z.coerce.number({ message: 'Informe a quantidade' }).int('Use um número inteiro').min(0, 'Informe um valor válido'),
+  ),
 })
 
 export const step4Schema = z.object({
   desafios: z.string().min(10, 'Descreva os desafios'),
   motivo_nao_superou: z.string().min(10, 'Descreva o motivo'),
   referencias_posicionamento: z.string().optional(),
-  meta_12_meses: z.coerce.number({ message: 'Informe a meta' }).min(0, 'Informe um valor válido'),
+  meta_12_meses: z.preprocess(
+    vazioParaIndefinido,
+    z.coerce.number({ message: 'Informe a meta' }).min(0, 'Informe um valor válido'),
+  ),
 })
 
 export const step5Schema = z.object({
