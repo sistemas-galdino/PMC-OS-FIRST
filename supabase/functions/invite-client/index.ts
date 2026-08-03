@@ -61,7 +61,11 @@ Deno.serve(async (req: Request) => {
       .from('mentores').select('id').eq('email', userData.user.email).maybeSingle();
     if (!mentor) return jsonResponse({ error: 'Apenas administradores podem registrar clientes' }, 403);
 
-    const { nome, nome_empresa, email, app_url: bodyAppUrl } = await req.json();
+    const {
+      nome, nome_empresa, email, app_url: bodyAppUrl,
+      estado_uf, sc, unidade_treinamento, produto, nicho, subnicho,
+      canal_de_venda, mes_treinamento, ano_treinamento,
+    } = await req.json();
     if (!nome || !email) return jsonResponse({ error: 'Nome e e-mail sao obrigatorios' }, 400);
 
     const appUrl = resolveAppUrl(bodyAppUrl);
@@ -119,6 +123,15 @@ Deno.serve(async (req: Request) => {
       nome_cliente: nomeF, nome_cliente_formatado: nomeF,
       nome_empresa: empresaF, nome_empresa_formatado: empresaF,
       status_atual: 'Pendente de Onboarding', nivel_engajamento: 'sem_onboarding',
+      estado_uf: estado_uf || null,
+      sc: sc || null,
+      unidade_treinamento: unidade_treinamento || null,
+      produto: produto || null,
+      nicho: nicho || null,
+      subnicho: subnicho || null,
+      canal_de_venda: canal_de_venda || null,
+      mes_treinamento: mes_treinamento || null,
+      ano_treinamento: ano_treinamento || null,
     });
 
     await supabaseAdmin.from('cliente_onboarding').insert({

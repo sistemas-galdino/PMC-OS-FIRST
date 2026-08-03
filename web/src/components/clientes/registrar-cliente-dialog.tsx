@@ -151,6 +151,15 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
               nome_empresa: form.nome_empresa.trim(),
               email: form.email.trim(),
               app_url: window.location.origin,
+              estado_uf: form.estado_uf || null,
+              sc: form.sc || null,
+              unidade_treinamento: form.unidade_treinamento.trim() || null,
+              produto: form.produto.trim() || null,
+              nicho: form.nicho || null,
+              subnicho: form.subnicho.trim() || null,
+              canal_de_venda: form.canal_de_venda.trim() || null,
+              mes_treinamento: form.mes_treinamento || null,
+              ano_treinamento: form.ano_treinamento ? parseInt(form.ano_treinamento) : null,
             }),
           }
         )
