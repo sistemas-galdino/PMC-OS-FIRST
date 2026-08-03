@@ -169,7 +169,13 @@ export default function CadastroPage({ session }: Props) {
           id_cliente: userId,
           faturamento_anual_objetivo: faturamento,
           colaboradores_total: funcionarios + gestores,
+          numero_funcionarios: funcionarios,
+          numero_gestores: gestores,
           meta_2026: meta12m,
+          principais_desafios: values.desafios ?? null,
+          como_ajudar: values.expectativa_galdino ?? null,
+          resultados_esperados: values.resultado_final ?? null,
+          entregas_decisivas: values.tres_entregas ?? null,
         },
         { onConflict: 'id_cliente' }
       )
