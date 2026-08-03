@@ -43,6 +43,7 @@ interface Encontro {
   tipo_encontro: string
   titulo_formatado: string
   data_encontro: string
+  data_hora_inicio_iso: string
   horario_inicio: string
   horario_fim: string
   link_google_meet: string | null
@@ -217,8 +218,6 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
     let cancelled = false
 
     async function fetchAll() {
-      const mes = hoje.getMonth() + 1
-      const ano = hoje.getFullYear()
       const hojeIso = hoje.toISOString().slice(0, 10)
 
       const [clienteRes, linksRes, encontrosRes, reunioesRes, etapasRes, metasRes, galdinoCountRes, consultoresCountRes, blackcrmCountRes] = await Promise.all([
@@ -230,9 +229,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
         supabase.from("configuracoes_links").select("chave, url").eq("ativo", true),
         supabase
           .from("encontros_ao_vivo")
-          .select("id_unico, tipo_encontro, titulo_formatado, data_encontro, horario_inicio, horario_fim, link_google_meet, link_gravacao, status")
-          .eq("mes", mes)
-          .eq("ano", ano)
+          .select("id_unico, tipo_encontro, titulo_formatado, data_encontro, data_hora_inicio_iso, horario_inicio, horario_fim, link_google_meet, link_gravacao, status")
           .neq("status", "cancelado")
           .order("data_hora_inicio_iso", { ascending: true }),
         supabase
@@ -494,8 +491,9 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
   const pctConcluido = Math.round((totalConcluidas / ETAPAS_METODO.length) * 100)
   // Etapa atual = primeira não concluída (guia o "continuar de onde parou").
   const etapaAtual = ETAPAS_METODO.find((e) => !etapaConcluida(e))?.numero ?? null
-  // Próximo encontro ao vivo (a lista já vem do mês atual, sem cancelados, em ordem).
-  const proximoEncontro = encontros.find((e) => e.data_encontro >= hoje.toISOString().slice(0, 10)) ?? null
+  // Próximo encontro ao vivo (lista já vem sem cancelados, em ordem por data_hora_inicio_iso).
+  // data_encontro é texto DD/MM/YYYY — a comparação de "futuro" precisa usar o campo ISO.
+  const proximoEncontro = encontros.find((e) => new Date(e.data_hora_inicio_iso) >= hoje) ?? null
   // Nível PMC — gamificação unificada (jornada + fases + reuniões + vitórias).
   const totalReunioes = reunioesCount.galdino + reunioesCount.consultores + reunioesCount.blackcrm
   const fasesComDados = [...sinais].filter((s) => s !== "reunioes").length
@@ -1049,7 +1047,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
                   </div>
                   <p className="text-[14px] font-bold text-foreground leading-snug line-clamp-2">{proximoEncontro.titulo_formatado}</p>
                   <p className="text-[12px] font-medium text-muted-foreground mt-0.5">
-                    {proximoEncontro.data_encontro.slice(8, 10)}/{proximoEncontro.data_encontro.slice(5, 7)} · {(proximoEncontro.horario_inicio ?? "").slice(0, 5)}
+                    {proximoEncontro.data_encontro.split("/").slice(0, 2).join("/")} · {(proximoEncontro.horario_inicio ?? "").slice(0, 5)}
                   </p>
                   <Button
                     size="sm"
