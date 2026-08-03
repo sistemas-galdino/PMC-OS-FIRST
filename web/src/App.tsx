@@ -67,6 +67,13 @@ const GuardiaoResponderPage = lazy(() => import("@/pages/guardiao-responder"))
 const GuardiaoAdminPage = lazy(() => import("@/pages/guardiao-admin"))
 const TimePermissoesPage = lazy(() => import("@/pages/time-permissoes"))
 
+// Um deploy novo troca os hashes dos chunks JS e apaga os antigos do servidor.
+// Se o navegador já tinha a página aberta de antes do deploy, o import()
+// dinâmico de uma rota lazy tenta buscar um arquivo que não existe mais e
+// rejeita — isso não é um bug de verdade, só uma sessão desatualizada.
+const CHUNK_ERROR_RE = /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk .* failed/i
+const CHUNK_RELOAD_KEY = "pmc-chunk-reload"
+
 // Error Boundary to catch any component crashes
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: any }> {
   constructor(props: { children: ReactNode }) {
@@ -78,12 +85,29 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
     return { hasError: true, error }
   }
 
+  componentDidMount() {
+    // Chegou até aqui sem erro: os chunks da sessão atual estão bons, então o
+    // próximo erro de chunk (se vier) é um problema de verdade, não este aqui.
+    sessionStorage.removeItem(CHUNK_RELOAD_KEY)
+  }
+
   componentDidCatch(error: any, errorInfo: any) {
     console.error("APP CRASH:", error, errorInfo)
+    const msg = String(error?.message ?? error ?? "")
+    if (CHUNK_ERROR_RE.test(msg) && !sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
+      sessionStorage.setItem(CHUNK_RELOAD_KEY, "1")
+      window.location.reload()
+    }
   }
 
   render() {
     if (this.state.hasError) {
+      const msg = String(this.state.error?.message ?? this.state.error ?? "")
+      if (CHUNK_ERROR_RE.test(msg)) {
+        // window.location.reload() já foi disparado no componentDidCatch — evita
+        // piscar a tela de "CRITICAL ERROR" durante o instante até a página recarregar.
+        return <PmcSpinner />
+      }
       return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-10 text-center">
           <div className="size-20 bg-destructive/10 rounded-2xl flex items-center justify-center mb-8 border border-destructive/20">
