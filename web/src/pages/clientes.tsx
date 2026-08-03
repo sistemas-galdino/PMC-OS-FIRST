@@ -249,19 +249,33 @@ export default function ClientesPage() {
   // Delete confirmation
   const [deleteClient, setDeleteClient] = useState<Client | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  // Exclusão completa (login + todas as tabelas com id_cliente) via edge
+  // function service-role — evita deixar resíduo que trava o e-mail num
+  // recadastro (ver excluir-cliente + admin_excluir_cliente).
   async function handleDeleteClient() {
     if (!deleteClient) return
     setDeleting(true)
-    const { error } = await supabase
-      .from('clientes_entrada_new')
-      .delete()
-      .eq('id_entrada', deleteClient.id_entrada)
-    if (!error) {
-      setClients(prev => prev.filter(c => c.id_entrada !== deleteClient.id_entrada))
+    setDeleteError(null)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/excluir-cliente`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess.session?.access_token ?? ''}` },
+        body: JSON.stringify({ id_entrada: deleteClient.id_entrada }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setDeleteError(String(data.error || 'Erro ao excluir cliente.'))
+      } else {
+        setClients(prev => prev.filter(c => c.id_entrada !== deleteClient.id_entrada))
+        setDeleteClient(null)
+      }
+    } catch (e) {
+      setDeleteError((e as Error).message)
     }
     setDeleting(false)
-    setDeleteClient(null)
   }
 
   useEffect(() => {
@@ -1505,17 +1519,18 @@ export default function ClientesPage() {
         }}
       />
 
-      <Dialog open={!!deleteClient} onOpenChange={(open) => { if (!open) setDeleteClient(null) }}>
+      <Dialog open={!!deleteClient} onOpenChange={(open) => { if (!open) { setDeleteClient(null); setDeleteError(null) } }}>
         <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-foreground">Excluir Cliente</DialogTitle>
             <DialogDescription className="text-muted-foreground">
               Tem certeza que deseja excluir <span className="font-bold text-foreground">{deleteClient?.nome_cliente_formatado}</span>
-              {deleteClient?.nome_empresa_formatado && <> ({deleteClient.nome_empresa_formatado})</>}? Esta ação não pode ser desfeita.
+              {deleteClient?.nome_empresa_formatado && <> ({deleteClient.nome_empresa_formatado})</>}? Esta ação apaga o login e todos os dados do cliente — não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
+          {deleteError && <p className="text-sm text-destructive font-medium">{deleteError}</p>}
           <DialogFooter className="flex gap-3 mt-4">
-            <Button variant="outline" onClick={() => setDeleteClient(null)} className="flex-1 rounded-xl font-bold text-xs uppercase tracking-wider">
+            <Button variant="outline" onClick={() => { setDeleteClient(null); setDeleteError(null) }} className="flex-1 rounded-xl font-bold text-xs uppercase tracking-wider">
               Cancelar
             </Button>
             <Button
