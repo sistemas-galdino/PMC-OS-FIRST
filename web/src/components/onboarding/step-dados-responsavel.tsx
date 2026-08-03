@@ -151,16 +151,6 @@ export function StepDadosResponsavel({ register, errors, setValue, watch }: Prop
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Endereço completo *</Label>
-        <Input
-          {...register('endereco')}
-          placeholder={isUS ? 'Street, number, city, state' : 'Rua, número, bairro, cidade'}
-          className="bg-muted/10 border-border"
-        />
-        {errors.endereco && <p className="text-xs text-destructive font-medium">{errors.endereco.message}</p>}
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2">
           <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -192,6 +182,16 @@ export function StepDadosResponsavel({ register, errors, setValue, watch }: Prop
           </Select>
           {errors.uf && <p className="text-xs text-destructive font-medium">{errors.uf.message}</p>}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Endereço completo *</Label>
+        <Input
+          {...register('endereco')}
+          placeholder={isUS ? 'Street, number, city, state' : 'Rua, número, bairro, cidade'}
+          className="bg-muted/10 border-border"
+        />
+        {errors.endereco && <p className="text-xs text-destructive font-medium">{errors.endereco.message}</p>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
