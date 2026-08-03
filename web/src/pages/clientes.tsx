@@ -103,6 +103,7 @@ interface Client {
   mes_treinamento: string | null
   ano_treinamento: number | null
   email: string | null
+  created_at: string
 }
 
 const ENGAGEMENT_LABELS: Record<NivelEngajamento, string> = {
@@ -979,6 +980,9 @@ export default function ClientesPage() {
               <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">
                 <button className={`uppercase tracking-widest font-bold hover:text-primary transition-colors ${sortOrder === 'az' ? 'text-primary' : ''}`} onClick={() => setSortOrder('az')}>Empresa / Cliente ↕</button>
               </TableHead>
+              <TableHead className="w-[110px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">
+                <button className={`uppercase tracking-widest font-bold hover:text-primary transition-colors ${sortOrder === 'recent' ? 'text-primary' : ''}`} onClick={() => setSortOrder('recent')} title="Ordenar por data de cadastro">Cadastro ↕</button>
+              </TableHead>
               <TableHead className="w-[130px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">
                 <button className={`uppercase tracking-widest font-bold hover:text-primary transition-colors ${sortOrder === 'reuniao' ? 'text-primary' : ''}`} onClick={() => setSortOrder('reuniao')} title="Ordenar por tempo sem reunião">Últ. Reunião ↕</button>
               </TableHead>
@@ -1024,6 +1028,11 @@ export default function ClientesPage() {
                       <span className="truncate">{client.nome_cliente_formatado}</span>
                     </div>
                   </div>
+                </TableCell>
+                <TableCell className="px-3">
+                  <span className="text-[12px] font-medium text-muted-foreground tabular-nums">
+                    {client.created_at ? new Date(client.created_at).toLocaleDateString('pt-BR') : '—'}
+                  </span>
                 </TableCell>
                 <TableCell className="px-3">
                   {dias === null ? (
