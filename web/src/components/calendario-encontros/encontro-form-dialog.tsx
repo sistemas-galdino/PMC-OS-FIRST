@@ -38,7 +38,14 @@ interface Props {
   tiposConhecidos: { value: string; label: string }[]
   onClose: () => void
   onSave: (id: string | null, payload: EncontroFormPayload) => Promise<void>
+  onDelete?: () => void
+  convidados: string[]
+  convidadosLoading?: boolean
+  onAdicionarConvidado: (email: string) => Promise<void>
+  onRemoverConvidado: (email: string) => Promise<void>
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const FORM_VAZIO: EncontroFormPayload = {
   tipo_encontro: "",
@@ -51,11 +58,14 @@ const FORM_VAZIO: EncontroFormPayload = {
 
 const TIPO_OUTRO = "__outro__"
 
-export function EncontroFormDialog({ open, inicial, tiposConhecidos, onClose, onSave }: Props) {
+export function EncontroFormDialog({ open, inicial, tiposConhecidos, onClose, onSave, onDelete, convidados, convidadosLoading, onAdicionarConvidado, onRemoverConvidado }: Props) {
   const [form, setForm] = useState<EncontroFormPayload>(FORM_VAZIO)
   const [tipoSelect, setTipoSelect] = useState<string>("")
   const [tipoLivre, setTipoLivre] = useState<string>("")
   const [saving, setSaving] = useState(false)
+  const [emailInput, setEmailInput] = useState("")
+  const [emailErro, setEmailErro] = useState<string | null>(null)
+  const [convidadoPendente, setConvidadoPendente] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -82,7 +92,30 @@ export function EncontroFormDialog({ open, inicial, tiposConhecidos, onClose, on
       setTipoSelect("")
       setTipoLivre("")
     }
+    setEmailInput("")
+    setEmailErro(null)
   }, [open, inicial, tiposConhecidos])
+
+  async function handleAddEmail() {
+    const email = emailInput.trim().toLowerCase()
+    if (!email) return
+    if (!EMAIL_RE.test(email)) {
+      setEmailErro("E-mail inválido")
+      return
+    }
+    if (convidados.includes(email)) {
+      setEmailErro("Esse e-mail já está na lista")
+      return
+    }
+    setEmailErro(null)
+    setEmailInput("")
+    setConvidadoPendente(email)
+    try {
+      await onAdicionarConvidado(email)
+    } finally {
+      setConvidadoPendente(null)
+    }
+  }
 
   function tipoFinal(): string {
     return tipoSelect === TIPO_OUTRO ? tipoLivre.trim() : tipoSelect
@@ -207,13 +240,66 @@ export function EncontroFormDialog({ open, inicial, tiposConhecidos, onClose, on
               placeholder="Detalhes do encontro, pauta, etc."
             />
           </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Convidados (e-mail)
+            </Label>
+            <p className="text-[11px] text-muted-foreground">
+              {inicial?.id_unico
+                ? "Adicionados agora mesmo na agenda de cada convidado, já confirmados."
+                : "Entram na agenda de cada convidado, já confirmados, assim que o encontro for salvo."}
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                value={emailInput}
+                onChange={e => { setEmailInput(e.target.value); setEmailErro(null) }}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddEmail() } }}
+                placeholder="nome@empresa.com"
+              />
+              <Button type="button" variant="outline" onClick={handleAddEmail} disabled={!!convidadoPendente}>
+                Adicionar
+              </Button>
+            </div>
+            {emailErro && <p className="text-xs text-destructive font-medium">{emailErro}</p>}
+            {convidadosLoading ? (
+              <p className="text-xs text-muted-foreground">Carregando convidados atuais...</p>
+            ) : convidados.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {convidados.map(email => (
+                  <span
+                    key={email}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-muted/30 border border-border px-2.5 py-1 text-[11px] font-medium"
+                  >
+                    {email}
+                    <button
+                      type="button"
+                      onClick={() => onRemoverConvidado(email)}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      aria-label={`Remover ${email}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Salvando..." : "Salvar"}
-          </Button>
+        <DialogFooter className="sm:justify-between">
+          {onDelete ? (
+            <Button type="button" variant="outline" onClick={onDelete} className="text-destructive hover:bg-destructive/10">
+              Excluir encontro
+            </Button>
+          ) : <span />}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

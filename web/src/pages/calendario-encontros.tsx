@@ -142,7 +142,7 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
   )
 }
 
-function CalendarGrid({ month, year, encontros, onNavigate }: { month: number; year: number; encontros: Encontro[]; onNavigate: (dir: number) => void }) {
+function CalendarGrid({ month, year, encontros, onNavigate, isAdmin, onEventClick }: { month: number; year: number; encontros: Encontro[]; onNavigate: (dir: number) => void; isAdmin?: boolean; onEventClick?: (enc: Encontro) => void }) {
   const firstDay = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0)
   const startDayOfWeek = firstDay.getDay()
@@ -224,7 +224,8 @@ function CalendarGrid({ month, year, encontros, onNavigate }: { month: number; y
                         return (
                           <div
                             key={enc.id_unico}
-                            className={`rounded-lg p-1.5 md:p-2 border ${colors.bg} ${colors.border} ${isPast ? "opacity-60" : ""}`}
+                            onClick={isAdmin && onEventClick ? () => onEventClick(enc) : undefined}
+                            className={`rounded-lg p-1.5 md:p-2 border ${colors.bg} ${colors.border} ${isPast ? "opacity-60" : ""} ${isAdmin && onEventClick ? "cursor-pointer hover:brightness-125 transition-[filter]" : ""}`}
                           >
                             <p className={`text-[10px] md:text-xs font-bold leading-tight ${colors.text}`}>
                               {enc.titulo_formatado}
@@ -239,6 +240,7 @@ function CalendarGrid({ month, year, encontros, onNavigate }: { month: number; y
                                     href={enc.link_google_meet}
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
                                     className="flex items-center gap-1 text-[9px] font-bold text-primary-foreground bg-primary/90 hover:bg-primary rounded px-1.5 py-0.5 transition-colors w-fit"
                                   >
                                     <VideoIcon className="size-2.5" />
@@ -249,6 +251,7 @@ function CalendarGrid({ month, year, encontros, onNavigate }: { month: number; y
                                   href={generateGoogleCalendarUrl(enc)}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
                                   className="flex items-center gap-1 text-[9px] font-medium text-muted-foreground hover:text-foreground transition-colors"
                                 >
                                   <CalendarIcon className="size-2.5" />
@@ -261,6 +264,7 @@ function CalendarGrid({ month, year, encontros, onNavigate }: { month: number; y
                                 href={enc.link_gravacao}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
                                 className="flex items-center gap-1 mt-1.5 text-[9px] font-medium text-muted-foreground hover:text-foreground transition-colors hidden md:flex"
                               >
                                 <PlayCircleIcon className="size-2.5" />
@@ -293,6 +297,13 @@ export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) 
   const [confirmCancel, setConfirmCancel] = useState<Encontro | null>(null)
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null)
 
+  // Convidados do encontro aberto no formulário. Em edição, começa vazio e é
+  // preenchido buscando os attendees reais do evento no Google Calendar
+  // (gerenciar-convidados-evento em modo "listar"); em criação, é só a lista
+  // que vai ser aplicada depois que o encontro for criado (precisa do id_unico).
+  const [convidados, setConvidados] = useState<string[]>([])
+  const [convidadosLoading, setConvidadosLoading] = useState(false)
+
   useEffect(() => {
     if (!toast) return
     const t = setTimeout(() => setToast(null), 3500)
@@ -321,10 +332,11 @@ export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) 
 
   function abrirNovo() {
     setFormInicial(null)
+    setConvidados([])
     setFormOpen(true)
   }
 
-  function abrirEditar(enc: Encontro) {
+  async function abrirEditar(enc: Encontro) {
     setFormInicial({
       id_unico: enc.id_unico,
       tipo_encontro: enc.tipo_encontro,
@@ -334,7 +346,17 @@ export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) 
       hora_inicio: enc.horario_inicio?.slice(0, 5) ?? "",
       hora_fim: enc.horario_fim?.slice(0, 5) ?? "",
     })
+    setConvidados([])
     setFormOpen(true)
+    setConvidadosLoading(true)
+    const { data, error } = await supabase.functions.invoke("gerenciar-convidados-evento", {
+      body: { id_unico: enc.id_unico },
+    })
+    setConvidadosLoading(false)
+    if (!error) {
+      const attendees = (data as { attendees?: { email?: string }[] } | null)?.attendees ?? []
+      setConvidados(attendees.map(a => a.email).filter((e): e is string => !!e))
+    }
   }
 
   async function salvarEncontro(id: string | null, payload: EncontroFormPayload) {
@@ -357,9 +379,49 @@ export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) 
       setToast({ type: "err", msg: (data as { error: string }).error })
       return
     }
+    // Encontro novo: os convidados só podem ser adicionados no Google Calendar
+    // depois que o evento existe (precisa do id_unico devolvido pela criação).
+    if (!id && convidados.length > 0) {
+      const novoId = (data as { id_unico?: string } | null)?.id_unico
+      if (novoId) {
+        await supabase.functions.invoke("gerenciar-convidados-evento", {
+          body: { id_unico: novoId, adicionar: convidados },
+        })
+      }
+    }
     setToast({ type: "ok", msg: id ? "Encontro atualizado" : "Encontro criado" })
     setFormOpen(false)
     await fetchEncontros()
+  }
+
+  // Convidar/remover em edição é imediato (evento já existe no Google
+  // Calendar); em criação, só mexe no estado local — vai pro Google junto
+  // com a criação do encontro (ver salvarEncontro).
+  async function adicionarConvidado(email: string) {
+    setConvidados(prev => [...prev, email])
+    if (!formInicial?.id_unico) return
+    const { error } = await supabase.functions.invoke("gerenciar-convidados-evento", {
+      body: { id_unico: formInicial.id_unico, adicionar: [email] },
+    })
+    if (error) {
+      setConvidados(prev => prev.filter(e => e !== email))
+      setToast({ type: "err", msg: "Erro ao adicionar convidado" })
+    } else {
+      setToast({ type: "ok", msg: "Convidado adicionado à agenda" })
+    }
+  }
+
+  async function removerConvidado(email: string) {
+    const anterior = convidados
+    setConvidados(prev => prev.filter(e => e !== email))
+    if (!formInicial?.id_unico) return
+    const { error } = await supabase.functions.invoke("gerenciar-convidados-evento", {
+      body: { id_unico: formInicial.id_unico, remover: [email] },
+    })
+    if (error) {
+      setConvidados(anterior)
+      setToast({ type: "err", msg: "Erro ao remover convidado" })
+    }
   }
 
   async function cancelarEncontro(enc: Encontro) {
@@ -543,6 +605,8 @@ export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) 
           year={currentYear}
           encontros={encontrosVisiveis}
           onNavigate={handleNavigate}
+          isAdmin={isAdmin}
+          onEventClick={abrirEditar}
         />
       </motion.div>
 
@@ -633,6 +697,15 @@ export default function CalendarioEncontrosPage({ isAdmin = false }: PageProps) 
         tiposConhecidos={TIPOS_CONHECIDOS}
         onClose={() => setFormOpen(false)}
         onSave={salvarEncontro}
+        convidados={convidados}
+        convidadosLoading={convidadosLoading}
+        onAdicionarConvidado={adicionarConvidado}
+        onRemoverConvidado={removerConvidado}
+        onDelete={formInicial?.id_unico ? () => {
+          const enc = encontrosVisiveis.find(e => e.id_unico === formInicial.id_unico)
+          setFormOpen(false)
+          if (enc) setConfirmCancel(enc)
+        } : undefined}
       />
 
       <Dialog open={!!confirmCancel} onOpenChange={v => !v && setConfirmCancel(null)}>

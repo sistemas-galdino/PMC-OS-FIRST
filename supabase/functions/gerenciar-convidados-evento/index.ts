@@ -84,9 +84,9 @@ Deno.serve(async (req: Request) => {
     const body = (await req.json()) as Body
     const adicionar = normalizarEmails(body.adicionar)
     const remover = normalizarEmails(body.remover)
-    if (adicionar.length === 0 && remover.length === 0) {
-      return jsonResponse({ error: "informe 'adicionar' e/ou 'remover' (listas de e-mail)" }, 400)
-    }
+    // adicionar/remover vazios = modo "listar": só resolve o evento e devolve
+    // os convidados atuais (cai no branch "Nada a alterar" mais abaixo), sem
+    // chamar o Google Calendar pra escrever nada.
     const invalidos = [...adicionar, ...remover].filter((e) => !EMAIL_RE.test(e))
     if (invalidos.length > 0) {
       return jsonResponse({ error: `e-mail inválido: ${invalidos.join(", ")}` }, 400)
