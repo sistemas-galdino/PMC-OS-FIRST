@@ -1,8 +1,10 @@
+import { useState } from "react"
 import type { UseFormRegister, FieldErrors, UseFormSetValue, UseFormWatch } from "react-hook-form"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { maskPhone, maskCEP, maskDate, maskPhoneUS, maskZipUS } from "@/lib/masks"
+import { buscarEnderecoPorCep } from "@/lib/cep"
 import type { OnboardingFormData } from "@/lib/onboarding-schema"
 import { cn } from "@/lib/utils"
 
@@ -39,6 +41,23 @@ interface Props {
 export function StepDadosResponsavel({ register, errors, setValue, watch }: Props) {
   const pais = (watch('pais') as 'BR' | 'US') || 'BR'
   const isUS = pais === 'US'
+  const [buscandoCep, setBuscandoCep] = useState(false)
+
+  async function handleCepBlur() {
+    if (isUS) return
+    const cep = watch('cep') || ''
+    if (cep.replace(/\D/g, '').length !== 8) return
+    setBuscandoCep(true)
+    const endereco = await buscarEnderecoPorCep(cep)
+    setBuscandoCep(false)
+    if (!endereco) return
+    if (!watch('endereco')) {
+      const partes = [endereco.logradouro, endereco.bairro, endereco.localidade].filter(Boolean)
+      setValue('endereco', partes.join(', '), { shouldValidate: true })
+    }
+    if (endereco.uf) setValue('uf', endereco.uf, { shouldValidate: true })
+  }
+
   return (
     <div className="space-y-5">
       <div className="space-y-2">
@@ -144,12 +163,16 @@ export function StepDadosResponsavel({ register, errors, setValue, watch }: Prop
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2">
-          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{isUS ? 'ZIP code *' : 'CEP *'}</Label>
+          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            {isUS ? 'ZIP code *' : 'CEP *'}
+            {buscandoCep && <span className="ml-2 normal-case font-medium text-muted-foreground/70">buscando endereço...</span>}
+          </Label>
           <Input
             {...register('cep')}
             placeholder={isUS ? '12345' : '00000-000'}
             className="bg-muted/10 border-border"
             onChange={(e) => setValue('cep', (isUS ? maskZipUS : maskCEP)(e.target.value), { shouldValidate: true })}
+            onBlur={handleCepBlur}
             value={watch('cep') || ''}
           />
           {errors.cep && <p className="text-xs text-destructive font-medium">{errors.cep.message}</p>}

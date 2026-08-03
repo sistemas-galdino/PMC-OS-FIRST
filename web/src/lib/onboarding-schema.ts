@@ -5,6 +5,19 @@ import { z } from 'zod'
 // informado faz cair na mensagem de campo obrigatório.
 const vazioParaIndefinido = (v: unknown) => (v === '' || v === null ? undefined : v)
 
+// Campos dissertativos: mensagem mostra quantos caracteres ainda faltam em vez
+// de uma frase fixa, pra pessoa saber o quanto falta digitar.
+const minCaracteres = (min: number) =>
+  z.string().superRefine((val, ctx) => {
+    const faltam = min - val.trim().length
+    if (faltam > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Faltam ${faltam} caractere${faltam === 1 ? '' : 's'} (mínimo de ${min})`,
+      })
+    }
+  })
+
 export const step1Schema = z.object({
   pais: z.enum(['BR', 'US']).default('BR'),
   nome_completo: z.string().min(3, 'Nome completo é obrigatório'),
@@ -23,7 +36,7 @@ export const step1Schema = z.object({
 export const step2Schema = z.object({
   empresa_nome: z.string().min(2, 'Nome da empresa é obrigatório'),
   nicho: z.string().min(1, 'Selecione o nicho'),
-  descricao_negocio: z.string().min(10, 'Descreva brevemente seu negócio'),
+  descricao_negocio: minCaracteres(10),
   site: z.string().optional(),
   instagram: z.string().optional(),
 })
@@ -44,8 +57,8 @@ export const step3Schema = z.object({
 })
 
 export const step4Schema = z.object({
-  desafios: z.string().min(10, 'Descreva os desafios'),
-  motivo_nao_superou: z.string().min(10, 'Descreva o motivo'),
+  desafios: minCaracteres(10),
+  motivo_nao_superou: minCaracteres(10),
   referencias_posicionamento: z.string().optional(),
   meta_12_meses: z.preprocess(
     vazioParaIndefinido,
@@ -54,15 +67,15 @@ export const step4Schema = z.object({
 })
 
 export const step5Schema = z.object({
-  expectativas: z.string().min(10, 'Descreva suas expectativas'),
+  expectativas: minCaracteres(10),
   // Campo de linha única (os demais desta etapa são dissertativos e pedem 10):
   // respostas curtas e legítimas como "Preço" precisam passar.
   motivo_impedimento: z.string().min(3, 'Descreva o motivo'),
   como_conheceu: z.string().min(1, 'Selecione como conheceu'),
-  motivo_entrada: z.string().min(10, 'Descreva o motivo'),
-  tres_entregas: z.string().min(10, 'Descreva as 3 entregas'),
-  resultado_final: z.string().min(10, 'Descreva o resultado'),
-  expectativa_galdino: z.string().min(10, 'Descreva o que espera'),
+  motivo_entrada: minCaracteres(10),
+  tres_entregas: minCaracteres(10),
+  resultado_final: minCaracteres(10),
+  expectativa_galdino: minCaracteres(10),
 })
 
 export const step6Schema = z.object({
