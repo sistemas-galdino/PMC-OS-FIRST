@@ -1,0 +1,692 @@
+<title>Como se constrói um Sistema Operacional de Negócio</title>
+<style>
+  :root {
+    --ground: #F3F3EF;
+    --surface: #FFFFFF;
+    --surface-2: #E9EBE6;
+    --ink: #14181A;
+    --ink-soft: #3D4644;
+    --muted: #6B7772;
+    --line: #D5D9D2;
+    --accent: #0D6B5E;
+    --accent-soft: #DCEDE8;
+    --warn: #8A5A12;
+    --warn-soft: #F3E7D0;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --serif: "Charter", "Iowan Old Style", "Source Serif Pro", Georgia, serif;
+    --sans: "Helvetica Neue", "Inter", system-ui, -apple-system, sans-serif;
+    --measure: 68ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0E1214;
+      --surface: #161B1C;
+      --surface-2: #1D2426;
+      --ink: #E6EAE7;
+      --ink-soft: #C2CAC6;
+      --muted: #8B9A94;
+      --line: #2A3335;
+      --accent: #4FD3B8;
+      --accent-soft: #16302C;
+      --warn: #D9A85C;
+      --warn-soft: #2D2519;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1214;
+    --surface: #161B1C;
+    --surface-2: #1D2426;
+    --ink: #E6EAE7;
+    --ink-soft: #C2CAC6;
+    --muted: #8B9A94;
+    --line: #2A3335;
+    --accent: #4FD3B8;
+    --accent-soft: #16302C;
+    --warn: #D9A85C;
+    --warn-soft: #2D2519;
+  }
+  :root[data-theme="light"] {
+    --ground: #F3F3EF;
+    --surface: #FFFFFF;
+    --surface-2: #E9EBE6;
+    --ink: #14181A;
+    --ink-soft: #3D4644;
+    --muted: #6B7772;
+    --line: #D5D9D2;
+    --accent: #0D6B5E;
+    --accent-soft: #DCEDE8;
+    --warn: #8A5A12;
+    --warn-soft: #F3E7D0;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 78ch;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+  }
+  p, ul, ol { max-width: var(--measure); }
+  a { color: var(--accent); }
+
+  /* ---- Capa ---- */
+  .capa {
+    padding: 88px 0 40px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 56px;
+  }
+  .eyebrow {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 22px;
+  }
+  h1 {
+    font-family: var(--sans);
+    font-size: clamp(34px, 6vw, 58px);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    font-weight: 800;
+    text-wrap: balance;
+    margin-bottom: 22px;
+  }
+  .dek {
+    font-size: 20px;
+    color: var(--ink-soft);
+    max-width: 58ch;
+  }
+  .capa-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+    margin-top: 34px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+
+  /* ---- Seções ---- */
+  section { margin-bottom: 64px; scroll-margin-top: 24px; }
+  h2 {
+    font-family: var(--sans);
+    font-size: 27px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin-bottom: 8px;
+    padding-top: 14px;
+    border-top: 2px solid var(--ink);
+  }
+  h2 .num {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .1em;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 32px 0 6px;
+  }
+  section > p, section > ul, section > ol { margin-top: 14px; }
+  ul, ol { padding-left: 1.25em; }
+  li { margin-bottom: 7px; }
+  li::marker { color: var(--muted); }
+  strong { font-weight: 700; }
+  em { font-style: italic; color: var(--ink-soft); }
+
+  .lede {
+    font-size: 19px;
+    color: var(--ink-soft);
+    margin-top: 14px !important;
+  }
+
+  /* ---- Box técnico ---- */
+  .tec {
+    margin: 26px 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 2px;
+    padding: 18px 20px;
+    max-width: var(--measure);
+  }
+  .tec > .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 8px;
+    border-radius: 2px;
+    margin-bottom: 12px;
+  }
+  .tec p, .tec ul, .tec li { font-family: var(--sans); font-size: 14.5px; line-height: 1.6; }
+  .tec p + p, .tec p + ul { margin-top: 10px; }
+  .tec code, code { font-family: var(--mono); font-size: .88em; background: var(--surface-2); padding: 1px 5px; border-radius: 2px; }
+
+  .alerta {
+    margin: 26px 0;
+    background: var(--warn-soft);
+    border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+    border-radius: 2px;
+    padding: 16px 20px;
+    max-width: var(--measure);
+    font-family: var(--sans);
+    font-size: 14.5px;
+    line-height: 1.6;
+  }
+  .alerta b { color: var(--warn); }
+
+  /* ---- Diagrama ---- */
+  .diagrama {
+    margin: 30px 0;
+    padding: 26px 22px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow-x: auto;
+  }
+  .camadas { display: flex; flex-direction: column; gap: 12px; min-width: 460px; }
+  .camada {
+    display: grid;
+    grid-template-columns: 132px 1fr;
+    gap: 18px;
+    align-items: center;
+    padding: 13px 15px;
+    background: var(--surface-2);
+    border-radius: 3px;
+  }
+  .camada .rot {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    line-height: 1.35;
+  }
+  .camada .conteudo { font-family: var(--sans); font-size: 14px; line-height: 1.5; color: var(--ink); }
+  .camada .conteudo b { display: block; font-weight: 700; }
+  .camada .conteudo span { color: var(--muted); font-size: 13px; }
+  .seta {
+    font-family: var(--mono);
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: .3em;
+  }
+  .legenda {
+    font-family: var(--sans);
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 12px;
+    max-width: var(--measure);
+  }
+
+  /* fluxo horizontal */
+  .fluxo { display: flex; gap: 10px; align-items: stretch; min-width: 640px; }
+  .passo {
+    flex: 1;
+    background: var(--surface-2);
+    border-radius: 3px;
+    padding: 13px 14px;
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .passo b { display: block; font-size: 11px; font-family: var(--mono); color: var(--accent); letter-spacing: .08em; margin-bottom: 6px; text-transform: uppercase; }
+  .passo-seta { align-self: center; color: var(--muted); font-family: var(--mono); }
+
+  /* ---- Tabela ---- */
+  .tabela-wrap { overflow-x: auto; margin: 24px 0; }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-family: var(--sans); font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--ink);
+  }
+  td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; padding-right: 0; }
+  td code { white-space: nowrap; }
+
+  /* ---- Sumário ---- */
+  .sumario {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 22px 24px;
+    margin-bottom: 60px;
+  }
+  .sumario h4 {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+  }
+  .sumario ol { list-style: none; padding: 0; max-width: none; columns: 2; column-gap: 40px; }
+  .sumario li { margin-bottom: 8px; font-family: var(--sans); font-size: 14px; break-inside: avoid; }
+  .sumario a { text-decoration: none; color: var(--ink); }
+  .sumario a:hover { color: var(--accent); text-decoration: underline; }
+  .sumario .n { font-family: var(--mono); font-size: 11.5px; color: var(--accent); margin-right: 8px; }
+  @media (max-width: 640px) { .sumario ol { columns: 1; } }
+
+  /* ---- Checklist ---- */
+  .check { list-style: none; padding: 0; }
+  .check li {
+    position: relative; padding-left: 30px; margin-bottom: 12px;
+    font-family: var(--sans); font-size: 14.5px; line-height: 1.55;
+  }
+  .check li::before {
+    content: ""; position: absolute; left: 0; top: 3px;
+    width: 15px; height: 15px; border: 1.5px solid var(--accent); border-radius: 2px;
+  }
+
+  .fim {
+    border-top: 2px solid var(--ink);
+    padding-top: 20px;
+    font-family: var(--sans);
+    font-size: 13.5px;
+    color: var(--muted);
+    max-width: var(--measure);
+  }
+
+  a:focus-visible, .sumario a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header class="capa">
+    <div class="eyebrow">Documento de arquitetura · versão para leitura de dono</div>
+    <h1>Como se constrói um Sistema Operacional de Negócio</h1>
+    <p class="dek">O mapa completo de um sistema que já roda de verdade — o que cada peça faz, por que ela existe, quanto custa e em que ordem construir. Escrito para quem vai decidir, com caixas técnicas para quem vai executar.</p>
+    <div class="capa-meta">
+      <span>Referência: PMC OS (programa de aceleração)</span>
+      <span>Leitura: ~25 min</span>
+      <span>Agosto de 2026</span>
+    </div>
+  </header>
+
+  <nav class="sumario">
+    <h4>O que tem aqui dentro</h4>
+    <ol>
+      <li><span class="n">01</span><a href="#o-que-e">O que é um "OS de negócio"</a></li>
+      <li><span class="n">02</span><a href="#predio">O prédio: as seis camadas</a></li>
+      <li><span class="n">03</span><a href="#dados">A fundação: o modelo de dados</a></li>
+      <li><span class="n">04</span><a href="#portas">Duas portas: time e cliente</a></li>
+      <li><span class="n">05</span><a href="#seguranca">Quem vê o quê (segurança)</a></li>
+      <li><span class="n">06</span><a href="#integracoes">O encanamento: integrações</a></li>
+      <li><span class="n">07</span><a href="#ia">Onde a IA entra de verdade</a></li>
+      <li><span class="n">08</span><a href="#jornadas">Três jornadas ponta a ponta</a></li>
+      <li><span class="n">09</span><a href="#construir">Em que ordem construir</a></li>
+      <li><span class="n">10</span><a href="#custos">Ferramentas e custo real</a></li>
+      <li><span class="n">11</span><a href="#armadilhas">As armadilhas (aprendidas doendo)</a></li>
+      <li><span class="n">12</span><a href="#decisoes">As decisões que só você pode tomar</a></li>
+    </ol>
+  </nav>
+
+  <section id="o-que-e">
+    <h2><span class="num">01</span>O que é um "OS de negócio"</h2>
+    <p class="lede">Não é um site. Não é um CRM. É o lugar onde a operação inteira acontece — e, principalmente, onde ela fica registrada.</p>
+    <p>Quase toda empresa de serviço vive espalhada: a lista de clientes está numa planilha, o histórico de atendimento está no WhatsApp, o agendamento está no Google Agenda, as metas estão na cabeça de alguém e o cliente não enxerga nada disso. Todo mundo trabalha, mas ninguém consegue responder rápido a perguntas simples: <em>quantos clientes estão ativos? quem não é atendido há 30 dias? esse cliente evoluiu ou não?</em></p>
+    <p>Um sistema operacional de negócio resolve isso com três decisões, e é só isso que ele é:</p>
+    <ul>
+      <li><strong>Uma fonte da verdade.</strong> Um único banco de dados onde o cliente existe uma vez só. Planilha, WhatsApp e agenda continuam existindo — mas viram <em>entradas</em>, não o registro oficial.</li>
+      <li><strong>Duas portas para o mesmo dado.</strong> Seu time entra por uma porta e vê tudo; o cliente entra por outra e vê só o que é dele. É o mesmo dado, com dois recortes.</li>
+      <li><strong>Registro automático do que acontece.</strong> Reunião, atendimento, entrega, tarefa: o sistema captura sozinho o que já ia acontecer de qualquer jeito, em vez de pedir que alguém digite depois.</li>
+    </ul>
+    <p>O ganho não é "ter um sistema". É que a operação passa a ter memória — e memória é o que permite cobrar, renovar, provar resultado e escalar time sem perder qualidade.</p>
+  </section>
+
+  <section id="predio">
+    <h2><span class="num">02</span>O prédio: as seis camadas</h2>
+    <p>Pense num prédio. Nenhuma camada é opcional, e elas se apoiam de baixo para cima: sem fundação, o resto racha. A ordem abaixo é literalmente a ordem em que se constrói.</p>
+
+    <div class="diagrama">
+      <div class="camadas">
+        <div class="camada"><div class="rot">6 · Acabamento</div><div class="conteudo"><b>Inteligência</b><span>Resumos automáticos, chat sobre os próprios dados, geração de plano</span></div></div>
+        <div class="seta">▲</div>
+        <div class="camada"><div class="rot">5 · Encanamento</div><div class="conteudo"><b>Integrações e automações</b><span>Agenda, formulários, e-mail, WhatsApp, transcrição, rotinas de hora em hora</span></div></div>
+        <div class="seta">▲</div>
+        <div class="camada"><div class="rot">4 · Salas</div><div class="conteudo"><b>Interface</b><span>As telas: painel do time, painel do cliente, cadastros, relatórios</span></div></div>
+        <div class="seta">▲</div>
+        <div class="camada"><div class="rot">3 · Portaria</div><div class="conteudo"><b>Identidade e permissão</b><span>Quem entra, com qual crachá, e o que cada crachá abre</span></div></div>
+        <div class="seta">▲</div>
+        <div class="camada"><div class="rot">2 · Estrutura</div><div class="conteudo"><b>Regras do negócio</b><span>O que é um cliente ativo, como se calcula o resultado, o que dispara o quê</span></div></div>
+        <div class="seta">▲</div>
+        <div class="camada"><div class="rot">1 · Fundação</div><div class="conteudo"><b>Banco de dados</b><span>As tabelas: cliente, pessoa, atendimento, tarefa, indicador, conteúdo</span></div></div>
+      </div>
+      <p class="legenda">Regra prática: 70% das dores de um sistema mal feito nascem na camada 1 e só aparecem na camada 4, quando já é caro consertar.</p>
+    </div>
+
+    <div class="tec">
+      <span class="tag">Caixa técnica · a stack de referência</span>
+      <p>O sistema que serve de base aqui é uma aplicação React + TypeScript (Vite) publicada na Vercel, com Supabase como back-end único: PostgreSQL, autenticação, storage e funções serverless no mesmo lugar.</p>
+      <ul>
+        <li><b>Front:</b> React 19, React Router, Tailwind + shadcn/ui, Recharts para gráficos, TanStack Query para cache de dados.</li>
+        <li><b>Back:</b> Postgres com <code>Row Level Security</code>, ~40 tabelas, funções <code>RPC</code> para leituras que precisam cruzar dados, e <b>Edge Functions</b> (Deno) para tudo que precisa de segredo — hoje são 24 delas.</li>
+        <li><b>Automação:</b> <code>pg_cron</code> chamando funções de hora em hora + n8n para os fluxos que envolvem ferramentas externas.</li>
+        <li><b>Deploy:</b> git push → Vercel. Migrations de banco versionadas em arquivos <code>.sql</code>, sempre com o par de <em>rollback</em>.</li>
+      </ul>
+      <p>Nada aqui é obrigatório — mas essa combinação entrega camadas 1 a 3 quase de graça, e é por isso que ela é a recomendação padrão para o primeiro sistema de uma empresa.</p>
+    </div>
+  </section>
+
+  <section id="dados">
+    <h2><span class="num">03</span>A fundação: o modelo de dados</h2>
+    <p class="lede">Se você só ler um capítulo, leia este. Aqui é onde o sistema se define.</p>
+    <p>Modelar dados é responder a uma pergunta chata: <strong>quais são os substantivos do seu negócio?</strong> Não os relatórios que você quer, não as telas — os substantivos. Em praticamente todo negócio de serviço, eles são seis:</p>
+
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Substantivo</th><th>O que é</th><th>Exemplo no dia a dia</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>Cliente</b></td><td>A empresa ou pessoa que contratou. Existe uma vez só, com um código próprio.</td><td>"Cliente 316 — DemoStore Brasil"</td></tr>
+          <tr><td><b>Pessoa</b></td><td>Gente ligada ao cliente ou ao seu time. Um cliente tem várias pessoas.</td><td>Dono, sócio, gerente, o consultor responsável</td></tr>
+          <tr><td><b>Atendimento</b></td><td>Um encontro que aconteceu ou vai acontecer, com hora, responsável e registro.</td><td>Reunião, visita, sessão, chamado</td></tr>
+          <tr><td><b>Tarefa</b></td><td>Algo combinado que tem dono e prazo. Sai do atendimento.</td><td>"Cliente vai enviar a planilha até sexta"</td></tr>
+          <tr><td><b>Indicador</b></td><td>Um número medido no tempo. É o que prova evolução.</td><td>Faturamento do mês, nota de satisfação, ganho gerado</td></tr>
+          <tr><td><b>Conteúdo</b></td><td>Material que o cliente consome dentro do sistema.</td><td>Aulas, modelos, trilhas, avisos</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>As três regras que evitam 80% da dor</h3>
+    <ul>
+      <li><strong>Um cliente, um código, para sempre.</strong> Um identificador curto, gerado pelo sistema, que nunca muda e aparece em tudo. Nome de empresa muda, CNPJ muda, e-mail muda — o código não. Sem isso, você acaba com o mesmo cliente cadastrado três vezes e relatórios que não fecham.</li>
+      <li><strong>Nada de "campo texto livre" para coisa que vira número.</strong> Status, tipo de plano, canal de venda: se o time digita à mão, você terá "Ativo", "ativo", "ATIVO " e "ativo (renovou)". Cada variação é uma linha a menos na sua métrica.</li>
+      <li><strong>Data é data, não texto.</strong> Guardar data como texto é o erro mais barato de cometer e mais caro de corrigir — some de relatório, quebra ordenação, e ninguém entende por quê.</li>
+    </ul>
+
+    <div class="tec">
+      <span class="tag">Caixa técnica · o formato</span>
+      <p>Concretamente: chave primária técnica (<code>uuid</code> ou <code>bigint</code>) + um <code>codigo_cliente</code> humano gerado por <em>trigger</em> no insert. Datas em <code>timestamptz</code>, sempre. Status em tabela de domínio ou <code>enum</code>, nunca <code>text</code> solto. Toda tabela nasce com <code>created_at</code>/<code>updated_at</code>.</p>
+      <p>Um padrão que vale a pena copiar: separar <b>tabela de entrada crua</b> (o que veio do formulário, sem limpeza, imutável) da <b>tabela operacional limpa</b> (o que o sistema usa). Quando o dado de origem vier torto — e vai vir —, você reprocessa sem perder o original.</p>
+    </div>
+
+    <div class="alerta">
+      <b>Sobre "depois a gente ajusta":</b> mudar uma tela custa horas. Mudar o modelo de dados quando já existem 300 clientes e 5.000 atendimentos custa semanas — e todo relatório histórico entra em suspeita. Vale gastar dois dias desenhando os substantivos antes de escrever a primeira tela.
+    </div>
+  </section>
+
+  <section id="portas">
+    <h2><span class="num">04</span>Duas portas: time e cliente</h2>
+    <p>Este é o desenho que define o produto: <strong>um banco, duas experiências</strong>. Não são dois sistemas, e não devem ser — dois sistemas viram dois cadastros e dois números diferentes para a mesma pergunta.</p>
+
+    <div class="diagrama">
+      <div class="fluxo">
+        <div class="passo"><b>Porta do time</b>Lista de clientes, agenda geral, métricas globais, cadastros, permissões, relatórios de renovação</div>
+        <div class="passo-seta">→</div>
+        <div class="passo" style="background:var(--accent-soft)"><b>Mesmo banco</b>Cliente · Pessoa · Atendimento · Tarefa · Indicador · Conteúdo</div>
+        <div class="passo-seta">←</div>
+        <div class="passo"><b>Porta do cliente</b>Painel dele, histórico dos atendimentos, tarefas combinadas, evolução dos números, conteúdos liberados</div>
+      </div>
+      <p class="legenda">O time enxerga N clientes; o cliente enxerga 1 — o dele. A diferença é uma regra no banco, não um sistema separado.</p>
+    </div>
+
+    <h3>O que colocar em cada porta</h3>
+    <p>A porta do time é sobre <em>gestão</em>: quem está em risco, quem não é atendido há tempo demais, qual consultor está sobrecarregado, quanto o programa gerou. A porta do cliente é sobre <em>valor percebido</em>: ele precisa abrir e enxergar em dez segundos o que ganhou, o que combinou e o que vem a seguir.</p>
+    <p>O erro comum é fazer a porta do cliente ser uma versão pobre da porta do time. Ela não é. Ela é a peça de retenção do seu negócio — é o que faz o cliente lembrar por que paga.</p>
+
+    <div class="tec">
+      <span class="tag">Caixa técnica · como isso se implementa</span>
+      <p>Uma única aplicação, um único roteador. Ao logar, o sistema decide o papel do usuário (o e-mail existe na tabela de time? então é interno) e monta o menu a partir disso. Rotas internas ficam atrás de um componente do tipo <code>&lt;RequireSecao secao="clientes"&gt;</code>, que consulta as permissões daquele usuário.</p>
+      <p>Importante: <b>essa checagem no front é conveniência, não segurança.</b> A segurança real está no banco (próximo capítulo). O front esconde o menu; o banco recusa o dado.</p>
+    </div>
+  </section>
+
+  <section id="seguranca">
+    <h2><span class="num">05</span>Quem vê o quê</h2>
+    <p class="lede">A pergunta que o dono deve fazer ao desenvolvedor: "se um cliente trocar o número na URL, ele vê o dado do concorrente?"</p>
+    <p>Na maioria dos sistemas feitos às pressas, a resposta é sim. A tela filtra o que mostra, mas o banco entrega tudo a quem pedir — e pedir é fácil.</p>
+    <p>A forma certa inverte isso: <strong>a regra mora no banco</strong>. Cada tabela ganha uma política do tipo "só devolva as linhas cujo cliente é o cliente de quem está perguntando". A partir daí, não importa por onde a pergunta venha — tela, aplicativo, script —, a resposta já vem recortada. É a diferença entre um arquivo trancado e um arquivo aberto com um aviso de "não olhe".</p>
+
+    <h3>Três papéis bastam para começar</h3>
+    <ul>
+      <li><strong>Cliente</strong> — vê exclusivamente os dados do próprio cadastro.</li>
+      <li><strong>Time</strong> — vê os clientes, com o menu recortado por seção (atendimento não precisa ver financeiro).</li>
+      <li><strong>Dono/administrador</strong> — vê tudo e administra acessos.</li>
+    </ul>
+    <p>Permissão por seção — e não um cargo fixo por pessoa — é o que evita reescrever código toda vez que alguém muda de função. Você marca as seções que a pessoa abre numa tela de administração, e pronto.</p>
+
+    <div class="tec">
+      <span class="tag">Caixa técnica · RLS na prática</span>
+      <p>No Postgres: <code>ALTER TABLE x ENABLE ROW LEVEL SECURITY</code> e políticas por operação. A política do cliente compara a identidade do token (<code>auth.uid()</code> / e-mail no JWT) com a coluna de dono da linha.</p>
+      <p>Três armadilhas reais desse desenho:</p>
+      <ul>
+        <li>RLS costuma ser escrita só para <code>SELECT</code>. Se o cliente precisa gravar algo (foto de perfil, resposta de formulário), ou você escreve a política de <code>UPDATE</code> ou expõe uma função <code>SECURITY DEFINER</code> específica — nunca abra a tabela inteira.</li>
+        <li>Qualquer chave de serviço (<em>service role</em>) ignora RLS por definição. Ela só pode viver dentro de Edge Function ou script de servidor. Se ela aparecer no front, a segurança inteira caiu.</li>
+        <li>Restringir permissão no banco <b>depois</b> que o front novo já estiver publicado. Fazer o contrário derruba o app em produção.</li>
+      </ul>
+      <p>Teste de aceite antes de ir ao ar: logar como cliente A e tentar ler o cliente B — via tela e via chamada direta à API. As duas precisam devolver vazio.</p>
+    </div>
+  </section>
+
+  <section id="integracoes">
+    <h2><span class="num">06</span>O encanamento: integrações</h2>
+    <p>Aqui está o pulo do gato de um sistema que as pessoas realmente usam: <strong>ele captura o que já ia acontecer</strong>, em vez de pedir digitação extra. Todo campo que depende de alguém lembrar de preencher vai estar vazio em três meses.</p>
+
+    <div class="diagrama">
+      <div class="fluxo">
+        <div class="passo"><b>Acontece</b>O atendimento é marcado na agenda e realizado com gravação</div>
+        <div class="passo-seta">→</div>
+        <div class="passo"><b>Rotina automática</b>De hora em hora o sistema lê a agenda e busca o que é novo</div>
+        <div class="passo-seta">→</div>
+        <div class="passo"><b>Vincula</b>Casa o evento com o cliente certo pelo código; o que não casar vai para uma fila</div>
+        <div class="passo-seta">→</div>
+        <div class="passo"><b>Enriquece</b>Puxa transcrição e gravação, gera resumo e lista de combinados</div>
+        <div class="passo-seta">→</div>
+        <div class="passo"><b>Aparece</b>No painel do time e no painel do cliente, sem ninguém digitar</div>
+      </div>
+      <p class="legenda">O mesmo esqueleto serve para ordem de serviço, visita técnica, consulta, aula — troque "agenda" pela origem do seu negócio.</p>
+    </div>
+
+    <h3>As integrações que quase sempre valem a pena</h3>
+    <ul>
+      <li><strong>Agenda (Google/Outlook).</strong> Fonte natural do que aconteceu e com quem. Vale nos dois sentidos: ler o que foi marcado e também criar eventos a partir do sistema.</li>
+      <li><strong>Formulário de entrada.</strong> Contrato assinado → formulário → cadastro criado sozinho, sem redigitação.</li>
+      <li><strong>E-mail transacional.</strong> Convite de acesso, link para definir senha, avisos. Nunca dependa de alguém mandar acesso na mão.</li>
+      <li><strong>WhatsApp.</strong> É onde o cliente já está. Comece por notificação de mão única (lembrete, confirmação); conversa bidirecional é um projeto à parte.</li>
+      <li><strong>Transcrição de reunião.</strong> Transforma uma hora de conversa em registro pesquisável — a matéria-prima de tudo que a IA fará depois.</li>
+    </ul>
+
+    <div class="tec">
+      <span class="tag">Caixa técnica · o padrão de sincronização</span>
+      <p>Três mecanismos convivendo, e cada um cobre a falha do outro:</p>
+      <ul>
+        <li><b>Webhook</b> para reagir ao instante (a agenda avisa que algo mudou);</li>
+        <li><b>Cron</b> de hora em hora (<code>pg_cron</code> chamando a função) para varrer a janela recente e pegar o que o webhook perdeu;</li>
+        <li><b>Watchdog</b> diário que verifica se a assinatura do webhook ainda está viva e a renova.</li>
+      </ul>
+      <p>Toda sincronização precisa ser <b>idempotente</b>: rodar duas vezes não pode gerar duas linhas. Isso se resolve com uma chave única vinda da origem (o ID do evento) e <code>upsert</code>. E depois de inserir, confira que a linha existe mesmo — "processados: 12" no log não é prova de que gravou.</p>
+      <p>Credencial de integração fica em variável de ambiente da função, nunca no código nem no front. Para agenda corporativa, use conta de serviço com delegação, não o login de uma pessoa: pessoa sai da empresa, 2FA trava, e a automação morre.</p>
+    </div>
+  </section>
+
+  <section id="ia">
+    <h2><span class="num">07</span>Onde a IA entra de verdade</h2>
+    <p class="lede">IA não é uma camada do sistema. É um acabamento que só funciona se as camadas de baixo estiverem cheias de dado bom.</p>
+    <p>Um chat inteligente sobre uma base vazia é um chat que inventa. Por isso a IA entra por último — e, quando entra, tem três usos que se pagam:</p>
+    <ul>
+      <li><strong>Transformar conversa em registro.</strong> Pegar a transcrição de um atendimento e extrair resumo, combinados de cada lado e o resultado gerado. Economiza 20 a 40 minutos por atendimento e, principalmente, padroniza — dez pessoas diferentes registram do mesmo jeito.</li>
+      <li><strong>Perguntar ao próprio sistema em português.</strong> "Quais clientes estão sem atendimento há mais de 30 dias?" respondido em segundos, sem depender de alguém que saiba montar relatório.</li>
+      <li><strong>Rascunhar o trabalho especializado.</strong> Primeira versão de um plano, de um diagnóstico, de uma proposta — a partir dos dados que já estão lá. Rascunho, revisado por gente.</li>
+    </ul>
+    <p>E onde ela não entra: decisão que tem consequência financeira ou contratual sem revisão humana; qualquer coisa que precise estar 100% correta sem ninguém conferir; e conversa com o cliente final sem supervisão, no começo.</p>
+
+    <div class="tec">
+      <span class="tag">Caixa técnica · como plugar sem se machucar</span>
+      <ul>
+        <li>A chave da IA fica na Edge Function, nunca no navegador. O front chama sua função; sua função chama o modelo.</li>
+        <li>Para chat sobre dados, a função executa consulta <b>somente leitura</b> com a identidade do próprio usuário — assim a RLS continua valendo e o chat nunca vaza dado de outro cliente. É a diferença entre <code>SECURITY INVOKER</code> e <code>SECURITY DEFINER</code>: o segundo ignora as permissões de quem perguntou.</li>
+        <li>Peça saída estruturada (JSON com esquema validado) sempre que o resultado for para o banco. Texto livre de modelo direto em coluna é dívida garantida.</li>
+        <li>Trabalho longo trava a interface. Ou você transmite o resultado em tempo real (<em>streaming</em>), ou processa em fila e avisa quando ficar pronto — mas nunca deixe uma tela girando por dois minutos.</li>
+        <li>Custo é por volume de texto. Resumir 200 atendimentos por mês custa dezenas de reais, não milhares — mas só depois de medir num lote pequeno.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="jornadas">
+    <h2><span class="num">08</span>Três jornadas ponta a ponta</h2>
+    <p>A melhor forma de validar uma arquitetura antes de escrever código é narrar as jornadas críticas e ver se todas as peças aparecem naturalmente.</p>
+
+    <h3>Jornada 1 — entra um cliente novo</h3>
+    <p>Contrato assinado → link de formulário enviado → cliente preenche → cadastro criado automaticamente com código próprio → responsável interno é atribuído → o cliente recebe um e-mail com link para criar a senha → ao entrar, encontra o painel dele já preenchido com o que informou, não uma tela vazia.</p>
+    <p>Esse último detalhe é o que decide a adoção. Painel vazio no primeiro acesso é a causa número um de cliente que nunca mais volta.</p>
+
+    <h3>Jornada 2 — um atendimento acontece</h3>
+    <p>Agendamento criado (pelo time ou pelo próprio cliente, num link público) → evento cai na agenda do responsável com o cliente convidado → o atendimento acontece e é gravado → a rotina automática identifica o evento, vincula ao cliente, traz transcrição e gravação → a IA extrai resumo, combinados e resultado → tudo aparece no histórico das duas portas, e as tarefas nascem já com dono e prazo.</p>
+
+    <h3>Jornada 3 — o dono olha o painel na segunda de manhã</h3>
+    <p>Abre e vê, sem clicar em nada: clientes ativos, atendimentos da semana, quem está sem contato há tempo demais, quem entra em renovação nos próximos 60 dias e o resultado acumulado gerado. Cada número é clicável e leva à lista que o compõe — número que não abre em lista não gera confiança nem ação.</p>
+
+    <div class="alerta">
+      <b>Teste de arquitetura:</b> se você não consegue narrar suas três jornadas críticas com as peças deste documento, falta alguma peça — ou tem peça sobrando. Narre antes de contratar o desenvolvimento; é a hora mais barata de descobrir.
+    </div>
+  </section>
+
+  <section id="construir">
+    <h2><span class="num">09</span>Em que ordem construir</h2>
+    <p>A sequência importa mais do que a velocidade. Cada fase abaixo entrega algo utilizável sozinha — se o projeto parar no meio, o que existe continua servindo.</p>
+
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Fase</th><th>O que entra</th><th>Como você sabe que acabou</th><th class="num">Prazo típico</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>1. Fundação</b></td>
+            <td>Modelo de dados, login, papéis, cadastro de clientes, lista com busca e filtro</td>
+            <td>O time abandona a planilha de clientes</td>
+            <td class="num">2–4 sem.</td>
+          </tr>
+          <tr>
+            <td><b>2. Operação</b></td>
+            <td>Registro de atendimentos, tarefas com dono e prazo, histórico por cliente</td>
+            <td>Dá para responder "o que aconteceu com esse cliente?" em 5 segundos</td>
+            <td class="num">3–4 sem.</td>
+          </tr>
+          <tr>
+            <td><b>3. Porta do cliente</b></td>
+            <td>Acesso do cliente, painel dele, histórico, tarefas, evolução</td>
+            <td>Cliente entra sozinho e volta na semana seguinte</td>
+            <td class="num">3–4 sem.</td>
+          </tr>
+          <tr>
+            <td><b>4. Automação</b></td>
+            <td>Agenda, formulário de entrada, e-mails automáticos, rotinas</td>
+            <td>Ninguém digita o que o sistema pode capturar</td>
+            <td class="num">2–4 sem.</td>
+          </tr>
+          <tr>
+            <td><b>5. Inteligência</b></td>
+            <td>Resumo automático, chat sobre os dados, indicadores e alertas</td>
+            <td>O sistema avisa você antes de você perguntar</td>
+            <td class="num">2–4 sem.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>O que não fazer na fase 1</h3>
+    <ul>
+      <li><strong>Aplicativo nativo.</strong> Um site que funciona bem no celular resolve 95% do caso por 20% do custo.</li>
+      <li><strong>Permissão granular por campo.</strong> Três papéis bastam até você ter uns 15 usuários internos.</li>
+      <li><strong>Relatório configurável pelo usuário.</strong> Faça os cinco relatórios que você realmente olha. Construtor de relatório é um produto inteiro.</li>
+      <li><strong>Integração com o ERP no primeiro mês.</strong> Comece por exportação/importação de planilha; integre quando a dor for real.</li>
+    </ul>
+
+    <div class="tec">
+      <span class="tag">Caixa técnica · disciplina de entrega</span>
+      <ul>
+        <li><b>Dois ambientes desde o dia um.</b> Um banco de desenvolvimento e um de produção, com o app escolhendo por variável de ambiente e um aviso visual quando não é produção. Testar em produção é o caminho mais curto para perder dado de cliente.</li>
+        <li><b>Mudança de banco é arquivo versionado.</b> Toda alteração de schema vira uma migration com data no nome — e com o par de rollback. Aplicar no dev, testar, depois aplicar em produção. Alterar tabela pelo painel gera diferença silenciosa entre os ambientes.</li>
+        <li><b>Backup verificado.</b> O provedor faz backup automático; o que quase ninguém faz é <em>restaurar</em> uma vez para conferir que funciona. Faça na fase 1, enquanto não dói.</li>
+        <li><b>Dado de cliente real não vai para o ambiente de teste.</b> Copie só tabelas de configuração e crie dois registros fictícios.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="custos">
+    <h2><span class="num">10</span>Ferramentas e custo real</h2>
+    <p>Um sistema desse porte não tem custo de infraestrutura relevante. O custo é de construção e de manutenção — de gente, não de servidor.</p>
+
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Peça</th><th>Ferramenta de referência</th><th>Ordem de grandeza / mês</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Banco, login e funções</td><td>Supabase</td><td>Grátis para começar; ~US$ 25 quando crescer</td></tr>
+          <tr><td>Publicação do site</td><td>Vercel</td><td>Grátis; ~US$ 20 com time</td></tr>
+          <tr><td>Automações externas</td><td>n8n (nuvem ou próprio)</td><td>US$ 0–25</td></tr>
+          <tr><td>E-mail transacional</td><td>Resend / SendGrid</td><td>Grátis até alguns milhares de envios</td></tr>
+          <tr><td>IA</td><td>API de modelo (por uso)</td><td>Dezenas de reais em uso normal</td></tr>
+          <tr><td>Construção</td><td>Desenvolvedor + IA de código</td><td><b>É aqui que está o custo real</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Sobre construir com ferramentas de IA (Lovable, Claude Code e afins): elas aceleram muito as camadas 4 e 5 — telas, formulários, gráficos. Elas <em>não</em> substituem a decisão da camada 1. Chegar com o modelo de dados e as jornadas já desenhadas — como neste documento — é o que separa um sistema que dura de um protótipo bonito que precisa ser refeito no sexto mês.</p>
+
+    <div class="alerta">
+      <b>Reserve orçamento de manutenção.</b> Todo sistema vivo consome de 10% a 20% do custo de construção por ano só em ajuste, integração que muda do outro lado e pedido novo do time. Orçar só a construção é como comprar carro sem contar a gasolina.
+    </div>
+  </section>
+
+  <section id="armadilhas">
+    <h2><span class="num">11</span>As armadilhas (aprendidas doendo)</h2>
+    <p>Cada item abaixo já custou tempo real em um sistema em produção. Leia como lista de perguntas para fazer a quem for construir o seu.</p>
+    <ul>
+      <li><strong>O mesmo cliente cadastrado duas vezes.</strong> Duas linhas para a mesma empresa fazem o histórico se dividir e os relatórios discordarem entre si. Previna com código único e busca por documento antes de todo cadastro.</li>
+      <li><strong>Casar automaticamente pelo primeiro nome.</strong> "Rodrigo" pode ser dois Rodrigos. Vinculação automática precisa de identificador forte; o que não casar vai para uma fila de revisão humana, não para um palpite.</li>
+      <li><strong>Fuso horário e formato de data.</strong> Um evento gravado com o fuso errado aparece no dia anterior. Padronize o formato na entrada e guarde sempre com fuso.</li>
+      <li><strong>Campo obrigatório que ninguém preenche.</strong> Se um dado só existe quando alguém lembra, ele não existe. Ou o sistema captura sozinho, ou o cadastro não avança sem ele.</li>
+      <li><strong>Ordem errada ao apertar a segurança.</strong> Restringir a permissão no banco antes do front novo estar publicado derruba a aplicação para todo mundo. Publique primeiro, restrinja depois.</li>
+      <li><strong>Confiar no log em vez do banco.</strong> "Importados: 30" não é prova. Depois de toda carga, confira contando as linhas.</li>
+      <li><strong>Automação amarrada à conta de uma pessoa.</strong> A pessoa sai, ativa verificação em duas etapas ou troca a senha, e a integração morre silenciosamente. Use conta de serviço e monitore.</li>
+      <li><strong>Fazer tudo antes de mostrar algo.</strong> Seis meses sem entrega é como um projeto morre. Ponha a fase 1 na mão do time e colha reclamação cedo — reclamação é informação de graça.</li>
+    </ul>
+  </section>
+
+  <section id="decisoes">
+    <h2><span class="num">12</span>As decisões que só você pode tomar</h2>
+    <p>Nenhum desenvolvedor consegue responder por você. Responda as doze antes de começar, por escrito — este é o briefing que vale mais do que qualquer especificação técnica.</p>
+    <ul class="check">
+      <li>Quais são os <b>substantivos</b> do meu negócio? (a lista do capítulo 3, adaptada)</li>
+      <li>O que exatamente é um "cliente" para mim: a empresa, a pessoa, ou o contrato?</li>
+      <li>Quais são as <b>três perguntas</b> que hoje me custam mais tempo para responder?</li>
+      <li>Meu cliente vai <b>entrar no sistema</b>? Se sim, o que ele precisa ver em dez segundos?</li>
+      <li>Que dado já existe hoje e onde ele está? (planilha, agenda, WhatsApp, papel)</li>
+      <li>Quem do meu time usa o sistema todo dia — e qual é a tela principal de cada um?</li>
+      <li>Que evento do meu negócio vale a pena capturar automaticamente?</li>
+      <li>Qual número prova o meu resultado para o cliente?</li>
+      <li>Quantas pessoas do time entram, e o que cada perfil <b>não</b> pode ver?</li>
+      <li>Qual é a fase 1 mínima que já substituiria uma planilha na segunda-feira?</li>
+      <li>Quem, na minha empresa, é o dono do sistema depois de pronto?</li>
+      <li>Quanto eu reservo por ano para manutenção e evolução?</li>
+    </ul>
+
+    <p style="margin-top:32px">Com essas doze respostas e as camadas deste documento, qualquer bom desenvolvedor — ou qualquer boa ferramenta de IA de construção — tem o que precisa. O que trava projeto raramente é a tecnologia; é a falta desse acordo escrito antes da primeira linha de código.</p>
+
+    <p class="fim">Documento de arquitetura de referência, baseado em um sistema em produção com dois portais, ~40 tabelas, 24 funções de servidor e sincronização automática de agenda. Escrito para ser adaptado, não copiado: a stack pode mudar; a ordem das camadas, não.</p>
+  </section>
+
+</div>
