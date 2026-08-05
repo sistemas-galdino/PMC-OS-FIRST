@@ -10,6 +10,8 @@ export interface Tarefa {
   setor: string | null
   projeto: string | null
   responsavel: string | null
+  /** Pessoa do time. NULL + responsavel(text) = alguém de fora do cadastro. */
+  responsavel_id: string | null
   prazo: string | null // date (YYYY-MM-DD)
   prioridade: string
   status: string
@@ -232,12 +234,34 @@ function limpar<T extends Record<string, any>>(obj: T): T {
   return out as T
 }
 
-// Fontes para os selects de contexto (Setor ← metodo_areas; Projeto ← metodo_sistemas)
-export async function fontesContexto(clientId: string): Promise<{ setores: string[]; projetos: string[] }> {
-  const [{ data: areas }, { data: sistemas }] = await Promise.all([
+export interface Pessoa { id: string; nome: string }
+
+// Fontes para os campos de contexto:
+//   Setor      ← metodo_areas (Fase 2 do Método)
+//   Projeto    ← metodo_sistemas (Fase 5)
+//   Pessoas    ← cliente_colaboradores (Meu Time) — vira responsavel_id
+export async function fontesContexto(clientId: string): Promise<{ setores: string[]; projetos: string[]; pessoas: Pessoa[] }> {
+  const [{ data: areas }, { data: sistemas }, { data: colabs }] = await Promise.all([
     supabase.from("metodo_areas").select("nome").eq("id_cliente", clientId).order("nome"),
     supabase.from("metodo_sistemas").select("nome").eq("id_cliente", clientId).order("nome"),
+    supabase.from("cliente_colaboradores").select("id, nome").eq("id_cliente", clientId).order("nome"),
   ])
   const uniq = (arr: (string | null)[]) => [...new Set(arr.filter((x): x is string => !!x && x.trim() !== ""))]
-  return { setores: uniq((areas ?? []).map((a) => a.nome)), projetos: uniq((sistemas ?? []).map((s) => s.nome)) }
+  return {
+    setores: uniq((areas ?? []).map((a) => a.nome)),
+    projetos: uniq((sistemas ?? []).map((s) => s.nome)),
+    pessoas: (colabs ?? []).filter((c: any) => !!c.nome?.trim()) as Pessoa[],
+  }
+}
+
+/**
+ * Resolve o texto digitado em responsavel_id, casando pelo nome exato de um
+ * colaborador. Nome que não bate com ninguém do time continua só como texto —
+ * é assim que um terceiro (fornecedor, consultor) segue possível.
+ */
+export function resolverResponsavel(texto: string | null | undefined, pessoas: Pessoa[]): string | null {
+  const alvo = (texto ?? "").trim().toLowerCase()
+  if (!alvo) return null
+  const achados = pessoas.filter((p) => p.nome.trim().toLowerCase() === alvo)
+  return achados.length === 1 ? achados[0].id : null   // nome ambíguo fica como texto
 }

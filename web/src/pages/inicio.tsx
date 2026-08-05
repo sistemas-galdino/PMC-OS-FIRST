@@ -25,6 +25,7 @@ import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 import { ETAPAS_METODO, type SinalEtapa } from "@/data/etapas-metodo"
 import { calcularNivel, faixaPorPontos, NIVEIS } from "@/lib/nivel-pmc"
+import { contarSemanasPerfeitas } from "@/lib/guardiao/meu-dia"
 import { celebrarPontosMC } from "@/components/pontos-mc-splash"
 import { conselhoAleatorio } from "@/data/conselhos-galdino"
 import { GraficoFaturamentoMensal } from "@/components/dashboard/grafico-faturamento-mensal"
@@ -187,7 +188,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
   const [sinais, setSinais] = useState<Set<SinalEtapa>>(new Set())
   const [vitoriasCount, setVitoriasCount] = useState(0)
   const [mapeamentoCount, setMapeamentoCount] = useState(0)
-  const [guardOps, setGuardOps] = useState({ convites: 0, candidatos: 0, contratado: 0, tarefas: 0 })
+  const [guardOps, setGuardOps] = useState({ convites: 0, candidatos: 0, contratado: 0, tarefas: 0, dias: 0, semanas: 0 })
   const [unicaCoisa, setUnicaCoisa] = useState<{ texto: string; mes: number; ano: number; area: string | null } | null>(null)
   const [valorAno, setValorAno] = useState(0) // IAVS — mesmo cálculo da Fase 6/Relatório
   const [acoesReuniao, setAcoesReuniao] = useState<AcaoReuniao[]>([])
@@ -319,7 +320,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
       // Mapeamento (id_cliente porque cliente_objetivos_programa não tem coluna id)
       const cntMap = (tabela: string) =>
         supabase.from(tabela).select("id_cliente", { count: "exact", head: true }).eq("id_cliente", resolvedClientId)
-      const [g, a, ga, cp, si, ec, vit, ecoRes, ucRes, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk] = await Promise.all([
+      const [g, a, ga, cp, si, ec, vit, ecoRes, ucRes, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk, diasRes] = await Promise.all([
         cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
         cnt("metodo_copilotos"), cnt("metodo_sistemas"), cnt("metodo_economias"),
         cnt("cliente_vitorias"),
@@ -344,6 +345,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
         supabase.from("guardiao_invites").select("id", { count: "exact", head: true }).eq("id_cliente", resolvedClientId).eq("status", "concluido"),
         supabase.from("guardiao_invites").select("id", { count: "exact", head: true }).eq("id_cliente", resolvedClientId).eq("stage", "contratado_guardiao"),
         supabase.from("metodo_tarefas").select("id", { count: "exact", head: true }).eq("id_cliente", resolvedClientId).eq("status", "concluido"),
+        supabase.from("metodo_dia_fechamentos").select("data").eq("id_cliente", resolvedClientId).not("fechado_em", "is", null),
       ])
       if (!cancelled) {
         const s = new Set<SinalEtapa>()
@@ -358,7 +360,12 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
         setSinais(s)
         setVitoriasCount(vit.count ?? 0)
         setMapeamentoCount([mMetas, mProd, mCanais, mObj].filter((r) => (r.count ?? 0) > 0).length)
-        setGuardOps({ convites: gConv.count ?? 0, candidatos: gCand.count ?? 0, contratado: gContr.count ?? 0, tarefas: tOk.count ?? 0 })
+        const diasFech = ((diasRes.data ?? []) as { data: string }[]).map((x) => x.data)
+        setGuardOps({
+          convites: gConv.count ?? 0, candidatos: gCand.count ?? 0,
+          contratado: gContr.count ?? 0, tarefas: tOk.count ?? 0,
+          dias: diasFech.length, semanas: contarSemanasPerfeitas(diasFech),
+        })
         // Valor gerado no ano (IAVS) — mesma fórmula da Fase 6/Relatório.
         const nEco = (x: unknown) => Number(x || 0)
         const okEco = (ecoRes.data ?? []).filter((e: any) => !e.capacidade_nova)
@@ -499,7 +506,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
   // Nível PMC — gamificação unificada (jornada + fases + reuniões + vitórias).
   const totalReunioes = reunioesCount.galdino + reunioesCount.consultores + reunioesCount.blackcrm
   const fasesComDados = [...sinais].filter((s) => s !== "reunioes").length
-  const nivel = calcularNivel({ etapas: totalConcluidas, fases: fasesComDados, mapeamento: mapeamentoCount, reunioes: totalReunioes, vitorias: vitoriasCount, convites: guardOps.convites, candidatos: guardOps.candidatos, guardiaoContratado: guardOps.contratado, tarefas: guardOps.tarefas })
+  const nivel = calcularNivel({ etapas: totalConcluidas, fases: fasesComDados, mapeamento: mapeamentoCount, reunioes: totalReunioes, vitorias: vitoriasCount, convites: guardOps.convites, candidatos: guardOps.candidatos, guardiaoContratado: guardOps.contratado, tarefas: guardOps.tarefas, diasFechados: guardOps.dias, semanasPerfeitas: guardOps.semanas })
 
   // Splash de boas-vindas: se os Pontos MC subiram desde a última visita (deste
   // aparelho), celebra a diferença — e, se cruzou de nível, mostra o level-up.

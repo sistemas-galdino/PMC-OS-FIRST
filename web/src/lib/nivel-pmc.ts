@@ -13,6 +13,9 @@ export interface SinaisNivel {
   candidatos: number          // candidatos que responderam o assessment
   guardiaoContratado: number  // Guardiões efetivamente contratados (estágio final do funil)
   tarefas: number             // tarefas do Guardião concluídas (rotinas + avulsas)
+  // Ritual diário — o hábito que sustenta todo o resto
+  diasFechados: number        // dias com o ritual do Meu Dia concluído
+  semanasPerfeitas: number    // semanas com os 5 dias úteis fechados
 }
 
 export interface NivelPMC {
@@ -42,7 +45,13 @@ export const FONTES_PONTOS: FontePontos[] = [
   { chave: "candidatos", label: "Candidato avaliado", pontos: 35, descricao: "Cada pessoa que responde o assessment do Guardião e entra no seu funil de seleção.", rota: "/guardiao?tab=candidatos" },
   { chave: "guardiaoContratado", label: "Guardião contratado", pontos: 200, descricao: "O grande marco da Fase 1: você conduziu o funil até contratar o seu Guardião da IA.", rota: "/guardiao?tab=candidatos" },
   { chave: "tarefas", label: "Tarefa do Guardião concluída", pontos: 10, descricao: "Cada tarefa que o Guardião conclui no cockpit — das rotinas diárias/semanais/quinzenais/mensais ou avulsas.", rota: "/tarefas" },
+  { chave: "diasFechados", label: "Dia fechado", pontos: 15, descricao: "Cada dia em que o Guardião completa o ritual no Meu Dia: responde as 3 perguntas da rotina e fecha o expediente.", rota: "/meu-dia" },
+  { chave: "semanasPerfeitas", label: "Semana perfeita", pontos: 50, descricao: "Bônus por fechar os cinco dias úteis de uma mesma semana. Constância vale mais que intensidade.", rota: "/meu-dia" },
 ]
+
+// IMPORTANTE: esta fórmula existe em três lugares que precisam andar juntos —
+// aqui, em public.pontos_mc(uuid) e em public.ranking_guardioes(text).
+// Mexeu em um, mexa nos três.
 
 // Os níveis, do menor pro maior (minimo = ponto de entrada no nível).
 export type CorNivel = "slate" | "sky" | "violet" | "amber" | "lime"

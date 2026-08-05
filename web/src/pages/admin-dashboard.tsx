@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { isStatusAtivo } from "@/lib/status-cliente"
+import { useNavigate } from "react-router-dom"
 import {
   UsersIcon as Users,
   TrendingUpIcon as TrendingUp,
@@ -11,6 +12,8 @@ import {
   ClockIcon,
   PlayCircleIcon,
   FlagIcon,
+  Sparkles2Icon as Snowflake,
+  ChevronRightIcon as ChevronRight,
 } from "@/components/ui/icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -56,6 +59,7 @@ function CountUp({ value, decimals = 0, suffix = '' }: { value: number; decimals
 }
 
 export default function AdminDashboard() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState({
     total: 0,
     ativos: 0,
@@ -65,8 +69,12 @@ export default function AdminDashboard() {
     pendentesOnboarding: 0,
     aguardandoInicio: 0,
     cicloEncerrado: 0,
+    congelados: 0,
     churnRate: 0,
   })
+  // Lista completa de clientes (com identificação) para detalhar cada card ao clicar.
+  const [clientesRaw, setClientesRaw] = useState<any[]>([])
+  const [selecionado, setSelecionado] = useState<string | null>(null)
   const [geoData, setGeoData] = useState<any[]>([])
   const [nicheData, setNicheData] = useState<any[]>([])
   const [csData, setCsData] = useState<any[]>([])
@@ -81,7 +89,7 @@ export default function AdminDashboard() {
         // Fetch Operational Data
         const { data: clients, error: clientsError } = await supabase
           .from('clientes_entrada_new')
-          .select('status_atual, nicho, sc, canal_de_venda')
+          .select('id_cliente, nome_empresa_formatado, nome_cliente, status_atual, nicho, sc, canal_de_venda')
         
         if (clientsError) throw clientsError
 
@@ -102,8 +110,10 @@ export default function AdminDashboard() {
           const pendentesOnboarding = clients.filter(c => c.status_atual === 'Pendente de Onboarding').length
           const aguardandoInicio = clients.filter(c => c.status_atual === 'Aguardando Início').length
           const cicloEncerrado = clients.filter(c => c.status_atual === 'Ciclo encerrado').length
+          const congelados = clients.filter(c => c.status_atual === 'Congelado').length
           const churnRate = total > 0 ? (cancelados / total) * 100 : 0
 
+          setClientesRaw(clients)
           setStats({
             total,
             ativos,
@@ -113,6 +123,7 @@ export default function AdminDashboard() {
             pendentesOnboarding,
             aguardandoInicio,
             cicloEncerrado,
+            congelados,
             churnRate: Number(churnRate.toFixed(1)),
           })
 
@@ -201,27 +212,33 @@ export default function AdminDashboard() {
 
   if (loading) {
     // Mesmo grid/contagem da visão ativa, pra não pular o layout quando os dados chegam.
-    return <div className={`grid gap-6 grid-cols-1 sm:grid-cols-2 ${detalhada ? "lg:grid-cols-3" : "lg:grid-cols-5"}`}>
-      {Array.from({ length: detalhada ? 9 : 5 }).map((_, i) => <Card key={i} className="h-40 animate-pulse bg-card/40" />)}
+    return <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+      {Array.from({ length: detalhada ? 10 : 5 }).map((_, i) => <Card key={i} className="h-40 animate-pulse bg-card/40" />)}
     </div>
   }
 
   // Ordem = leitura em 3 linhas na visão detalhada: base / entrada / saídas.
   // soDetalhada: card só aparece na visão Detalhada.
+  const T = () => true
+  const porStatus = (...ss: string[]) => (c: any) => ss.includes(c.status_atual)
   const cards = [
-    { title: "Total Clientes", value: stats.total, icon: Users, description: "Base geral de clientes", iconClass: "text-primary bg-primary/10" },
-    { title: "Clientes Ativos", value: stats.ativos, icon: TrendingUp, description: "Ativos no programa", iconClass: "text-emerald-400 bg-emerald-500/10" },
-    { title: "Churn Rate", value: stats.churnRate, icon: TrendingDown, description: "Taxa de cancelamento", iconClass: "text-red-400 bg-red-500/10", decimals: 1, suffix: "%", soDetalhada: true },
-    { title: "Vão Iniciar", value: stats.aguardandoInicio, icon: PlayCircleIcon, description: "Aguardando início no programa", iconClass: "text-emerald-400 bg-emerald-500/10" },
-    { title: "Onboarding Marcado", value: stats.onboardingMarcado, icon: CalendarIcon, description: "Reunião de onboarding agendada", iconClass: "text-blue-400 bg-blue-500/10" },
-    { title: "Pendentes Onboarding", value: stats.pendentesOnboarding, icon: ClockIcon, description: "Aguardando agendamento", iconClass: "text-yellow-400 bg-yellow-500/10" },
-    { title: "Cancelaram", value: stats.cancelados, icon: XIcon, description: "Clientes cancelados", iconClass: "text-red-400 bg-red-500/10", soDetalhada: true },
-    { title: "Desistência de Compra", value: stats.desistencias, icon: ShoppingCartIcon, description: "Desistiram antes de iniciar", iconClass: "text-orange-400 bg-orange-500/10", soDetalhada: true },
-    { title: "Ciclo Encerrado", value: stats.cicloEncerrado, icon: FlagIcon, description: "Completaram o programa e não renovaram", iconClass: "text-muted-foreground bg-muted/30", soDetalhada: true },
+    { key: "total", title: "Total Clientes", value: stats.total, icon: Users, description: "Base geral de clientes", iconClass: "text-primary bg-primary/10", filtro: T },
+    { key: "ativos", title: "Clientes Ativos", value: stats.ativos, icon: TrendingUp, description: "Ativos no programa", iconClass: "text-emerald-400 bg-emerald-500/10", filtro: (c: any) => isStatusAtivo(c.status_atual) },
+    { key: "churn", title: "Churn Rate", value: stats.churnRate, icon: TrendingDown, description: "Taxa de cancelamento", iconClass: "text-red-400 bg-red-500/10", decimals: 1, suffix: "%", soDetalhada: true, filtro: porStatus("Cliente Cancelado") },
+    { key: "vaoIniciar", title: "Vão Iniciar", value: stats.aguardandoInicio, icon: PlayCircleIcon, description: "Aguardando início no programa", iconClass: "text-emerald-400 bg-emerald-500/10", filtro: porStatus("Aguardando Início") },
+    { key: "onbMarcado", title: "Onboarding Marcado", value: stats.onboardingMarcado, icon: CalendarIcon, description: "Reunião de onboarding agendada", iconClass: "text-blue-400 bg-blue-500/10", filtro: porStatus("Onboarding marcado") },
+    { key: "pendentes", title: "Pendentes Onboarding", value: stats.pendentesOnboarding, icon: ClockIcon, description: "Aguardando agendamento", iconClass: "text-yellow-400 bg-yellow-500/10", filtro: porStatus("Pendente de Onboarding") },
+    { key: "cancelados", title: "Cancelaram", value: stats.cancelados, icon: XIcon, description: "Clientes cancelados", iconClass: "text-red-400 bg-red-500/10", soDetalhada: true, filtro: porStatus("Cliente Cancelado") },
+    { key: "desistencias", title: "Desistência de Compra", value: stats.desistencias, icon: ShoppingCartIcon, description: "Desistiram antes de iniciar", iconClass: "text-orange-400 bg-orange-500/10", soDetalhada: true, filtro: porStatus("Desistência de Compra") },
+    { key: "ciclo", title: "Ciclo Encerrado", value: stats.cicloEncerrado, icon: FlagIcon, description: "Completaram o programa e não renovaram", iconClass: "text-muted-foreground bg-muted/30", soDetalhada: true, filtro: porStatus("Ciclo encerrado") },
+    { key: "congelados", title: "Congelados", value: stats.congelados, icon: Snowflake, description: "Trancaram o programa temporariamente", iconClass: "text-sky-400 bg-sky-500/10", soDetalhada: true, filtro: porStatus("Congelado") },
   ]
 
-  // 5 cards em 5 colunas / 9 em 3 — sempre fechando a última linha.
+  // Simples = 5 cards · Detalhada = 10 (2 linhas de 5).
   const cardsVisiveis = detalhada ? cards : cards.filter(c => !c.soDetalhada)
+  // Card selecionado (só entre os visíveis) e seus clientes — para a lista abaixo.
+  const selecionadoCard = cardsVisiveis.find(c => c.key === selecionado) ?? null
+  const clientesSelecionados = selecionadoCard ? clientesRaw.filter(selecionadoCard.filtro) : []
 
   const container = {
     hidden: { opacity: 0 },
@@ -285,27 +302,94 @@ export default function AdminDashboard() {
         variants={container}
         initial="hidden"
         animate="show"
-        className={`grid gap-6 grid-cols-1 sm:grid-cols-2 ${detalhada ? "lg:grid-cols-3" : "lg:grid-cols-5"}`}
+        className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5"
       >
-        {cardsVisiveis.map((card) => (
-          <motion.div key={card.title} variants={item} className="h-full">
-            <Card className="h-full hover:shadow-primary/10">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{card.title}</CardTitle>
-                <div className={`p-2.5 rounded-xl ${card.iconClass}`}>
-                  <card.icon className="size-4" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold tracking-tight mb-3">
-                  <CountUp value={card.value} decimals={card.decimals} suffix={card.suffix} />
-                </div>
-                <span className="text-[11px] font-medium text-muted-foreground">{card.description}</span>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+        {cardsVisiveis.map((card) => {
+          const ativoSel = selecionado === card.key
+          return (
+            <motion.div key={card.title} variants={item} className="h-full">
+              <button
+                type="button"
+                onClick={() => setSelecionado(ativoSel ? null : card.key)}
+                className="h-full w-full text-left"
+                aria-pressed={ativoSel}
+              >
+                <Card className={`h-full transition-all hover:border-primary/40 hover:shadow-primary/10 ${ativoSel ? "border-primary ring-1 ring-primary/40 bg-primary/[0.03]" : ""}`}>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{card.title}</CardTitle>
+                    <div className={`p-2.5 rounded-xl ${card.iconClass}`}>
+                      <card.icon className="size-4" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold tracking-tight mb-3">
+                      <CountUp value={card.value} decimals={card.decimals} suffix={card.suffix} />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-medium text-muted-foreground">{card.description}</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${ativoSel ? "text-primary" : "text-muted-foreground/40"}`}>
+                        {ativoSel ? "Fechar" : "Ver"}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </button>
+            </motion.div>
+          )
+        })}
       </motion.div>
+
+      {/* Lista de clientes do card selecionado */}
+      {selecionadoCard && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between border-b border-border/50">
+              <div>
+                <CardTitle className="text-base font-semibold">{selecionadoCard.title}</CardTitle>
+                <p className="text-[12px] font-medium text-muted-foreground mt-0.5">
+                  {clientesSelecionados.length} cliente{clientesSelecionados.length === 1 ? "" : "s"} · {selecionadoCard.description}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" className="h-8 gap-1 rounded-lg text-[11px] font-bold uppercase tracking-wider" onClick={() => setSelecionado(null)}>
+                <XIcon className="size-3.5" /> Fechar
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              {clientesSelecionados.length === 0 ? (
+                <p className="p-6 text-center text-[13px] font-medium text-muted-foreground">Nenhum cliente nesta categoria.</p>
+              ) : (
+                <div className="max-h-[460px] overflow-y-auto divide-y divide-border/40">
+                  {clientesSelecionados.map((c) => {
+                    const nome = (c.nome_empresa_formatado?.trim() || c.nome_cliente?.trim() || "Sem nome")
+                    return (
+                      <button
+                        key={c.id_cliente}
+                        type="button"
+                        onClick={() => c.id_cliente && navigate('/cliente/' + c.id_cliente)}
+                        disabled={!c.id_cliente}
+                        className="flex w-full items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-primary/[0.04] disabled:cursor-default"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[14px] font-bold tracking-tight text-foreground truncate">{nome}</p>
+                          <div className="mt-0.5 flex items-center gap-2 flex-wrap text-[11px] font-medium text-muted-foreground">
+                            {c.nicho && <span className="uppercase tracking-wider">{c.nicho}</span>}
+                            {c.sc && <span>· CS {c.sc}</span>}
+                            {c.canal_de_venda && <span>· {c.canal_de_venda}</span>}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="shrink-0 rounded-lg border-border text-muted-foreground px-2 py-0.5 text-[10px] font-bold">
+                          {c.status_atual || "—"}
+                        </Badge>
+                        {c.id_cliente && <ChevronRight className="size-4 shrink-0 text-muted-foreground/40" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       <motion.div 
         variants={container}
