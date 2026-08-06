@@ -421,6 +421,7 @@ export type Database = {
         Row: {
           cargo: string
           created_at: string
+          email: string | null
           guardiao_crm: boolean
           guardiao_ia: boolean
           id: string
@@ -434,6 +435,7 @@ export type Database = {
         Insert: {
           cargo: string
           created_at?: string
+          email?: string | null
           guardiao_crm?: boolean
           guardiao_ia?: boolean
           id?: string
@@ -447,6 +449,7 @@ export type Database = {
         Update: {
           cargo?: string
           created_at?: string
+          email?: string | null
           guardiao_crm?: boolean
           guardiao_ia?: boolean
           id?: string

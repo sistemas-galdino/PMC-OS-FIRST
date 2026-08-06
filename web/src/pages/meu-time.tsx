@@ -29,6 +29,7 @@ import {
   Building2Icon as Building,
   FilterIcon as Filter,
   MessageCircleIcon as MessageCircle,
+  MailIcon as Mail,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion, AnimatePresence } from "framer-motion"
@@ -39,6 +40,7 @@ interface Colaborador {
   id_cliente: string
   nome: string
   cargo: string
+  email: string | null
   whatsapp: string | null
   setor: string
   nivel: string | null
@@ -84,9 +86,12 @@ const SETOR_COLOR: Record<Setor, string> = {
 const IA_COLOR = "#DAFC67"
 const CRM_COLOR = "#A78BFA"
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 const emptyForm = {
   nome: "",
   cargo: "",
+  email: "",
   whatsapp: "",
   setor: "",
   nivel: "",
@@ -145,7 +150,7 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
       if (setorFilter !== "all" && c.setor !== setorFilter) return false
       if (guardianFilter === "ia" && !c.guardiao_ia) return false
       if (guardianFilter === "crm" && !c.guardiao_crm) return false
-      if (q && !(`${c.nome} ${c.cargo}`.toLowerCase().includes(q))) return false
+      if (q && !(`${c.nome} ${c.cargo} ${c.email || ""}`.toLowerCase().includes(q))) return false
       return true
     })
   }, [colaboradores, search, setorFilter, guardianFilter])
@@ -181,6 +186,7 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
     setForm({
       nome: c.nome,
       cargo: c.cargo,
+      email: c.email || "",
       whatsapp: c.whatsapp || "",
       setor: c.setor,
       nivel: c.nivel || "",
@@ -190,7 +196,8 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
     setShowDialog(true)
   }
 
-  const isValid = () => form.nome.trim() && form.cargo.trim() && form.whatsapp.trim() && form.setor
+  const emailInvalid = form.email.trim().length > 0 && !EMAIL_RE.test(form.email.trim())
+  const isValid = () => form.nome.trim() && form.cargo.trim() && form.whatsapp.trim() && form.setor && !emailInvalid
 
   async function handleSave() {
     if (!resolvedClientId || !isValid()) return
@@ -199,6 +206,7 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
       id_cliente: resolvedClientId,
       nome: form.nome.trim(),
       cargo: form.cargo.trim(),
+      email: form.email.trim() || null,
       whatsapp: form.whatsapp.trim() || null,
       setor: form.setor,
       nivel: form.nivel || null,
@@ -412,6 +420,20 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
               onChange={(e) => setForm(p => ({ ...p, cargo: e.target.value }))}
               className="h-11 rounded-xl bg-muted/10"
             />
+            <div className="space-y-1">
+              <Input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="E-mail (opcional)"
+                value={form.email}
+                onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
+                className={`h-11 rounded-xl bg-muted/10 ${emailInvalid ? "border-destructive focus-visible:ring-destructive" : ""}`}
+              />
+              {emailInvalid && (
+                <p className="text-[11px] font-medium text-destructive pl-1">E-mail inválido</p>
+              )}
+            </div>
             <Input
               placeholder="Contato WhatsApp * — (85) 99999-9999"
               value={form.whatsapp}
@@ -605,18 +627,33 @@ function ColaboradorCard({ c, onEdit, onDelete }: { c: Colaborador; onEdit: (c: 
               )}
             </div>
           )}
-          {c.whatsapp && (
-            <a
-              href={whatsappLink(c.whatsapp)}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="mt-2 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-[#25D36640] bg-[#25D36615] text-[#25D366] hover:bg-[#25D36625] transition-colors"
-              title={`Chamar ${c.nome} no WhatsApp`}
-            >
-              <MessageCircle className="size-3" />
-              WhatsApp
-            </a>
+          {(c.whatsapp || c.email) && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {c.whatsapp && (
+                <a
+                  href={whatsappLink(c.whatsapp)}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-[#25D36640] bg-[#25D36615] text-[#25D366] hover:bg-[#25D36625] transition-colors"
+                  title={`Chamar ${c.nome} no WhatsApp`}
+                >
+                  <MessageCircle className="size-3" />
+                  WhatsApp
+                </a>
+              )}
+              {c.email && (
+                <a
+                  href={`mailto:${c.email}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-border bg-muted/20 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors max-w-full"
+                  title={c.email}
+                >
+                  <Mail className="size-3 shrink-0" />
+                  <span className="truncate normal-case tracking-normal font-medium">{c.email}</span>
+                </a>
+              )}
+            </div>
           )}
         </div>
       </div>
