@@ -196,8 +196,9 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
     setShowDialog(true)
   }
 
-  const emailInvalid = form.email.trim().length > 0 && !EMAIL_RE.test(form.email.trim())
-  const isValid = () => form.nome.trim() && form.cargo.trim() && form.whatsapp.trim() && form.setor && !emailInvalid
+  const emailOk = EMAIL_RE.test(form.email.trim())
+  const emailInvalid = form.email.trim().length > 0 && !emailOk
+  const isValid = () => form.nome.trim() && form.cargo.trim() && emailOk && form.whatsapp.trim() && form.setor
 
   async function handleSave() {
     if (!resolvedClientId || !isValid()) return
@@ -206,7 +207,7 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
       id_cliente: resolvedClientId,
       nome: form.nome.trim(),
       cargo: form.cargo.trim(),
-      email: form.email.trim() || null,
+      email: form.email.trim(),
       whatsapp: form.whatsapp.trim() || null,
       setor: form.setor,
       nivel: form.nivel || null,
@@ -425,7 +426,7 @@ export default function MeuTimePage({ session, clientId }: MeuTimePageProps) {
                 type="email"
                 inputMode="email"
                 autoComplete="email"
-                placeholder="E-mail (opcional)"
+                placeholder="E-mail * — nome@empresa.com"
                 value={form.email}
                 onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
                 className={`h-11 rounded-xl bg-muted/10 ${emailInvalid ? "border-destructive focus-visible:ring-destructive" : ""}`}
