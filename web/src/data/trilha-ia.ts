@@ -43,7 +43,9 @@ export interface Pilar {
 }
 
 // -------- Trilha (conteúdo / aulas) --------
-// Copy e links vindos de `evidencias/trilha.png` + `evidencias/links-etapas.txt`.
+// Copy vinda de `evidencias/trilha.png`. Links atualizados a partir de `new-links.txt`
+// (2026-08-07): as aulas saíram do curso único 241789 e foram para 6 cursos separados,
+// um por etapa (290951, 290952, 290953, 290955, 290956, 290958).
 // Mantenha os IDs intactos — são chaveados em vários lugares.
 export const TRILHA_IA: Trilha = {
   id: "trilha-ia-pmc",
@@ -63,15 +65,15 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Aula sobre o papel do Guardião da IA na empresa e como estruturar processos e a adoção de inteligência artificial.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5359814-como-estruturar-o-guardiao-da-ia-e-transformar-inteligencia-artificial-e",
+            "https://app.multiplicadordecrescimento.com.br/290951-definicao-do-guardiao-de-ia/5560298-organizacao-e-processo-o-guardiao-da-ia",
         },
         {
           id: "p1-t2-encontro-multiplica-time-28-11",
-          titulo: "Encontro Multiplica Time – Aplicação estratégica da IA",
+          titulo: "Aplicação estratégica da IA",
           descricao:
             "Conteúdo sobre a visão estratégica da inteligência artificial dentro das empresas e o papel do Guardião da IA.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5136623-encontro-multiplica-time-ao-vivo-dia-28-11",
+            "https://app.multiplicadordecrescimento.com.br/290951-definicao-do-guardiao-de-ia/5560450-aplicacao-estrategica-da-ia",
         },
       ],
     },
@@ -88,7 +90,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Apresenta um diagnóstico com seis pilares para entender o estágio de cada negócio, finalizando com demonstração prática de como transformar dados da empresa em dashboards estratégicos usando IA.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5289634-diagnostico-de-ia-e-dashboards",
+            "https://app.multiplicadordecrescimento.com.br/290952-analise-de-indicadores-com-ia/5560434-diagnostico-de-ia-e-dashboards",
         },
         {
           id: "p2-t2-decisao-com-dados-5-analises",
@@ -96,23 +98,23 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Pare de decidir no achismo e comece a usar dados para gerar lucro real. Aprenda as 5 análises de ouro e a estruturar uma rotina de alta performance com IA. Menos execução operacional, mais decisões estratégicas.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5284709-decisao-com-dados-5-analises-rotina-4h00",
+            "https://app.multiplicadordecrescimento.com.br/290952-analise-de-indicadores-com-ia/5560435-decisao-com-dados-5-analises-rotina-4h00",
         },
         {
           id: "p2-t3-planejamento-2026-galdino",
-          titulo: "Planejamento Estratégico 2026 com IA — Parte 01",
+          titulo: "Planejamento Estratégico 2026 com IA",
           descricao:
             "Apresenta o Instituto de Pesquisa Galdino para análise de mercado, com foco em aplicar IA para interpretar dados e tendências do negócio.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5087331-planejamento-estrategico-2026-e-instituto-de-pesquisa-galdino",
+            "https://app.multiplicadordecrescimento.com.br/290952-analise-de-indicadores-com-ia/5560446-planejamento-estrategico-2026-com-ia",
         },
         {
           id: "p2-t4-planejamento-2026-manus-okr",
-          titulo: "Planejamento Estratégico 2026 com IA (Manus.im e OKR) — Parte 02",
+          titulo: "Planejamento Estratégico 2026 com IA (Manus.im e OKR)",
           descricao:
             "Galdino ensina a usar a IA Manus.im para construir o planejamento estratégico de 2026, analisar o DRE, criar OKRs e transformar metas em planos de ação concretos.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5087551-planejamento-estrategico-2026-com-ia-manus-im-e-okr",
+            "https://app.multiplicadordecrescimento.com.br/290952-analise-de-indicadores-com-ia/5560448-planejamento-estrategico-2026-com-ia-manus-im-e-okr",
         },
       ],
     },
@@ -129,7 +131,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Apresenta um diagnóstico com seis pilares para entender o estágio de cada negócio, finalizando com demonstração prática de como transformar dados da empresa em dashboards estratégicos usando IA.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5289634-diagnostico-de-ia-e-dashboards",
+            "https://app.multiplicadordecrescimento.com.br/290953-criacao-de-dashboards-com-ia/5560452-diagnostico-de-ia-e-dashboards",
         },
         {
           id: "p3-t2-estrategia-plano-sistemas-ia",
@@ -137,7 +139,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "A partir de dados e dashboards, mostra como gerar relatórios analíticos e planos de ação estratégicos de 90 dias com IA. Apresenta análises preditivas e como criar sistemas internos e automações usando IA e Lovable.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5289639-estrategia-plano-de-acao-e-sistemas-com-ia",
+            "https://app.multiplicadordecrescimento.com.br/290953-criacao-de-dashboards-com-ia/5560458-estrategia-plano-de-acao-e-sistemas-com-ia",
         },
       ],
     },
@@ -154,7 +156,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Aula sobre como criar POPs (Procedimentos Operacionais Padrão) e organizar o histórico de clientes dentro do Notebook LM para processos estratégicos.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/4969687-como-estruturar-processos-com-ia-pops-e-organizacao-no-notebook-lm",
+            "https://app.multiplicadordecrescimento.com.br/290955-mapeamento-de-processos-com-ia/5560462-como-estruturar-processos-com-ia-pops-e-organizacao-no-notebook-lm",
         },
         {
           id: "p4-t2-diagnostico-caos-processos",
@@ -162,7 +164,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Aula sobre como identificar gargalos e desenhar processos que libertam a operação.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5284704-diagnostico-do-caos-processos-que-libertam",
+            "https://app.multiplicadordecrescimento.com.br/290955-mapeamento-de-processos-com-ia/5560463-diagnostico-do-caos-processos-que-libertam",
         },
         {
           id: "p4-t3-funis-processos-comerciais-ia",
@@ -170,31 +172,32 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Como usar IA para construir funis e processos comerciais ponta a ponta (WhatsApp, SalesBot, automações e templates).",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/4944656-construindo-funis-e-processos-comerciais-com-ia-na-pratica",
+            "https://app.multiplicadordecrescimento.com.br/290955-mapeamento-de-processos-com-ia/5560465-construindo-funis-e-processos-comerciais-com-ia-na-pratica",
         },
         {
           id: "p4-t4-criando-projetos-manus",
-          titulo: "Criando projetos no Manus – Parte 01",
+          titulo: "Criando projetos no Manus",
           descricao:
             "Introdução à criação de projetos no Manus: briefing, estrutura e primeiros outputs.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/4801808-criando-projetos-no-manus",
+            "https://app.multiplicadordecrescimento.com.br/290955-mapeamento-de-processos-com-ia/5560467-criando-projetos-no-manus",
         },
         {
-          id: "p4-t5-desenvolvimento-projetos-manus",
-          titulo: "Criando projetos no Manus – Parte 02",
+          id: "p4-t5-como-estruturar-guardiao-ia",
+          titulo:
+            "Como estruturar o Guardião da IA e transformar inteligência artificial em resultados reais no negócio",
+          descricao:
+            "Aula sobre como estruturar o papel do Guardião da IA e traduzir a adoção de inteligência artificial em resultados concretos dentro dos processos da empresa.",
+          linkPadrao:
+            "https://app.multiplicadordecrescimento.com.br/290955-mapeamento-de-processos-com-ia/5560480-como-estruturar-o-guardiao-da-ia-e-transformar-inteligencia-artificial-e",
+        },
+        {
+          id: "p4-t6-desenvolvimento-projetos-manus",
+          titulo: "Desenvolvimento de Projetos com o Manus",
           descricao:
             "Desenvolvimento de projetos no Manus: aprofundamento em dashboards, relatórios e análises.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/4901180-3-desenvolvimento-de-projetos-com-o-manus",
-        },
-        {
-          id: "p4-t6-criando-projetos-manus-p3",
-          titulo: "Criando projetos no Manus – Parte 03",
-          descricao:
-            "Continuação: organização do time, entregas e encerramento de projetos no Manus.",
-          linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/4901180-3-desenvolvimento-de-projetos-com-o-manus",
+            "https://app.multiplicadordecrescimento.com.br/290955-mapeamento-de-processos-com-ia/5560598-desenvolvimento-de-projetos-com-o-manus",
         },
         {
           id: "p4-t7-produtividade-plano-30-60-90",
@@ -202,7 +205,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Apresenta a IA aplicada na prática para aumentar produtividade e criar sistemas, com casos reais, ferramentas e automações, e um plano de ação estruturado para os próximos 30, 60 e 90 dias.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5205155-produtividade-sistemas-e-plano-30-60-e-90-dias",
+            "https://app.multiplicadordecrescimento.com.br/290955-mapeamento-de-processos-com-ia/5560500-produtividade-sistemas-e-plano-30-60-e-90-dias",
         },
       ],
     },
@@ -219,7 +222,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Visão prática sobre o uso de agentes autônomos para automatizar processos empresariais. Explica a diferença entre prompts, automações e agentes inteligentes, com aplicações reais em marketing, análise de dados e operações.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5305739-agentes-de-ia-com-claude-e-automacao-de-processos",
+            "https://app.multiplicadordecrescimento.com.br/290956-criacao-de-agentes-com-ia/5560515-agentes-de-ia-com-claude-e-automacao-de-processos",
         },
         {
           id: "p5-t2-arquiteto-campanhas-ia",
@@ -227,7 +230,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Apresentação prática de um agente que constrói campanha completa (persona, dores, criativos, anúncios e estratégia de venda), com explicação dos 4 inputs obrigatórios e exercício ao vivo.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5254084-arquiteto-de-campanhas-engenharia-com-ia",
+            "https://app.multiplicadordecrescimento.com.br/290956-criacao-de-agentes-com-ia/5560554-arquiteto-de-campanhas-engenharia-com-ia",
         },
       ],
     },
@@ -244,7 +247,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Apresenta a IA aplicada na prática para aumentar produtividade e criar sistemas, com casos reais, ferramentas e automações, e um plano de ação estruturado para os próximos 30, 60 e 90 dias.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5205155-produtividade-sistemas-e-plano-30-60-e-90-dias",
+            "https://app.multiplicadordecrescimento.com.br/290958-implementacao-de-sistemas-com-ia/5560555-produtividade-sistemas-e-plano-30-60-e-90-dias",
         },
         {
           id: "p6-t2-estrategia-plano-sistemas-ia",
@@ -252,7 +255,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "A partir de dados e dashboards, mostra como gerar relatórios analíticos e planos de ação estratégicos de 90 dias com IA. Apresenta análises preditivas e como criar sistemas internos e automações usando IA e Lovable.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5289639-estrategia-plano-de-acao-e-sistemas-com-ia",
+            "https://app.multiplicadordecrescimento.com.br/290958-implementacao-de-sistemas-com-ia/5560556-estrategia-plano-de-acao-e-sistemas-com-ia",
         },
         {
           id: "p6-t3-stitch-telas-apps-prototipos-ia",
@@ -260,7 +263,7 @@ export const TRILHA_IA: Trilha = {
           descricao:
             "Ensina como usar o Stitch (Gemini) para desenhar telas de aplicativos, landing pages e estruturas visuais, transformando ideias em protótipos prontos para validação e venda.",
           linkPadrao:
-            "https://app.multiplicadordecrescimento.com.br/241789-programa-multiplicador-de-crescimento/5253871-stitch-telas-apps-e-prototipos-com-ia",
+            "https://app.multiplicadordecrescimento.com.br/290958-implementacao-de-sistemas-com-ia/5560558-stitch-telas-apps-e-prototipos-com-ia",
         },
       ],
     },
