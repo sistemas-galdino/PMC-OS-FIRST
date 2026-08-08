@@ -38,6 +38,8 @@ import {
   atualizarTarefa,
   excluirTarefa,
   fontesContexto,
+  resolverResponsavel,
+  type Pessoa,
 } from "@/lib/guardiao/tarefas"
 
 interface Props {
@@ -68,7 +70,7 @@ export default function TarefasPage({ session, clientId }: Props) {
   const resolvedClientId = clientId || session?.user?.id
   const [searchParams, setSearchParams] = useSearchParams()
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
-  const [fontes, setFontes] = useState<{ setores: string[]; projetos: string[] }>({ setores: [], projetos: [] })
+  const [fontes, setFontes] = useState<{ setores: string[]; projetos: string[]; pessoas: Pessoa[] }>({ setores: [], projetos: [], pessoas: [] })
   const [loading, setLoading] = useState(true)
   const [vista, setVista] = useState<Vista>("lista")
 
@@ -163,10 +165,12 @@ export default function TarefasPage({ session, clientId }: Props) {
     if (!resolvedClientId || !form.titulo?.trim()) return
     setSalvando(true)
     try {
+      // O texto digitado vira vínculo com a pessoa do time sempre que casar.
+      const payload = { ...form, responsavel_id: resolverResponsavel(form.responsavel, fontes.pessoas) }
       if (editando) {
-        await atualizarTarefa(editando.id, form)
+        await atualizarTarefa(editando.id, payload)
       } else {
-        await criarTarefa(resolvedClientId, form)
+        await criarTarefa(resolvedClientId, payload)
       }
       setAberto(false)
       await carregar()
@@ -355,8 +359,14 @@ export default function TarefasPage({ session, clientId }: Props) {
               <Campo label="Projeto vinculado">
                 <ComboboxInput value={form.projeto ?? ""} onChange={(v) => set({ projeto: v })} options={fontes.projetos} placeholder="Sistema, automação..." />
               </Campo>
+              {/* Sugere o time (vira responsavel_id) mas aceita nome de fora do cadastro. */}
               <Campo label="Responsável">
-                <Input className="h-11 rounded-xl" value={form.responsavel ?? ""} onChange={(e) => set({ responsavel: e.target.value })} />
+                <ComboboxInput
+                  value={form.responsavel ?? ""}
+                  onChange={(v) => set({ responsavel: v })}
+                  options={fontes.pessoas.map((p) => p.nome)}
+                  placeholder="Quem executa"
+                />
               </Campo>
               <Campo label="Prazo">
                 <Input type="date" className="h-11 rounded-xl" value={form.prazo ?? ""} onChange={(e) => set({ prazo: e.target.value })} />

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { FONTES_PONTOS, NIVEIS, calcularNivel, type SinaisNivel, type CorNivel } from "@/lib/nivel-pmc"
+import { contarSemanasPerfeitas } from "@/lib/guardiao/meu-dia"
 import { useConquistas } from "@/hooks/use-conquistas"
 import { TRILHAS, RARIDADE, arquetipoDaBadge, iconeDaBadge, type BadgeCatalogo } from "@/data/badges-mc"
 
@@ -59,14 +60,14 @@ export default function NiveisPage({ session, clientId }: Props) {
   const cid = clientId || session?.user?.id
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
-  const [sinaisN, setSinaisN] = useState<SinaisNivel>({ etapas: 0, fases: 0, mapeamento: 0, reunioes: 0, vitorias: 0, convites: 0, candidatos: 0, guardiaoContratado: 0, tarefas: 0 })
+  const [sinaisN, setSinaisN] = useState<SinaisNivel>({ etapas: 0, fases: 0, mapeamento: 0, reunioes: 0, vitorias: 0, convites: 0, candidatos: 0, guardiaoContratado: 0, tarefas: 0, diasFechados: 0, semanasPerfeitas: 0 })
 
   useEffect(() => {
     if (!cid) return
     async function carregar() {
       try {
       const cnt = (t: string, col = "id") => supabase.from(t).select(col, { count: "exact", head: true }).eq("id_cliente", cid)
-      const [etapasRes, g, a, ga, cp, si, ec, vit, rg, rm, rb, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk] = await Promise.all([
+      const [etapasRes, g, a, ga, cp, si, ec, vit, rg, rm, rb, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk, diasRes] = await Promise.all([
         supabase.from("cliente_etapas_metodo").select("etapa, concluida").eq("id_cliente", cid),
         cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
         cnt("metodo_copilotos"), cnt("metodo_sistemas"), cnt("metodo_economias"),
@@ -80,6 +81,8 @@ export default function NiveisPage({ session, clientId }: Props) {
         supabase.from("guardiao_invites").select("id", { count: "exact", head: true }).eq("id_cliente", cid).eq("status", "concluido"),
         supabase.from("guardiao_invites").select("id", { count: "exact", head: true }).eq("id_cliente", cid).eq("stage", "contratado_guardiao"),
         supabase.from("metodo_tarefas").select("id", { count: "exact", head: true }).eq("id_cliente", cid).eq("status", "concluido"),
+        // Ritual diário: as datas fechadas (a RLS já escopa) — agregamos aqui.
+        supabase.from("metodo_dia_fechamentos").select("data").eq("id_cliente", cid).not("fechado_em", "is", null),
       ])
 
       const manual = new Set<number>((etapasRes.data ?? []).filter((r: any) => r.concluida).map((r: any) => r.etapa))
@@ -97,12 +100,16 @@ export default function NiveisPage({ session, clientId }: Props) {
       const fases = [...sinaisSet].filter((s) => s !== "reunioes").length
       const mapeamento = [mMetas, mProd, mCanais, mObj].filter((r) => (r.count ?? 0) > 0).length
 
+      const datas = ((diasRes.data ?? []) as { data: string }[]).map((d) => d.data)
+
       setSinaisN({
         etapas, fases, mapeamento, reunioes, vitorias: vit.count ?? 0,
         convites: gConv.count ?? 0,
         candidatos: gCand.count ?? 0,
         guardiaoContratado: gContr.count ?? 0,
         tarefas: tOk.count ?? 0,
+        diasFechados: datas.length,
+        semanasPerfeitas: contarSemanasPerfeitas(datas),
       })
       } catch (e) {
         console.error(e)

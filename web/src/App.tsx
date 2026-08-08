@@ -37,6 +37,9 @@ const RadarRenovacaoPage = lazy(() => import("@/pages/radar-renovacao"))
 const NiveisPage = lazy(() => import("@/pages/niveis"))
 const MetodoPage = lazy(() => import("@/pages/metodo"))
 const RotinasPage = lazy(() => import("@/pages/rotinas"))
+const NotificacoesPage = lazy(() => import("@/pages/notificacoes"))
+const MeuDiaPage = lazy(() => import("@/pages/meu-dia"))
+const MensagensPage = lazy(() => import("@/pages/mensagens"))
 const TarefasPage = lazy(() => import("@/pages/tarefas"))
 const NovidadesPage = lazy(() => import("@/pages/novidades"))
 const RankingGuardioesPage = lazy(() => import("@/pages/ranking-guardioes"))
@@ -188,12 +191,15 @@ function AppRoutes() {
                     <Route path="/balanco" element={<BalancoPage session={session} clientId={cid} />} />
                     <Route path="/niveis" element={<NiveisPage session={session} clientId={cid} />} />
                     <Route path="/metodo" element={<MetodoPage session={session} clientId={cid} />} />
+                    <Route path="/meu-dia" element={<MeuDiaPage session={session} clientId={cid} />} />
                     <Route path="/rotinas" element={<RotinasPage session={session} clientId={cid} />} />
+                    <Route path="/notificacoes" element={<NotificacoesPage session={session} clientId={cid} />} />
                     <Route path="/tarefas" element={<TarefasPage session={session} clientId={cid} />} />
                     <Route path="/novidades" element={<NovidadesPage session={session} clientId={cid} />} />
                     <Route path="/ranking-guardioes" element={<RankingGuardioesPage clientId={cid} />} />
                     <Route path="/novidades-admin" element={<RequireSecao secao="novidades-admin"><NovidadesAdminPage /></RequireSecao>} />
                     <Route path="/logs-download" element={<RequireSecao secao="logs-download"><LogsDownloadPage /></RequireSecao>} />
+                    <Route path="/mensagens" element={<RequireSecao secao="mensagens"><MensagensPage /></RequireSecao>} />
                     <Route path="/estudos-caso" element={<EstudosCasoPage session={session} clientId={cid} />} />
                     <Route path="/estudos-caso-admin" element={<RequireSecao secao="estudos-caso-admin"><EstudosCasoAdminPage /></RequireSecao>} />
                     <Route path="/dashboard-2" element={<Navigate to="/" replace />} />

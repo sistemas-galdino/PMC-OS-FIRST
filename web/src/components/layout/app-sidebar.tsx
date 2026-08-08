@@ -167,6 +167,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     {
       label: "Sistema",
       items: [
+        { title: "Mensagens & Alcance", icon: Megaphone, url: "/mensagens" },
         { title: "Registro de Downloads", icon: FileText, url: "/logs-download" },
         { title: "Time & Permissões", icon: ShieldCheck, url: "/time-permissoes" },
         { title: "Configurações", icon: Settings, url: "/configuracoes" },
@@ -207,6 +208,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
             { title: "Candidatos", tab: "candidatos", icon: Users },
           ],
         },
+        { title: "Meu Dia", icon: Compass, url: "/meu-dia" },
         { title: "Rotinas e Rituais", icon: RefreshCw, url: "/rotinas" },
         { title: "Tarefas", icon: CheckSquare, url: "/tarefas" },
       ],
@@ -403,6 +405,10 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
                 </DropdownMenuItem>
                 {!isAdmin && (
                   <>
+                    <DropdownMenuItem onClick={() => navigate('/notificacoes')} className="cursor-pointer font-medium">
+                      <Megaphone className="size-4" />
+                      Notificações
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger className="cursor-pointer font-medium">
