@@ -5,6 +5,7 @@ import { queryClient } from "@/lib/query-client"
 import {
   ATIVIDADE_COLUNAS,
   CLIENTE_COLUNAS,
+  anexarReunioes,
   atividadeToRow,
   clientePatchToRow,
   rowToAtividade,
@@ -93,13 +94,23 @@ function invalidar(...keys: readonly (readonly unknown[])[]) {
 // pedir explicitamente evita o silêncio de truncar quando crescer.
 const LIMITE = 5000
 
-export async function fetchClientes(): Promise<Cliente[]> {
-  const { data, error } = await supabase
-    .from("clientes_entrada_new")
-    .select(CLIENTE_COLUNAS)
-    .limit(LIMITE)
+async function fetchReunioesRaw(): Promise<ReuniaoRow[]> {
+  const { data, error } = await supabase.from("crm_reunioes_v").select("*").limit(LIMITE)
   if (error) throw error
-  return ((data ?? []) as unknown as ClienteRow[]).map(rowToCliente)
+  return (data ?? []) as unknown as ReuniaoRow[]
+}
+
+export async function fetchClientes(): Promise<Cliente[]> {
+  // As reuniões entram junto porque o motor de alertas e as funções de jornada
+  // leem cliente.consultor_reunioes / cliente.ciclo_galdino_reunioes. Ver
+  // anexarReunioes() em mappers.ts.
+  const [{ data, error }, reunioes] = await Promise.all([
+    supabase.from("clientes_entrada_new").select(CLIENTE_COLUNAS).limit(LIMITE),
+    fetchReunioesRaw(),
+  ])
+  if (error) throw error
+  const clientes = ((data ?? []) as unknown as ClienteRow[]).map(rowToCliente)
+  return anexarReunioes(clientes, reunioes)
 }
 
 export function useClientes(): Cliente[] {
@@ -347,16 +358,13 @@ export function atividadesDoProjeto(projetoId: string, atividades?: Atividade[])
 // ───────────────────────── Reuniões ─────────────────────────
 
 export async function fetchReunioes(): Promise<Reuniao[]> {
-  const [{ data, error }, clientes] = await Promise.all([
-    supabase.from("crm_reunioes_v").select("*").limit(LIMITE),
+  const [rows, clientes] = await Promise.all([
+    fetchReunioesRaw(),
     snap.clientes.length ? Promise.resolve(snap.clientes) : fetchClientes(),
   ])
-  if (error) throw error
   // A view não sabe quem é a CS: isso vive em clientes_entrada_new.sc.
   const csPorCliente = new Map(clientes.map((c) => [c.id, c.responsavel_cs]))
-  return ((data ?? []) as unknown as ReuniaoRow[]).map((r) =>
-    rowToReuniao(r, csPorCliente.get(r.id_cliente ?? "") ?? ""),
-  )
+  return rows.map((r) => rowToReuniao(r, csPorCliente.get(r.id_cliente ?? "") ?? ""))
 }
 
 export function useReunioes(): Reuniao[] {

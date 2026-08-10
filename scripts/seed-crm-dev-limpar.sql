@@ -6,6 +6,11 @@
 
 BEGIN;
 
+-- Só as reuniões criadas pelo seed (prefixo dev-), preservando o que veio do
+-- Google Calendar.
+DELETE FROM reunioes_galdino WHERE id_reuniao LIKE 'dev-gald-%';
+DELETE FROM reunioes_mentoria_new WHERE id_reuniao LIKE 'dev-ment-%';
+
 DELETE FROM cliente_atividades;
 DELETE FROM crm_fechamento_ciclo;
 DELETE FROM crm_alerta_marcacoes;

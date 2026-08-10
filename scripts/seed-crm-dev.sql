@@ -137,6 +137,36 @@ VALUES
   (NULL, 'Tocar o projeto de NPS', 'Projeto do setor, sem cliente vinculado.', 'Outro', 'media', current_date + 3, 'em_andamento', 'Francielly', 'manual_individual'),
   (NULL, 'Revisar o manual de CS', 'Atualizar os POPs da rotina de quarta.', 'Outro', 'baixa', current_date + 7, 'pendente', 'Gabriela', 'manual_individual');
 
+-- ───────── 4b. Reuniões ─────────
+-- O motor de alertas lê as reuniões (cliente.ciclo_galdino_reunioes e
+-- consultor_reunioes, preenchidos por anexarReunioes a partir de
+-- crm_reunioes_v). Sem elas, "sem reunião com Galdino no trimestre" dispara
+-- para todo mundo e "sem reunião com consultor" não dispara para ninguém —
+-- os dois casos precisam existir no DEV para o teste valer.
+INSERT INTO reunioes_galdino (id_unico, id_reuniao, id_cliente, empresa, data_reuniao, horario, duracao_minutos, status_agendamento, cliente_compareceu)
+SELECT gen_random_uuid(), 'dev-gald-' || c.codigo_cliente || '-' || g,
+       c.id_cliente, c.nome_empresa,
+       (c.data + ((g * 90) + 10)::int)::date,
+       '10:00'::time, 60, 'realizado', true
+FROM clientes_entrada_new c
+CROSS JOIN generate_series(0, 1) g
+WHERE c.status_atual = 'Ativo no Programa' AND c.data IS NOT NULL
+  AND c.codigo_cliente % 3 <> 0                       -- 1/3 fica sem nenhuma
+  AND (c.data + ((g * 90) + 10)::int)::date <= current_date;
+
+INSERT INTO reunioes_mentoria_new (id_unico, id_reuniao, id_cliente, empresa, mentor, data_reuniao, horario, duracao_minutos, status_agendamento, cliente_compareceu)
+SELECT gen_random_uuid(), 'dev-ment-' || c.codigo_cliente || '-' || g,
+       c.id_cliente, c.nome_empresa,
+       (ARRAY['David','Issao','Rodrigo','Diego'])[1 + (c.codigo_cliente % 4)],
+       -- espalha a última reunião entre 0 e 60 dias atrás, cruzando o limiar
+       -- de 30 dias do alerta
+       (current_date - ((g * 45) + (c.codigo_cliente % 60))::int)::date,
+       '14:00'::time, 60, 'realizado', true
+FROM clientes_entrada_new c
+CROSS JOIN generate_series(0, 1) g
+WHERE c.status_atual = 'Ativo no Programa' AND c.data IS NOT NULL
+  AND c.codigo_cliente % 2 = 0;                       -- metade sem consultor
+
 -- ───────── 5. Gargalos e projetos ─────────
 INSERT INTO crm_gargalos (area, quem_trouxe, registrado_por, quem_vai_executar, status, prioridade, problema, solucao, afeta_entrega_cliente)
 VALUES

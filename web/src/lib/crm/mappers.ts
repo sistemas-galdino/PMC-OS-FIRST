@@ -557,6 +557,78 @@ const STATUS_REUNIAO: Record<string, Reuniao["status"]> = {
   cancelada: "Cancelada",
 }
 
+function statusDaReuniao(row: ReuniaoRow): Reuniao["status"] {
+  const passou = row.data ? new Date(`${row.data}T23:59:59`) < new Date() : false
+  return (
+    STATUS_REUNIAO[(row.status_agendamento ?? "").toLowerCase()] ??
+    (passou ? "Realizada" : "Agendada")
+  )
+}
+
+/**
+ * Distribui as reuniões da view crm_reunioes_v dentro de cada Cliente.
+ *
+ * Isto NÃO é enfeite: o catálogo de alertas e as funções de jornada
+ * (reunioesConsultorConsumidas, temReuniaoGaldinoNoTrimestre,
+ * diasDesdeUltimaReuniaoConsultor) leem exclusivamente desses dois arrays.
+ * No sistema original eles eram digitados à mão dentro do cliente; aqui a
+ * fonte real são as reuniões sincronizadas do Google Calendar.
+ *
+ * Sem este passo, "Sem reunião com Galdino no trimestre" dispararia para todos
+ * os clientes ativos e "Sem reunião com consultor" não dispararia para nenhum.
+ */
+export function anexarReunioes(clientes: Cliente[], reunioes: ReuniaoRow[]): Cliente[] {
+  const porCliente = new Map<string, ReuniaoRow[]>()
+  for (const r of reunioes) {
+    if (!r.id_cliente) continue
+    const lista = porCliente.get(r.id_cliente)
+    if (lista) lista.push(r)
+    else porCliente.set(r.id_cliente, [r])
+  }
+
+  return clientes.map((c) => {
+    const rs = porCliente.get(c.id)
+    if (!rs) return c
+
+    const galdino = rs
+      .filter((r) => r.origem === "galdino")
+      .map((r) => ({
+        id: `${r.origem}:${r.ref}`,
+        data_reuniao: r.data ?? undefined,
+        status: statusDaReuniao(r) as "Agendada" | "Realizada" | "Cancelada",
+      }))
+
+    // Black CRM é suporte de produto, não reunião de consultoria — fica de fora
+    // da contagem das 21 reuniões contratadas.
+    const consultor = rs
+      .filter((r) => r.origem === "mentoria" || r.origem === "central")
+      .map((r) => ({
+        id: `${r.origem}:${r.ref}`,
+        consultor: r.responsavel_externo ?? "Consultor",
+        data: r.data ?? "",
+        status: statusDaReuniao(r),
+      }))
+
+    const ultima = (lista: { data?: string; status: string }[]) =>
+      lista
+        .filter((x) => x.status === "Realizada" && x.data)
+        .map((x) => x.data as string)
+        .sort()
+        .pop()
+
+    return {
+      ...c,
+      ciclo_galdino_reunioes: galdino,
+      consultor_reunioes: consultor,
+      ultima_reuniao_galdino: ultima(galdino.map((g) => ({ data: g.data_reuniao, status: g.status }))),
+      ultima_reuniao_consultor: ultima(consultor),
+      // A coluna reuniao_galdino_status é preenchida à mão pelo time e vive
+      // desatualizada; havendo reunião realizada de verdade, ela ganha.
+      reuniao_galdino: galdino.some((g) => g.status === "Realizada") || c.reuniao_galdino,
+    }
+  })
+}
+
 export function rowToReuniao(row: ReuniaoRow, csResponsavel: string): Reuniao {
   const passou = row.data ? new Date(`${row.data}T23:59:59`) < new Date() : false
   return {
