@@ -60,6 +60,94 @@ const GUARDIAO_ETAPA: Record<string, GuardiaoEtapa> = {
   sem_informacao: "Não definido",
 }
 
+/**
+ * Os vocabulários abaixo NÃO são convenção: são CHECK constraints em
+ * clientes_entrada_new. Escrever o rótulo da UI ("Em implementação") direto na
+ * coluna faz o INSERT/UPDATE ser rejeitado pelo banco. Por isso cada um tem
+ * ida e volta, e o `inverter()` garante que os dois lados não saiam de sincronia.
+ */
+function inverter<T extends string>(m: Record<string, T>): Record<T, string> {
+  const out = {} as Record<T, string>
+  for (const [db, ui] of Object.entries(m)) if (!(ui in out)) out[ui as T] = db
+  return out
+}
+
+// CHECK: nao_iniciado | em_andamento | implementado | travado | nao_se_aplica | sem_informacao
+const BCRM_IMPL: Record<string, NonNullable<Cliente["bcrm_status_impl"]>> = {
+  nao_iniciado: "Não iniciado",
+  em_andamento: "Em implementação",
+  implementado: "Implementado",
+  travado: "Em implementação",
+  nao_se_aplica: "Recusado",
+  sem_informacao: "Não iniciado",
+}
+const BCRM_IMPL_INV = inverter(BCRM_IMPL)
+
+// CHECK: nao_se_aplica | ativa | implementada | em_implementacao | cancelada | pausada
+const BCRM_CONTA: Record<string, NonNullable<Cliente["bcrm_status_conta"]>> = {
+  ativa: "Ativa",
+  implementada: "Ativa",
+  em_implementacao: "Ativa",
+  pausada: "Suspensa",
+  cancelada: "Inativa",
+  nao_se_aplica: "Inativa",
+}
+const BCRM_CONTA_INV = inverter(BCRM_CONTA)
+
+// CHECK: participa | nao_participa | participa_parcialmente | pendente
+const BCRM_TUTORIA: Record<string, NonNullable<Cliente["bcrm_tutoria"]>> = {
+  participa: "Participa",
+  participa_parcialmente: "Participa",
+  nao_participa: "Não participa",
+  pendente: "Não participa",
+}
+const BCRM_TUTORIA_INV = inverter(BCRM_TUTORIA)
+
+// CHECK: ainda_distante | em_negociacao | confirmada | recusada | em_risco
+const RENOVACAO: Record<string, NonNullable<Cliente["renovacao_status"]>> = {
+  ainda_distante: "Ainda distante",
+  em_risco: "Aproximando",
+  em_negociacao: "Em negociação",
+  confirmada: "Confirmada",
+  recusada: "Perdida",
+}
+const RENOVACAO_INV = inverter(RENOVACAO)
+
+// CHECK: nao_definido | privado | grupo_individual | grupo_geral | misto
+const COM_PREF: Record<string, NonNullable<Cliente["comunicacao_preferencia"]>> = {
+  grupo_geral: "Grupo geral",
+  grupo_individual: "Grupo individual do cliente",
+  privado: "Privado com CS",
+  misto: "Grupo individual do cliente",
+  nao_definido: "Grupo geral",
+}
+const COM_PREF_INV = inverter(COM_PREF)
+
+// CHECK: whatsapp | ligacao | audio_whatsapp | mensagem_texto | outro
+const COM_CANAL: Record<string, NonNullable<Cliente["comunicacao_canal"]>> = {
+  whatsapp: "WhatsApp",
+  audio_whatsapp: "WhatsApp",
+  mensagem_texto: "WhatsApp",
+  ligacao: "Telefone",
+  outro: "E-mail",
+}
+const COM_CANAL_INV = inverter(COM_CANAL)
+
+// CHECK (presenca_treinamentos e frequencia_grupo_whatsapp): alta | media | baixa | nenhuma [| sem_informacao]
+const INTENSIDADE: Record<string, "Nenhuma" | "Baixa" | "Média" | "Alta"> = {
+  alta: "Alta",
+  media: "Média",
+  baixa: "Baixa",
+  nenhuma: "Nenhuma",
+  sem_informacao: "Nenhuma",
+}
+
+const FREQUENCIA_WPP: Record<string, "Baixa" | "Média" | "Alta"> = {
+  alta: "Alta",
+  media: "Média",
+  baixa: "Baixa",
+}
+
 // Status que significam "ainda não começou o programa" — a pré-jornada que a
 // Francielly descreveu ("não tem reunião com Galdino, não iniciou o ciclo").
 const STATUS_PRE_JORNADA = new Set([
@@ -195,8 +283,10 @@ export function rowToCliente(row: ClienteRow): Cliente {
     saude: SAUDE[row.saude_cliente ?? ""],
     em_risco_cancelamento: row.em_risco_cancelamento ? "Sim" : "Não",
 
-    presenca_treinamento: (row.presenca_treinamentos as Cliente["presenca_treinamento"]) ?? undefined,
-    frequencia_wpp: (row.frequencia_grupo_whatsapp as Cliente["frequencia_wpp"]) ?? undefined,
+    presenca_treinamento: INTENSIDADE[row.presenca_treinamentos ?? ""],
+    // frequencia_wpp não tem "Nenhuma" no domínio: "sem frequência" e "sem
+    // informação" viram ausência de valor, não uma frequência baixa.
+    frequencia_wpp: FREQUENCIA_WPP[row.frequencia_grupo_whatsapp ?? ""],
     reuniao_consultores_status: REUNIAO_STATUS[row.reuniao_consultores_status ?? ""],
     reuniao_galdino_status: REUNIAO_STATUS[row.reuniao_galdino_status ?? ""],
     reuniao_galdino: row.reuniao_galdino_status === "ja_fez",
@@ -222,20 +312,20 @@ export function rowToCliente(row: ClienteRow): Cliente {
     bcrm_guardiao_nome: row.guardiao_crm_nome ?? undefined,
     bcrm_guardiao_telefone: row.guardiao_crm_telefone ?? undefined,
     bcrm_nomes_contas: row.nomes_contas_blackcrm ?? undefined,
-    bcrm_status_conta: (row.blackcrm_status_conta as Cliente["bcrm_status_conta"]) ?? undefined,
-    bcrm_status_impl: (impl as Cliente["bcrm_status_impl"]) ?? undefined,
+    bcrm_status_conta: BCRM_CONTA[row.blackcrm_status_conta ?? ""],
+    bcrm_status_impl: BCRM_IMPL[impl ?? ""],
     bcrm_status_impl_desde: row.blackcrm_status_impl_desde ?? undefined,
-    bcrm_tutoria: (row.blackcrm_participa_tutoria as Cliente["bcrm_tutoria"]) ?? undefined,
+    bcrm_tutoria: BCRM_TUTORIA[row.blackcrm_participa_tutoria ?? ""],
     bcrm_tem_vitorias: simNao(row.blackcrm_tem_vitorias),
     bcrm_quais_vitorias: row.blackcrm_vitorias_descricao ?? undefined,
 
     data_renovacao: row.renovacao_data ?? undefined,
     renovacao_valor: row.renovacao_valor ?? undefined,
-    renovacao_status: (row.renovacao_status as Cliente["renovacao_status"]) ?? undefined,
+    renovacao_status: RENOVACAO[row.renovacao_status ?? ""],
     renovacao_obs: row.renovacao_observacoes ?? undefined,
 
-    comunicacao_preferencia: (row.comunicacao_preferencia as Cliente["comunicacao_preferencia"]) ?? undefined,
-    comunicacao_canal: (row.comunicacao_canal as Cliente["comunicacao_canal"]) ?? undefined,
+    comunicacao_preferencia: COM_PREF[row.comunicacao_preferencia ?? ""],
+    comunicacao_canal: COM_CANAL[row.comunicacao_canal ?? ""],
     comunicacao_restricoes: row.comunicacao_restricoes ?? undefined,
     comunicacao_resumo: row.comunicacao_resumo ?? undefined,
     whatsapp_grupo_id: row.whatsapp_grupo_id ?? undefined,
@@ -275,9 +365,21 @@ export function clientePatchToRow(patch: Partial<Cliente>): Record<string, unkno
   if (patch.guardiao_ia_nome !== undefined) out.guardiao_ia_nome = patch.guardiao_ia_nome
   if (patch.guardiao_ia_telefone !== undefined) out.guardiao_ia_telefone = patch.guardiao_ia_telefone
   if (patch.guardiao_ia_cargo !== undefined) out.guardiao_ia_cargo = patch.guardiao_ia_cargo
-  if (patch.bcrm_status_impl !== undefined) out.blackcrm_status_implementacao = patch.bcrm_status_impl
+  // Todos estes passam por tradução inversa: o valor da UI não é aceito pelos
+  // CHECK constraints da tabela.
+  if (patch.bcrm_status_impl !== undefined)
+    out.blackcrm_status_implementacao = patch.bcrm_status_impl ? BCRM_IMPL_INV[patch.bcrm_status_impl] : null
+  if (patch.bcrm_status_conta !== undefined)
+    out.blackcrm_status_conta = patch.bcrm_status_conta ? BCRM_CONTA_INV[patch.bcrm_status_conta] : null
+  if (patch.bcrm_tutoria !== undefined)
+    out.blackcrm_participa_tutoria = patch.bcrm_tutoria ? BCRM_TUTORIA_INV[patch.bcrm_tutoria] : null
   if (patch.bcrm_status_impl_desde !== undefined) out.blackcrm_status_impl_desde = patch.bcrm_status_impl_desde
-  if (patch.renovacao_status !== undefined) out.renovacao_status = patch.renovacao_status
+  if (patch.renovacao_status !== undefined)
+    out.renovacao_status = patch.renovacao_status ? RENOVACAO_INV[patch.renovacao_status] : null
+  if (patch.comunicacao_preferencia !== undefined)
+    out.comunicacao_preferencia = patch.comunicacao_preferencia ? COM_PREF_INV[patch.comunicacao_preferencia] : null
+  if (patch.comunicacao_canal !== undefined)
+    out.comunicacao_canal = patch.comunicacao_canal ? COM_CANAL_INV[patch.comunicacao_canal] : null
   if (patch.renovacao_obs !== undefined) out.renovacao_observacoes = patch.renovacao_obs
   if (patch.data_renovacao !== undefined) out.renovacao_data = patch.data_renovacao
   if (patch.comunicacao_resumo !== undefined) out.comunicacao_resumo = patch.comunicacao_resumo
