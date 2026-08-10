@@ -14,7 +14,7 @@ reunião em `docs/reuniao-crm.md`.
 | 3 · Abas núcleo (Meu Dia, Atividades, Clientes, Alertas) | ✅ | `69b16f8` + fixes |
 | 4 · Abas de gestão (Visão Geral, Torre, Acompanhamento, Projetos, Manual) | ✅ | `6e7c6c7` |
 | 5 · Atendimento (WhatsApp) | ✅ | `aef41a9` |
-| 6 · Edge functions de IA (saudação, transcrição) | ✅ | `HEAD` |
+| 6 · Edge functions de IA (saudação, transcrição) | ✅ | `e70c768` |
 | 7 · Backfill de datas + promoção DEV→PROD | ⬜ pendente | |
 
 Tudo está **só no DEV** (`jkwpxttxkksqiffodonb`). O PROD (`hqczwextifessaztyyyk`)
