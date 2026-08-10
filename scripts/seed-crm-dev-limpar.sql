@@ -11,6 +11,9 @@ BEGIN;
 DELETE FROM reunioes_galdino WHERE id_reuniao LIKE 'dev-gald-%';
 DELETE FROM reunioes_mentoria_new WHERE id_reuniao LIKE 'dev-ment-%';
 
+-- Conversas do seed (as mensagens caem por ON DELETE CASCADE).
+DELETE FROM crm_conversas WHERE grupo_id LIKE 'dev-g-%';
+
 DELETE FROM cliente_atividades;
 DELETE FROM crm_fechamento_ciclo;
 DELETE FROM crm_alerta_marcacoes;
@@ -30,7 +33,8 @@ UPDATE clientes_entrada_new SET
   tem_guardiao_ia = NULL, guardiao_ia_nome = NULL, reuniao_galdino_status = NULL,
   reuniao_consultores_status = NULL, tem_conta_blackcrm = NULL,
   blackcrm_status_implementacao = NULL, renovacao_data = NULL,
-  observacoes_cs = NULL, nicho = NULL, situacao = NULL, pausado = false;
+  observacoes_cs = NULL, nicho = NULL, situacao = NULL, pausado = false,
+  whatsapp_grupo_id = NULL, whatsapp_grupo_nome = NULL;
 
 DELETE FROM mentores WHERE email LIKE '%@dev.local';
 

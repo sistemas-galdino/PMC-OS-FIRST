@@ -13,7 +13,7 @@ reunião em `docs/reuniao-crm.md`.
 | 2 · Camada de dados (localStorage → Supabase) | ✅ | `51397ca`, `b2d8188` |
 | 3 · Abas núcleo (Meu Dia, Atividades, Clientes, Alertas) | ✅ | `69b16f8` + fixes |
 | 4 · Abas de gestão (Visão Geral, Torre, Acompanhamento, Projetos, Manual) | ✅ | `6e7c6c7` |
-| 5 · Atendimento (WhatsApp) | ⬜ pendente | |
+| 5 · Atendimento (WhatsApp) | ✅ | `HEAD` |
 | 6 · Edge functions de IA (saudação, transcrição) | ⬜ pendente | |
 | 7 · Backfill de datas + promoção DEV→PROD | ⬜ pendente | |
 
@@ -87,6 +87,11 @@ arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
   trimestres, pós-programa, pré-jornada e casos sem data; ~200 atividades em
   todos os status; reuniões com e sem os limiares dos alertas; gargalos, projetos
   e manual. Dados **gerados**, nunca copiados do PROD.
+  `scripts/seed-crm-dev-conversas.sql` (rodar depois do anterior) acrescenta 22
+  grupos de WhatsApp com ~235 mensagens. O silêncio de cada grupo é contado em
+  horas ÚTEIS, então as bordas amarela/vermelha da lista dependem do dia da
+  semana em que o seed roda — rodando na segunda, os silêncios curtos somem no
+  fim de semana. Por isso há dois grupos com silêncio de 76h e 100h.
 - As 4 CSs de teste (Danielly, Geovana, Gabriela, Francielly) existem em
   `mentores` com e-mails `@dev.local` e papel `cs`. O trigger `tg_mentores_guard`
   impede criar papel privilegiado fora de sessão de super admin.
@@ -106,7 +111,13 @@ arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
 6. **Regra "não sugerir consultor antes do Galdino"** não é explícita no catálogo
    de alertas. Funciona por acidente para cliente novo. Depende da definição de
    início de ciclo.
-7. **Mudança de temperatura e pausa de cliente não têm UI** (`updateClienteTemperatura`
+7. **Envio de mensagem pelo Atendimento está desligado** (`ENVIO_HABILITADO`
+   em `lib/crm/conversas.ts`), e não há webhook de entrada: as conversas só
+   aparecem se alguém escrever em `crm_conversas`/`crm_mensagens`. Falta
+   decidir o provedor (chips estavam sendo comprados em 05/08) e quem vincula
+   `crm_conversas.id_cliente` ao cliente certo — a lista mostra no rodapé
+   quantos grupos ficaram sem vínculo.
+8. **Mudança de temperatura e pausa de cliente não têm UI** (`updateClienteTemperatura`
    e `setClientePausado` existem e ninguém chama). Enquanto isso, o histórico de
    temperatura fica vazio e a Visão Estratégica não tem o que mostrar.
 
@@ -121,15 +132,6 @@ arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
    diferente de `mentores.nome` conta nos totais mas some das tabelas por CS.
 
 ## O que falta nas próximas fases
-
-**Fase 5 — Atendimento (WhatsApp)**
-Portar `atendimento.tsx` (294), `ChatComposer.tsx` (131) e usar o
-`PainelAlertasCliente.tsx` já portado. Tabelas `crm_conversas`/`crm_mensagens`
-já existem com trigger de `ultima_mensagem_em`. Falta também
-`lib/crm/conversas.ts` (a Torre e o painel de alertas referenciam tipos dele —
-hoje há um `AnexoPainel` local em `PainelAlertasCliente.tsx` como paliativo).
-O card "Sem resposta" da Torre mostra "—" até isso existir. Envio real fica
-atrás de flag: não há provedor até os chips chegarem.
 
 **Fase 6 — Edge functions de IA**
 Duas funções, substituindo os `createServerFn` que usavam o gateway do Lovable:

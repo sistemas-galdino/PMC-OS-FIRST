@@ -5,20 +5,8 @@ import { NovaAtividadeModal } from "@/components/crm/NovaAtividadeModal"
 import { alertasEntrega } from "@/lib/crm/alertas-catalogo"
 import { trimestreAtual, isPosPrograma } from "@/lib/crm/jornada"
 import { useAtividades, useReunioes } from "@/lib/crm/storage"
+import type { AnexoConversa } from "@/lib/crm/conversas"
 import type { Cliente } from "@/lib/crm/types"
-
-/**
- * Anexo exibido na coluna "Arquivos".
- *
- * No original o tipo vinha de `@/lib/crm/conversas`, módulo que ainda não foi
- * portado (a aba de Atendimento é outra frente). Declarado aqui com o mínimo
- * que este painel lê, para não criar dependência em `lib/crm` antes da hora —
- * quando `conversas` existir, basta trocar o import.
- */
-export interface AnexoPainel {
-  nome: string
-  tipo: string
-}
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -40,7 +28,7 @@ export function PainelAlertasCliente({
   arquivos,
 }: {
   cliente: Cliente
-  arquivos: { anexo: AnexoPainel; em: string }[]
+  arquivos: { anexo: AnexoConversa; em: string }[]
 }) {
   const atividades = useAtividades()
   const reunioes = useReunioes()

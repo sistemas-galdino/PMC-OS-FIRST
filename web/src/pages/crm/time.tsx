@@ -9,6 +9,7 @@ import {
   useReunioes,
 } from "@/lib/crm/storage"
 import { useCsList } from "@/lib/crm/equipe"
+import { semResposta, silencioDe, useConversas } from "@/lib/crm/conversas"
 import { type Atividade, type CSName } from "@/lib/crm/types"
 import { AlertTriangle, CalendarDays, Check, Lock, Plus } from "lucide-react"
 
@@ -222,6 +223,15 @@ export default function CrmTimePage() {
 
   const eventosFiltrados = eventos.filter((e) => filtroCS === "todas" || e.cs === filtroCS)
 
+  // Grupos de WhatsApp em que a última palavra foi do cliente. O limiar de 18h
+  // é o mesmo da borda vermelha em /crm/atendimento, contado em horas úteis.
+  const { conversas, carregando: conversasCarregando } = useConversas()
+  const aguardandoResposta = useMemo(() => semResposta(conversas), [conversas])
+  const passaramDoLimite = useMemo(
+    () => aguardandoResposta.filter((c) => silencioDe(c) > 18),
+    [aguardandoResposta],
+  )
+
   // No original o clique levava para /meu-dia?cs=X. Aqui o Meu Dia não lê a CS
   // da URL: quem manda é a "visão" da coordenação, então trocamos a visão e
   // navegamos. Para uma CS o setter é no-op (a visão dela é a carteira dela).
@@ -254,13 +264,16 @@ export default function CrmTimePage() {
           value={String(reunioesHoje.length)}
           hint={`${reunioesRealizadasHoje.length} já realizadas`}
         />
-        {/* O "sem resposta no grupo" depende do módulo de conversas do WhatsApp,
-            que ainda não existe na camada de dados. Mostrar 0 diria "ninguém
-            está sem resposta", que é diferente de "ainda não sabemos". */}
+        {/* Enquanto as conversas não carregam, "—": zero diria "ninguém está
+            sem resposta", que é diferente de "ainda não sabemos". */}
         <Card
           label="Sem resposta"
-          value="—"
-          hint="conversas do WhatsApp ainda não integradas"
+          value={conversasCarregando ? "—" : String(aguardandoResposta.length)}
+          hint={
+            conversasCarregando
+              ? "carregando conversas"
+              : `${passaramDoLimite.length} há mais de 18h úteis`
+          }
           tone="amber"
         />
       </div>
