@@ -1,10 +1,5 @@
-import { CrmEmConstrucao } from "./em-construcao"
+import { TarefasPage } from "@/components/crm/TarefasPage"
 
-export default function CrmUmeuUdiaPage() {
-  return (
-    <CrmEmConstrucao
-      aba="Meu Dia"
-      descricao="Painel diário da CS: reuniões do dia, reuniões dos seus clientes, tarefas de hoje, atrasadas e em andamento."
-    />
-  )
+export default function CrmMeuDiaPage() {
+  return <TarefasPage fixedView="meudia" title="☀️ Meu Dia" />
 }

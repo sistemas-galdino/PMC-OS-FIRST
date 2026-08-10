@@ -358,13 +358,38 @@ export function atividadesDoProjeto(projetoId: string, atividades?: Atividade[])
 // ───────────────────────── Reuniões ─────────────────────────
 
 export async function fetchReunioes(): Promise<Reuniao[]> {
-  const [rows, clientes] = await Promise.all([
+  const [rows, clientes, preps] = await Promise.all([
     fetchReunioesRaw(),
     snap.clientes.length ? Promise.resolve(snap.clientes) : fetchClientes(),
+    supabase
+      .from("crm_reuniao_preparacao")
+      .select("reuniao_ref, origem, participacao_cs, numero_reuniao, itens"),
   ])
+  if (preps.error) throw preps.error
+
   // A view não sabe quem é a CS: isso vive em clientes_entrada_new.sc.
   const csPorCliente = new Map(clientes.map((c) => [c.id, c.responsavel_cs]))
-  return rows.map((r) => rowToReuniao(r, csPorCliente.get(r.id_cliente ?? "") ?? ""))
+
+  // O que a CS edita em volta da reunião (participa ou não, checklist, número
+  // da reunião) mora em crm_reuniao_preparacao — a reunião em si vem do Google
+  // Calendar e é somente leitura. Sem juntar as duas pontas aqui, marcar
+  // "Confirmado" no checklist voltava a pendente no próximo fetch, e a seção
+  // "Suas reuniões" ficava permanentemente vazia.
+  const porRef = new Map(
+    (preps.data ?? []).map((p) => [`${p.origem}:${p.reuniao_ref}`, p]),
+  )
+
+  return rows.map((r) => {
+    const base = rowToReuniao(r, csPorCliente.get(r.id_cliente ?? "") ?? "")
+    const prep = porRef.get(base.id)
+    if (!prep) return base
+    return {
+      ...base,
+      participacao_cs: (prep.participacao_cs as Reuniao["participacao_cs"]) ?? base.participacao_cs,
+      numero_reuniao: (prep.numero_reuniao as number | null) ?? undefined,
+      preparacao: (prep.itens as Reuniao["preparacao"]) ?? undefined,
+    }
+  })
 }
 
 export function useReunioes(): Reuniao[] {

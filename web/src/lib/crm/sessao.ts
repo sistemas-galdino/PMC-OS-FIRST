@@ -124,7 +124,24 @@ export function useProfile(): [ProfileName | null, (p: ProfileName | null) => vo
     },
     [s.role],
   )
-  return [s.csEmFoco ?? s.nome, set, !s.carregando]
+  // `null` significa "todas as CSs" — é assim que as telas dela distinguem a
+  // visão da coordenação da visão individual (quando não há CS em foco, a
+  // lista passa a mostrar de quem é cada atividade).
+  //
+  // Não cair no nome de quem está logado é essencial: a Mayara e o Galdino não
+  // aparecem em clientes_entrada_new.sc, então usar o nome deles como filtro
+  // esvaziaria a tela inteira em vez de mostrar o time todo.
+  return [s.csEmFoco, set, !s.carregando]
+}
+
+/**
+ * Nome de quem está logado, para saudação e cabeçalho — separado do perfil,
+ * que é filtro. No sistema original os dois eram a mesma coisa porque a pessoa
+ * logada era sempre a dona da carteira.
+ */
+export function useNomeExibicao(): string {
+  const { nome } = useSessaoCrm()
+  return nome ?? ""
 }
 
 export function getProfile(): ProfileName | null {
