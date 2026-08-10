@@ -439,6 +439,13 @@ export interface Atividade {
   responsavel_nome?: string;
   /** Vínculo com um Projeto CS (tarefas de projeto são atividades normais) */
   projeto_id?: string;
+  /**
+   * ISO — quando a atividade foi criada. Não existia no sistema original
+   * (localStorage não guardava), e as telas de produtividade usavam
+   * `status_desde` como proxy — o que conta uma tarefa antiga que só mudou de
+   * status hoje como "criada hoje". A coluna existe no banco desde sempre.
+   */
+  criado_em?: string;
 }
 
 export type ResponsavelAtividadeTipo = "CS" | "Cliente" | "Consultor" | "Interno";

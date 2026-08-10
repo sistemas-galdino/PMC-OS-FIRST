@@ -614,6 +614,7 @@ export function rowToAtividade(row: AtividadeRow): Atividade {
     responsavel_tipo: (row.responsavel_tipo as Atividade["responsavel_tipo"]) ?? "CS",
     responsavel_nome: row.responsavel_nome ?? undefined,
     projeto_id: row.projeto_id ?? undefined,
+    criado_em: row.created_at,
   }
 }
 
