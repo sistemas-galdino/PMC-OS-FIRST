@@ -26,10 +26,10 @@ import {
   type EntregaPendente,
 } from "@/lib/crm/storage";
 import { fromInputDate } from "@/lib/crm/format";
+import { useCsList } from "@/lib/crm/equipe";
 import {
   ACOES,
   CONSULTORES,
-  CS_LIST,
   ENTREGAS,
   ORIGEM_LABELS,
   type Atividade,
@@ -115,6 +115,8 @@ export function NovaAtividadeModal({
   const clientes = useClientes();
   const atividades = useAtividades();
   const [profile] = useProfile();
+  // Lista reativa: o time chega do banco depois do 1º render.
+  const csList = useCsList();
   const lockedCS = isCS(profile) ? (profile as CSName) : null;
   const idMap = useMemo(() => buildDisplayIdMap(clientes), [clientes]);
 
@@ -156,9 +158,10 @@ export function NovaAtividadeModal({
   useEffect(() => {
     if (cs) return;
     const inicial =
-      lockedCS || cliPre?.responsavel_cs || baseVisiveis[0]?.responsavel_cs || CS_LIST[0] || "";
+      lockedCS || cliPre?.responsavel_cs || baseVisiveis[0]?.responsavel_cs || csList[0] || "";
     if (inicial) setCs(inicial);
-  }, [cs, lockedCS, cliPre, baseVisiveis]);
+    // csList na dependência: o efeito precisa rodar de novo quando o time chega.
+  }, [cs, lockedCS, cliPre, baseVisiveis, csList]);
 
   const status: AtividadeStatus = defaultStatus || "Pendente";
   // O banco tem um CHECK que rejeita status 'impedido' sem motivo. Exigimos aqui
@@ -440,7 +443,7 @@ export function NovaAtividadeModal({
             <div className="rounded-lg p-2 mb-2 flex flex-wrap gap-1.5 bg-background border border-border">
               {!lockedCS && (
                 <MiniSelect label="CS" value={fCs} onChange={(v) => setFCs(v as CSName | "all")}
-                  options={[["all", "Todas"], ...CS_LIST.map((c) => [c, c] as [string, string])]} />
+                  options={[["all", "Todas"], ...csList.map((c) => [c, c] as [string, string])]} />
               )}
               <MiniSelect label="Ciclo" value={fCiclo} onChange={(v) => setFCiclo(v as CicloLabel | "all")}
                 options={[["all", "Todos"], ...CICLOS.map((c) => [c, c] as [string, string])]} />
@@ -727,7 +730,7 @@ export function NovaAtividadeModal({
               {/* A lista do time chega do banco depois do 1º render; sem ela o
                   select ficaria sem nenhuma opção correspondente ao valor. */}
               {cs === "" && <option value="">Selecione…</option>}
-              {CS_LIST.map((c) => (
+              {csList.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>

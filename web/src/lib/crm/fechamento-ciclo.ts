@@ -69,15 +69,34 @@ function novaAtividade(cliente: Cliente, tri: number, ref: Date): Omit<Atividade
   }
 }
 
-async function registrar(clienteId: string, trimestre: number, atividadeId: string | null) {
-  // ON CONFLICT DO NOTHING: se duas abas rodarem ao mesmo tempo, a segunda
-  // não sobrescreve nem estoura.
+/**
+ * Reserva a vaga do fechamento para cliente + trimestre.
+ *
+ * Retorna false quando alguém já reservou. É um INSERT puro de propósito: a PK
+ * (id_cliente, trimestre) faz o próprio banco decidir quem chegou primeiro.
+ *
+ * A ordem importa. Antes, a atividade era criada e só depois registrada, com um
+ * upsert que ignorava conflito — o que significa que duas execuções concorrentes
+ * criavam duas atividades e só a segunda gravação do registro era descartada.
+ * Foi exatamente o que aconteceu no DEV: toda atividade de fechamento nasceu
+ * duplicada. Reservar primeiro transforma a checagem num compare-and-swap.
+ */
+async function reservar(clienteId: string, trimestre: number): Promise<boolean> {
+  const { error } = await supabase
+    .from("crm_fechamento_ciclo")
+    .insert({ id_cliente: clienteId, trimestre })
+  if (!error) return true
+  // 23505 = unique_violation: outra execução chegou primeiro.
+  if (error.code === "23505") return false
+  throw error
+}
+
+async function anotarAtividade(clienteId: string, trimestre: number, atividadeId: string) {
   await supabase
     .from("crm_fechamento_ciclo")
-    .upsert(
-      { id_cliente: clienteId, trimestre, atividade_id: atividadeId },
-      { onConflict: "id_cliente,trimestre", ignoreDuplicates: true },
-    )
+    .update({ atividade_id: atividadeId })
+    .eq("id_cliente", clienteId)
+    .eq("trimestre", trimestre)
 }
 
 /**
@@ -104,14 +123,20 @@ export async function garantirAtividadesFechamentoCiclo(
     const jaExiste = atividades.some(
       (a) => a.cliente_id === cliente.id && a.origem_label === rotulo,
     )
+
+    // Reserva primeiro: se outra execução já pegou a vaga, não cria nada.
+    const minha = await reservar(cliente.id, tri)
+    if (!minha) {
+      registros[key] = { atividade_id: "", criado_em: new Date().toISOString() }
+      continue
+    }
     if (jaExiste) {
-      await registrar(cliente.id, tri, null)
       registros[key] = { atividade_id: "", criado_em: new Date().toISOString() }
       continue
     }
 
     const nova = await createAtividade(novaAtividade(cliente, tri, ref))
-    await registrar(cliente.id, tri, nova.id)
+    await anotarAtividade(cliente.id, tri, nova.id)
     registros[key] = { atividade_id: nova.id, criado_em: new Date().toISOString() }
   }
 
@@ -140,13 +165,12 @@ export async function criarAtividadesFechamentoLote(
     const jaExiste = atividades.some(
       (a) => a.cliente_id === cliente.id && a.origem_label === rotulo,
     )
-    if (jaExiste) {
-      await registrar(cliente.id, trimestre, null)
-      continue
-    }
+
+    const minha = await reservar(cliente.id, trimestre)
+    if (!minha || jaExiste) continue
 
     const nova = await createAtividade(novaAtividade(cliente, trimestre, ref))
-    await registrar(cliente.id, trimestre, nova.id)
+    await anotarAtividade(cliente.id, trimestre, nova.id)
     criadas += 1
   }
 

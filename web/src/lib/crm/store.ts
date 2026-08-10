@@ -5,6 +5,7 @@ import { queryClient } from "@/lib/query-client"
 import {
   ATIVIDADE_COLUNAS,
   CLIENTE_COLUNAS,
+  anexarHistoricoTemperatura,
   anexarReunioes,
   atividadeToRow,
   clientePatchToRow,
@@ -14,8 +15,10 @@ import {
   type AtividadeRow,
   type ClienteRow,
   type ReuniaoRow,
+  type TempHistRow,
 } from "./mappers"
 import { criarPreparacaoPadrao } from "./preparacao"
+import { useEquipe } from "./equipe"
 import type {
   AnotacaoInterna,
   Atividade,
@@ -101,19 +104,35 @@ async function fetchReunioesRaw(): Promise<ReuniaoRow[]> {
 }
 
 export async function fetchClientes(): Promise<Cliente[]> {
-  // As reuniões entram junto porque o motor de alertas e as funções de jornada
-  // leem cliente.consultor_reunioes / cliente.ciclo_galdino_reunioes. Ver
-  // anexarReunioes() em mappers.ts.
-  const [{ data, error }, reunioes] = await Promise.all([
+  // Reuniões e histórico de temperatura entram junto porque as regras de
+  // negócio leem de dentro do Cliente: o motor de alertas usa
+  // consultor_reunioes/ciclo_galdino_reunioes e a Visão Estratégica usa
+  // historico_temperatura. Ver anexarReunioes/anexarHistoricoTemperatura.
+  const [{ data, error }, reunioes, hist] = await Promise.all([
     supabase.from("clientes_entrada_new").select(CLIENTE_COLUNAS).limit(LIMITE),
     fetchReunioesRaw(),
+    supabase
+      .from("crm_temperatura_historico")
+      .select("id_cliente, temperatura, motivo, observacao, autor, data")
+      .order("data", { ascending: true })
+      .limit(LIMITE),
   ])
   if (error) throw error
+  if (hist.error) throw hist.error
   const clientes = ((data ?? []) as unknown as ClienteRow[]).map(rowToCliente)
-  return anexarReunioes(clientes, reunioes)
+  return anexarHistoricoTemperatura(
+    anexarReunioes(clientes, reunioes),
+    (hist.data ?? []) as unknown as TempHistRow[],
+  )
 }
 
 export function useClientes(): Cliente[] {
+  // Carrega o time junto. CS_LIST/PROFILE_LIST são live bindings preenchidas
+  // por useEquipe(), e várias telas (Visão Geral, Heatmap, Desempenho por CS)
+  // consomem essas listas sem chamar useProfile — nessas telas o time nunca
+  // chegava e a seção ficava presa em "Carregando o time…". Toda tela do CRM
+  // usa clientes, então este é o ponto que garante os dois juntos.
+  useEquipe()
   const { data } = useQuery({ queryKey: qk.clientes, queryFn: fetchClientes })
   if (data) snap.clientes = data
   return data ?? snap.clientes

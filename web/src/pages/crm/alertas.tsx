@@ -12,7 +12,8 @@ import {
   useClientes,
   useProfile,
 } from "@/lib/crm/storage"
-import { CS_LIST, type Atividade, type Cliente, type CSName } from "@/lib/crm/types"
+import { useCsList } from "@/lib/crm/equipe"
+import { type Atividade, type Cliente, type CSName } from "@/lib/crm/types"
 import { alertasEntrega, type AlertaEntrega, type AlertaEntregaId } from "@/lib/crm/alertas-catalogo"
 import { marcacaoKey, useMarcacoesAlertas } from "@/lib/crm/alertas-marcacoes"
 import { diasAteFechamentoCiclo, trimestreAtual } from "@/lib/crm/jornada"
@@ -57,6 +58,8 @@ export default function CrmAlertasPage() {
   const csDaUrl = (searchParams.get("cs") as CSName | "all" | null) ?? null
 
   const [profile] = useProfile()
+  // Lista reativa: o time chega do banco depois do 1º render.
+  const csList = useCsList()
   const clientesAll = useClientes()
   const atividades = useAtividades()
   const lockedCS = isCS(profile) ? (profile as CSName) : null
@@ -243,7 +246,7 @@ export default function CrmAlertasPage() {
             className="bg-card border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary"
           >
             <option value="all">Todas as CSs</option>
-            {CS_LIST.map((c) => (
+            {csList.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>

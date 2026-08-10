@@ -1,4 +1,5 @@
-import { CS_LIST, type CSName } from "@/lib/crm/types";
+import { useCsList } from "@/lib/crm/equipe";
+import { type CSName } from "@/lib/crm/types";
 import { isCS, useProfile } from "@/lib/crm/storage";
 import type { Period } from "@/lib/crm/format";
 
@@ -43,6 +44,8 @@ export function CSFilter({
   onChange: (v: CSName | "all") => void;
 }) {
   const [profile] = useProfile();
+  // Lista reativa: o time chega do banco depois do 1º render.
+  const csList = useCsList();
   const locked = isCS(profile);
   // If CS profile, lock to own name
   const effective = locked ? (profile as CSName) : value;
@@ -55,7 +58,7 @@ export function CSFilter({
       className="bg-card border border-border rounded-xl px-4 py-2.5 text-sm disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus:border-primary"
     >
       <option value="all">Todas as CS</option>
-      {CS_LIST.map((c) => (
+      {csList.map((c) => (
         <option key={c} value={c}>
           {c}
         </option>

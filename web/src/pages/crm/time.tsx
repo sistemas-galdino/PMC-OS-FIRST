@@ -8,7 +8,8 @@ import {
   useProjetos,
   useReunioes,
 } from "@/lib/crm/storage"
-import { CS_LIST, type Atividade, type CSName } from "@/lib/crm/types"
+import { useCsList } from "@/lib/crm/equipe"
+import { type Atividade, type CSName } from "@/lib/crm/types"
 import { AlertTriangle, CalendarDays, Check, Lock, Plus } from "lucide-react"
 
 /**
@@ -84,6 +85,8 @@ export default function CrmTimePage() {
   const projetos = useProjetos()
   const [profile, setProfile] = useProfile()
   const navigate = useNavigate()
+  // Lista reativa: o time chega do banco depois do 1º render.
+  const csList = useCsList()
   const [filtroCS, setFiltroCS] = useState<"todas" | CSName>("todas")
   const [limite, setLimite] = useState(30)
 
@@ -369,7 +372,7 @@ export default function CrmTimePage() {
             className="bg-card border border-border rounded-lg px-3 py-1.5 text-[12px]"
           >
             <option value="todas">Todas as CS</option>
-            {CS_LIST.map((cs) => (
+            {csList.map((cs) => (
               <option key={cs} value={cs}>
                 {cs}
               </option>

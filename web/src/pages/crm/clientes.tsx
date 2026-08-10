@@ -25,8 +25,8 @@ import {
   useProfile,
 } from "@/lib/crm/storage";
 import { formatBR } from "@/lib/crm/format";
+import { useCsList } from "@/lib/crm/equipe";
 import {
-  CS_LIST,
   type ClienteStatus,
   type CSName,
   type SituacaoCliente,
@@ -46,6 +46,8 @@ export default function CrmClientesPage() {
   const clientes = useClientes();
   const atividades = useAtividades();
   const [profile] = useProfile();
+  // Lista reativa: o time chega do banco depois do 1º render.
+  const csList = useCsList();
   const csLocked: CSName | null = isCS(profile) ? (profile as CSName) : null;
 
   const [q, setQ] = useState("");
@@ -242,7 +244,7 @@ export default function CrmClientesPage() {
             className="bg-background border border-border rounded-lg px-3 py-2 text-sm"
           >
             <option value="all">Todas as CS</option>
-            {CS_LIST.map((c) => (
+            {csList.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>

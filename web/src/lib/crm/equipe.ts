@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 import {
@@ -106,4 +107,30 @@ export function useEquipe() {
   }
 
   return q
+}
+
+/**
+ * Lista de CSs, reativa.
+ *
+ * Prefira este hook a importar `CS_LIST` de types.ts. `CS_LIST` é uma live
+ * binding de módulo: quando o time chega do banco o valor muda, mas o React
+ * não tem como saber disso. Qualquer `useMemo` que leia `CS_LIST` sem tê-la
+ * nas dependências fica preso na lista vazia do primeiro render — foi o que
+ * deixou o Heatmap e o "Desempenho por CS" presos em "Carregando o time…".
+ *
+ * O retorno vem do cache do React Query, então muda de referência quando o
+ * time muda e serve como dependência de memo.
+ */
+export function useCsList(): CSName[] {
+  const { data } = useEquipe()
+  return useMemo(
+    () => (data?.membros ?? []).filter((m) => m.role === "cs").map((m) => m.nome),
+    [data],
+  )
+}
+
+/** Todos os perfis (CS + coordenação), reativo. Mesmo racional de useCsList. */
+export function useProfileList(): ProfileName[] {
+  const { data } = useEquipe()
+  return useMemo(() => (data?.membros ?? []).map((m) => m.nome), [data])
 }

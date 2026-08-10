@@ -22,9 +22,9 @@ import {
   useSelectedClienteId,
 } from "@/lib/crm/storage";
 import { formatBR, inputDateValue, fromInputDate } from "@/lib/crm/format";
+import { useCsList } from "@/lib/crm/equipe";
 import {
   CONSULTORES,
-  CS_LIST,
   MOTIVOS_CANCELAMENTO,
   FORMATOS_CASE,
   type Cliente,
@@ -322,14 +322,16 @@ function Grid2({ children }: { children: React.ReactNode }) {
 function PerfilTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cliente>) => void }) {
   const clientes = useClientes();
   const idMap = buildDisplayIdMap(clientes);
-  // CS_LIST chega vazia no primeiro render (vem de `mentores`). Sem isto o
-  // select mostraria outra pessoa como responsável enquanto a lista não chega.
+  // A lista do time chega vazia no primeiro render (vem de `mentores`). Sem o
+  // hook reativo (e sem csList nas deps) o select mostraria outra pessoa como
+  // responsável para sempre, porque o memo ficaria preso na lista vazia.
+  const csList = useCsList();
   const csOptions = useMemo(() => {
-    const nomes = CS_LIST.includes(cliente.responsavel_cs)
-      ? CS_LIST
-      : [cliente.responsavel_cs, ...CS_LIST].filter(Boolean);
+    const nomes = csList.includes(cliente.responsavel_cs)
+      ? csList
+      : [cliente.responsavel_cs, ...csList].filter(Boolean);
     return nomes.map((c) => ({ value: c as CSName, label: c }));
-  }, [cliente.responsavel_cs]);
+  }, [cliente.responsavel_cs, csList]);
   return (
     <>
       <Section title="Cadastro" icon={<span>👤</span>}>

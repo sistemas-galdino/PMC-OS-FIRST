@@ -15,7 +15,8 @@ import {
   useRotinaExecucoes,
   useRotinas,
 } from "@/lib/crm/rotinas"
-import { CS_LIST, type CSName } from "@/lib/crm/types"
+import { useCsList } from "@/lib/crm/equipe"
+import { type CSName } from "@/lib/crm/types"
 import { Calendar, MessageCircle, Repeat, Trophy, Plus } from "lucide-react"
 
 // ---------- helpers ----------
@@ -235,9 +236,12 @@ function SectionHeader({
 export function RotinasPanel({ secao }: { secao?: string }) {
   const [profile] = useProfile()
   const csName: CSName | null = isCS(profile) ? (profile as CSName) : null
-  // A lista do time chega assíncrona (tabela `mentores`): pode vir vazia no 1º render.
+  // A lista do time chega assíncrona (tabela `mentores`): pode vir vazia no 1º
+  // render. O hook garante um novo render quando ela chega, então o fallback
+  // csList[0] abaixo passa a valer de fato.
+  const csList = useCsList()
   const [coordCS, setCoordCS] = useState<CSName>("")
-  const cs: CSName = csName || coordCS || CS_LIST[0] || ""
+  const cs: CSName = csName || coordCS || csList[0] || ""
   const clientes = useClientes()
   const atividades = useAtividades()
 
@@ -342,7 +346,7 @@ export function RotinasPanel({ secao }: { secao?: string }) {
               onChange={(e) => setCoordCS(e.target.value as CSName)}
               className="bg-card border border-border rounded-lg px-3 py-1.5 text-sm"
             >
-              {CS_LIST.map((c) => (
+              {csList.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

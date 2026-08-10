@@ -274,8 +274,16 @@ export function rowToCliente(row: ClienteRow): Cliente {
     temperatura: TEMPERATURA[row.temperatura_cliente ?? ""] ?? "Não definido",
     engajamento: ENGAJAMENTO[row.nivel_engajamento ?? ""] ?? "Saudável",
     // Decisão do David: o relógio do ciclo começa na data de entrada/onboarding.
-    // `created_at` é só rede de segurança para linhas sem `data` (ver backfill).
-    data_inicio: row.data ?? row.created_at ?? "",
+    //
+    // Sem `data`, fica vazio de propósito. Havia aqui um fallback para
+    // `created_at`, e ele era pior que o problema: `created_at` é quando a
+    // linha entrou no banco, não quando o cliente entrou no programa. Para os
+    // 141 clientes importados antes do sistema isso é a data da importação —
+    // o CRM mostraria um trimestre inventado, com alertas de fechamento em
+    // cima dele, e ninguém perceberia que o dado não existe. Vazio faz o
+    // cliente aparecer como "Sem data de entrada", que é a verdade e é o que
+    // dispara a correção no cadastro (ou o backfill).
+    data_inicio: row.data ?? "",
     observacoes: row.observacoes_cs ?? "",
 
     nicho: row.nicho ?? undefined,
@@ -747,6 +755,48 @@ export function anexarReunioes(clientes: Cliente[], reunioes: ReuniaoRow[]): Cli
       // desatualizada; havendo reunião realizada de verdade, ela ganha.
       reuniao_galdino: galdino.some((g) => g.status === "Realizada") || c.reuniao_galdino,
     }
+  })
+}
+
+export interface TempHistRow {
+  id_cliente: string
+  temperatura: string
+  motivo: string | null
+  observacao: string | null
+  autor: string | null
+  data: string
+}
+
+/**
+ * Distribui o histórico de temperatura dentro de cada Cliente.
+ *
+ * Mesma razão de anexarReunioes: a Visão Estratégica lê exclusivamente de
+ * `cliente.historico_temperatura` para montar "clientes que perderam força",
+ * "clientes em evolução", os motivos de queda e a evolução da carteira nos
+ * últimos 6 meses. Sem isto, tudo isso fica zerado em silêncio — sem erro,
+ * só um painel que parece dizer que nada mudou na carteira.
+ */
+export function anexarHistoricoTemperatura(
+  clientes: Cliente[],
+  hist: TempHistRow[],
+): Cliente[] {
+  if (hist.length === 0) return clientes
+  const porCliente = new Map<string, Cliente["historico_temperatura"]>()
+  for (const h of hist) {
+    const item = {
+      temp: (TEMPERATURA[h.temperatura] ?? (h.temperatura as Temperatura)) as Temperatura,
+      data: h.data,
+      autor: h.autor ?? undefined,
+      motivo: h.motivo ?? undefined,
+      observacao: h.observacao ?? undefined,
+    }
+    const lista = porCliente.get(h.id_cliente)
+    if (lista) lista.push(item)
+    else porCliente.set(h.id_cliente, [item])
+  }
+  return clientes.map((c) => {
+    const h = porCliente.get(c.id)
+    return h ? { ...c, historico_temperatura: h } : c
   })
 }
 
