@@ -30,7 +30,13 @@ export function situacaoCliente(cliente: Cliente): SituacaoCliente {
   return cliente.status === "Cancelado" ? "Cancelado" : "Ativo";
 }
 
-/** Só clientes com situação "Ativo" têm relógio de ciclo. */
+/**
+ * O cliente iniciou o programa? É o portão de TODOS os alertas — quem não
+ * começou (ou cancelou) não recebe cobrança nenhuma.
+ *
+ * Não confundir com `temCicloCalculavel` de derivados.ts, que também exige
+ * data de entrada. A diferença está documentada lá.
+ */
 export function temRelogioDeCiclo(cliente: Cliente): boolean {
   return situacaoCliente(cliente) === "Ativo";
 }

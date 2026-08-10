@@ -349,6 +349,45 @@ const TEMPERATURA_INV: Record<string, string | null> = {
   "Não definido": null,
 }
 
+const SAUDE_INV = inverter(SAUDE)
+const REUNIAO_STATUS_INV = inverter(REUNIAO_STATUS)
+const INTENSIDADE_INV = inverter(INTENSIDADE)
+const simNaoInv = (v: "Sim" | "Não" | undefined) =>
+  v === "Sim" ? "sim" : v === "Não" ? "nao" : null
+
+/**
+ * Campos do domínio `Cliente` que NÃO têm coluna em clientes_entrada_new.
+ *
+ * Estão aqui para o descarte ser explícito e auditável, em vez de silencioso:
+ * `clientePatchToRow` avisa no console quando recebe qualquer chave fora
+ * desta lista e fora das mapeadas. A CS digitar num campo e o valor sumir sem
+ * aviso é o pior comportamento possível para um sistema que existe para ser
+ * o histórico vivo do cliente.
+ *
+ * Cada um destes mora em outro lugar:
+ *   · vitorias                  -> tabela cliente_vitorias
+ *   · cancelamento_*            -> tabela cliente_cancelamento
+ *   · ciclo_galdino_reunioes,
+ *     consultor_reunioes        -> tabelas reunioes_* (Google Calendar, leitura)
+ *   · notas, anotacoes_internas,
+ *     historico_temperatura     -> tabelas crm_* próprias, via hooks
+ *   · status                    -> status_atual é da ficha do cliente do PMC OS
+ *                                  (9 valores); mapear de volta a partir dos 3
+ *                                  do CRM perderia informação
+ */
+const SEM_COLUNA = new Set<keyof Cliente>([
+  "id", "nome", "status", "engajamento", "estado_atual_obs",
+  "notas", "anotacoes_internas", "historico_temperatura",
+  "vitorias", "vitoria", "vitoria_registrada", "oportunidade_case",
+  "ciclo_galdino_reunioes", "consultor_reunioes",
+  "ultima_reuniao_consultor", "ultima_reuniao_galdino", "consultor_responsavel",
+  "cancelamento_motivos", "cancelamento_responsab",
+  "cancelamento_tentativa_reversao", "cancelamento_resumo",
+  "proximo_renovacao", "trava", "implementacao", "plano_acao",
+  "black_sdr", "area_membros", "treinamentos", "reunioes_consultores",
+  "reuniao_galdino", "black_crm", "guardiao_ia",
+])
+
 /** Campos do domínio que voltam para colunas de clientes_entrada_new. */
 export function clientePatchToRow(patch: Partial<Cliente>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
@@ -356,6 +395,46 @@ export function clientePatchToRow(patch: Partial<Cliente>): Record<string, unkno
   if (patch.observacoes !== undefined) out.observacoes_cs = patch.observacoes
   if (patch.situacao !== undefined) out.situacao = patch.situacao
   if (patch.responsavel_cs !== undefined) out.sc = patch.responsavel_cs
+
+  // ── Perfil ──
+  if (patch.empresa !== undefined) out.nome_empresa = patch.empresa
+  if (patch.nicho !== undefined) out.nicho = patch.nicho
+  if (patch.subnicho !== undefined) out.subnicho = patch.subnicho
+  // A data de entrada é editável de propósito: é o campo que a CS usa para
+  // destravar o ciclo dos clientes que entraram antes do sistema.
+  if (patch.data_inicio !== undefined)
+    out.data = patch.data_inicio ? patch.data_inicio.slice(0, 10) : null
+  if (patch.em_risco_cancelamento !== undefined)
+    out.em_risco_cancelamento = patch.em_risco_cancelamento === "Sim"
+  if (patch.saude !== undefined) out.saude_cliente = patch.saude ? SAUDE_INV[patch.saude] : null
+  if (patch.cancelamento_data !== undefined) out.data_cancelamento = patch.cancelamento_data
+
+  // ── Programa ──
+  if (patch.presenca_treinamento !== undefined)
+    out.presenca_treinamentos = patch.presenca_treinamento ? INTENSIDADE_INV[patch.presenca_treinamento] : null
+  if (patch.frequencia_wpp !== undefined)
+    out.frequencia_grupo_whatsapp = patch.frequencia_wpp ? INTENSIDADE_INV[patch.frequencia_wpp] : null
+  if (patch.reuniao_consultores_status !== undefined)
+    out.reuniao_consultores_status = patch.reuniao_consultores_status
+      ? REUNIAO_STATUS_INV[patch.reuniao_consultores_status] : null
+  if (patch.reuniao_galdino_status !== undefined)
+    out.reuniao_galdino_status = patch.reuniao_galdino_status
+      ? REUNIAO_STATUS_INV[patch.reuniao_galdino_status] : null
+
+  // ── Black CRM ──
+  if (patch.bcrm_tem_conta !== undefined) out.tem_conta_blackcrm = simNaoInv(patch.bcrm_tem_conta)
+  if (patch.bcrm_qtd_contas !== undefined) out.quantas_contas_blackcrm = patch.bcrm_qtd_contas ?? 0
+  if (patch.bcrm_tem_guardiao !== undefined) out.tem_guardiao_crm = simNaoInv(patch.bcrm_tem_guardiao)
+  if (patch.bcrm_guardiao_nome !== undefined) out.guardiao_crm_nome = patch.bcrm_guardiao_nome
+  if (patch.bcrm_guardiao_telefone !== undefined) out.guardiao_crm_telefone = patch.bcrm_guardiao_telefone
+  if (patch.bcrm_nomes_contas !== undefined) out.nomes_contas_blackcrm = patch.bcrm_nomes_contas
+  if (patch.bcrm_tem_vitorias !== undefined) out.blackcrm_tem_vitorias = simNaoInv(patch.bcrm_tem_vitorias)
+  if (patch.bcrm_quais_vitorias !== undefined) out.blackcrm_vitorias_descricao = patch.bcrm_quais_vitorias
+
+  // ── Renovação e comunicação ──
+  if (patch.renovacao_valor !== undefined) out.renovacao_valor = patch.renovacao_valor ?? null
+  if (patch.comunicacao_restricoes !== undefined) out.comunicacao_restricoes = patch.comunicacao_restricoes
+  if (patch.ciclo_galdino_cadencia !== undefined) out.ciclo_galdino_cadencia = patch.ciclo_galdino_cadencia
   if (patch.pausado !== undefined) out.pausado = patch.pausado
   if (patch.pausado_motivo !== undefined) out.pausado_motivo = patch.pausado_motivo
   if (patch.pausado_em !== undefined) out.pausado_em = patch.pausado_em
@@ -387,8 +466,49 @@ export function clientePatchToRow(patch: Partial<Cliente>): Record<string, unkno
   if (patch.whatsapp_grupo_nome !== undefined) out.whatsapp_grupo_nome = patch.whatsapp_grupo_nome
   if (patch.area_membros_acesso_cliente !== undefined) out.area_membros_acesso_cliente = patch.area_membros_acesso_cliente
   if (patch.area_membros_acesso_equipe !== undefined) out.area_membros_acesso_equipe = patch.area_membros_acesso_equipe
+
+  avisarCamposIgnorados(patch, out)
   return out
 }
+
+function avisarCamposIgnorados(patch: Partial<Cliente>, out: Record<string, unknown>) {
+  if (!import.meta.env?.DEV) return
+  // Um patch com chaves de domínio mas nenhuma coluna resultante significa
+  // que a tela achou que salvou e não salvou nada.
+  const chaves = Object.keys(patch) as (keyof Cliente)[]
+  const perdidas = chaves.filter((k) => !SEM_COLUNA.has(k) && !MAPEADAS.has(k))
+  if (perdidas.length) {
+    console.warn(
+      `[crm/mappers] Campos sem coluna em clientes_entrada_new, descartados: ${perdidas.join(", ")}. ` +
+        `Adicione o mapeamento em clientePatchToRow ou declare em SEM_COLUNA.`,
+    )
+  }
+  if (chaves.length > 0 && Object.keys(out).length === 0) {
+    console.warn(
+      `[crm/mappers] Patch de cliente sem nenhum campo persistível: ${chaves.join(", ")}. ` +
+        `A tela vai parecer que salvou.`,
+    )
+  }
+}
+
+/** Chaves que clientePatchToRow sabe traduzir. Mantida junto do corpo acima. */
+const MAPEADAS = new Set<keyof Cliente>([
+  "temperatura", "observacoes", "situacao", "responsavel_cs",
+  "empresa", "nicho", "subnicho", "data_inicio", "em_risco_cancelamento",
+  "cancelamento_data", "saude", "presenca_treinamento", "frequencia_wpp",
+  "reuniao_consultores_status", "reuniao_galdino_status",
+  "bcrm_tem_conta", "bcrm_qtd_contas", "bcrm_tem_guardiao", "bcrm_guardiao_nome",
+  "bcrm_guardiao_telefone", "bcrm_nomes_contas", "bcrm_tem_vitorias",
+  "bcrm_quais_vitorias", "renovacao_valor", "comunicacao_restricoes",
+  "ciclo_galdino_cadencia", "pausado", "pausado_motivo", "pausado_em",
+  "pausado_por", "guardiao_ia_etapa", "guardiao_ia_etapa_desde",
+  "guardiao_ia_nome", "guardiao_ia_telefone", "guardiao_ia_cargo",
+  "bcrm_status_impl", "bcrm_status_conta", "bcrm_tutoria",
+  "bcrm_status_impl_desde", "renovacao_status", "comunicacao_preferencia",
+  "comunicacao_canal", "renovacao_obs", "data_renovacao", "comunicacao_resumo",
+  "whatsapp_grupo_id", "whatsapp_grupo_nome",
+  "area_membros_acesso_cliente", "area_membros_acesso_equipe",
+])
 
 // ───────────────────────── Atividade ─────────────────────────
 

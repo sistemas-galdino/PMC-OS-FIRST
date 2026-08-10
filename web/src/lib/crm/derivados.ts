@@ -140,14 +140,30 @@ export function semDataDeEntrada(c: Cliente): boolean {
 }
 
 /**
- * Só clientes com situação "Ativo" E com data de entrada têm relógio de ciclo.
- * Sem data não dá para dizer em que trimestre o cliente está, e alertar sobre
- * fechamento de um ciclo que não sabemos ter começado gera exatamente o
- * ruído que a Mayara pediu para evitar.
+ * O ciclo do cliente é calculável? Exige que ele tenha iniciado o programa
+ * E que exista data de entrada.
+ *
+ * Note a diferença para `temRelogioDeCiclo` de jornada.ts, que só checa a
+ * situação. Os dois convivem de propósito:
+ *
+ *   · jornada.temRelogioDeCiclo  → "iniciou o programa". É o portão de TODOS
+ *     os alertas: quem não começou não recebe cobrança nenhuma.
+ *   · temCicloCalculavel (aqui)  → "dá para dizer em que trimestre está".
+ *     É o portão da UI de ciclo (progresso, trimestre, fechamento).
+ *
+ * A consequência é intencional: um cliente ativo SEM data de entrada continua
+ * gerando alertas que não dependem de ciclo (guardião pendente, sem acesso à
+ * área de membros), porque nesse caso a data faltando é uma lacuna de cadastro
+ * — silenciar tudo esconderia problemas reais de 103 clientes ativos. Já os
+ * alertas de fechamento ficam quietos sozinhos, porque trimestreAtual() e
+ * diasAteFechamentoCiclo() devolvem null sem data.
  */
-export function temRelogioDeCiclo(c: Cliente): boolean {
+export function temCicloCalculavel(c: Cliente): boolean {
   return situacaoDe(c) === "Ativo" && !semDataDeEntrada(c);
 }
+
+/** @deprecated Use `temCicloCalculavel`. Alias mantido durante o port. */
+export const temRelogioDeCiclo = temCicloCalculavel;
 
 export function diaPrograma(c: Cliente): number {
   return diasDesdeStr(c.data_inicio);
