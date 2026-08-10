@@ -163,7 +163,7 @@ export function TarefasPage({ fixedView, title }: { fixedView?: ViewMode; title?
   const [nextAction, setNextAction] = useState<{ atividadeId: string; clienteId: string; cs: CSName } | null>(null)
   const [waitingModal, setWaitingModal] = useState<{
     atividade: Atividade
-    status: "Aguardando cliente" | "Aguardando time interno"
+    status: "Aguardando cliente" | "Aguardando time interno" | "Impedida"
   } | null>(null)
 
   const readonly = searchParams.get("view") === "readonly"
@@ -217,14 +217,15 @@ export function TarefasPage({ fixedView, title }: { fixedView?: ViewMode; title?
       setWaitingModal({ atividade: a, status: st })
       return
     }
-    let motivo_impedimento = a.motivo_impedimento
+    // Impedida também passa pelo modal, e não por window.prompt: o motivo é
+    // obrigatório (o banco rejeita 'impedido' sem motivo), e um prompt nativo
+    // aceita string vazia — o UPDATE falharia depois, longe da ação da CS.
     if (st === "Impedida") {
-      const resp = window.prompt("O que está impedindo esta atividade?", a.motivo_impedimento ?? "")
-      if (resp === null) return
-      motivo_impedimento = resp.trim()
+      setWaitingModal({ atividade: a, status: st })
+      return
     }
     const status_desde = a.status === st ? a.status_desde ?? new Date().toISOString() : new Date().toISOString()
-    mutar(updateAtividade(id, { status: st, motivo_impedimento, status_desde }))
+    mutar(updateAtividade(id, { status: st, motivo_impedimento: a.motivo_impedimento, status_desde }))
   }
 
   function openDependenciaModal(id: string) {
@@ -2228,12 +2229,15 @@ function WaitingReasonModal({
   onSave,
 }: {
   atividade: Atividade
-  status: "Aguardando cliente" | "Aguardando time interno"
+  status: "Aguardando cliente" | "Aguardando time interno" | "Impedida"
   cliente: Cliente | null
   onClose: () => void
   onSave: (patch: { motivo: string; quem: string }) => void
 }) {
   const isCliente = status === "Aguardando cliente"
+  // "Impedida" reusa este modal porque o motivo é obrigatório dos dois lados —
+  // a diferença é que um impedimento não espera necessariamente por alguém.
+  const isImpedimento = status === "Impedida"
   const defaultQuem = isCliente
     ? cliente?.nome ?? "Cliente"
     : atividade.dependencia_nome ?? ""
@@ -2245,8 +2249,10 @@ function WaitingReasonModal({
   function submit() {
     const m = motivo.trim()
     const q = quem.trim()
+    // O banco rejeita status impedido/aguardando sem motivo (CHECK em
+    // cliente_atividades), então a guarda vive aqui, antes do request.
     if (!m) return
-    if (!isCliente && !q) return
+    if (!isCliente && !isImpedimento && !q) return
     onSave({ motivo: m, quem: isCliente ? cliente?.nome ?? "" : q })
   }
 
@@ -2262,7 +2268,11 @@ function WaitingReasonModal({
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-white">
-            {isCliente ? "Aguardando cliente" : "Aguardando time interno"}
+            {isImpedimento
+              ? "Impedida"
+              : isCliente
+                ? "Aguardando cliente"
+                : "Aguardando time interno"}
           </h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
@@ -2270,7 +2280,7 @@ function WaitingReasonModal({
         </div>
 
         <div className="space-y-4">
-          <div>
+          <div className={isImpedimento ? "hidden" : undefined}>
             <label className="block text-[11px] uppercase tracking-wider text-[#A1A1A1] mb-1.5">
               Quem
             </label>
@@ -2314,7 +2324,7 @@ function WaitingReasonModal({
               onKeyDown={(e) => {
                 if (e.key === "Enter") submit()
               }}
-              placeholder="O que está esperando?"
+              placeholder={isImpedimento ? "O que está impedindo?" : "O que está esperando?"}
               className="w-full h-9 px-3 rounded-md bg-[#232323] border border-[#2A2A2A] text-[13px] text-white outline-none focus:border-primary"
             />
             <div className="flex flex-wrap gap-1.5 mt-2">
