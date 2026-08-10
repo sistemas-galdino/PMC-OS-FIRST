@@ -64,6 +64,17 @@ const AtendimentoPublicoPage = lazy(() => import("@/pages/atendimento-publico"))
 const FunisPage = lazy(() => import("@/pages/funis"))
 const RespostasOnboardingPage = lazy(() => import("@/pages/respostas-onboarding"))
 const CRMPage = lazy(() => import("@/pages/crm"))
+// CRM · CS Manager (port do sistema da Mayara) — uma aba por rota.
+const CrmMeuDiaPage = lazy(() => import("@/pages/crm/meu-dia"))
+const CrmAtividadesPage = lazy(() => import("@/pages/crm/atividades"))
+const CrmClientesPage = lazy(() => import("@/pages/crm/clientes"))
+const CrmAlertasPage = lazy(() => import("@/pages/crm/alertas"))
+const CrmAtendimentoPage = lazy(() => import("@/pages/crm/atendimento"))
+const CrmProjetosPage = lazy(() => import("@/pages/crm/projetos"))
+const CrmVisaoGeralPage = lazy(() => import("@/pages/crm/visao-geral"))
+const CrmTimePage = lazy(() => import("@/pages/crm/time"))
+const CrmAcompanhamentoPage = lazy(() => import("@/pages/crm/acompanhamento"))
+const CrmManualPage = lazy(() => import("@/pages/crm/manual"))
 const AgentePage = lazy(() => import("@/pages/agente"))
 const GuardiaoPage = lazy(() => import("@/pages/guardiao"))
 const GuardiaoResponderPage = lazy(() => import("@/pages/guardiao-responder"))
@@ -243,6 +254,16 @@ function AppRoutes() {
                     <Route path="/funis" element={<RequireSecao secao="funis"><FunisPage /></RequireSecao>} />
                     <Route path="/respostas-onboarding" element={<RequireSecao secao="respostas-onboarding"><RespostasOnboardingPage /></RequireSecao>} />
                     <Route path="/crm" element={<RequireSecao secao="crm"><CRMPage /></RequireSecao>} />
+                    <Route path="/crm/meu-dia" element={<RequireSecao secao="crm/meu-dia"><CrmMeuDiaPage /></RequireSecao>} />
+                    <Route path="/crm/atividades" element={<RequireSecao secao="crm/atividades"><CrmAtividadesPage /></RequireSecao>} />
+                    <Route path="/crm/clientes" element={<RequireSecao secao="crm/clientes"><CrmClientesPage /></RequireSecao>} />
+                    <Route path="/crm/alertas" element={<RequireSecao secao="crm/alertas"><CrmAlertasPage /></RequireSecao>} />
+                    <Route path="/crm/atendimento" element={<RequireSecao secao="crm/atendimento"><CrmAtendimentoPage /></RequireSecao>} />
+                    <Route path="/crm/projetos" element={<RequireSecao secao="crm/projetos"><CrmProjetosPage /></RequireSecao>} />
+                    <Route path="/crm/visao-geral" element={<RequireSecao secao="crm/visao-geral"><CrmVisaoGeralPage /></RequireSecao>} />
+                    <Route path="/crm/time" element={<RequireSecao secao="crm/time"><CrmTimePage /></RequireSecao>} />
+                    <Route path="/crm/acompanhamento" element={<RequireSecao secao="crm/acompanhamento"><CrmAcompanhamentoPage /></RequireSecao>} />
+                    <Route path="/crm/manual" element={<RequireSecao secao="crm/manual"><CrmManualPage /></RequireSecao>} />
                     <Route path="/agente" element={<RequireSecao secao="agente"><AgentePage /></RequireSecao>} />
                     <Route path="/guardiao" element={<GuardiaoPage session={session} clientId={cid} hideTabList />} />
                     <Route path="/guardiao-admin" element={<RequireSecao secao="guardiao-admin"><GuardiaoAdminPage /></RequireSecao>} />

@@ -42,6 +42,9 @@ import {
   PackageIcon as Package,
   TrendingUpIcon as TrendingUp,
   RefreshCwIcon as RefreshCw,
+  ZapIcon as Zap,
+  AlertTriangleIcon as AlertTriangle,
+  LayoutKanbanIcon as LayoutKanban,
 } from "@/components/ui/icons"
 import {
   DropdownMenu,
@@ -107,9 +110,25 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       items: [
         { title: "Clientes", icon: Users, url: "/clientes" },
         { title: "Radar de Renovação", icon: TrendingUp, url: "/radar-renovacao" },
-        { title: "CRM", icon: Target, url: "/crm" },
         { title: "Funis", icon: BarChart3, url: "/funis" },
         { title: "Acessos", icon: ShieldCheck, url: "/acessos" },
+      ],
+    },
+    {
+      // CS Manager: o dia a dia do time de Customer Success.
+      // As chaves RBAC batem com a url sem a barra ("crm/meu-dia"), ver secaoDaUrl.
+      label: "CRM",
+      items: [
+        { title: "Meu Dia", icon: Zap, url: "/crm/meu-dia" },
+        { title: "Atividades", icon: CheckSquare, url: "/crm/atividades" },
+        { title: "Clientes", icon: Users, url: "/crm/clientes" },
+        { title: "Alertas", icon: AlertTriangle, url: "/crm/alertas" },
+        { title: "Atendimento", icon: MessageCircle, url: "/crm/atendimento" },
+        { title: "Projetos", icon: LayoutKanban, url: "/crm/projetos" },
+        { title: "Visão Geral", icon: BarChart3, url: "/crm/visao-geral" },
+        { title: "Torre de Comando", icon: Compass, url: "/crm/time" },
+        { title: "Acompanhamento", icon: TrendingUp, url: "/crm/acompanhamento" },
+        { title: "Manual de CS", icon: BookOpen, url: "/crm/manual" },
       ],
     },
     {
