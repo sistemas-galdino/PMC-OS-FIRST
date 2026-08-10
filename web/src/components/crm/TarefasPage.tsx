@@ -16,6 +16,7 @@ import {
   useClientes,
   useNomeExibicao,
   useProfile,
+  useReunioes,
 } from "@/lib/crm/storage"
 import { ReunioesClientes } from "@/components/crm/ReunioesClientes"
 import { ReunioesDoDia } from "@/components/crm/ReunioesDoDia"
@@ -28,6 +29,7 @@ import {
   type Prioridade,
 } from "@/lib/crm/types"
 import { saudacaoDoDia } from "@/lib/crm/saudacoes"
+import { useSaudacaoIA } from "@/lib/crm/saudacao-ia"
 
 import {
   ChevronLeft,
@@ -249,7 +251,7 @@ export function TarefasPage({ fixedView, title }: { fixedView?: ViewMode; title?
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             {isMeuDia ? (
-              <MeuDiaHeader profile={nomeExibicao} day={meuDiaDay} setDay={setMeuDiaDay} />
+              <MeuDiaHeader profile={nomeExibicao} csName={csName} atividades={visiveis} day={meuDiaDay} setDay={setMeuDiaDay} />
             ) : (
               <h1 className="text-2xl font-bold">{headerTitle}</h1>
             )}
@@ -2363,10 +2365,15 @@ function WaitingReasonModal({
 
 function MeuDiaHeader({
   profile,
+  csName,
+  atividades,
   day,
   setDay,
 }: {
   profile: string | null
+  csName: CSName | null
+  /** Atividades já no escopo da CS em foco — a base dos números da saudação. */
+  atividades: Atividade[]
   day: Date
   setDay: (d: Date) => void
 }) {
@@ -2384,15 +2391,47 @@ function MeuDiaHeader({
     }
   }, [])
   const primeiro = (profile ?? "").trim().split(/\s+/)[0] || ""
-  // TODO(fase IA): o original chamava uma server function (gerarSaudacaoIA) com
-  // os contadores do dia. Isso vira Edge Function numa fase posterior; até lá a
-  // saudação é o banco determinístico local.
   const saudacao = saudacaoDoDia(now, profile ?? "anon", primeiro || "CS")
   const dia = day.toLocaleDateString("pt-BR", { weekday: "long" })
   const diaCap = dia.charAt(0).toUpperCase() + dia.slice(1)
   const restante = day.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })
 
-  const textoSaudacao = saudacao.completo
+  // Números do DIA DE HOJE, não do dia que está sendo navegado: a saudação fala
+  // da rotina de agora.
+  const reunioes = useReunioes()
+  const dados = useMemo(() => {
+    const hojeISO = new Date().toISOString()
+    const conta = (f: (a: Atividade) => boolean) => atividades.filter(f).length
+    const doDia = reunioes
+      .filter((r) => r.status !== "Cancelada" && sameDay(r.data, hojeISO))
+      .filter((r) => (r.participacao_cs ?? "Participa") === "Participa")
+      .filter((r) => (csName ? r.cs_responsavel === csName : true))
+      .sort((a, b) => (a.hora_inicio || "").localeCompare(b.hora_inicio || ""))
+    const agora = new Date().toTimeString().slice(0, 5)
+    const proxima = doDia.find((r) => (r.hora_inicio || "") >= agora)
+    return {
+      atrasadas: conta((a) => effectiveStatus(a) === "Atrasada"),
+      hoje: conta((a) => sameDay(a.data_prevista, hojeISO) && a.status !== "Concluída"),
+      andamento: conta((a) => a.status === "Em andamento"),
+      impedidas: conta(
+        (a) =>
+          a.status === "Impedida" ||
+          a.status === "Aguardando cliente" ||
+          a.status === "Aguardando time interno",
+      ),
+      concluidasHoje: conta(
+        (a) => a.status === "Concluída" && sameDay(a.data_conclusao ?? a.data_prevista, hojeISO),
+      ),
+      reunioes: doDia.length,
+      proximaReuniao: proxima ? `${proxima.hora_inicio} ${proxima.titulo}` : undefined,
+    }
+  }, [atividades, reunioes, csName])
+
+  // A frase da IA entra por cima da local quando (e se) chegar. Ver
+  // lib/crm/saudacao-ia.ts: uma chamada por pessoa/dia/período, falha silenciosa.
+  const daIA = useSaudacaoIA(primeiro, now, dados, !!primeiro)
+
+  const textoSaudacao = daIA ?? saudacao.completo
 
   const shift = (deltaDays: number) => {
     const d = new Date(day)

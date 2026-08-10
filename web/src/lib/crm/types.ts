@@ -694,6 +694,10 @@ export interface Reuniao {
   pauta?: string;
   resumo?: string;
   materiais_pendentes?: boolean;
+  /** Há transcrição registrada na tabela de origem? O texto vem sob demanda
+   *  (fetchTranscricaoReuniao) — a view só expõe o booleano. */
+  tem_transcricao?: boolean;
+  link_gravacao?: string;
   origem: ReuniaoOrigem;
   google_event_id?: string;
   status: ReuniaoStatus;

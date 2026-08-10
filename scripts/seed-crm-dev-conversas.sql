@@ -114,3 +114,20 @@ UPDATE clientes_entrada_new c
  WHERE v.id_cliente = c.id_cliente AND v.grupo_id LIKE 'dev-g-%';
 
 COMMIT;
+
+-- ───────── Transcrição de exemplo ─────────
+-- Uma reunião com transcrição, para exercitar o caminho
+-- "Transformar em tarefas" → crm-analisar-transcricao. Texto gerado; nenhuma
+-- transcrição real de cliente entra no DEV.
+UPDATE reunioes_mentoria_new
+   SET transcricao = 'Consultor: Oi Marcos, tudo bem? Vamos revisar o trimestre. '
+     || 'Marcos: Oi! A gente conseguiu subir o catálogo no CRM, mas travamos na integração com o financeiro. '
+     || 'Consultor: Entendi. Eu vou levantar com o time técnico e te retorno até quinta com o passo a passo. '
+     || 'Marcos: Perfeito. E eu preciso liberar o acesso do João no sistema, faço isso ainda hoje. '
+     || 'Consultor: Ótimo. Também vou agendar a reunião com o Galdino pra fechar o trimestre, mando o convite amanhã. '
+     || 'Marcos: Combinado. A Renata do meu time ficou de organizar os dados de vendas de julho até sexta. '
+     || 'Consultor: Anotado. Decidimos manter o foco na integração antes de abrir novos canais. '
+     || 'Marcos: Isso. O risco é a equipe ficar sobrecarregada no fechamento do mês.'
+ WHERE id_reuniao LIKE 'dev-ment-%'
+   AND transcricao IS NULL
+   AND data_reuniao = (SELECT max(data_reuniao) FROM reunioes_mentoria_new WHERE id_reuniao LIKE 'dev-ment-%');

@@ -1,20 +1,29 @@
 import { useEffect, useMemo, useState, Fragment } from "react"
-import { MoreHorizontal, X, ExternalLink, RefreshCw } from "lucide-react"
-import { openCliente, useClientes, useReunioes } from "@/lib/crm/storage"
+import { MoreHorizontal, X, ExternalLink, RefreshCw, ListPlus } from "lucide-react"
+import { fetchTranscricaoReuniao, openCliente, useClientes, useReunioes } from "@/lib/crm/storage"
+import {
+  TransformarTarefasModal,
+  extrairProximosPassosSeparados,
+} from "@/components/crm/TransformarTarefasModal"
 
 import type { CSName, Cliente, Reuniao } from "@/lib/crm/types"
+import { dataLocal } from "@/lib/crm/format"
 
 /**
  * Reuniões do dia em que a CS participa.
  *
  * Diferença central em relação ao original: a reunião agora vem do Google
  * Calendar (view `crm_reunioes_v`) e é SOMENTE LEITURA. Sumiram daqui a edição
- * de pauta/resumo, o "vincular cliente" e o bloco de transcrição por IA — não
- * há mais `upsertReuniao`, e a IA vira Edge Function numa fase posterior.
+ * de pauta/resumo e o "vincular cliente" — não há mais `upsertReuniao`.
+ *
+ * O que voltou na Fase 6: o caminho reunião → tarefas. O botão abre o
+ * TransformarTarefasModal já com a transcrição registrada, quando existe; a
+ * análise roda na edge function `crm-analisar-transcricao` e o resultado é
+ * rascunho, nunca gravação direta.
  */
 
 function isSameLocalDay(iso: string, ref: Date) {
-  const d = new Date(iso)
+  const d = dataLocal(iso)
   return (
     d.getFullYear() === ref.getFullYear() &&
     d.getMonth() === ref.getMonth() &&
@@ -23,7 +32,7 @@ function isSameLocalDay(iso: string, ref: Date) {
 }
 
 function reuniaoStart(r: Reuniao): Date {
-  const d = new Date(r.data)
+  const d = dataLocal(r.data)
   const [h, m] = (r.hora_inicio || "00:00").split(":").map((x) => parseInt(x, 10) || 0)
   d.setHours(h, m, 0, 0)
   return d
@@ -33,7 +42,7 @@ function googleAgendaUrl(r: Reuniao): string {
   if (r.google_event_id) {
     return `https://calendar.google.com/calendar/u/0/r/eventedit/${r.google_event_id}`
   }
-  const d = new Date(r.data)
+  const d = dataLocal(r.data)
   return `https://calendar.google.com/calendar/u/0/r/day/${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
 }
 
@@ -289,7 +298,34 @@ function ReuniaoPanel({
   onClose: () => void
 }) {
   const dataFmt =
-    new Date(reuniao.data).toLocaleDateString("pt-BR") + " · " + reuniao.hora_inicio
+    dataLocal(reuniao.data).toLocaleDateString("pt-BR") + " · " + reuniao.hora_inicio
+
+  const [transformar, setTransformar] = useState<{ transcricao?: string } | null>(null)
+  const [carregandoTranscricao, setCarregandoTranscricao] = useState(false)
+
+  const passosDoResumo = useMemo(
+    () => extrairProximosPassosSeparados(reuniao.resumo ?? ""),
+    [reuniao.resumo],
+  )
+
+  async function abrirTransformar() {
+    if (carregandoTranscricao) return
+    // Sem transcrição no banco, abre direto: o modal aceita colar.
+    if (!reuniao.tem_transcricao) {
+      setTransformar({})
+      return
+    }
+    setCarregandoTranscricao(true)
+    try {
+      const t = await fetchTranscricaoReuniao(reuniao.id)
+      setTransformar({ transcricao: t ?? undefined })
+    } catch {
+      // Falhar em buscar a transcrição não pode impedir o caminho manual.
+      setTransformar({})
+    } finally {
+      setCarregandoTranscricao(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch" onClick={onClose}>
@@ -395,21 +431,49 @@ function ReuniaoPanel({
             </div>
           )}
 
-          {cliente && (
-            <div className="pt-3 border-t border-border/60">
+          {/* Da reunião para as tarefas. O resumo já registrado costuma trazer
+              os blocos "## Próximos passos"; quando não traz, o modal abre
+              vazio e a CS cola a ata ou a transcrição para a IA separar. Em
+              qualquer caminho, a revisão humana vem antes de gravar. */}
+          <div className="pt-3 border-t border-border/60 flex items-center gap-4 flex-wrap">
+            <button
+              onClick={abrirTransformar}
+              disabled={carregandoTranscricao}
+              className="inline-flex items-center gap-1.5 text-[13px] px-3 py-1.5 rounded-lg border border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-60"
+            >
+              <ListPlus className="h-3.5 w-3.5" />
+              {carregandoTranscricao ? "Buscando transcrição…" : "Transformar em tarefas"}
+            </button>
+            {reuniao.tem_transcricao && (
+              <span className="text-[11px] text-muted-foreground">
+                transcrição disponível — entra preenchida
+              </span>
+            )}
+            {cliente && (
               <button
                 onClick={() => {
                   openCliente(cliente.id)
                   onClose()
                 }}
-                className="text-[13px] text-primary hover:underline"
+                className="text-[13px] text-primary hover:underline ml-auto"
               >
                 Abrir Cliente 360 →
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
+
+      {transformar && (
+        <TransformarTarefasModal
+          passosSeparados={passosDoResumo}
+          transcricaoInicial={transformar.transcricao}
+          clienteIdDefault={cliente?.id ?? null}
+          csResponsavel={reuniao.cs_responsavel}
+          reuniaoTitulo={reuniao.titulo}
+          onClose={() => setTransformar(null)}
+        />
+      )}
     </div>
   )
 }

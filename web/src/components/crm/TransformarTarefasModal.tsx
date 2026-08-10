@@ -1,9 +1,10 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { X, Plus, Trash2, Check, User, Users, ClipboardPaste } from "lucide-react";
+import { X, Plus, Trash2, Check, User, Users, ClipboardPaste, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { createAtividade, createAtividadesLote, useClientes } from "@/lib/crm/storage";
 import type { Atividade, AtividadeTipo, CSName, Prioridade } from "@/lib/crm/types";
 import { ACOES } from "@/lib/crm/types";
+import { analisarTranscricao, type AnaliseTranscricao } from "@/lib/crm/ia";
 
 type Lado = "cs" | "cliente";
 
@@ -18,6 +19,8 @@ interface DraftTarefa {
   data_prevista: string;
   hora: string;
   prioridade: Prioridade;
+  /** Prazo citado na reunião em texto livre ("até sexta"). Só dica, nunca vira data sozinho. */
+  prazoSugerido?: string;
 }
 
 export interface PassoExtraido {
@@ -107,6 +110,7 @@ function fromDateInputValue(v: string, hora: string): string {
 export function TransformarTarefasModal({
   passos,
   passosSeparados,
+  transcricaoInicial,
   clienteIdDefault,
   csResponsavel,
   reuniaoTitulo,
@@ -115,6 +119,8 @@ export function TransformarTarefasModal({
   /** legado: lista única — cai tudo em CS */
   passos?: string[];
   passosSeparados?: PassosSeparados;
+  /** Transcrição já registrada da reunião: abre o painel de IA preenchido. */
+  transcricaoInicial?: string;
   clienteIdDefault: string | null;
   csResponsavel: CSName;
   reuniaoTitulo: string;
@@ -164,12 +170,17 @@ export function TransformarTarefasModal({
   const [rascunhos, setRascunhos] = useState<DraftTarefa[]>(initial);
   const [tab, setTab] = useState<Lado>("cs");
   const [salvando, setSalvando] = useState(false);
-  // TODO (Fase 6): a extração dos próximos passos a partir da transcrição será
-  // feita pela edge function `crm-analisar-transcricao`. Até lá a CS cola o
-  // texto da ata aqui — e, com IA ou sem, a revisão humana antes de gravar
-  // continua obrigatória, que é o motivo deste modal existir.
-  const [colando, setColando] = useState(initial.length === 0);
-  const [textoColado, setTextoColado] = useState("");
+  // Dois caminhos para chegar aos rascunhos: colar a ata já organizada, ou
+  // colar a transcrição bruta e deixar a IA separar. Os dois desembocam no
+  // mesmo lugar — esta lista editável —, porque nada vira tarefa sem alguém
+  // conferir. Essa foi a exigência da reunião de 05/08/2026.
+  const [colando, setColando] = useState(initial.length === 0 || !!transcricaoInicial);
+  const [modoEntrada, setModoEntrada] = useState<"ata" | "transcricao">(
+    transcricaoInicial ? "transcricao" : "ata",
+  );
+  const [textoColado, setTextoColado] = useState(transcricaoInicial ?? "");
+  const [analisando, setAnalisando] = useState(false);
+  const [resumoIA, setResumoIA] = useState<AnaliseTranscricao | null>(null);
 
   function respDe(r: DraftTarefa) {
     return r.responsavel || guardiaoDefault;
@@ -247,6 +258,65 @@ export function TransformarTarefasModal({
     setColando(false);
     setTab(src.cs.length > 0 ? "cs" : "cliente");
     toast.success(`${novos.length} item${novos.length === 1 ? "" : "s"} para revisar.`);
+  }
+
+  /** Manda a transcrição para a IA e transforma o retorno em rascunhos. Nada é gravado. */
+  async function analisarComIA() {
+    const bruto = textoColado.trim();
+    if (bruto.length < 40 || analisando) return;
+    setAnalisando(true);
+    try {
+      const r = await analisarTranscricao({
+        transcricao: bruto,
+        titulo: reuniaoTitulo,
+        cliente: clienteDefault?.nome,
+        csNome: csResponsavel,
+      });
+      setResumoIA(r);
+      if (!r.reuniao_realizada) {
+        toast.error(r.motivo_nao_realizada || "A IA não identificou uma reunião nesse texto.");
+        return;
+      }
+      const novos: DraftTarefa[] = [
+        ...r.passos.cs.map<DraftTarefa>((p) => ({
+          id: uid(),
+          lado: "cs",
+          titulo: p.texto,
+          acao: "",
+          responsavel: csResponsavel,
+          cliente_id: clienteIdDefault ?? "",
+          data_prevista: todayISO(1),
+          hora: "",
+          prioridade: "Normal",
+          prazoSugerido: p.prazo,
+        })),
+        ...r.passos.cliente.map<DraftTarefa>((p) => ({
+          id: uid(),
+          lado: "cliente",
+          titulo: p.texto,
+          acao: "",
+          responsavel: p.responsavel?.trim() || "",
+          cliente_id: clienteIdDefault ?? "",
+          data_prevista: todayISO(2),
+          hora: "",
+          prioridade: "Normal",
+          prazoSugerido: p.prazo,
+        })),
+      ];
+      if (novos.length === 0) {
+        toast.error("A IA não encontrou próximos passos nessa transcrição.");
+        return;
+      }
+      setRascunhos((cur) => [...cur, ...novos]);
+      setTextoColado("");
+      setColando(false);
+      setTab(r.passos.cs.length > 0 ? "cs" : "cliente");
+      toast.success(`${novos.length} item${novos.length === 1 ? "" : "s"} para revisar.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível analisar a transcrição.");
+    } finally {
+      setAnalisando(false);
+    }
   }
 
   async function submeter() {
@@ -350,28 +420,106 @@ export function TransformarTarefasModal({
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {colando && (
             <div className="rounded-lg border border-border p-3 space-y-2 bg-background">
-              <p className="text-[12px] text-muted-foreground">
-                Cole aqui os próximos passos da ata. Blocos reconhecidos:{" "}
-                <span className="text-foreground">## Próximos passos — CS</span> e{" "}
-                <span className="text-foreground">## Próximos passos — Cliente</span>, com itens
-                em lista (- ou 1.).
-              </p>
+              <div className="flex items-center gap-1.5">
+                {(
+                  [
+                    ["ata", "Ata já organizada"],
+                    ["transcricao", "Transcrição bruta (IA)"],
+                  ] as const
+                ).map(([k, label]) => (
+                  <button
+                    key={k}
+                    onClick={() => setModoEntrada(k)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] border transition-colors ${
+                      modoEntrada === k
+                        ? "bg-primary text-primary-foreground border-primary font-semibold"
+                        : "border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {modoEntrada === "ata" ? (
+                <p className="text-[12px] text-muted-foreground">
+                  Cole aqui os próximos passos da ata. Blocos reconhecidos:{" "}
+                  <span className="text-foreground">## Próximos passos — CS</span> e{" "}
+                  <span className="text-foreground">## Próximos passos — Cliente</span>, com itens
+                  em lista (- ou 1.).
+                </p>
+              ) : (
+                <p className="text-[12px] text-muted-foreground">
+                  Cole a transcrição da reunião. A IA separa o que é da CS e o que é do cliente e
+                  devolve <span className="text-foreground">rascunhos</span> — nada é criado até
+                  você revisar e salvar.
+                </p>
+              )}
+
               <textarea
                 value={textoColado}
                 onChange={(e) => setTextoColado(e.target.value)}
                 rows={6}
-                placeholder={"## Próximos passos — CS\n- Cobrar material do diagnóstico\n\n## Próximos passos — Cliente\n- Subir base no CRM — Responsável: João"}
+                placeholder={
+                  modoEntrada === "ata"
+                    ? "## Próximos passos — CS\n- Cobrar material do diagnóstico\n\n## Próximos passos — Cliente\n- Subir base no CRM — Responsável: João"
+                    : "Cole aqui a transcrição da reunião, do jeito que veio da gravação."
+                }
                 className="w-full bg-card border border-border rounded-lg p-2 text-sm"
               />
               <div className="flex justify-end">
-                <button
-                  onClick={extrairDoTexto}
-                  disabled={!textoColado.trim()}
-                  className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-md border border-border hover:border-primary disabled:opacity-50"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Extrair itens para revisão
-                </button>
+                {modoEntrada === "ata" ? (
+                  <button
+                    onClick={extrairDoTexto}
+                    disabled={!textoColado.trim()}
+                    className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-md border border-border hover:border-primary disabled:opacity-50"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Extrair itens para revisão
+                  </button>
+                ) : (
+                  <button
+                    onClick={analisarComIA}
+                    disabled={textoColado.trim().length < 40 || analisando}
+                    className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-md border border-border hover:border-primary disabled:opacity-50"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {analisando ? "Analisando…" : "Analisar com IA"}
+                  </button>
+                )}
               </div>
+            </div>
+          )}
+
+          {resumoIA && resumoIA.resumo && (
+            <div className="rounded-lg border border-border bg-background p-3 space-y-2">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Resumo da reunião (pela IA)
+              </div>
+              <p className="text-[13px] whitespace-pre-wrap">{resumoIA.resumo}</p>
+              {resumoIA.decisoes.length > 0 && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                    Decisões
+                  </div>
+                  <ul className="text-[12px] list-disc pl-4 space-y-0.5">
+                    {resumoIA.decisoes.map((d, i) => (
+                      <li key={i}>{d}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {resumoIA.pendencias.length > 0 && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                    Pendências / riscos
+                  </div>
+                  <ul className="text-[12px] list-disc pl-4 space-y-0.5">
+                    {resumoIA.pendencias.map((d, i) => (
+                      <li key={i}>{d}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
           {visiveis.length === 0 && (
@@ -454,6 +602,13 @@ export function TransformarTarefasModal({
                     }
                     className="bg-card border border-border rounded-md px-2 py-1.5 text-[12px]"
                   />
+                  {r.prazoSugerido && (
+                    // Prazo em texto livre ("até sexta") não vira data sozinho —
+                    // a CS lê e decide. Converter no chute erraria em silêncio.
+                    <span className="text-[10px] text-muted-foreground">
+                      citado: {r.prazoSugerido}
+                    </span>
+                  )}
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">

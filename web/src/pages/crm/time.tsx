@@ -9,6 +9,7 @@ import {
   useReunioes,
 } from "@/lib/crm/storage"
 import { useCsList } from "@/lib/crm/equipe"
+import { dataLocal } from "@/lib/crm/format"
 import { semResposta, silencioDe, useConversas } from "@/lib/crm/conversas"
 import { type Atividade, type CSName } from "@/lib/crm/types"
 import { AlertTriangle, CalendarDays, Check, Lock, Plus } from "lucide-react"
@@ -33,7 +34,9 @@ function startOfToday() {
 
 function sameDayISO(iso: string | undefined) {
   if (!iso) return false
-  const t = new Date(iso).getTime()
+  // dataLocal: reunião vem como data pura ("2026-08-10") e `new Date` leria
+  // isso como meia-noite UTC, ou seja, o dia anterior aqui.
+  const t = dataLocal(iso).getTime()
   if (isNaN(t)) return false
   return t >= startOfToday() && t < startOfToday() + 86400000
 }
@@ -199,7 +202,7 @@ export default function CrmTimePage() {
 
     reunioes.forEach((r) => {
       if (r.status !== "Realizada") return
-      const dia = new Date(r.data)
+      const dia = dataLocal(r.data)
       if (isNaN(dia.getTime())) return
       const iso = `${dia.toISOString().slice(0, 10)}T${r.hora_inicio || "09:00"}:00`
       const t = new Date(iso).getTime()

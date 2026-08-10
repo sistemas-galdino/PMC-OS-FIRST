@@ -5,6 +5,7 @@ import { useClientes, useReunioes } from "@/lib/crm/storage"
 import { salvarItensPreparacao, usePreparacoes } from "@/lib/crm/preparacoes"
 import { criarPreparacaoPadrao } from "@/lib/crm/preparacao"
 import type { CSName, ItemPreparacao, Reuniao } from "@/lib/crm/types"
+import { dataLocal } from "@/lib/crm/format"
 
 /**
  * Reuniões do cliente com terceiros (consultor, Galdino, David) — a CS não
@@ -14,7 +15,7 @@ import type { CSName, ItemPreparacao, Reuniao } from "@/lib/crm/types"
  */
 
 function isSameLocalDay(iso: string, ref: Date) {
-  const d = new Date(iso)
+  const d = dataLocal(iso)
   return (
     d.getFullYear() === ref.getFullYear() &&
     d.getMonth() === ref.getMonth() &&
@@ -23,7 +24,7 @@ function isSameLocalDay(iso: string, ref: Date) {
 }
 
 function reuniaoStart(r: Reuniao): Date {
-  const d = new Date(r.data)
+  const d = dataLocal(r.data)
   const [h, m] = (r.hora_inicio || "00:00").split(":").map((x) => parseInt(x, 10) || 0)
   d.setHours(h, m, 0, 0)
   return d

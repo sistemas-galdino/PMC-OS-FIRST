@@ -816,6 +816,8 @@ export function rowToReuniao(row: ReuniaoRow, csResponsavel: string): Reuniao {
     duracao_minutos: row.duracao_minutos ?? 60,
     link_reuniao: row.link_reuniao ?? undefined,
     resumo: row.resumo ?? undefined,
+    link_gravacao: row.link_gravacao ?? undefined,
+    tem_transcricao: !!row.tem_transcricao,
     origem: "Google Calendar",
     status:
       STATUS_REUNIAO[(row.status_agendamento ?? "").toLowerCase()] ??

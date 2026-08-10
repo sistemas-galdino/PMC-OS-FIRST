@@ -14,7 +14,7 @@ reunião em `docs/reuniao-crm.md`.
 | 3 · Abas núcleo (Meu Dia, Atividades, Clientes, Alertas) | ✅ | `69b16f8` + fixes |
 | 4 · Abas de gestão (Visão Geral, Torre, Acompanhamento, Projetos, Manual) | ✅ | `6e7c6c7` |
 | 5 · Atendimento (WhatsApp) | ✅ | `aef41a9` |
-| 6 · Edge functions de IA (saudação, transcrição) | ⬜ pendente | |
+| 6 · Edge functions de IA (saudação, transcrição) | ✅ | `HEAD` |
 | 7 · Backfill de datas + promoção DEV→PROD | ⬜ pendente | |
 
 Tudo está **só no DEV** (`jkwpxttxkksqiffodonb`). O PROD (`hqczwextifessaztyyyk`)
@@ -76,7 +76,12 @@ arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
    "Sem data de entrada" — não se usa `created_at` como substituto.
 6. **Trava de duplicidade tem que ser do banco.** Verificar-e-depois-criar em
    código não sobrevive a duas execuções concorrentes.
-7. **`execute_sql` roda tudo numa transação**: se a última instrução falha, as
+7. **Data pura vira o dia anterior.** `new Date("2026-08-10")` é meia-noite
+   UTC, ou seja, 21h do dia 9 no Brasil. As reuniões vêm de `crm_reunioes_v`
+   como data pura, e isso zerava "Suas reuniões", "Reuniões hoje" da Torre e
+   errava toda data exibida. Use `dataLocal()` de `format.ts` — nunca
+   `new Date(reuniao.data)`.
+8. **`execute_sql` roda tudo numa transação**: se a última instrução falha, as
    anteriores revertem. Conferir o efeito depois, não confiar no "sucesso".
 
 ## Ambiente
@@ -96,6 +101,12 @@ arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
   `mentores` com e-mails `@dev.local` e papel `cs`. O trigger `tg_mentores_guard`
   impede criar papel privilegiado fora de sessão de super admin.
 - Verificação no navegador: use o **menu**, não URL direta — ver limitação 1 abaixo.
+- **IA**: as duas edge functions usam o mesmo resolvedor da `metodo-ia`
+  (`_shared/llm-chat.ts`): `LOVABLE_API_KEY` → `OPENAI_API_KEY` → `LLM_API_KEY`,
+  com `LLM_BASE_URL`/`LLM_MODEL` opcionais. O plano antigo dizia "usar o modelo
+  Claude padrão do repo", mas o repo não tem esse padrão: fora o agente-chat,
+  tudo passa por provedor OpenAI-compatible. Sem chave configurada, a saudação
+  cai na frase local e a análise de transcrição devolve erro explicando.
 
 ## Pendências que dependem do David / da Mayara
 
@@ -133,21 +144,13 @@ arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
 
 ## O que falta nas próximas fases
 
-**Fase 6 — Edge functions de IA**
-Duas funções, substituindo os `createServerFn` que usavam o gateway do Lovable:
-- `crm-saudacao` — hoje a saudação usa o banco determinístico de
-  `saudacoes.ts`; há TODO em `TarefasPage.tsx`.
-- `crm-analisar-transcricao` — extrai próximos passos da reunião. **Exige
-  validação humana antes de persistir** (Francielly e David, na reunião). Hoje
-  há um painel de colar texto em `TransformarTarefasModal.tsx` que gera
-  rascunhos editáveis; o TODO aponta para cá.
-Usar o modelo Claude padrão do repo, não o gateway do Lovable.
-
 **Fase 7 — Backfill e promoção**
 - Backfill de `clientes_entrada_new.data`: **141 de 301 clientes sem data no
   PROD, 103 deles ativos**. Derivar da 1ª reunião registrada (Galdino →
   consultor → BlackCRM), marcando `data_backfilled = true`. Script revisável em
   `scripts/`, não migration. Rodar no DEV e conferir a distribuição de
   trimestres antes do PROD.
-- Promover as 9 migrations `20260810_crm_*` e as edge functions para o PROD.
+- Promover as 10 migrations `20260810_crm_*` e as duas edge functions
+  (`crm-saudacao`, `crm-analisar-transcricao`) para o PROD. As funções precisam
+  de uma chave de IA nos secrets — ver "IA" abaixo.
 - Remover `web/src/pages/crm.tsx` e a rota `/crm` antiga.

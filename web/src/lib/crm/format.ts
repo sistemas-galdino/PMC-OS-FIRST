@@ -1,6 +1,22 @@
+/**
+ * Converte para Date respeitando o fuso local.
+ *
+ * `new Date("2026-08-10")` é interpretado como meia-noite UTC — no Brasil isso
+ * cai às 21h do dia 9, e qualquer comparação "é hoje?" erra por um dia. As
+ * reuniões vêm de `crm_reunioes_v` como data pura (sem hora), então todo lugar
+ * que transforma `reuniao.data` em Date precisa passar por aqui.
+ *
+ * Datas com hora ("2026-08-10T14:00:00Z") já são inequívocas e seguem direto.
+ */
+export function dataLocal(iso: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? "");
+  if (!m) return new Date(iso);
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
 export function formatBR(iso: string | undefined | null): string {
   if (!iso) return "—";
-  const d = new Date(iso);
+  const d = dataLocal(iso);
   if (isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("pt-BR");
 }

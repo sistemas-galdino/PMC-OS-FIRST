@@ -1,5 +1,6 @@
 import type { Atividade, Cliente, SituacaoCliente } from "./types"
 import { situacaoCliente } from "./jornada"
+import { dataLocal } from "./format";
 
 /**
  * Funções DERIVADAS: recebem os arrays já carregados e não tocam em
@@ -47,8 +48,10 @@ export function proximaAtividade(clienteId: string, atividades: Atividade[]): At
 }
 
 export function sameDay(isoA: string, isoB: string): boolean {
-  const a = new Date(isoA);
-  const b = new Date(isoB);
+  // dataLocal porque datas puras ("2026-08-10", como as reuniões chegam da
+  // view) seriam lidas como meia-noite UTC — um dia a menos no Brasil.
+  const a = dataLocal(isoA);
+  const b = dataLocal(isoB);
   return (
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&

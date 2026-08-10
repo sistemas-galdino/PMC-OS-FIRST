@@ -376,6 +376,39 @@ export function atividadesDoProjeto(projetoId: string, atividades?: Atividade[])
 
 // ───────────────────────── Reuniões ─────────────────────────
 
+/**
+ * Texto da transcrição de uma reunião, sob demanda.
+ *
+ * `crm_reunioes_v` só expõe `tem_transcricao` (booleano) de propósito: a
+ * transcrição de uma hora de reunião passa de 50 mil caracteres, e trazer isso
+ * para todas as reuniões da carteira em toda tela seria absurdo. Aqui a busca é
+ * de uma só, quando alguém pede.
+ *
+ * O id de reunião é `origem:ref` (ver rowToReuniao) — a origem diz de qual
+ * tabela veio.
+ */
+export async function fetchTranscricaoReuniao(reuniaoId: string): Promise<string | null> {
+  const [origem, ref] = reuniaoId.split(":")
+  const tabela =
+    origem === "galdino"
+      ? "reunioes_galdino"
+      : origem === "blackcrm"
+        ? "reunioes_blackcrm"
+        : origem === "mentoria"
+          ? "reunioes_mentoria_new"
+          : null
+  // 'central' vem de agendamentos_central, que não guarda transcrição.
+  if (!tabela || !ref) return null
+  const { data, error } = await supabase
+    .from(tabela)
+    .select("transcricao")
+    .eq("id_unico", ref)
+    .maybeSingle()
+  if (error) throw error
+  const t = (data as { transcricao?: string | null } | null)?.transcricao
+  return t?.trim() ? t : null
+}
+
 export async function fetchReunioes(): Promise<Reuniao[]> {
   const [rows, clientes, preps] = await Promise.all([
     fetchReunioesRaw(),

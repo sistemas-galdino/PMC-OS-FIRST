@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, Plus, Trash2, MessageCircle, Trophy, XCircle, Pause, Pin, Image as ImageIcon, Send, Edit2 } from "lucide-react";
+import { X, Plus, Trash2, MessageCircle, Trophy, XCircle, Pause, Pin, Image as ImageIcon, Send, Edit2, ListPlus } from "lucide-react";
 import { toast } from "sonner";
 import { CicloProgressBar } from "@/components/crm/CarteiraVisuals";
 import { Badge } from "@/components/crm/Badge";
 import { NovaAtividadeModal } from "@/components/crm/NovaAtividadeModal";
 import {
+  TransformarTarefasModal,
+  extrairProximosPassosSeparados,
+} from "@/components/crm/TransformarTarefasModal";
+import {
   addAnotacaoInterna,
   buildDisplayIdMap,
+  fetchTranscricaoReuniao,
   isAdmin,
   openCliente,
   removeAnotacaoInterna,
@@ -35,6 +40,7 @@ import {
   type VitoriaFormato,
   type AnotacaoInterna,
   type ProfileName,
+  type Reuniao,
   SITUACAO_LIST,
 } from "@/lib/crm/types";
 
@@ -882,13 +888,38 @@ function AtividadesTab({ cliente }: { cliente: Cliente }) {
         ),
     [atividades, cliente.id],
   );
+  // Reunião com resumo OU com transcrição: as duas rendem tarefa. Só resumo
+  // deixava de fora justamente as que a IA consegue destrinchar.
   const reunioesRealizadas = useMemo(
     () =>
       reunioes
-        .filter((r) => r.cliente_id === cliente.id && r.resumo)
+        .filter((r) => r.cliente_id === cliente.id && (r.resumo || r.tem_transcricao))
         .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()),
     [reunioes, cliente.id],
   );
+  const [transformar, setTransformar] = useState<{
+    reuniao: Reuniao;
+    transcricao?: string;
+  } | null>(null);
+  const [buscandoTranscricao, setBuscandoTranscricao] = useState<string | null>(null);
+
+  async function abrirTransformar(r: Reuniao) {
+    if (buscandoTranscricao) return;
+    if (!r.tem_transcricao) {
+      setTransformar({ reuniao: r });
+      return;
+    }
+    setBuscandoTranscricao(r.id);
+    try {
+      const t = await fetchTranscricaoReuniao(r.id);
+      setTransformar({ reuniao: r, transcricao: t ?? undefined });
+    } catch {
+      // Não achar a transcrição não pode fechar o caminho manual.
+      setTransformar({ reuniao: r });
+    } finally {
+      setBuscandoTranscricao(null);
+    }
+  }
 
   return (
     <>
@@ -923,12 +954,40 @@ function AtividadesTab({ cliente }: { cliente: Cliente }) {
                 {r.subtipo ? ` · ${r.subtipo}` : ""}
                 {r.ciclo ? ` · T${r.ciclo}` : ""} · {r.duracao_minutos} min
               </div>
-              <div className="text-sm text-foreground/90 mt-2 whitespace-pre-wrap">
-                {r.resumo}
+              {r.resumo && (
+                <div className="text-sm text-foreground/90 mt-2 whitespace-pre-wrap">
+                  {r.resumo}
+                </div>
+              )}
+              <div className="mt-2 flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={() => void abrirTransformar(r)}
+                  disabled={buscandoTranscricao === r.id}
+                  className="inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-md border border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-60"
+                >
+                  <ListPlus className="h-3.5 w-3.5" />
+                  {buscandoTranscricao === r.id ? "Buscando transcrição…" : "Transformar em tarefas"}
+                </button>
+                {r.tem_transcricao && (
+                  <span className="text-[11px] text-muted-foreground">
+                    transcrição disponível
+                  </span>
+                )}
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {transformar && (
+        <TransformarTarefasModal
+          passosSeparados={extrairProximosPassosSeparados(transformar.reuniao.resumo ?? "")}
+          transcricaoInicial={transformar.transcricao}
+          clienteIdDefault={cliente.id}
+          csResponsavel={transformar.reuniao.cs_responsavel}
+          reuniaoTitulo={transformar.reuniao.titulo}
+          onClose={() => setTransformar(null)}
+        />
       )}
 
       {list.length === 0 ? (
