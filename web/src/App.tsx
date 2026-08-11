@@ -63,7 +63,6 @@ const CentralAtendimentosPage = lazy(() => import("@/pages/central-atendimentos"
 const AtendimentoPublicoPage = lazy(() => import("@/pages/atendimento-publico"))
 const FunisPage = lazy(() => import("@/pages/funis"))
 const RespostasOnboardingPage = lazy(() => import("@/pages/respostas-onboarding"))
-const CRMPage = lazy(() => import("@/pages/crm"))
 // CRM · CS Manager (port do sistema da Mayara) — uma aba por rota.
 const CrmMeuDiaPage = lazy(() => import("@/pages/crm/meu-dia"))
 const CrmAtividadesPage = lazy(() => import("@/pages/crm/atividades"))
@@ -253,7 +252,8 @@ function AppRoutes() {
                     <Route path="/central-atendimentos" element={<RequireSecao secao="central-atendimentos"><CentralAtendimentosPage /></RequireSecao>} />
                     <Route path="/funis" element={<RequireSecao secao="funis"><FunisPage /></RequireSecao>} />
                     <Route path="/respostas-onboarding" element={<RequireSecao secao="respostas-onboarding"><RespostasOnboardingPage /></RequireSecao>} />
-                    <Route path="/crm" element={<RequireSecao secao="crm"><CRMPage /></RequireSecao>} />
+                    {/* A aba única /crm foi substituída pelas 10 rotas abaixo. */}
+                    <Route path="/crm" element={<Navigate to="/crm/meu-dia" replace />} />
                     <Route path="/crm/meu-dia" element={<RequireSecao secao="crm/meu-dia"><CrmMeuDiaPage /></RequireSecao>} />
                     <Route path="/crm/atividades" element={<RequireSecao secao="crm/atividades"><CrmAtividadesPage /></RequireSecao>} />
                     <Route path="/crm/clientes" element={<RequireSecao secao="crm/clientes"><CrmClientesPage /></RequireSecao>} />
