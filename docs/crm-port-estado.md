@@ -142,15 +142,53 @@ arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
 3. **`clientes_entrada_new.sc` é texto livre**: cliente com `sc` vazio ou grafado
    diferente de `mentores.nome` conta nos totais mas some das tabelas por CS.
 
-## O que falta nas próximas fases
+## Fase 7 — backfill e promoção (a única que toca produção)
 
-**Fase 7 — Backfill e promoção**
-- Backfill de `clientes_entrada_new.data`: **141 de 301 clientes sem data no
-  PROD, 103 deles ativos**. Derivar da 1ª reunião registrada (Galdino →
-  consultor → BlackCRM), marcando `data_backfilled = true`. Script revisável em
-  `scripts/`, não migration. Rodar no DEV e conferir a distribuição de
-  trimestres antes do PROD.
-- Promover as 10 migrations `20260810_crm_*` e as duas edge functions
-  (`crm-saudacao`, `crm-analisar-transcricao`) para o PROD. As funções precisam
-  de uma chave de IA nos secrets — ver "IA" abaixo.
-- Remover `web/src/pages/crm.tsx` e a rota `/crm` antiga.
+Medido no PROD (`hqczwextifessaztyyyk`) em 10/08/2026. Confirmado no mesmo dia
+que **nenhuma migration deste trabalho está lá**: `clientes_entrada_new` não tem
+`situacao`, `pausado` nem `data_backfilled`.
+
+**1. Backfill de `clientes_entrada_new.data`**
+
+| | |
+| --- | --- |
+| Clientes no PROD | 303 |
+| Sem data de entrada | 143 |
+| Desses, "Ativo no Programa" | 104 |
+| Ativos deriváveis da 1ª reunião | **94** |
+| Ativos que ficam sem data mesmo assim | 10 (não têm nenhuma reunião registrada) |
+| Com `sc` preenchida | 299 de 303 |
+
+Regra: 1ª reunião registrada, na ordem Galdino → consultor (mentoria) →
+BlackCRM. Marcar `data_backfilled = true` (coluna criada por
+`20260810_crm_clientes_colunas.sql`) para que dê para desfazer e para que
+ninguém confunda data derivada com data informada.
+
+Os 10 sem reunião nenhuma **continuam sem data** — a tela já sabe mostrar
+"Sem data de entrada", e inventar a data de entrada é justamente o erro que
+o gotcha 5 registra. O mesmo vale para cancelados e desistências de compra:
+não precisam de ciclo.
+
+Formato: **script revisável em `scripts/`, não migration** — é dado, não
+esquema, e o David precisa poder ler o que vai mudar antes de rodar. Rodar
+primeiro no DEV e conferir a distribuição por trimestre; um pico absurdo em T4
+significa que a regra pegou reunião errada.
+
+**2. Promoção DEV → PROD**
+- As 10 migrations `20260810_crm_*` (todas com rollback em
+  `supabase-migrations/rollback/`), na ordem: `cliente`, `clientes_colunas`,
+  `atividades_extensao`, `operacao`, `reunioes_view`, `atendimento`,
+  `conversas_view`, `fechamento_unico`, `hardening_funcoes`, `rbac_secoes`.
+- As duas edge functions (`crm-saudacao`, `crm-analisar-transcricao`).
+  Verificar antes se o PROD tem chave de IA nos secrets — sem ela a saudação
+  cai na frase local (ok) e a análise de transcrição responde erro (ok, mas
+  melhor saber antes).
+- **Não** promover nada de `scripts/seed-crm-dev*.sql`: é dado sintético de DEV.
+
+**3. Limpeza**
+- Remover `web/src/pages/crm.tsx` e a rota `/crm` antiga do `App.tsx`.
+- Conferir que a chave RBAC `crm` antiga sai do menu sem deixar item órfão.
+
+**Ordem importa**: migrations → backfill → deploy do frontend. O backfill
+depende de `data_backfilled`, que vem das migrations; e o frontend novo lendo
+banco velho mostraria a carteira inteira como "sem data".
