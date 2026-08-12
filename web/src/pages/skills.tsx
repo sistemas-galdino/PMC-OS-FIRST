@@ -250,17 +250,16 @@ function CardVideoTutorial({ cfg }: { cfg: VideoTutorial | null }) {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              {/* max-w: em telas largas o 16:9 full width viraria um player gigante */}
-              <div className="px-5 pb-5 max-w-3xl">
+              <div className="px-5 pb-5">
                 {info.tipo === "arquivo" ? (
                   <video
                     src={info.embedUrl}
                     controls
-                    className="w-full aspect-video rounded-xl border border-border bg-black"
+                    className="w-full aspect-video rounded-2xl border border-border bg-black"
                   />
                 ) : (
                   <iframe
-                    className="w-full aspect-video rounded-xl border border-border"
+                    className="w-full aspect-video rounded-2xl border border-border"
                     src={info.embedUrl}
                     title={cfg.label || "Como usar as skills"}
                     allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
