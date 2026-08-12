@@ -19,10 +19,16 @@ import {
   CheckCircle2Icon as CheckCircle2,
   CircleIcon as Circle,
   DownloadIcon as Download,
+  PlayCircleIcon as PlayCircle,
 } from "@/components/ui/icons"
 import { ItemThumb, COR_OPTIONS, ICON_OPTIONS, type CorKey, type IconKey } from "@/components/biblioteca/biblioteca-ui"
 import { CATEGORIAS } from "@/data/skills-pmc"
+import { parseVideo } from "@/lib/video-embed"
 import { motion } from "framer-motion"
+
+// Chave da linha em configuracoes_links que guarda o vídeo tutorial exibido
+// no topo da aba Skills do cliente (/skills).
+const CHAVE_VIDEO = "skills_video_tutorial"
 
 interface Row {
   id: string
@@ -175,6 +181,8 @@ export default function SkillsAdminPage() {
         </Button>
       </div>
 
+      <VideoTutorialAdmin />
+
       {loading ? (
         <div className="h-40 rounded-2xl bg-card/40 animate-pulse" />
       ) : itens.length === 0 ? (
@@ -294,6 +302,145 @@ export default function SkillsAdminPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+// Vídeo tutorial da aba Skills: guardado como uma linha (chave -> url) na
+// tabela genérica configuracoes_links. Aparece colapsado no topo de /skills.
+function VideoTutorialAdmin() {
+  const [form, setForm] = useState({ label: "", descricao: "", url: "", ativo: false })
+  const [carregando, setCarregando] = useState(true)
+  const [salvando, setSalvando] = useState(false)
+  const [salvo, setSalvo] = useState(false)
+
+  useEffect(() => {
+    async function carregar() {
+      const { data } = await supabase
+        .from("configuracoes_links")
+        .select("label,descricao,url,ativo")
+        .eq("chave", CHAVE_VIDEO)
+        .maybeSingle()
+      if (data) {
+        setForm({
+          label: data.label ?? "",
+          descricao: data.descricao ?? "",
+          url: data.url ?? "",
+          ativo: data.ativo ?? false,
+        })
+      }
+      setCarregando(false)
+    }
+    carregar()
+  }, [])
+
+  async function salvar() {
+    setSalvando(true)
+    setSalvo(false)
+    const { error } = await supabase.from("configuracoes_links").upsert(
+      {
+        chave: CHAVE_VIDEO,
+        label: form.label.trim() || "Como usar as skills",
+        descricao: form.descricao.trim() || null,
+        url: form.url.trim(),
+        ativo: form.ativo,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "chave" },
+    )
+    setSalvando(false)
+    if (error) alert("Erro ao salvar: " + error.message)
+    else setSalvo(true)
+  }
+
+  const info = parseVideo(form.url)
+
+  return (
+    <Card className="border-primary/20">
+      <CardContent className="p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 p-2 rounded-lg"><PlayCircle className="size-4 text-primary" /></div>
+          <div>
+            <h2 className="text-[15px] font-bold tracking-tight">Vídeo tutorial da aba Skills</h2>
+            <p className="text-[12px] text-muted-foreground font-medium">
+              Aparece colapsado no topo de /skills para o cliente. Desligue "Ativo" para escondê-lo.
+            </p>
+          </div>
+        </div>
+
+        {carregando ? (
+          <div className="h-24 rounded-xl bg-card/40 animate-pulse" />
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Campo label="Título do card">
+                <Input
+                  value={form.label}
+                  onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+                  placeholder="Como usar as skills"
+                />
+              </Campo>
+              <Campo label="Aviso (subtítulo)">
+                <Input
+                  value={form.descricao}
+                  onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
+                  placeholder="Assista ao vídeo antes de baixar sua primeira skill."
+                />
+              </Campo>
+            </div>
+
+            <Campo label="Link do vídeo (Vimeo, YouTube ou .mp4)">
+              <Input
+                value={form.url}
+                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+                placeholder="Cole o link do Vimeo: https://vimeo.com/123456789/abc123"
+              />
+            </Campo>
+            {!form.url.trim() ? (
+              <p className="text-[11px] font-medium text-muted-foreground -mt-2">
+                Aceita link normal ou de vídeo não listado (com hash).
+              </p>
+            ) : info?.tipo === "vimeo" ? (
+              <p className="text-[11px] font-bold text-primary -mt-2">
+                ✓ Vimeo detectado · ID {info.id}{info.hash ? " · não listado (hash ok)" : ""}
+              </p>
+            ) : info?.tipo === "youtube" ? (
+              <p className="text-[11px] font-bold text-primary -mt-2">✓ YouTube detectado · ID {info.id}</p>
+            ) : (
+              <p className="text-[11px] font-bold text-amber-400 -mt-2">
+                Link direto de arquivo — será usado no player nativo.
+              </p>
+            )}
+
+            {info && info.tipo !== "arquivo" && (
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pré-visualização</Label>
+                <iframe
+                  key={info.embedUrl}
+                  className="w-full max-w-md aspect-video rounded-xl border border-border"
+                  src={info.embedUrl}
+                  title="Pré-visualização do vídeo"
+                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+                  allowFullScreen
+                />
+                <p className="text-[11px] font-medium text-muted-foreground">
+                  Se o vídeo não tocar aqui, no Vimeo confira em <strong>Privacidade → Onde pode ser embedado</strong> (permita em qualquer lugar ou adicione o domínio do portal).
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-4 pt-1">
+              <Toggle label="Ativo (visível para o cliente)" checked={form.ativo} onChange={(v) => { setForm((f) => ({ ...f, ativo: v })); setSalvo(false) }} />
+              <div className="flex items-center gap-3">
+                {salvo && <span className="text-[12px] font-bold text-primary">Salvo!</span>}
+                <Button onClick={salvar} disabled={salvando} className="h-10 rounded-xl font-bold text-xs uppercase tracking-wider">
+                  {salvando ? "Salvando..." : "Salvar vídeo"}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

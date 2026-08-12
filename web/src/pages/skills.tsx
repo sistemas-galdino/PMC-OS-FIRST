@@ -3,7 +3,7 @@
 // categoria + grid de cards com botão de download. Deep-link via ?s=<slug>.
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,10 +14,22 @@ import {
   Sparkles2Icon as Sparkles,
   DownloadIcon as Download,
   FileTextIcon as FileText,
+  PlayCircleIcon as PlayCircle,
+  ChevronDownIcon as ChevronDown,
 } from "@/components/ui/icons"
 import { ItemThumb, COR } from "@/components/biblioteca/biblioteca-ui"
 import { CATEGORIAS, type SkillPMC } from "@/data/skills-pmc"
 import { logarDownload } from "@/lib/log-download"
+import { parseVideo } from "@/lib/video-embed"
+
+// Configuração do vídeo tutorial: linha `skills_video_tutorial` em
+// configuracoes_links (o admin edita em /skills-admin).
+export interface VideoTutorial {
+  label: string | null
+  descricao: string | null
+  url: string | null
+  ativo: boolean | null
+}
 
 function normalizar(row: any): SkillPMC {
   return {
@@ -36,17 +48,26 @@ export default function SkillsPage() {
   const abertoSlug = sp.get("s")
 
   const [itens, setItens] = useState<SkillPMC[]>([])
+  const [video, setVideo] = useState<VideoTutorial | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function carregar() {
-      const { data } = await supabase
-        .from("conhecimento_skills")
-        .select("*")
-        .eq("publicado", true)
-        .order("ordem", { ascending: true })
-        .order("created_at", { ascending: true })
-      setItens((data ?? []).map(normalizar))
+      const [skills, cfg] = await Promise.all([
+        supabase
+          .from("conhecimento_skills")
+          .select("*")
+          .eq("publicado", true)
+          .order("ordem", { ascending: true })
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("configuracoes_links")
+          .select("label,descricao,url,ativo")
+          .eq("chave", "skills_video_tutorial")
+          .maybeSingle(),
+      ])
+      setItens((skills.data ?? []).map(normalizar))
+      setVideo(cfg.data ?? null)
       setLoading(false)
     }
     carregar()
@@ -108,6 +129,9 @@ export default function SkillsPage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Vídeo tutorial (colapsável) */}
+      <CardVideoTutorial cfg={video} />
 
       {/* Busca */}
       <div className="relative max-w-xl">
@@ -179,6 +203,76 @@ export default function SkillsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+// Barra colapsada por padrão: mostra que o vídeo existe sem ocupar espaço.
+// O iframe só é montado quando aberto, para não carregar o player à toa.
+function CardVideoTutorial({ cfg }: { cfg: VideoTutorial | null }) {
+  const [aberto, setAberto] = useState(false)
+  const info = parseVideo(cfg?.url)
+  if (!cfg || cfg.ativo === false || !info) return null
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
+      <Card className="overflow-hidden border-primary/20">
+        <button
+          onClick={() => setAberto((v) => !v)}
+          className="w-full flex items-center gap-4 p-5 text-left hover:bg-primary/5 transition-colors"
+        >
+          <div className="bg-primary/15 p-2.5 rounded-xl shrink-0">
+            <PlayCircle className="size-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-[15px] font-bold tracking-tight text-foreground">
+                {cfg.label || "Como usar as skills"}
+              </h2>
+              <span className="rounded-lg bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                Vídeo
+              </span>
+            </div>
+            {cfg.descricao && (
+              <p className="text-[13px] font-medium text-muted-foreground mt-0.5">{cfg.descricao}</p>
+            )}
+          </div>
+          <motion.div animate={{ rotate: aberto ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
+            <ChevronDown className="size-5 text-muted-foreground" />
+          </motion.div>
+        </button>
+
+        <AnimatePresence initial={false}>
+          {aberto && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              {/* max-w: em telas largas o 16:9 full width viraria um player gigante */}
+              <div className="px-5 pb-5 max-w-3xl">
+                {info.tipo === "arquivo" ? (
+                  <video
+                    src={info.embedUrl}
+                    controls
+                    className="w-full aspect-video rounded-xl border border-border bg-black"
+                  />
+                ) : (
+                  <iframe
+                    className="w-full aspect-video rounded-xl border border-border"
+                    src={info.embedUrl}
+                    title={cfg.label || "Como usar as skills"}
+                    allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+                    allowFullScreen
+                  />
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Card>
+    </motion.div>
   )
 }
 
