@@ -38,6 +38,7 @@ import {
   FileTextIcon as FileText,
   TargetIcon as Target,
   MegaphoneIcon as Megaphone,
+  ZapIcon as Zap,
   VideoIcon as Video,
   PackageIcon as Package,
   TrendingUpIcon as TrendingUp,
@@ -158,16 +159,18 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       ],
     },
     {
-      label: "Recursos",
+      label: "Ferramentas",
       items: [
         { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
         { title: "Ferramentas IA", icon: Sparkles, url: "/ferramentas" },
+        { title: "Prompt Supremo", icon: Zap, url: "/prompt-supremo" },
       ],
     },
     {
       label: "Sistema",
       items: [
         { title: "Mensagens & Alcance", icon: Megaphone, url: "/mensagens" },
+        { title: "Inteligência de Nicho", icon: Sparkles, url: "/inteligencia-nicho" },
         { title: "Registro de Downloads", icon: FileText, url: "/logs-download" },
         { title: "Time & Permissões", icon: ShieldCheck, url: "/time-permissoes" },
         { title: "Configurações", icon: Settings, url: "/configuracoes" },
@@ -249,10 +252,11 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       ],
     },
     {
-      label: "Recursos",
+      label: "Ferramentas",
       items: [
         { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
         { title: "Ferramentas IA", icon: Sparkles, url: "/ferramentas" },
+        { title: "Prompt Supremo", icon: Zap, url: "/prompt-supremo" },
       ],
     },
   ]

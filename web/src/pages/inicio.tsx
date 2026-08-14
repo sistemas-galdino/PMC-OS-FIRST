@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,13 +8,9 @@ import {
   CalendarIcon as Calendar,
   CheckCircle2Icon as CheckCircle2,
   ChevronRightIcon as ChevronRight,
-  CircleIcon as Circle,
   ClockIcon as Clock,
   ExternalLinkIcon as ExternalLink,
-  MessageCircleIcon as MessageCircle,
   PlayCircleIcon as PlayCircle,
-  ShieldCheckIcon as ShieldCheck,
-  TargetIcon as Target,
   TrendingUpIcon as TrendingUp,
   UsersIcon as Users,
   VideoIcon as Video,
@@ -32,6 +27,7 @@ import { GraficoFaturamentoMensal } from "@/components/dashboard/grafico-faturam
 import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
 import { currencySymbol } from "@/lib/format-currency"
 import { useConquistas } from "@/hooks/use-conquistas"
+import { PulsoSemanalCard } from "@/components/pulso-semanal"
 import { arquetipoDaBadge, iconeDaBadge, RARIDADE } from "@/data/badges-mc"
 
 interface InicioPageProps {
@@ -57,24 +53,6 @@ interface ReuniaoRealizada {
   mentor: string | null
   data_reuniao: string
   cliente_compareceu: boolean | null
-}
-
-// Ação pendente extraída do array acoes_cliente de uma reunião (Galdino/consultor).
-interface AcaoReuniao {
-  id_reuniao: string
-  origem: "galdino" | "consultor"
-  fonte: string          // "Galdino" ou nome do consultor
-  data_reuniao: string
-  indice: number         // posição no array acoes_cliente (para gravar de volta)
-  acao: string
-  prazo: string | null
-  acoes_cliente: any[]    // array completo (para persistir a mudança de status)
-}
-
-interface GuardiaoIA {
-  nome: string
-  cargo: string | null
-  telefone: string | null
 }
 
 const TIPO_LABELS: Record<string, string> = {
@@ -132,17 +110,8 @@ function nomeCs(sc: string): string {
     .join(" ")
 }
 
-function whatsappUrl(telefone: string): string {
-  return `https://wa.me/${telefone.replace(/\D/g, "")}`
-}
-
-// Uma ação de reunião está concluída? (aceita variações de status usadas no sistema)
-function acaoConcluida(status: unknown): boolean {
-  const s = String(status ?? "").toLowerCase()
-  return s.includes("conclu") || s === "done" || s === "feito"
-}
-
-function CountUp({ value, prefix = "", suffix = "" }: { value: number; prefix?: string; suffix?: string }) {
+// Contador animado — usado nos indicadores do negócio.
+function CountUp({ value, prefix = "", suffix = "" }: { value: number, prefix?: string, suffix?: string }) {
   const [displayValue, setDisplayValue] = useState(0)
 
   useEffect(() => {
@@ -166,6 +135,7 @@ function CountUp({ value, prefix = "", suffix = "" }: { value: number; prefix?: 
   return <span>{prefix}{displayValue.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{suffix}</span>
 }
 
+// Abrevia valores grandes: 1.500.000 -> 1,5 mi
 function scaleCurrency(value: number): { value: number; suffix: string } {
   if (value >= 1_000_000) return { value: value / 1_000_000, suffix: ' mi' }
   return { value: value / 1000, suffix: ' K' }
@@ -179,7 +149,6 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
   const [nomeEmpresa, setNomeEmpresa] = useState<string | null>(null)
   const [clientSc, setClientSc] = useState<string | null>(null)
   const [dataEntrada, setDataEntrada] = useState<Date | null>(null)
-  const [guardiao, setGuardiao] = useState<GuardiaoIA | null>(null)
   const [linkGrupoWhatsapp, setLinkGrupoWhatsapp] = useState<string | null>(null)
   const [quickLinks, setQuickLinks] = useState<Record<string, string>>({})
   const [encontros, setEncontros] = useState<Encontro[]>([])
@@ -190,12 +159,8 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
   const [vitoriasCount, setVitoriasCount] = useState(0)
   const [mapeamentoCount, setMapeamentoCount] = useState(0)
   const [guardOps, setGuardOps] = useState({ convites: 0, candidatos: 0, contratado: 0, tarefas: 0, dias: 0, semanas: 0 })
-  const [unicaCoisa, setUnicaCoisa] = useState<{ texto: string; mes: number; ano: number; area: string | null } | null>(null)
+  const [pulsosCount, setPulsosCount] = useState(0)
   const [valorAno, setValorAno] = useState(0) // IAVS — mesmo cálculo da Fase 6/Relatório
-  const [acoesReuniao, setAcoesReuniao] = useState<AcaoReuniao[]>([])
-  const [salvandoAcao, setSalvandoAcao] = useState<string | null>(null)
-  const { isAdmin } = useAuth()
-  const [savingEtapa, setSavingEtapa] = useState<number | null>(null)
   const [metas, setMetas] = useState({ faturamento_anual: 0, meta_2026: 0, receita_mensal: 0, colaboradores: 0 })
   const [conselho, setConselho] = useState(() => conselhoAleatorio())
   const moeda = useClienteMoeda(resolvedClientId)
@@ -263,21 +228,6 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
         setClientSc(c.sc ?? null)
         setDataEntrada(parseDataFlexivel(c.data) ?? parseDataFlexivel(c.created_at))
         setLinkGrupoWhatsapp(c.link_grupo_whatsapp ?? null)
-        if (c.guardiao_ia_nome) {
-          setGuardiao({ nome: c.guardiao_ia_nome, cargo: c.guardiao_ia_cargo, telefone: c.guardiao_ia_telefone })
-        } else {
-          // Fallback: colaborador marcado como Guardião da IA em "Meu Time"
-          const { data: colab } = await supabase
-            .from("cliente_colaboradores")
-            .select("nome, cargo, whatsapp")
-            .eq("id_cliente", resolvedClientId)
-            .eq("guardiao_ia", true)
-            .limit(1)
-            .maybeSingle()
-          if (!cancelled && colab) {
-            setGuardiao({ nome: colab.nome, cargo: colab.cargo, telefone: colab.whatsapp })
-          }
-        }
       }
 
       if (linksRes.data) {
@@ -317,7 +267,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
       // Mapeamento (id_cliente porque cliente_objetivos_programa não tem coluna id)
       const cntMap = (tabela: string) =>
         supabase.from(tabela).select("id_cliente", { count: "exact", head: true }).eq("id_cliente", resolvedClientId)
-      const [g, a, ga, cp, si, ec, vit, ecoRes, ucRes, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk, diasRes] = await Promise.all([
+      const [g, a, ga, cp, si, ec, vit, ecoRes, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk, diasRes, pulsosRes] = await Promise.all([
         cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
         cnt("metodo_copilotos"), cnt("metodo_sistemas"), cnt("metodo_economias"),
         cnt("cliente_vitorias"),
@@ -325,16 +275,6 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
           .from("metodo_economias")
           .select("valor_mes, natureza, recorrencia, capacidade_nova")
           .eq("id_cliente", resolvedClientId),
-        // Única Coisa mais recente (Fase 2) — o foco do mês na home
-        supabase
-          .from("metodo_area_ciclos")
-          .select("receita_conteudo, mes, ano, metodo_areas(nome)")
-          .eq("id_cliente", resolvedClientId)
-          .not("receita_conteudo", "is", null)
-          .order("ano", { ascending: false })
-          .order("mes", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
         cntMap("cliente_metas"), cntMap("cliente_produtos"),
         cntMap("cliente_canais"), cntMap("cliente_objetivos_programa"),
         // Guardião de IA — pontuam a jornada de seleção + operação
@@ -343,6 +283,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
         supabase.from("guardiao_invites").select("id", { count: "exact", head: true }).eq("id_cliente", resolvedClientId).eq("stage", "contratado_guardiao"),
         supabase.from("metodo_tarefas").select("id", { count: "exact", head: true }).eq("id_cliente", resolvedClientId).eq("status", "concluido"),
         supabase.from("metodo_dia_fechamentos").select("data").eq("id_cliente", resolvedClientId).not("fechado_em", "is", null),
+        cnt("pulso_semanal"),
       ])
       if (!cancelled) {
         const s = new Set<SinalEtapa>()
@@ -356,6 +297,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
         if (totalReunioes > 0) s.add("reunioes")
         setSinais(s)
         setVitoriasCount(vit.count ?? 0)
+        setPulsosCount(pulsosRes.count ?? 0)
         setMapeamentoCount([mMetas, mProd, mCanais, mObj].filter((r) => (r.count ?? 0) > 0).length)
         const diasFech = ((diasRes.data ?? []) as { data: string }[]).map((x) => x.data)
         setGuardOps({
@@ -371,49 +313,6 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
         const unicoEco = somaEco((e) => (e.natureza === "custo_evitado" || e.natureza === "tempo_liberado") && e.recorrencia === "unico")
         const decisaoEco = somaEco((e) => e.natureza === "valor_decisao")
         setValorAno(mensalEco * 12 + unicoEco + decisaoEco)
-        const uc: any = ucRes.data
-        if (uc?.receita_conteudo?.trim()) {
-          setUnicaCoisa({
-            texto: uc.receita_conteudo.trim(),
-            mes: uc.mes,
-            ano: uc.ano,
-            area: uc.metodo_areas?.nome ?? null,
-          })
-        }
-      }
-
-      // Ações pendentes das reuniões (Galdino + consultores) para o card de foco.
-      const [acGaldino, acConsult] = await Promise.all([
-        supabase.from("reunioes_galdino").select("id_unico, data_reuniao, acoes_cliente").eq("id_cliente", resolvedClientId).order("data_reuniao", { ascending: false }),
-        supabase.from("reunioes_mentoria_new").select("id_unico, data_reuniao, mentor, acoes_cliente").eq("id_cliente", resolvedClientId).order("data_reuniao", { ascending: false }),
-      ])
-      if (!cancelled) {
-        const extrair = (rows: any[], origem: "galdino" | "consultor"): AcaoReuniao[] =>
-          (rows ?? []).flatMap((r) => {
-            const arr = Array.isArray(r.acoes_cliente) ? r.acoes_cliente : []
-            return arr
-              .map((it: any, indice: number) => ({ it, indice }))
-              .filter(({ it }: any) => typeof it === "object" && it?.acao && !acaoConcluida(it.status))
-              .map(({ it, indice }: any) => ({
-                id_reuniao: r.id_unico,
-                origem,
-                fonte: origem === "galdino" ? "Galdino" : (r.mentor || "Consultor"),
-                data_reuniao: r.data_reuniao,
-                indice,
-                acao: it.acao,
-                prazo: it.prazo || null,
-                acoes_cliente: arr,
-              }))
-          })
-        const todas = [...extrair(acGaldino.data ?? [], "galdino"), ...extrair(acConsult.data ?? [], "consultor")]
-        // Ordena por prazo (as com prazo primeiro, mais próximas no topo), depois por data da reunião.
-        todas.sort((a, b) => {
-          if (a.prazo && b.prazo) return a.prazo.localeCompare(b.prazo)
-          if (a.prazo) return -1
-          if (b.prazo) return 1
-          return (b.data_reuniao || "").localeCompare(a.data_reuniao || "")
-        })
-        setAcoesReuniao(todas)
       }
 
       setLoading(false)
@@ -436,66 +335,26 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
     return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1
   }, [dataEntrada]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Só o que ainda vai acontecer. O que já passou vira histórico e polui a
+  // leitura — quem quiser rever acha em Encontros ao Vivo.
   const encontrosPorDia = useMemo(() => {
+    const hojeIso = hoje.toISOString().slice(0, 10)
     const map = new Map<string, Encontro[]>()
-    encontros.forEach((e) => {
-      const list = map.get(e.data_encontro) ?? []
-      list.push(e)
-      map.set(e.data_encontro, list)
-    })
-    return Array.from(map.entries())
-  }, [encontros])
-
-  async function toggleEtapa(etapa: number) {
-    if (!isAdmin || !resolvedClientId || savingEtapa !== null) return
-    const concluida = !etapasConcluidas.has(etapa)
-    setSavingEtapa(etapa)
-    const { error } = await supabase
-      .from("cliente_etapas_metodo")
-      .upsert(
-        {
-          id_cliente: resolvedClientId,
-          etapa,
-          concluida,
-          concluida_em: concluida ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id_cliente,etapa" }
-      )
-    if (!error) {
-      setEtapasConcluidas((prev) => {
-        const next = new Set(prev)
-        if (concluida) next.add(etapa)
-        else next.delete(etapa)
-        return next
+    encontros
+      .filter((e) => e.data_encontro >= hojeIso)
+      .forEach((e) => {
+        const list = map.get(e.data_encontro) ?? []
+        list.push(e)
+        map.set(e.data_encontro, list)
       })
-    }
-    setSavingEtapa(null)
-  }
-
-  // Marca uma ação de reunião como concluída — grava o array inteiro de volta
-  // na reunião de origem (mesmo modelo da tela de detalhe) e remove da lista.
-  async function concluirAcao(a: AcaoReuniao) {
-    if (salvandoAcao) return
-    const chave = `${a.id_reuniao}:${a.indice}`
-    setSalvandoAcao(chave)
-    const atualizado = a.acoes_cliente.map((it: any, i: number) =>
-      i === a.indice ? { ...(typeof it === "object" ? it : { acao: it }), status: "concluido" } : it
-    )
-    const tabela = a.origem === "galdino" ? "reunioes_galdino" : "reunioes_mentoria_new"
-    const { error } = await supabase.from(tabela).update({ acoes_cliente: atualizado }).eq("id_unico", a.id_reuniao)
-    if (!error) {
-      setAcoesReuniao((prev) => prev.filter((x) => !(x.id_reuniao === a.id_reuniao && x.indice === a.indice)))
-    }
-    setSalvandoAcao(null)
-  }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
+  }, [encontros, hoje])
 
   // Uma etapa está concluída se o admin marcou manualmente OU se o cliente já
   // tem dados na fase correspondente (conclusão automática por uso real).
   const etapaConcluida = (e: (typeof ETAPAS_METODO)[number]) =>
     etapasConcluidas.has(e.numero) || sinais.has(e.sinal)
   const totalConcluidas = ETAPAS_METODO.filter(etapaConcluida).length
-  const pctConcluido = Math.round((totalConcluidas / ETAPAS_METODO.length) * 100)
   // Etapa atual = primeira não concluída (guia o "continuar de onde parou").
   const etapaAtual = ETAPAS_METODO.find((e) => !etapaConcluida(e))?.numero ?? null
   // Próximo encontro ao vivo (lista já vem sem cancelados, em ordem por data_hora_inicio_iso).
@@ -504,7 +363,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
   // Nível PMC — gamificação unificada (jornada + fases + reuniões + vitórias).
   const totalReunioes = reunioesCount.galdino + reunioesCount.consultores + reunioesCount.blackcrm
   const fasesComDados = [...sinais].filter((s) => s !== "reunioes").length
-  const nivel = calcularNivel({ etapas: totalConcluidas, fases: fasesComDados, mapeamento: mapeamentoCount, reunioes: totalReunioes, vitorias: vitoriasCount, convites: guardOps.convites, candidatos: guardOps.candidatos, guardiaoContratado: guardOps.contratado, tarefas: guardOps.tarefas, diasFechados: guardOps.dias, semanasPerfeitas: guardOps.semanas })
+  const nivel = calcularNivel({ etapas: totalConcluidas, fases: fasesComDados, mapeamento: mapeamentoCount, reunioes: totalReunioes, vitorias: vitoriasCount, pulsos: pulsosCount, convites: guardOps.convites, candidatos: guardOps.candidatos, guardiaoContratado: guardOps.contratado, tarefas: guardOps.tarefas, diasFechados: guardOps.dias, semanasPerfeitas: guardOps.semanas })
 
   // Splash de boas-vindas: se os Pontos MC subiram desde a última visita (deste
   // aparelho), celebra a diferença — e, se cruzou de nível, mostra o level-up.
@@ -607,230 +466,47 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
       <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
         {/* ============ COLUNA PRINCIPAL ============ */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Seu foco de hoje — Única Coisa + próximo passo */}
+          {/* Pulso Semanal — o ritual de 60 segundos (só na visão do próprio cliente) */}
+          {!clientId && resolvedClientId && <PulsoSemanalCard clientId={resolvedClientId} />}
+
+          {/* Seu próximo passo — UM de cada vez. O seguinte só aparece quando
+              este for concluído. Uma decisão por vez é o que tira a pessoa da
+              paralisia; a lista inteira das etapas mora no Método MC. */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Seu foco de hoje</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {/* Única Coisa do mês (Fase 2) */}
-              {unicaCoisa ? (
-                <Card
-                  className="border-primary/40 bg-primary/[0.06] cursor-pointer hover:border-primary/60 transition-colors"
-                  onClick={() => navigate("/metodo?fase=2")}
-                  title="Abrir a Fase 2 — Inteligência Empresarial"
-                >
-                  <CardContent className="p-5 flex flex-col gap-2 h-full">
-                    <div className="flex items-center gap-2">
-                      <div className="bg-primary/15 p-2 rounded-lg shrink-0">
-                        <Target className="size-4 text-primary" />
-                      </div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-primary leading-tight">
-                        Sua Única Coisa · {["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][unicaCoisa.mes - 1]}/{unicaCoisa.ano}
-                        {unicaCoisa.area ? ` · ${unicaCoisa.area}` : ""}
-                      </p>
-                    </div>
-                    <p className="text-[14px] font-medium text-foreground leading-relaxed line-clamp-4">
-                      {unicaCoisa.texto.replace(/[#*_>`-]/g, "").slice(0, 220)}
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate("/metodo?fase=2")}>
-                  <CardContent className="p-5 flex flex-col gap-2 h-full">
-                    <div className="flex items-center gap-2">
-                      <div className="bg-muted/40 p-2 rounded-lg shrink-0">
-                        <Target className="size-4 text-muted-foreground" />
-                      </div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sua Única Coisa</p>
-                    </div>
-                    <p className="text-[13px] font-medium text-muted-foreground leading-relaxed">
-                      Rode o ciclo do mês na Fase 2 para definir a alavanca do seu negócio.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Próximo passo da jornada */}
-              <Card
-                className="cursor-pointer hover:border-primary/40 transition-colors"
-                onClick={() => navigate(etapaAtual ? ETAPAS_METODO[etapaAtual - 1].rota : "/relatorio")}
-              >
-                <CardContent className="p-5 flex flex-col gap-2 h-full">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-primary/10 p-2 rounded-lg shrink-0">
-                      <CheckCircle2 className="size-4 text-primary" />
-                    </div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Próximo passo da jornada</p>
+            <Card
+              className="border-primary/40 bg-gradient-to-br from-primary/[0.08] to-transparent cursor-pointer hover:border-primary/60 transition-colors"
+              onClick={() => navigate(etapaAtual ? ETAPAS_METODO[etapaAtual - 1].rota : "/balanco")}
+            >
+              <CardContent className="p-6 flex flex-col gap-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="bg-primary/15 p-2 rounded-lg shrink-0">
+                    <CheckCircle2 className="size-4 text-primary" />
                   </div>
-                  {etapaAtual ? (
-                    <>
-                      <p className="text-[15px] font-bold text-foreground leading-snug">
-                        {String(etapaAtual).padStart(2, "0")} · {ETAPAS_METODO[etapaAtual - 1].titulo}
-                      </p>
-                      <p className="text-[12px] font-medium text-muted-foreground leading-relaxed line-clamp-2">
-                        {ETAPAS_METODO[etapaAtual - 1].objetivo}
-                      </p>
-                      <span className="inline-flex items-center gap-1 text-[12px] font-bold text-primary mt-auto pt-1">
-                        Continuar <ChevronRight className="size-3.5" />
-                      </span>
-                    </>
-                  ) : (
-                    <p className="text-[14px] font-medium text-primary">Jornada completa — veja seu relatório 🎉</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </motion.div>
-
-          {/* Suas ações das reuniões — pendentes (Galdino + consultores) */}
-          {acoesReuniao.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.03 }}>
-              <Card>
-                <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base font-semibold">Suas ações das reuniões</CardTitle>
-                    <CardDescription className="text-[11px] font-medium">
-                      {acoesReuniao.length} tarefa{acoesReuniao.length === 1 ? "" : "s"} combinada{acoesReuniao.length === 1 ? "" : "s"} com o Galdino e os consultores
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5"
-                    onClick={() => navigate("/acoes")}
-                  >
-                    Ver todas
-                  </Button>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-1.5">
-                  {acoesReuniao.slice(0, 5).map((a) => {
-                    const chave = `${a.id_reuniao}:${a.indice}`
-                    const salvando = salvandoAcao === chave
-                    const rota = a.origem === "galdino" ? `/reuniao-galdino/${a.id_reuniao}` : `/reuniao/${a.id_reuniao}?tab=acoes`
-                    const prazoVencido = a.prazo ? a.prazo < hoje.toISOString().slice(0, 10) : false
-                    return (
-                      <div key={chave} className="flex items-start gap-3 rounded-xl p-2.5 hover:bg-muted/20 transition-colors">
-                        <button
-                          type="button"
-                          onClick={() => concluirAcao(a)}
-                          disabled={salvando}
-                          title="Marcar como concluída"
-                          className="shrink-0 mt-0.5 text-muted-foreground/40 hover:text-primary transition-colors disabled:opacity-40"
-                        >
-                          <Circle className="size-5" />
-                        </button>
-                        <button type="button" onClick={() => navigate(rota)} className="min-w-0 flex-1 text-left">
-                          <p className="text-[13px] font-medium text-foreground leading-snug">{a.acao}</p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                              {a.origem === "galdino" ? <Video className="size-3" /> : <MessageCircle className="size-3" />}
-                              {a.fonte}
-                            </span>
-                            <span className="text-[10px] font-medium text-muted-foreground/60">
-                              {new Date(a.data_reuniao + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                            </span>
-                            {a.prazo && (
-                              <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${prazoVencido ? "text-rose-400" : "text-primary"}`}>
-                                <Clock className="size-3" />
-                                {new Date(a.prazo + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      </div>
-                    )
-                  })}
-                  {acoesReuniao.length > 5 && (
-                    <button
-                      type="button"
-                      onClick={() => navigate("/acoes")}
-                      className="w-full pt-1 text-[12px] font-bold text-primary hover:underline"
-                    >
-                      + {acoesReuniao.length - 5} outra{acoesReuniao.length - 5 === 1 ? "" : "s"} ação{acoesReuniao.length - 5 === 1 ? "" : "ões"}
-                    </button>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Jornada das 7 etapas — densa */}
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.05 }}>
-            <Card>
-              <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-semibold">Jornada do Método PMC</CardTitle>
-                  <CardDescription className="text-[11px] font-medium">
-                    {totalConcluidas} de {ETAPAS_METODO.length} etapas concluídas
-                  </CardDescription>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Seu próximo passo</p>
                 </div>
-                <Badge className="rounded-lg bg-primary/10 text-primary border-primary/20 px-3 py-1 text-[10px] font-bold">
-                  {pctConcluido}% DA JORNADA
-                </Badge>
-              </CardHeader>
-              <CardContent className="pt-5">
-                <div className="h-2 w-full rounded-full bg-muted/30 mb-5 overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pctConcluido}%` }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                    className="h-full rounded-full bg-primary"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  {ETAPAS_METODO.map((etapa) => {
-                    const done = etapaConcluida(etapa)
-                    const atual = etapa.numero === etapaAtual
-                    return (
-                      <div
-                        key={etapa.numero}
-                        className={`flex items-center gap-3 rounded-xl border transition-all ${
-                          atual && !done
-                            ? "bg-primary/[0.07] border-primary/40 ring-1 ring-primary/20 p-3.5"
-                            : done
-                            ? "bg-primary/[0.04] border-primary/15 p-2.5"
-                            : "bg-muted/20 border-transparent hover:border-border/60 p-2.5"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleEtapa(etapa.numero)}
-                          disabled={!isAdmin}
-                          title={isAdmin ? "Marcar/desmarcar (admin)" : undefined}
-                          className={`rounded-full p-0.5 shrink-0 transition-colors ${isAdmin ? "cursor-pointer hover:bg-primary/10" : "cursor-default"}`}
-                        >
-                          {done
-                            ? <CheckCircle2 className="size-5 text-primary" />
-                            : <Circle className={`size-5 ${atual ? "text-primary/50" : "text-muted-foreground/30"}`} />}
-                        </button>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[13px] font-bold tracking-tight text-foreground flex items-center gap-2">
-                            <span className="text-muted-foreground/50 font-mono text-[11px]">0{etapa.numero}</span>
-                            <span className="truncate">{etapa.titulo}</span>
-                            {atual && !done && (
-                              <Badge className="px-1.5 py-0 rounded-md bg-primary/15 text-primary border-primary/30 font-bold text-[9px] shrink-0">
-                                VOCÊ ESTÁ AQUI
-                              </Badge>
-                            )}
-                          </p>
-                          {atual && !done && (
-                            <p className="text-[12px] font-medium text-muted-foreground leading-relaxed mt-1">
-                              {etapa.objetivo}
-                            </p>
-                          )}
-                        </div>
-                        <Button
-                          variant={atual && !done ? "default" : "ghost"}
-                          size="sm"
-                          onClick={() => navigate(etapa.rota)}
-                          className={`shrink-0 h-8 gap-1 rounded-lg font-bold text-[11px] uppercase tracking-wider ${atual && !done ? "" : "text-muted-foreground hover:text-primary px-2"}`}
-                        >
-                          {done ? "Rever" : atual ? "Continuar" : etapa.cta}
-                          <ChevronRight className="size-3.5" />
-                        </Button>
-                      </div>
-                    )
-                  })}
-                </div>
+                {etapaAtual ? (
+                  <>
+                    <p className="text-xl font-bold tracking-tight text-foreground leading-snug">
+                      {String(etapaAtual).padStart(2, "0")} · {ETAPAS_METODO[etapaAtual - 1].titulo}
+                    </p>
+                    <p className="text-[13px] font-medium text-muted-foreground leading-relaxed max-w-2xl">
+                      {ETAPAS_METODO[etapaAtual - 1].objetivo}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-[13px] font-bold text-primary pt-1">
+                      {ETAPAS_METODO[etapaAtual - 1].cta} <ChevronRight className="size-4" />
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl font-bold tracking-tight text-foreground">Jornada completa 🎉</p>
+                    <p className="text-[13px] font-medium text-muted-foreground">
+                      Você percorreu todas as etapas. Veja o que isso gerou no seu Balanço PMC.
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-[13px] font-bold text-primary pt-1">
+                      Abrir o Balanço <ChevronRight className="size-4" />
+                    </span>
+                  </>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -840,9 +516,9 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
             <Card className="flex flex-col">
               <CardHeader className="border-b border-border/50 flex flex-row items-center justify-between">
                 <div className="space-y-1">
-                  <CardTitle className="text-base font-semibold">Cronograma de {MONTHS[hoje.getMonth()]}</CardTitle>
+                  <CardTitle className="text-base font-semibold">Nossos Encontros Online</CardTitle>
                   <CardDescription className="text-[11px] font-medium">
-                    Eventos ao vivo da agenda do PMC neste mês
+                    O que ainda vai acontecer na agenda do PMC
                   </CardDescription>
                 </div>
                 <Button
@@ -858,7 +534,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
                 {encontrosPorDia.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
                     <Calendar className="size-8 text-muted-foreground/30" />
-                    <p className="text-sm font-medium text-muted-foreground">Nenhum evento agendado para este mês.</p>
+                    <p className="text-sm font-medium text-muted-foreground">Nenhum encontro agendado no momento.</p>
                   </div>
                 )}
                 {encontrosPorDia.map(([dia, lista]) => {
@@ -867,9 +543,8 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
                     data.getDate() === hoje.getDate() &&
                     data.getMonth() === hoje.getMonth() &&
                     data.getFullYear() === hoje.getFullYear()
-                  const isPast = !isToday && data < hoje
                   return (
-                    <div key={dia} className={isPast ? "opacity-50" : ""}>
+                    <div key={dia}>
                       <div className="flex items-center gap-3 mb-2">
                         <span className="text-sm font-bold tracking-tight text-foreground">
                           {String(data.getDate()).padStart(2, "0")} — {WEEKDAYS[data.getDay()]}
@@ -1121,45 +796,6 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
                     <ExternalLink className="size-4 text-muted-foreground/50 group-hover:text-primary transition-colors shrink-0" />
                   </Button>
                 ))}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Seu Guardião da IA */}
-          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.2 }}>
-            <Card>
-              <CardHeader className="border-b border-border/50">
-                <CardTitle className="text-base font-semibold">Seu Guardião da IA</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4">
-                {guardiao ? (
-                  <div className="flex items-start gap-3">
-                    <div className="bg-primary/10 p-2 rounded-lg shrink-0">
-                      <ShieldCheck className="size-4 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-bold tracking-tight text-foreground">{guardiao.nome}</p>
-                      {guardiao.cargo && (
-                        <p className="text-[11px] font-medium text-muted-foreground">{guardiao.cargo}</p>
-                      )}
-                      {guardiao.telefone && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3 h-9 w-full gap-2 rounded-xl text-xs font-bold hover:border-primary/30 hover:bg-primary/5"
-                          onClick={() => window.open(whatsappUrl(guardiao.telefone!), "_blank")}
-                        >
-                          <MessageCircle className="size-3.5" />
-                          Chamar no WhatsApp
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-[12px] font-medium text-muted-foreground leading-relaxed">
-                    Seu Guardião da IA ainda não foi definido. Fale com sua CS para indicar quem será o responsável pela implementação de IA na sua empresa.
-                  </p>
-                )}
               </CardContent>
             </Card>
           </motion.div>

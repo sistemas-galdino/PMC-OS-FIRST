@@ -3,7 +3,7 @@
 // categoria + grid de cards com botão de download. Deep-link via ?s=<slug>.
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { AnimatePresence, motion } from "framer-motion"
+import { motion } from "framer-motion"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,22 +14,19 @@ import {
   Sparkles2Icon as Sparkles,
   DownloadIcon as Download,
   FileTextIcon as FileText,
-  PlayCircleIcon as PlayCircle,
-  ChevronDownIcon as ChevronDown,
 } from "@/components/ui/icons"
 import { ItemThumb, COR } from "@/components/biblioteca/biblioteca-ui"
 import { CATEGORIAS, type SkillPMC } from "@/data/skills-pmc"
 import { logarDownload } from "@/lib/log-download"
 import { parseVideo } from "@/lib/video-embed"
 
-// Configuração do vídeo tutorial: linha `skills_video_tutorial` em
-// configuracoes_links (o admin edita em /skills-admin).
-export interface VideoTutorial {
-  label: string | null
-  descricao: string | null
-  url: string | null
-  ativo: boolean | null
-}
+// Os passos ao lado do player: quem não assiste o vídeo já resolve por aqui.
+// Texto curto de propósito — o detalhe fica no vídeo.
+const PASSOS_INSTALACAO = [
+  "Baixe o arquivo da skill aqui no PMC OS",
+  "No Claude, abra Configurações → Personalizar → Habilidades",
+  "Importe o arquivo — a skill fica disponível nas suas conversas",
+]
 
 function normalizar(row: any): SkillPMC {
   return {
@@ -48,12 +45,14 @@ export default function SkillsPage() {
   const abertoSlug = sp.get("s")
 
   const [itens, setItens] = useState<SkillPMC[]>([])
-  const [video, setVideo] = useState<VideoTutorial | null>(null)
   const [loading, setLoading] = useState(true)
+  // URL do vídeo vem de configuracoes_links: o time troca sem deploy, e
+  // desativar a chave esconde o bloco inteiro.
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
   useEffect(() => {
     async function carregar() {
-      const [skills, cfg] = await Promise.all([
+      const [{ data }, { data: link }] = await Promise.all([
         supabase
           .from("conhecimento_skills")
           .select("*")
@@ -62,12 +61,13 @@ export default function SkillsPage() {
           .order("created_at", { ascending: true }),
         supabase
           .from("configuracoes_links")
-          .select("label,descricao,url,ativo")
-          .eq("chave", "skills_video_tutorial")
+          .select("url")
+          .eq("chave", "video_instalar_skill")
+          .eq("ativo", true)
           .maybeSingle(),
       ])
-      setItens((skills.data ?? []).map(normalizar))
-      setVideo(cfg.data ?? null)
+      setItens((data ?? []).map(normalizar))
+      setVideoUrl(link?.url?.trim() ? link.url.trim() : null)
       setLoading(false)
     }
     carregar()
@@ -90,6 +90,9 @@ export default function SkillsPage() {
   }, [itens, q, cat])
 
   const aberto = abertoSlug ? itens.find((s) => s.slug === abertoSlug) ?? null : null
+
+  // parseVideo trata Vimeo não listado (id + hash de privacidade) e já manda dnt=1.
+  const videoEmbed = useMemo(() => parseVideo(videoUrl)?.embedUrl ?? null, [videoUrl])
 
   const catsDisponiveis = useMemo(() => {
     const set = new Set(itens.map((s) => s.categoria))
@@ -130,8 +133,46 @@ export default function SkillsPage() {
         </Card>
       </motion.div>
 
-      {/* Vídeo tutorial (colapsável) */}
-      <CardVideoTutorial cfg={video} />
+      {/* Como instalar — player + passos. O cliente trava justamente aqui: baixa
+          o arquivo e não sabe o que fazer com ele. Os passos ao lado resolvem
+          isso mesmo para quem não dá play. Some se a chave estiver inativa. */}
+      {videoEmbed && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }}>
+          <Card className="border-primary/25 bg-primary/[0.04]">
+            <CardContent className="p-5 lg:p-6 grid gap-6 lg:grid-cols-[1.15fr_1fr] lg:items-center">
+              <div className="relative w-full overflow-hidden rounded-xl border border-border bg-black aspect-video">
+                <iframe
+                  src={videoEmbed}
+                  title="Como instalar uma skill no seu Claude"
+                  className="absolute inset-0 size-full"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Comece por aqui</p>
+                <h2 className="mt-1.5 text-lg font-bold tracking-tight text-foreground">
+                  Como instalar uma skill no seu Claude
+                </h2>
+                <p className="mt-1.5 text-[13px] font-medium text-muted-foreground leading-relaxed">
+                  Assista uma vez e instale qualquer skill do PMC em poucos minutos.
+                </p>
+                <ol className="mt-4 space-y-2.5">
+                  {PASSOS_INSTALACAO.map((passo, i) => (
+                    <li key={passo} className="flex items-start gap-2.5">
+                      <span className="mt-0.5 shrink-0 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-primary">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <span className="text-[13px] font-medium text-foreground leading-snug">{passo}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Busca */}
       <div className="relative max-w-xl">
@@ -203,75 +244,6 @@ export default function SkillsPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
-
-// Barra colapsada por padrão: mostra que o vídeo existe sem ocupar espaço.
-// O iframe só é montado quando aberto, para não carregar o player à toa.
-function CardVideoTutorial({ cfg }: { cfg: VideoTutorial | null }) {
-  const [aberto, setAberto] = useState(false)
-  const info = parseVideo(cfg?.url)
-  if (!cfg || cfg.ativo === false || !info) return null
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
-      <Card className="overflow-hidden border-primary/20">
-        <button
-          onClick={() => setAberto((v) => !v)}
-          className="w-full flex items-center gap-4 p-5 text-left hover:bg-primary/5 transition-colors"
-        >
-          <div className="bg-primary/15 p-2.5 rounded-xl shrink-0">
-            <PlayCircle className="size-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-[15px] font-bold tracking-tight text-foreground">
-                {cfg.label || "Como usar as skills"}
-              </h2>
-              <span className="rounded-lg bg-primary/15 text-primary border border-primary/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
-                Vídeo
-              </span>
-            </div>
-            {cfg.descricao && (
-              <p className="text-[13px] font-medium text-muted-foreground mt-0.5">{cfg.descricao}</p>
-            )}
-          </div>
-          <motion.div animate={{ rotate: aberto ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
-            <ChevronDown className="size-5 text-muted-foreground" />
-          </motion.div>
-        </button>
-
-        <AnimatePresence initial={false}>
-          {aberto && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="px-5 pb-5">
-                {info.tipo === "arquivo" ? (
-                  <video
-                    src={info.embedUrl}
-                    controls
-                    className="w-full aspect-video rounded-2xl border border-border bg-black"
-                  />
-                ) : (
-                  <iframe
-                    className="w-full aspect-video rounded-2xl border border-border"
-                    src={info.embedUrl}
-                    title={cfg.label || "Como usar as skills"}
-                    allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
-                    allowFullScreen
-                  />
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Card>
-    </motion.div>
   )
 }
 

@@ -8,6 +8,7 @@ export interface SinaisNivel {
   mapeamento: number  // áreas do Mapeamento preenchidas (0..4)
   reunioes: number    // reuniões realizadas
   vitorias: number    // vitórias registradas
+  pulsos: number      // pulsos semanais respondidos (o loop semanal do dono)
   // Guardião de IA — a Fase 1 vira jornada completa: encontrar → avaliar → contratar → operar.
   convites: number            // convites do assessment do Guardião enviados
   candidatos: number          // candidatos que responderam o assessment
@@ -41,6 +42,7 @@ export const FONTES_PONTOS: FontePontos[] = [
   { chave: "mapeamento", label: "Área do Mapeamento preenchida", pontos: 25, descricao: "Cada uma das 4 áreas do Mapeamento do seu negócio que você preenche: Cenários & Metas, Produtos, Canais e Objetivos.", rota: "/mapeamento" },
   { chave: "vitorias", label: "Vitória registrada", pontos: 30, descricao: "Cada conquista que você registra na Central de Vitórias.", rota: "/vitorias" },
   { chave: "reunioes", label: "Reunião realizada", pontos: 15, descricao: "Cada reunião que você participa (Galdino, consultores ou BlackCRM).", rota: "/reunioes" },
+  { chave: "pulsos", label: "Pulso semanal respondido", pontos: 20, descricao: "Cada semana em que você responde o Pulso: 3 números do negócio + sua confiança. 60 segundos que mantêm sua sequência viva.", rota: "/inicio" },
   { chave: "convites", label: "Convite do Guardião enviado", pontos: 20, descricao: "Cada convite do assessment do Guardião que você dispara para um candidato — interno ou externo.", rota: "/guardiao?tab=convites" },
   { chave: "candidatos", label: "Candidato avaliado", pontos: 35, descricao: "Cada pessoa que responde o assessment do Guardião e entra no seu funil de seleção.", rota: "/guardiao?tab=candidatos" },
   { chave: "guardiaoContratado", label: "Guardião contratado", pontos: 200, descricao: "O grande marco da Fase 1: você conduziu o funil até contratar o seu Guardião da IA.", rota: "/guardiao?tab=candidatos" },

@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/icons"
 import { motion } from "framer-motion"
 import { parseVideo } from "@/lib/video-embed"
+import { NICHO_OPTIONS } from "@/data/nichos"
 
 interface Metrica { valor: string; label: string }
 
@@ -37,6 +38,7 @@ interface EstudoCaso {
   video_url: string | null
   thumbnail_url: string | null
   tags: string[]
+  nicho: string | null
   metricas: Metrica[]
   destaque: boolean
   publicado: boolean
@@ -56,6 +58,7 @@ const FORM_VAZIO = {
   video_url: "",
   thumbnail_url: "",
   tags: "",
+  nicho: "",
   metricas: [{ valor: "", label: "" }] as Metrica[],
   destaque: false,
   publicado: true,
@@ -104,6 +107,7 @@ export default function EstudosCasoAdminPage() {
       video_url: e.video_url ?? "",
       thumbnail_url: e.thumbnail_url ?? "",
       tags: e.tags.join(", "),
+      nicho: e.nicho ?? "",
       metricas: e.metricas.length ? e.metricas : [{ valor: "", label: "" }],
       destaque: e.destaque,
       publicado: e.publicado,
@@ -131,6 +135,7 @@ export default function EstudosCasoAdminPage() {
       video_url: form.video_url.trim() || null,
       thumbnail_url: form.thumbnail_url.trim() || null,
       tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+      nicho: form.nicho || null,
       metricas: form.metricas.filter((m) => m.valor.trim() || m.label.trim()),
       destaque: form.destaque,
       publicado: form.publicado,
@@ -334,9 +339,24 @@ export default function EstudosCasoAdminPage() {
                 </div>
               )
             })()}
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tags (separadas por vírgula)</Label>
-              <Input className="h-11 rounded-xl" placeholder="Ex.: Automação de Conteúdo, IA Generativa" value={form.tags} onChange={(ev) => setForm((p) => ({ ...p, tags: ev.target.value }))} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tags (separadas por vírgula)</Label>
+                <Input className="h-11 rounded-xl" placeholder="Ex.: Automação de Conteúdo, IA Generativa" value={form.tags} onChange={(ev) => setForm((p) => ({ ...p, tags: ev.target.value }))} />
+              </div>
+              {/* Mesma taxonomia do onboarding: é o que permite ao cliente
+                  filtrar os cases pelo setor dele. */}
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nicho</Label>
+                <select
+                  value={form.nicho}
+                  onChange={(ev) => setForm((p) => ({ ...p, nicho: ev.target.value }))}
+                  className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground"
+                >
+                  <option value="">Sem nicho definido</option>
+                  {NICHO_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
             </div>
 
             {/* Métricas dinâmicas */}
