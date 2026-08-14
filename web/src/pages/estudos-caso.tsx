@@ -33,6 +33,7 @@ interface EstudoCaso {
   video_url: string | null
   thumbnail_url: string | null
   tags: string[]
+  nicho: string | null
   metricas: Metrica[]
   destaque: boolean
   data_publicacao: string
@@ -74,13 +75,22 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
   const casoId = searchParams.get("caso")
   // Thumbnails do Vimeo vêm por oEmbed (assíncrono) quando não há thumbnail_url.
   const [thumbsVimeo, setThumbsVimeo] = useState<Map<string, string>>(new Map())
+  // Filtro por nicho: vem da URL para o link ser compartilhável.
+  const nichoAtivo = searchParams.get("nicho") ?? "todos"
+
+  function filtrarNicho(nicho: string | null) {
+    const next = new URLSearchParams(searchParams)
+    if (nicho) next.set("nicho", nicho)
+    else next.delete("nicho")
+    setSearchParams(next, { replace: true })
+  }
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       const { data } = await supabase
         .from("conhecimento_estudos_caso")
-        .select("id, titulo, autor, autor_papel, resumo, sobre, video_url, thumbnail_url, tags, metricas, destaque, data_publicacao")
+        .select("id, titulo, autor, autor_papel, resumo, sobre, video_url, thumbnail_url, tags, nicho, metricas, destaque, data_publicacao")
         .eq("publicado", true)
         .order("destaque", { ascending: false })
         .order("data_publicacao", { ascending: false })
@@ -111,13 +121,34 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
     [estudos, casoId]
   )
 
+  // Nichos que realmente têm case publicado, com a contagem, do maior para o menor.
+  const nichosDisponiveis = useMemo(() => {
+    const contagem = new Map<string, number>()
+    estudos.forEach((e) => {
+      const n = e.nicho?.trim()
+      if (n) contagem.set(n, (contagem.get(n) ?? 0) + 1)
+    })
+    return [...contagem.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  }, [estudos])
+
+  const filtrados = useMemo(
+    () => (nichoAtivo === "todos" ? estudos : estudos.filter((e) => e.nicho?.trim() === nichoAtivo)),
+    [estudos, nichoAtivo],
+  )
+
   function abrir(id: string) {
-    setSearchParams({ caso: id })
+    // Preserva o filtro ao abrir um case, para o "voltar" cair na mesma lista.
+    const next = new URLSearchParams(searchParams)
+    next.set("caso", id)
+    setSearchParams(next)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   function fechar() {
-    setSearchParams({}, { replace: true })
+    // Fecha o case mas mantém o nicho filtrado.
+    const next = new URLSearchParams(searchParams)
+    next.delete("caso")
+    setSearchParams(next, { replace: true })
   }
 
   if (loading) {
@@ -300,14 +331,37 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
         </Card>
       </motion.div>
 
+      {/* Filtro por nicho — só aparecem os setores que têm case publicado,
+          para o cliente nunca clicar num filtro que devolve lista vazia. */}
+      {nichosDisponiveis.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <ChipNicho ativo={nichoAtivo === "todos"} onClick={() => filtrarNicho(null)}>
+            Todos <span className="opacity-60">· {estudos.length}</span>
+          </ChipNicho>
+          {nichosDisponiveis.map(([nome, qtd]) => (
+            <ChipNicho key={nome} ativo={nichoAtivo === nome} onClick={() => filtrarNicho(nome)}>
+              {nome} <span className="opacity-60">· {qtd}</span>
+            </ChipNicho>
+          ))}
+        </div>
+      )}
+
       {estudos.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3 text-center border border-dashed border-border rounded-2xl">
           <BookOpen className="size-8 text-muted-foreground/30" />
           <p className="text-sm font-medium text-muted-foreground">Nenhum estudo de caso publicado ainda. Volte em breve!</p>
         </div>
+      ) : filtrados.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center border border-dashed border-border rounded-2xl">
+          <BookOpen className="size-8 text-muted-foreground/30" />
+          <p className="text-sm font-medium text-muted-foreground">Nenhum case de {nichoAtivo} ainda.</p>
+          <button onClick={() => filtrarNicho(null)} className="text-[13px] font-bold text-primary hover:underline">
+            Ver todos os estudos
+          </button>
+        </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
-          {estudos.map((e, i) => (
+          {filtrados.map((e, i) => (
             <motion.button
               key={e.id}
               initial={{ opacity: 0, y: 16 }}
@@ -385,5 +439,23 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
         </div>
       )}
     </div>
+  )
+}
+
+// Chip de filtro por nicho — mesmo visual dos filtros de Skills/Multiplicadores.
+function ChipNicho({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={ativo}
+      className={`rounded-xl border px-3.5 py-1.5 text-[12px] font-bold tracking-tight transition-colors ${
+        ativo
+          ? "border-primary/50 bg-primary/10 text-primary"
+          : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
   )
 }

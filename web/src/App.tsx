@@ -28,6 +28,7 @@ const ReunioesBlackCRMPage = lazy(() => import("@/pages/reunioes-blackcrm"))
 const ReuniaoBlackCRMDetalhePage = lazy(() => import("@/pages/reuniao-blackcrm-detalhe"))
 const RecursosPage = lazy(() => import("@/pages/recursos"))
 const FerramentasPage = lazy(() => import("@/pages/ferramentas"))
+const PromptSupremoPage = lazy(() => import("@/pages/prompt-supremo"))
 const CalendarioEncontrosPage = lazy(() => import("@/pages/calendario-encontros"))
 const ConfiguracoesPage = lazy(() => import("@/pages/configuracoes"))
 const AgendarPage = lazy(() => import("@/pages/agendar"))
@@ -69,6 +70,7 @@ const GuardiaoPage = lazy(() => import("@/pages/guardiao"))
 const GuardiaoResponderPage = lazy(() => import("@/pages/guardiao-responder"))
 const GuardiaoAdminPage = lazy(() => import("@/pages/guardiao-admin"))
 const TimePermissoesPage = lazy(() => import("@/pages/time-permissoes"))
+const InteligenciaNichoPage = lazy(() => import("@/pages/inteligencia-nicho"))
 
 // Error Boundary to catch any component crashes
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: any }> {
@@ -134,7 +136,7 @@ function RequireSecao({ secao, children }: { secao: string; children: ReactNode 
 }
 
 function AppRoutes() {
-  const { session, isAdmin, needsPassword, needsOnboarding, loading, idCliente } = useAuth()
+  const { session, isAdmin, needsPassword, needsOnboarding, loading, idCliente, papelEmpresa } = useAuth()
   // Portal do cliente: resolve a empresa (cliente legado OU 2º usuário vinculado).
   // Só passa quando NÃO é admin (admin usa clientId por rota/params). undefined
   // deixa a página cair no session.user.id (comportamento legado).
@@ -161,7 +163,12 @@ function AppRoutes() {
               (!isAdmin && needsOnboarding) ? <Navigate to="/cadastro" replace /> : (
                 <DashboardLayout isAdmin={isAdmin}>
                   <Routes>
-                    <Route path="/" element={isAdmin ? <AdminDashboard /> : <Navigate to="/inicio" replace />} />
+                    {/* Home por pessoa: o Guardião opera o dia, o dono acompanha a jornada.
+                        Cadências diferentes pedem portas de entrada diferentes. */}
+                    <Route path="/" element={
+                      isAdmin ? <AdminDashboard />
+                        : <Navigate to={papelEmpresa === "guardiao" ? "/meu-dia" : "/inicio"} replace />
+                    } />
                     <Route path="/inicio" element={<InicioPage session={session} clientId={cid} />} />
                     <Route path="/relatorio" element={<Navigate to="/balanco" replace />} />
                     <Route path="/balanco" element={<BalancoPage session={session} clientId={cid} />} />
@@ -176,6 +183,7 @@ function AppRoutes() {
                     <Route path="/novidades-admin" element={<RequireSecao secao="novidades-admin"><NovidadesAdminPage /></RequireSecao>} />
                     <Route path="/logs-download" element={<RequireSecao secao="logs-download"><LogsDownloadPage /></RequireSecao>} />
                     <Route path="/mensagens" element={<RequireSecao secao="mensagens"><MensagensPage /></RequireSecao>} />
+                    <Route path="/inteligencia-nicho" element={<RequireSecao secao="inteligencia-nicho"><InteligenciaNichoPage /></RequireSecao>} />
                     <Route path="/estudos-caso" element={<EstudosCasoPage session={session} clientId={cid} />} />
                     <Route path="/estudos-caso-admin" element={<RequireSecao secao="estudos-caso-admin"><EstudosCasoAdminPage /></RequireSecao>} />
                     <Route path="/dashboard-2" element={<Navigate to="/" replace />} />
@@ -203,6 +211,7 @@ function AppRoutes() {
                     <Route path="/reuniao-blackcrm/:id" element={<ReuniaoBlackCRMDetalhePage isAdmin={isAdmin} />} />
                     <Route path="/recursos" element={<RecursosPage session={session} clientId={cid} />} />
                     <Route path="/ferramentas" element={<FerramentasPage session={session} forceAdmin={isAdmin} />} />
+                    <Route path="/prompt-supremo" element={<PromptSupremoPage />} />
                     <Route path="/calendario" element={<CalendarioEncontrosPage isAdmin={isAdmin} />} />
                     <Route path="/onboarding" element={<RequireSecao secao="onboarding"><OnboardingPage /></RequireSecao>} />
                     <Route path="/configuracoes" element={<RequireSecao secao="configuracoes"><ConfiguracoesPage /></RequireSecao>} />

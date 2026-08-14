@@ -202,8 +202,11 @@ export default function MetodoPage({ session, clientId }: MetodoPageProps) {
           </Card>
       </motion.div>
 
-      {/* Trilha da fase — fora do card da fase */}
-      <TrilhaFase url={trilhaUrl} titulo={fase.titulo} />
+      {/* Trilha da fase — fora do card da fase.
+          A Fase 1 não mostra: ela já tem o bloco "Conclua a Trilha do Guardião
+          da IA", com o botão ACESSAR TRILHA. Duas faixas para a mesma trilha
+          na mesma tela só competem entre si. */}
+      {faseAtiva !== 1 && <TrilhaFase url={trilhaUrl} titulo={fase.titulo} />}
 
       {/* Navegação cíclica entre fases */}
       <div className="flex items-center justify-between">

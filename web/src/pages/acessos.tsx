@@ -44,6 +44,15 @@ import {
   MessageCircleIcon as MessageCircle,
 } from "@/components/ui/icons"
 
+// Papel dentro da empresa: define a HOME, não o acesso a dado.
+const PAPEIS_EMPRESA = [
+  { chave: "dono", label: "Dono", home: "Minha Jornada" },
+  { chave: "guardiao", label: "Guardião", home: "Meu Dia" },
+  { chave: "colaborador", label: "Colaborador", home: "Minha Jornada" },
+] as const
+
+interface UsuarioEmpresa { auth_user_id: string; papel: string; email: string | null }
+
 interface AccessRow {
   id_entrada: number
   id_cliente: string
@@ -104,7 +113,11 @@ export default function AcessosPage() {
   const [showAddUser, setShowAddUser] = useState(false)
   const [addUserEmpresa, setAddUserEmpresa] = useState("")
   const [addUserEmail, setAddUserEmail] = useState("")
+  const [addUserPapel, setAddUserPapel] = useState<string>("colaborador")
   const [addUserBusy, setAddUserBusy] = useState(false)
+  // Usuários já vinculados à empresa selecionada — para trocar o papel de quem já existe.
+  const [usuariosEmpresa, setUsuariosEmpresa] = useState<UsuarioEmpresa[]>([])
+  const [salvandoPapel, setSalvandoPapel] = useState<string | null>(null)
   const [addUserResult, setAddUserResult] = useState<{ ok: boolean; msg: string; link?: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -316,6 +329,24 @@ export default function AcessosPage() {
     )
   }
 
+  // Lista quem já tem login naquela empresa, para o admin poder trocar o papel.
+  async function carregarUsuariosEmpresa(idCliente: string) {
+    if (!idCliente) { setUsuariosEmpresa([]); return }
+    const { data } = await supabase
+      .from("empresa_usuarios")
+      .select("auth_user_id, papel")
+      .eq("id_cliente", idCliente)
+    setUsuariosEmpresa(((data ?? []) as any[]).map((u) => ({ ...u, email: null })))
+  }
+
+  async function trocarPapelUsuario(uid: string, papel: string) {
+    setSalvandoPapel(uid)
+    const { error } = await supabase.from("empresa_usuarios").update({ papel }).eq("auth_user_id", uid)
+    if (error) console.error("Erro ao trocar papel:", error.message)
+    else setUsuariosEmpresa((prev) => prev.map((u) => (u.auth_user_id === uid ? { ...u, papel } : u)))
+    setSalvandoPapel(null)
+  }
+
   async function provisionarUsuario() {
     if (!addUserEmpresa || !addUserEmail.trim()) return
     setAddUserBusy(true)
@@ -325,11 +356,19 @@ export default function AcessosPage() {
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/provisionar-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
-        body: JSON.stringify({ tipo: "empresa_usuario", email: addUserEmail.trim(), id_cliente: addUserEmpresa, app_url: window.location.origin }),
+        body: JSON.stringify({ tipo: "empresa_usuario", email: addUserEmail.trim(), id_cliente: addUserEmpresa, papel: addUserPapel, app_url: window.location.origin }),
       })
       const data = await res.json()
       if (!res.ok) setAddUserResult({ ok: false, msg: data.error || "Erro ao provisionar usuário." })
-      else { setAddUserResult({ ok: true, msg: "Usuário criado. Envie o link de acesso:", link: data.invite_link }); setAddUserEmail("") }
+      else {
+        // A edge function pode ainda não gravar o papel: garantimos aqui.
+        if (data.auth_user_id) {
+          await supabase.from("empresa_usuarios").update({ papel: addUserPapel }).eq("auth_user_id", data.auth_user_id)
+        }
+        setAddUserResult({ ok: true, msg: "Usuário criado. Envie o link de acesso:", link: data.invite_link })
+        setAddUserEmail("")
+        await carregarUsuariosEmpresa(addUserEmpresa)
+      }
     } catch (e: any) {
       setAddUserResult({ ok: false, msg: e.message })
     }
@@ -367,7 +406,7 @@ export default function AcessosPage() {
             <p className="text-[13px] font-semibold text-foreground">Novo login para uma empresa existente</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <select
-                value={addUserEmpresa} onChange={(e) => setAddUserEmpresa(e.target.value)}
+                value={addUserEmpresa} onChange={(e) => { setAddUserEmpresa(e.target.value); carregarUsuariosEmpresa(e.target.value) }}
                 className="rounded-lg bg-card border border-border px-3 py-2 text-[13px] text-foreground"
               >
                 <option value="">Selecione a empresa…</option>
@@ -380,6 +419,25 @@ export default function AcessosPage() {
                 onChange={(e) => setAddUserEmail(e.target.value)}
                 className="rounded-lg bg-card border border-border px-3 py-2 text-[13px] text-foreground"
               />
+            </div>
+            {/* O papel define só a HOME: o Guardião entra no cockpit do dia,
+                os demais na jornada. Todos continuam vendo os mesmos dados. */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Abre o sistema em:</span>
+              {PAPEIS_EMPRESA.map((p) => (
+                <button
+                  key={p.chave}
+                  type="button"
+                  onClick={() => setAddUserPapel(p.chave)}
+                  className={`rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                    addUserPapel === p.chave
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/30"
+                  }`}
+                >
+                  {p.label} <span className="font-normal opacity-70">· {p.home}</span>
+                </button>
+              ))}
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -397,6 +455,38 @@ export default function AcessosPage() {
                   <input readOnly value={addUserResult.link} onFocus={(e) => e.target.select()}
                     className="mt-2 w-full rounded-md bg-background border border-border px-2 py-1.5 text-[11px] text-muted-foreground font-mono" />
                 )}
+              </div>
+            )}
+
+            {/* Quem já tem login nesta empresa — sem isto, os logins existentes
+                ficariam presos no papel padrão para sempre. */}
+            {addUserEmpresa && usuariosEmpresa.length > 0 && (
+              <div className="border-t border-border pt-4 space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Logins desta empresa ({usuariosEmpresa.length})
+                </p>
+                {usuariosEmpresa.map((u) => (
+                  <div key={u.auth_user_id} className="flex items-center gap-2 flex-wrap rounded-lg bg-muted/20 px-3 py-2">
+                    <span className="font-mono text-[11px] text-muted-foreground flex-1 min-w-32 truncate">
+                      {u.auth_user_id.slice(0, 8)}…
+                    </span>
+                    {PAPEIS_EMPRESA.map((p) => (
+                      <button
+                        key={p.chave}
+                        type="button"
+                        disabled={salvandoPapel === u.auth_user_id}
+                        onClick={() => trocarPapelUsuario(u.auth_user_id, p.chave)}
+                        className={`rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${
+                          u.papel === p.chave
+                            ? "border-primary/50 bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/30"
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>

@@ -24,6 +24,7 @@ import {
   CheckCircle2Icon as CheckCircle2,
 } from "@/components/ui/icons"
 import { celebrarPontosMC } from "@/components/pontos-mc-splash"
+import { useAuth } from "@/lib/auth-context"
 import {
   carregarMeuDia, salvarChecklist, fecharDia, proximaAcao,
   ROTINA_DIARIA, saudacao, dataPorExtenso, formatarData,
@@ -45,8 +46,12 @@ const TOM: Record<ProximaAcao["tom"], { cor: string; icone: typeof AlertTriangle
   livre:  { cor: "text-primary",    icone: Sparkles,      rotulo: "Quase lá" },
 }
 
-export default function MeuDiaPage({ session, clientId }: Props) {
-  const cid = clientId || session?.user?.id
+export default function MeuDiaPage({ clientId }: Props) {
+  // NÃO cair para session.user.id: para um admin isso é o uid do login, não um
+  // id_cliente — a tela viria vazia e o checklist gravaria linha órfã. O id vem
+  // da prop (portal do cliente) ou do contexto, que resolve por meu_id_cliente().
+  const { isAdmin, idCliente } = useAuth()
+  const cid = clientId ?? idCliente ?? undefined
   const navigate = useNavigate()
   const [d, setD] = useState<DadosMeuDia | null>(null)
   const [carregando, setCarregando] = useState(true)
@@ -81,6 +86,8 @@ export default function MeuDiaPage({ session, clientId }: Props) {
   const pct = Math.round((feitos.length / total) * 100)
   const fechado = !!d?.fechamento?.fechado_em
   const acao = useMemo(() => (d ? proximaAcao(d) : null), [d])
+  // Espelha FONTES_PONTOS: tarefa concluída = 10, dia fechado = 15.
+  const pontosHoje = (d?.concluidasHoje ?? 0) * 10 + (fechado ? 15 : 0)
 
   async function alternarItem(i: number) {
     if (!cid || !d || marcando || fechado) return
@@ -114,7 +121,29 @@ export default function MeuDiaPage({ session, clientId }: Props) {
     }
   }
 
-  if (!cid) return null
+  // Admin não tem "meu dia": esta tela é a operação do Guardião de uma empresa.
+  // Dizemos isso em vez de mostrar uma tela vazia que parece quebrada.
+  if (!cid) {
+    if (!isAdmin) return null
+    return (
+      <Card className="border-amber-400/30">
+        <CardContent className="flex items-start gap-4 p-6">
+          <AlertTriangle className="mt-0.5 size-6 shrink-0 text-amber-400" />
+          <div className="space-y-1">
+            <p className="text-[16px] font-bold tracking-tight text-foreground">Esta tela é do Guardião do cliente</p>
+            <p className="text-[13px] font-medium text-muted-foreground max-w-md">
+              O Meu Dia é o cockpit diário de quem executa a IA numa empresa. Como time do PMC, acompanhe pelo
+              perfil de cada cliente.
+            </p>
+            <Button variant="outline" className="mt-2 h-9 gap-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider"
+              onClick={() => navigate("/clientes")}>
+              Ver clientes <ChevronRight className="size-3.5" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   if (carregando || !d || !acao) {
     return (
@@ -140,9 +169,10 @@ export default function MeuDiaPage({ session, clientId }: Props) {
               🔥 {d.streak.streak} {d.streak.streak === 1 ? "dia" : "dias"}
             </Badge>
           )}
-          {d.concluidasHoje > 0 && (
+          {/* Tarefas concluídas hoje (×10) + o bônus do ritual (+15), quando fechado. */}
+          {pontosHoje > 0 && (
             <Badge variant="outline" className="rounded-xl border-border px-3 py-1.5 text-[12px] font-bold text-muted-foreground tabular-nums">
-              +{d.concluidasHoje * 10} pts hoje
+              +{pontosHoje} pts hoje
             </Badge>
           )}
         </div>
