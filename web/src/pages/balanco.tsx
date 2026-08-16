@@ -156,8 +156,12 @@ export default function BalancoPage({ session, clientId }: Props) {
 
     async function carregar() {
       try {
-      const reunioes = (t: string) =>
-        supabase.from(t).select("ganho, nps, acoes_cliente, cliente_compareceu, data_reuniao").eq("id_cliente", cid)
+      // `soConsultoria`: em reunioes_mentoria_new convivem consultoria e os
+      // atendimentos do Sucesso do Cliente — o balanço conta só consultoria.
+      const reunioes = (t: string, soConsultoria = false) => {
+        const q = supabase.from(t).select("ganho, nps, acoes_cliente, cliente_compareceu, data_reuniao").eq("id_cliente", cid)
+        return soConsultoria ? q.eq("equipe", "consultor") : q
+      }
 
       const cnt = (t: string) => supabase.from(t).select("id", { count: "exact", head: true }).eq("id_cliente", cid)
       const [entrada, form, rg, rm, rb, vit, enc, cop, sis, eco, areasRes, gargRes, mg, ma, mga] = await Promise.all([
@@ -172,7 +176,7 @@ export default function BalancoPage({ session, clientId }: Props) {
           .eq("id_cliente", cid)
           .maybeSingle(),
         reunioes("reunioes_galdino"),
-        reunioes("reunioes_mentoria_new"),
+        reunioes("reunioes_mentoria_new", true),
         reunioes("reunioes_blackcrm"),
         supabase
           .from("cliente_vitorias")

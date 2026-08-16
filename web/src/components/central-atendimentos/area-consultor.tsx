@@ -23,10 +23,11 @@ import {
 } from "@/components/ui/icons"
 import { statusEfetivo, nomesDoConsultor, STATUS_EFETIVO_BADGE, STATUS_EFETIVO_LABEL } from "@/lib/atendimentos"
 import { ConsultorAvatar } from "@/components/consultor-avatar"
-import type { Consultor, AgendamentoCentral } from "@/lib/atendimentos"
+import type { Consultor, AgendamentoCentral, EquipeConfig } from "@/lib/atendimentos"
 
 interface Props {
   consultores: Consultor[]
+  cfg: EquipeConfig
   agendamentos: AgendamentoCentral[]
   onExcluir: (ag: AgendamentoCentral) => Promise<boolean>
   onReagendar: (ag: AgendamentoCentral, data: string, horario: string) => Promise<boolean>
@@ -37,14 +38,14 @@ function hojeIso(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function descricaoConsultor(c: Consultor): string {
+function descricaoConsultor(c: Consultor, cfg: EquipeConfig): string {
   if (c.especialidade) return c.especialidade
   if (c.tipo_reuniao === "tutoria") return "Tutoria"
   if (c.tipo_reuniao === "implementacao") return "Implementação"
-  return "Consultor"
+  return cfg.profSingularTitulo
 }
 
-export function AreaConsultor({ consultores, agendamentos, onExcluir, onReagendar, onAlterarCliente }: Props) {
+export function AreaConsultor({ consultores, cfg, agendamentos, onExcluir, onReagendar, onAlterarCliente }: Props) {
   const [sp, setSp] = useSearchParams()
   const slugParam = sp.get("consultor")
 
@@ -114,7 +115,7 @@ export function AreaConsultor({ consultores, agendamentos, onExcluir, onReagenda
     return (
       <Card>
         <CardContent className="py-12 text-center text-sm text-muted-foreground">
-          Cadastre um consultor na aba “Disponibilidade” pra começar.
+          Cadastre uma agenda na aba “Disponibilidade” pra começar.
         </CardContent>
       </Card>
     )
@@ -127,7 +128,7 @@ export function AreaConsultor({ consultores, agendamentos, onExcluir, onReagenda
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <div className="text-xs uppercase font-bold tracking-widest text-primary">Área do Consultor</div>
+        <div className="text-xs uppercase font-bold tracking-widest text-primary">{cfg.labelAbaArea}</div>
         <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground">Minhas reuniões</h2>
         <p className="text-sm text-muted-foreground max-w-2xl">
           Acesse seus agendamentos sem precisar abrir o e-mail compartilhado.
@@ -140,7 +141,7 @@ export function AreaConsultor({ consultores, agendamentos, onExcluir, onReagenda
             <ConsultorAvatar nome={selecionado.nome} url={selecionado.avatar_url} className="size-12 rounded-xl text-sm" />
             <div className="min-w-0">
               <div className="font-bold text-foreground truncate">{selecionado.nome}</div>
-              <div className="text-xs text-primary/80 font-medium truncate">{descricaoConsultor(selecionado)}</div>
+              <div className="text-xs text-primary/80 font-medium truncate">{descricaoConsultor(selecionado, cfg)}</div>
             </div>
           </div>
           <Select value={selecionado.slug} onValueChange={setConsultor}>

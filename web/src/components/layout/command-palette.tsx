@@ -43,6 +43,7 @@ const ROTAS_ADMIN: Destino[] = [
   { label: "Pendentes Onboarding", url: "/onboarding", grupo: "Onboarding" },
   { label: "Respostas de Onboarding", url: "/respostas-onboarding", grupo: "Onboarding" },
   { label: "Central de Atendimentos", url: "/central-atendimentos", grupo: "Atendimento" },
+  { label: "Central do Sucesso do Cliente", url: "/central-sucesso-cliente", grupo: "Atendimento" },
   { label: "Consultores", url: "/mentores", grupo: "Atendimento" },
   { label: "Guardião (Clientes)", url: "/guardiao-admin", grupo: "Atendimento" },
   { label: "Reuniões Galdino", url: "/reunioes-galdino", grupo: "Reuniões" },

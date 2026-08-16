@@ -91,6 +91,9 @@ function classifyMentorEvent(event) {
   const patterns = [
     /\[PMC\]\s*Acompanhamento com Mentor/i,
     /\[PMC\]\s*Acompanhamento com Consultor/i,
+    // Time de Sucesso do Cliente (onboarding/alinhamento): mesma tabela, mas a
+    // coluna `equipe` separa depois — o trigger do banco classifica no insert.
+    /\[PMC\]\s*Acompanhamento com Sucesso do Cliente/i,
     /\[PMC\]\s*Mentor Tr[aá]fego Pago/i,
     // "[PMC] Consultor ..." em qualquer formato: com ou sem traço depois de
     // "Consultor" (ex.: "[PMC] Consultor Maxsuell Lopes (...)"), e tolera o typo

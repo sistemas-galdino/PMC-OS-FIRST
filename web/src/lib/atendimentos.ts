@@ -1,6 +1,50 @@
 export const TABELAS_REUNIAO = ["reunioes_galdino", "reunioes_mentoria_new", "reunioes_blackcrm"] as const
 export type TabelaDestino = (typeof TABELAS_REUNIAO)[number]
 
+// Equipe dona da agenda. A Central de Atendimentos existe em duas versões — a dos
+// consultores e a do Sucesso do Cliente — que são a MESMA página parametrizada por
+// aqui. As CS tinham criado agendas na central dos consultores e todo agendamento
+// delas virava "Acompanhamento com Consultor", o que não é verdade.
+export const EQUIPES = ["consultor", "sucesso_cliente"] as const
+export type Equipe = (typeof EQUIPES)[number]
+
+export interface EquipeConfig {
+  equipe: Equipe
+  rota: string
+  secao: string // chave no RBAC (secoes_catalogo)
+  tituloPagina: string
+  subtitulo: string
+  profSingular: string // "consultor" — meio de frase
+  profSingularTitulo: string // "Consultor" — rótulo de campo
+  profPlural: string
+  labelAbaArea: string
+}
+
+export const EQUIPE_CONFIG: Record<Equipe, EquipeConfig> = {
+  consultor: {
+    equipe: "consultor",
+    rota: "/central-atendimentos",
+    secao: "central-atendimentos",
+    tituloPagina: "Central de Atendimentos",
+    subtitulo: "Agende reuniões com os consultores PMC, controle a disponibilidade e acompanhe os atendimentos.",
+    profSingular: "consultor",
+    profSingularTitulo: "Consultor",
+    profPlural: "consultores",
+    labelAbaArea: "Área do Consultor",
+  },
+  sucesso_cliente: {
+    equipe: "sucesso_cliente",
+    rota: "/central-sucesso-cliente",
+    secao: "central-sucesso-cliente",
+    tituloPagina: "Central do Sucesso do Cliente",
+    subtitulo: "Agendas do time de Sucesso do Cliente: onboarding e alinhamentos, separados da consultoria.",
+    profSingular: "profissional de Sucesso do Cliente",
+    profSingularTitulo: "Sucesso do Cliente",
+    profPlural: "time de Sucesso do Cliente",
+    labelAbaArea: "Área do CS",
+  },
+}
+
 export const STATUS_AGENDAMENTO = ["pendente_sync", "confirmado", "cancelado", "realizado"] as const
 export type StatusAgendamento = (typeof STATUS_AGENDAMENTO)[number]
 
@@ -53,6 +97,7 @@ export interface Consultor {
   ativo: boolean
   ordem: number
   nomes_match: string[] | null
+  equipe: Equipe
   created_at: string
   updated_at: string
 }
@@ -130,6 +175,7 @@ export interface AgendamentoCentral {
   criado_em: string | null
   atualizado_em: string | null
   assunto: string | null // tipo de reunião escolhido (só reuniões blackcrm do link público)
+  equipe: Equipe // separa consultoria de Sucesso do Cliente (galdino/blackcrm são sempre 'consultor')
 }
 
 // Status "efetivo" da reunião, derivado de data + comparecimento — porque as reuniões

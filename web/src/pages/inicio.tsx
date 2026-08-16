@@ -201,6 +201,8 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
         supabase
           .from("reunioes_mentoria_new")
           .select("id_unico, mentor, data_reuniao, cliente_compareceu")
+          // Reunião com o Sucesso do Cliente não conta como consultoria.
+          .eq("equipe", "consultor")
           .eq("id_cliente", resolvedClientId)
           .lte("data_reuniao", hojeIso)
           .order("data_reuniao", { ascending: false })
@@ -215,7 +217,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
           .eq("id_cliente", resolvedClientId)
           .maybeSingle(),
         supabase.from("reunioes_galdino").select("id_unico", { count: "exact", head: true }).eq("id_cliente", resolvedClientId),
-        supabase.from("reunioes_mentoria_new").select("id_unico", { count: "exact", head: true }).eq("id_cliente", resolvedClientId),
+        supabase.from("reunioes_mentoria_new").select("id_unico", { count: "exact", head: true }).eq("equipe", "consultor").eq("id_cliente", resolvedClientId),
         supabase.from("reunioes_blackcrm").select("id_unico", { count: "exact", head: true }).eq("id_cliente", resolvedClientId),
       ])
 

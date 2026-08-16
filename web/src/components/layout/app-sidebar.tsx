@@ -130,6 +130,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       label: "Atendimento",
       items: [
         { title: "Central de Atendimentos", icon: MessageSquare, url: "/central-atendimentos" },
+        { title: "Central do Sucesso do Cliente", icon: MessageSquare, url: "/central-sucesso-cliente" },
         { title: "Consultores", icon: MessageSquare, url: "/mentores" },
         { title: "Guardião (Clientes)", icon: ShieldCheck, url: "/guardiao-admin" },
       ],

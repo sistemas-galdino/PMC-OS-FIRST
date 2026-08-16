@@ -74,7 +74,7 @@ export function StepIdentificacao({ value, onChange }: Props) {
           value={value.observacoes}
           onChange={e => set("observacoes", e.target.value)}
           rows={3}
-          placeholder="Quer adiantar algum contexto pro consultor? (opcional)"
+          placeholder="Quer adiantar algum contexto? (opcional)"
         />
       </div>
     </div>

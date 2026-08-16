@@ -128,6 +128,7 @@ Deno.serve(async (req: Request) => {
       // Descobre consultor (nome pro título) e caixa do organizador.
       let consultorNome = ""
       let emailOrganizador: string | null = null
+      let equipeConsultor: "consultor" | "sucesso_cliente" | null = null
       const { data: agView } = await supabase
         .from("agendamentos_central")
         .select("consultor_nome")
@@ -137,10 +138,11 @@ Deno.serve(async (req: Request) => {
         consultorNome = agView.consultor_nome
         const { data: cons } = await supabase
           .from("consultores_atendimento")
-          .select("email_calendar")
+          .select("email_calendar, equipe")
           .eq("nome", agView.consultor_nome)
-          .maybeSingle<{ email_calendar: string | null }>()
+          .maybeSingle<{ email_calendar: string | null; equipe: "consultor" | "sucesso_cliente" | null }>()
         emailOrganizador = cons?.email_calendar ?? null
+        equipeConsultor = cons?.equipe ?? null
       }
 
       const summary = tituloEvento({
@@ -150,6 +152,7 @@ Deno.serve(async (req: Request) => {
         cliente_nome: row.pessoa ?? "Cliente",
         empresa: empresaFinal,
         assunto: row.assunto ?? null,
+        equipe: equipeConsultor,
       })
       const description = descricaoEvento({
         cliente_nome: row.pessoa ?? "Cliente",

@@ -59,6 +59,8 @@ export default function TabConsultores({ clientId }: { clientId: string }) {
     const { data, error } = await supabase
       .from("reunioes_mentoria_new")
       .select("id_unico, data_reuniao, mentor, cliente_compareceu")
+      // Aba de CONSULTORES: atendimentos de CS ficam na Central do Sucesso do Cliente.
+      .eq("equipe", "consultor")
       .eq("id_cliente", clientId)
       .order("data_reuniao", { ascending: false })
 

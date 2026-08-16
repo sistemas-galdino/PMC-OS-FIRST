@@ -61,6 +61,7 @@ const TrilhaEvidenciasPage = lazy(() => import("@/pages/trilha-evidencias"))
 const InformacoesEmpresaPage = lazy(() => import("@/pages/informacoes-empresa"))
 const RoadmapSistemasPage = lazy(() => import("@/pages/roadmap-sistemas"))
 const CentralAtendimentosPage = lazy(() => import("@/pages/central-atendimentos"))
+const CentralSucessoClientePage = lazy(() => import("@/pages/central-sucesso-cliente"))
 const AtendimentoPublicoPage = lazy(() => import("@/pages/atendimento-publico"))
 const FunisPage = lazy(() => import("@/pages/funis"))
 const RespostasOnboardingPage = lazy(() => import("@/pages/respostas-onboarding"))
@@ -249,6 +250,7 @@ function AppRoutes() {
                     <Route path="/informacoes-empresa" element={<InformacoesEmpresaPage session={session} clientId={cid} />} />
                     <Route path="/roadmap-sistemas" element={<RequireSecao secao="roadmap-sistemas"><RoadmapSistemasPage /></RequireSecao>} />
                     <Route path="/central-atendimentos" element={<RequireSecao secao="central-atendimentos"><CentralAtendimentosPage /></RequireSecao>} />
+                    <Route path="/central-sucesso-cliente" element={<RequireSecao secao="central-sucesso-cliente"><CentralSucessoClientePage /></RequireSecao>} />
                     <Route path="/funis" element={<RequireSecao secao="funis"><FunisPage /></RequireSecao>} />
                     <Route path="/respostas-onboarding" element={<RequireSecao secao="respostas-onboarding"><RespostasOnboardingPage /></RequireSecao>} />
                     <Route path="/crm" element={<RequireSecao secao="crm"><CRMPage /></RequireSecao>} />

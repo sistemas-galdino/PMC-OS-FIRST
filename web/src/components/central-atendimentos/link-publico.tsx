@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { LinkIcon, CopyIcon, CheckIcon, ExternalLinkIcon } from "@/components/ui/icons"
 import { ConsultorAvatar } from "@/components/consultor-avatar"
-import type { Consultor } from "@/lib/atendimentos"
+import type { Consultor, EquipeConfig } from "@/lib/atendimentos"
 
 interface Props {
   consultores: Consultor[]
+  cfg: EquipeConfig
 }
 
-export function LinkPublico({ consultores }: Props) {
+export function LinkPublico({ consultores, cfg }: Props) {
   const [copiado, setCopiado] = useState<string | null>(null)
   const origin = typeof window !== "undefined" ? window.location.origin : ""
 
@@ -32,7 +33,7 @@ export function LinkPublico({ consultores }: Props) {
                 <LinkIcon className="size-4 text-primary" />
                 <h3 className="text-sm font-bold tracking-tight text-foreground uppercase">Página geral de agendamento</h3>
               </div>
-              <p className="text-xs text-muted-foreground">Cliente vê o grid com todos os consultores ativos e escolhe um.</p>
+              <p className="text-xs text-muted-foreground">Cliente vê o grid com todas as agendas ativas e escolhe uma.</p>
               <code className="block text-xs font-mono bg-background/70 border border-border rounded-lg px-3 py-2 text-foreground break-all">
                 {linkGeral}
               </code>
@@ -55,7 +56,7 @@ export function LinkPublico({ consultores }: Props) {
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold tracking-tight text-foreground">Link direto por consultor</h3>
+          <h3 className="text-base font-bold tracking-tight text-foreground">Link direto por {cfg.profSingular}</h3>
           <Badge variant="outline" className="text-[10px] uppercase tracking-widest font-bold bg-muted/20 border-border text-muted-foreground">
             {consultores.length} ativo{consultores.length !== 1 ? "s" : ""}
           </Badge>
@@ -101,7 +102,7 @@ export function LinkPublico({ consultores }: Props) {
         {consultores.length === 0 && (
           <Card>
             <CardContent className="p-8 text-center text-sm text-muted-foreground">
-              Nenhum consultor ativo. Ative pelo menos um na aba Disponibilidade.
+              Nenhuma agenda ativa. Ative pelo menos uma na aba Disponibilidade.
             </CardContent>
           </Card>
         )}

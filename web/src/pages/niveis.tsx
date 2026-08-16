@@ -72,7 +72,10 @@ export default function NiveisPage({ session, clientId }: Props) {
         cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
         cnt("metodo_copilotos"), cnt("metodo_sistemas"), cnt("metodo_economias"),
         cnt("cliente_vitorias"),
-        cnt("reunioes_galdino", "id_unico"), cnt("reunioes_mentoria_new", "id_unico"), cnt("reunioes_blackcrm", "id_unico"),
+        cnt("reunioes_galdino", "id_unico"),
+        // Consultoria só: atendimento do Sucesso do Cliente não pontua como reunião de consultoria.
+        supabase.from("reunioes_mentoria_new").select("id_unico", { count: "exact", head: true }).eq("id_cliente", cid).eq("equipe", "consultor"),
+        cnt("reunioes_blackcrm", "id_unico"),
         // Mapeamento (cliente_objetivos_programa não tem coluna id — conta por id_cliente)
         cnt("cliente_metas", "id_cliente"), cnt("cliente_produtos", "id_cliente"),
         cnt("cliente_canais", "id_cliente"), cnt("cliente_objetivos_programa", "id_cliente"),

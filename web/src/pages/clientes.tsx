@@ -332,7 +332,7 @@ export default function ClientesPage() {
     let cancel = false
     async function load() {
       const [m, g, pu] = await Promise.all([
-        supabase.from('reunioes_mentoria_new').select('data_reuniao, mentor').eq('id_cliente', dc!.id_cliente).order('data_reuniao', { ascending: false }).limit(3),
+        supabase.from('reunioes_mentoria_new').select('data_reuniao, mentor').eq('equipe', 'consultor').eq('id_cliente', dc!.id_cliente).order('data_reuniao', { ascending: false }).limit(3),
         supabase.from('reunioes_galdino').select('data_reuniao').eq('id_cliente', dc!.id_cliente).order('data_reuniao', { ascending: false }).limit(3),
         supabase.from('pulso_semanal').select('semana, faturamento, confianca').eq('id_cliente', dc!.id_cliente).order('semana', { ascending: false }).limit(4),
       ])

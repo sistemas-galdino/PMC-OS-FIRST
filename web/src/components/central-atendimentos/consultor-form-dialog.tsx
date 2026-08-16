@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { slugify, EMAILS_CALENDAR_VALIDOS, CORES_AGENDA_GOOGLE } from "@/lib/atendimentos"
-import type { Consultor, TabelaDestino, TipoReuniao } from "@/lib/atendimentos"
+import type { Consultor, TabelaDestino, TipoReuniao, EquipeConfig } from "@/lib/atendimentos"
 import { supabase } from "@/lib/supabase"
 import { UploadIcon, XIcon } from "@/components/ui/icons"
 import { ConsultorAvatar } from "@/components/consultor-avatar"
@@ -27,6 +27,7 @@ import { ConsultorAvatar } from "@/components/consultor-avatar"
 interface Props {
   open: boolean
   consultor: Consultor | null
+  cfg: EquipeConfig
   onClose: () => void
   onSave: (id: string | null, payload: Partial<Consultor>) => Promise<void>
 }
@@ -48,7 +49,7 @@ const initialForm = {
   ordem: 0,
 }
 
-export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props) {
+export function ConsultorFormDialog({ open, consultor, cfg, onClose, onSave }: Props) {
   const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
   const [slugTouched, setSlugTouched] = useState(false)
@@ -164,7 +165,7 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
-            {consultor ? "Editar consultor" : "Novo consultor"}
+            {`${consultor ? "Editar" : "Novo"} — ${cfg.profSingularTitulo}`}
           </DialogTitle>
         </DialogHeader>
 
@@ -206,7 +207,7 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
             <Textarea
               value={form.descricao}
               onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))}
-              placeholder="Breve descrição do que esse consultor faz."
+              placeholder={`Breve descrição do que ${cfg.equipe === "consultor" ? "esse consultor" : "essa pessoa"} faz.`}
               rows={2}
             />
           </div>
@@ -240,7 +241,7 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="reunioes_galdino">reunioes_galdino (1:1 Galdino)</SelectItem>
-                  <SelectItem value="reunioes_mentoria_new">reunioes_mentoria_new (consultor PMC)</SelectItem>
+                  <SelectItem value="reunioes_mentoria_new">reunioes_mentoria_new ({cfg.equipe === "consultor" ? "consultor PMC" : "Sucesso do Cliente"})</SelectItem>
                   <SelectItem value="reunioes_blackcrm">reunioes_blackcrm (tutoria / implementação)</SelectItem>
                 </SelectContent>
               </Select>
@@ -287,7 +288,7 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Foto do consultor</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Foto</Label>
               <div className="flex items-center gap-3">
                 <ConsultorAvatar
                   nome={form.nome || "?"}
@@ -359,13 +360,13 @@ export function ConsultorFormDialog({ open, consultor, onClose, onSave }: Props)
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Cor dos eventos desse consultor na agenda do Google. Vale para novos agendamentos do link público.
+              Cor dos eventos dessa agenda no Google. Vale para novos agendamentos do link público.
             </p>
           </div>
 
           <label className="flex items-center gap-2 pt-1 cursor-pointer">
             <Checkbox checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: !!v }))} />
-            <span className="text-sm font-medium text-foreground">Consultor ativo (aparece na página pública)</span>
+            <span className="text-sm font-medium text-foreground">Ativo (aparece na página pública)</span>
           </label>
         </div>
 
