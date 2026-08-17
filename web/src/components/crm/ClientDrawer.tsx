@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, Plus, Trash2, MessageCircle, Pause, Pin, Image as ImageIcon, Send, Edit2, ListPlus } from "lucide-react";
+import { X, Plus, Trash2, Pause, Pin, Image as ImageIcon, Send, Edit2, ListPlus } from "lucide-react";
 import { toast } from "sonner";
 import { CicloProgressBar } from "@/components/crm/CarteiraVisuals";
 import { Badge } from "@/components/crm/Badge";
@@ -26,16 +26,25 @@ import {
   useReunioes,
   useSelectedClienteId,
 } from "@/lib/crm/storage";
+// As abas do cadastro do cliente são as MESMAS do perfil admin
+// (pages/client-profile-admin.tsx). Reusar os componentes de lá, em vez de
+// manter uma cópia aqui, é o que garante que o que a CS preenche apareça nos
+// dois lugares — e foi a divergência entre as duas cópias que escondeu 81
+// clientes com data de entrada preenchida.
 import VitoriasPage from "@/pages/vitorias";
+import BalancoPage from "@/pages/balanco";
 import TabCancelamento from "@/components/client-profile/admin-tabs/tab-cancelamento";
+import TabPrograma from "@/components/client-profile/admin-tabs/tab-programa";
+import TabBlackCRM from "@/components/client-profile/admin-tabs/tab-black-crm";
+import TabCicloGaldino from "@/components/client-profile/admin-tabs/tab-ciclo-galdino";
+import TabConsultores from "@/components/client-profile/admin-tabs/tab-consultores";
+import TabRenovacao from "@/components/client-profile/admin-tabs/tab-renovacao";
+import TabComunicacao from "@/components/client-profile/admin-tabs/tab-comunicacao";
 import { formatBR, inputDateValue, fromInputDate } from "@/lib/crm/format";
 import { useCsList } from "@/lib/crm/equipe";
 import {
-  CONSULTORES,
   type Cliente,
   type CSName,
-  type CicloGaldinoReuniao,
-  type ConsultorReuniao,
   type AnotacaoInterna,
   type ProfileName,
   type Reuniao,
@@ -52,6 +61,7 @@ type Tab =
   | "anotacoes"
   | "historico"
   | "renovacao"
+  | "balanco"
   | "vitorias"
   | "comunicacao"
   | "cancelamento";
@@ -64,16 +74,13 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "consultores", label: "Consultores" },
   { key: "atividades", label: "Atividades" },
   { key: "renovacao", label: "Renovação" },
+  { key: "balanco", label: "Balanço" },
   { key: "vitorias", label: "Vitórias" },
   { key: "anotacoes", label: "Visão da CS" },
   { key: "comunicacao", label: "Comunicação" },
   { key: "cancelamento", label: "Cancelamento" },
   { key: "historico", label: "Histórico" },
 ];
-
-function uid() {
-  return Math.random().toString(36).slice(2, 10);
-}
 
 export function ClientDrawerHost() {
   const id = useSelectedClienteId();
@@ -207,14 +214,25 @@ function ClientDrawer({ clienteId, onClose }: { clienteId: string; onClose: () =
         </div>
 
         <div className="mx-auto max-w-6xl p-5 space-y-5">
+          {/* Perfil continua sendo do CRM: é a única aba com campos que o
+              perfil admin não tem (situação na jornada e o estado atual em
+              texto livre), e os dois hoje gravam nas mesmas colunas. */}
           {tab === "perfil" && <PerfilTab cliente={cliente} patch={patch} />}
-          {tab === "programa" && <ProgramaTab cliente={cliente} patch={patch} />}
-          {tab === "bcrm" && <BlackCrmTab cliente={cliente} patch={patch} />}
-          {tab === "galdino" && <CicloGaldinoTab cliente={cliente} patch={patch} />}
-          {tab === "consultores" && <ConsultoresTab cliente={cliente} patch={patch} />}
+          {tab === "programa" && <TabPrograma clientId={cliente.id} />}
+          {tab === "bcrm" && <TabBlackCRM clientId={cliente.id} />}
+          {/* Ciclo Galdino e Consultores eram decorativos aqui: editavam
+              `ciclo_galdino_cadencia` e as listas de reunião, que não têm
+              coluna — o valor era descartado em silêncio. As abas do perfil
+              leem as reuniões de verdade e gravam a cadência em
+              cliente_informacoes_empresa.total_galdino. */}
+          {tab === "galdino" && <TabCicloGaldino clientId={cliente.id} />}
+          {tab === "consultores" && <TabConsultores clientId={cliente.id} />}
           {tab === "atividades" && <AtividadesTab cliente={cliente} />}
+          {tab === "balanco" && <BalancoPage clientId={cliente.id} />}
+          {/* Histórico fica com a versão do CRM: a do perfil é um placeholder
+              vazio, esta mostra o histórico de temperatura de verdade. */}
           {tab === "historico" && <HistoricoTab cliente={cliente} />}
-          {tab === "renovacao" && <RenovacaoTab cliente={cliente} patch={patch} />}
+          {tab === "renovacao" && <TabRenovacao clientId={cliente.id} />}
           {/* Vitórias e Cancelamento reusam as telas do perfil do cliente, que
               gravam nas tabelas de verdade (cliente_vitorias,
               cliente_cancelamento). As versões que existiam aqui escreviam em
@@ -222,7 +240,7 @@ function ClientDrawer({ clienteId, onClose }: { clienteId: string; onClose: () =
               descartado em silêncio e parecia ter salvo. */}
           {tab === "vitorias" && <VitoriasPage clientId={cliente.id} />}
           {tab === "anotacoes" && <AnotacoesTab cliente={cliente} />}
-          {tab === "comunicacao" && <ComunicacaoTab cliente={cliente} patch={patch} />}
+          {tab === "comunicacao" && <TabComunicacao clientId={cliente.id} />}
           {tab === "cancelamento" && <TabCancelamento clientId={cliente.id} />}
         </div>
       </div>
@@ -441,452 +459,6 @@ function PerfilTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cl
           </Field>
         </Grid2>
       </Section>
-    </>
-  );
-}
-
-function ProgramaTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cliente>) => void }) {
-  return (
-    <>
-      <Section title="Programa">
-        <Grid2>
-          <Field label="Tem Guardião de IA">
-            <Select
-              value={cliente.guardiao_ia ? "Sim" : "Não"}
-              onChange={(v) => patch({ guardiao_ia: v === "Sim" })}
-              options={[
-                { value: "Não", label: "Não" },
-                { value: "Sim", label: "Sim" },
-              ]}
-            />
-          </Field>
-          <Field label="Presença em treinamentos">
-            <Select
-              value={cliente.presenca_treinamento || "Nenhuma"}
-              onChange={(v) => patch({ presenca_treinamento: v as Cliente["presenca_treinamento"] })}
-              options={[
-                { value: "Nenhuma", label: "Nenhuma" },
-                { value: "Baixa", label: "Baixa" },
-                { value: "Média", label: "Média" },
-                { value: "Alta", label: "Alta" },
-              ]}
-            />
-          </Field>
-          <Field label="Reunião com consultores">
-            <Select
-              value={cliente.reuniao_consultores_status || "Nunca fez"}
-              onChange={(v) => patch({ reuniao_consultores_status: v as Cliente["reuniao_consultores_status"] })}
-              options={[
-                { value: "Nunca fez", label: "Nunca fez" },
-                { value: "Já fez", label: "Já fez" },
-                { value: "Agendada", label: "Agendada" },
-              ]}
-            />
-          </Field>
-          <Field label="Reunião com Galdino">
-            <Select
-              value={cliente.reuniao_galdino_status || "Nunca fez"}
-              onChange={(v) => patch({ reuniao_galdino_status: v as Cliente["reuniao_galdino_status"] })}
-              options={[
-                { value: "Nunca fez", label: "Nunca fez" },
-                { value: "Já fez", label: "Já fez" },
-                { value: "Agendada", label: "Agendada" },
-              ]}
-            />
-          </Field>
-          <Field label="Frequência grupo WhatsApp">
-            <Select
-              value={cliente.frequencia_wpp || "Média"}
-              onChange={(v) => patch({ frequencia_wpp: v as Cliente["frequencia_wpp"] })}
-              options={[
-                { value: "Baixa", label: "Baixa" },
-                { value: "Média", label: "Média" },
-                { value: "Alta", label: "Alta" },
-              ]}
-            />
-          </Field>
-        </Grid2>
-      </Section>
-
-      <Section title="Guardião de IA" icon={<span>🤖</span>}>
-        <Grid2>
-          <Field label="Nome">
-            <TextInput
-              value={cliente.guardiao_ia_nome || ""}
-              onChange={(e) => patch({ guardiao_ia_nome: e.target.value })}
-            />
-          </Field>
-          <Field label="Telefone">
-            <div className="flex gap-2">
-              <TextInput
-                value={cliente.guardiao_ia_telefone || ""}
-                onChange={(e) => patch({ guardiao_ia_telefone: e.target.value })}
-                placeholder="(00) 00000-0000"
-              />
-              {cliente.guardiao_ia_telefone && (
-                <a
-                  href={`https://wa.me/${cliente.guardiao_ia_telefone.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 bg-status-green/20 text-status-green border border-status-green/40 px-3 py-2 rounded-lg text-xs font-semibold shrink-0 hover:bg-status-green/30"
-                >
-                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
-                </a>
-              )}
-            </div>
-          </Field>
-          <Field label="Cargo" className="md:col-span-2">
-            <TextInput
-              value={cliente.guardiao_ia_cargo || ""}
-              onChange={(e) => patch({ guardiao_ia_cargo: e.target.value })}
-            />
-          </Field>
-        </Grid2>
-      </Section>
-    </>
-  );
-}
-
-function BlackCrmTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cliente>) => void }) {
-  return (
-    <Section title="Black CRM" icon={<span>🤖</span>}>
-      <Grid2>
-        <Field label="Tem conta na Black CRM?">
-          <Select
-            value={cliente.bcrm_tem_conta || (cliente.black_crm ? "Sim" : "Não")}
-            onChange={(v) => patch({ bcrm_tem_conta: v as "Sim" | "Não", black_crm: v === "Sim" })}
-            options={[
-              { value: "Não", label: "Não" },
-              { value: "Sim", label: "Sim" },
-            ]}
-          />
-        </Field>
-        <Field label="Quantas contas?">
-          <TextInput
-            type="number"
-            min={0}
-            value={cliente.bcrm_qtd_contas ?? 0}
-            onChange={(e) => patch({ bcrm_qtd_contas: Number(e.target.value) })}
-          />
-        </Field>
-        <Field label="Tem guardião do CRM?">
-          <Select
-            value={cliente.bcrm_tem_guardiao || "Não"}
-            onChange={(v) => patch({ bcrm_tem_guardiao: v as "Sim" | "Não" })}
-            options={[
-              { value: "Não", label: "Não" },
-              { value: "Sim", label: "Sim" },
-            ]}
-          />
-        </Field>
-        <Field label="Nome do guardião">
-          <TextInput
-            value={cliente.bcrm_guardiao_nome || ""}
-            onChange={(e) => patch({ bcrm_guardiao_nome: e.target.value })}
-            placeholder="Nome da pessoa responsável"
-          />
-        </Field>
-        <Field label="Telefone do guardião">
-          <TextInput
-            value={cliente.bcrm_guardiao_telefone || ""}
-            onChange={(e) => patch({ bcrm_guardiao_telefone: e.target.value })}
-            placeholder="(11) 99999-9999"
-          />
-        </Field>
-        <Field label="Nome(s) da(s) conta(s)" className="md:col-span-2">
-          <TextInput
-            value={cliente.bcrm_nomes_contas || ""}
-            onChange={(e) => patch({ bcrm_nomes_contas: e.target.value })}
-            placeholder="Ex.: Conta Principal, Filial SP, Comercial..."
-          />
-        </Field>
-        <Field label="Status da conta">
-          <Select
-            value={cliente.bcrm_status_conta || "Ativa"}
-            onChange={(v) => patch({ bcrm_status_conta: v as Cliente["bcrm_status_conta"] })}
-            options={[
-              { value: "Ativa", label: "Ativa" },
-              { value: "Inativa", label: "Inativa" },
-              { value: "Suspensa", label: "Suspensa" },
-            ]}
-          />
-        </Field>
-        <Field label="Status de implementação">
-          <Select
-            value={cliente.bcrm_status_impl || "Não iniciado"}
-            onChange={(v) => patch({ bcrm_status_impl: v as Cliente["bcrm_status_impl"] })}
-            options={[
-              { value: "Não iniciado", label: "Não iniciado" },
-              { value: "Em implementação", label: "Em implementação" },
-              { value: "Implementado", label: "Implementado" },
-            ]}
-          />
-        </Field>
-        <Field label="Participa de tutoria?">
-          <Select
-            value={cliente.bcrm_tutoria || "Não participa"}
-            onChange={(v) => patch({ bcrm_tutoria: v as Cliente["bcrm_tutoria"] })}
-            options={[
-              { value: "Não participa", label: "Não participa" },
-              { value: "Participa", label: "Participa" },
-            ]}
-          />
-        </Field>
-        <Field label="Cliente tem vitórias com CRM?">
-          <Select
-            value={cliente.bcrm_tem_vitorias || "Não"}
-            onChange={(v) => patch({ bcrm_tem_vitorias: v as "Sim" | "Não" })}
-            options={[
-              { value: "Não", label: "Não" },
-              { value: "Sim", label: "Sim" },
-            ]}
-          />
-        </Field>
-        <Field label="Quais vitórias?" className="md:col-span-2">
-          <TextArea
-            value={cliente.bcrm_quais_vitorias || ""}
-            onChange={(e) => patch({ bcrm_quais_vitorias: e.target.value })}
-            placeholder="Descreva as vitórias do cliente com a Black CRM..."
-          />
-        </Field>
-      </Grid2>
-    </Section>
-  );
-}
-
-function CicloGaldinoTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cliente>) => void }) {
-  const cadencia = cliente.ciclo_galdino_cadencia || 4;
-  const reunioes = cliente.ciclo_galdino_reunioes || [];
-
-  // Garante slots conforme cadência
-  const slots: CicloGaldinoReuniao[] = Array.from({ length: cadencia }, (_, i) => {
-    const existing = reunioes[i];
-    if (existing) return existing;
-    // calcula data ideal baseada na data de início e cadência
-    const meses = Math.round(12 / cadencia);
-    const base = new Date(cliente.data_inicio);
-    // Sem data de entrada não há data ideal a calcular: o slot nasce vazio em
-    // vez de "Invalid Date".
-    if (Number.isNaN(base.getTime())) {
-      return { id: uid(), status: "Não agendada" };
-    }
-    base.setMonth(base.getMonth() + (i + 1) * meses);
-    return {
-      id: uid(),
-      data_ideal: base.toISOString(),
-      status: "Não agendada",
-    };
-  });
-
-  const realizadas = slots.filter((r) => r.status === "Realizada").length;
-  const pendentes = slots.length - realizadas;
-  const proxima = slots.find((r) => r.status === "Agendada");
-
-  function setCadencia(n: 4 | 6 | 12) {
-    patch({ ciclo_galdino_cadencia: n, ciclo_galdino_reunioes: slots.slice(0, n) });
-  }
-
-  function updateReuniao(idx: number, p: Partial<CicloGaldinoReuniao>) {
-    const next = slots.map((r, i) => (i === idx ? { ...r, ...p } : r));
-    patch({ ciclo_galdino_reunioes: next });
-  }
-
-  return (
-    <>
-      <Section title="Ciclo Galdino">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
-          <Stat n={slots.length} l="Total" />
-          <Stat n={realizadas} l="Realizadas" tone="text-status-green" />
-          <Stat n={pendentes} l="Pendentes" tone="text-status-yellow" />
-          <Stat
-            n={proxima?.data_reuniao ? formatBR(proxima.data_reuniao) : "—"}
-            l="Próxima agendada"
-          />
-          <Stat n={cadencia} l="Reuniões/ano" />
-        </div>
-        <div className="text-xs text-muted-foreground">
-          Cadência ideal: 1 reunião a cada {Math.round(12 / cadencia)} meses.
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {[4, 6, 12].map((n) => (
-            <button
-              key={n}
-              onClick={() => setCadencia(n as 4 | 6 | 12)}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                cadencia === n
-                  ? "bg-primary text-primary-foreground border-primary font-semibold"
-                  : "border-border hover:border-primary"
-              }`}
-            >
-              {n} reuniões
-            </button>
-          ))}
-        </div>
-      </Section>
-
-      <div className="space-y-3">
-        {slots.map((r, i) => (
-          <Section key={r.id} title={`Reunião ${i + 1}`}>
-            <Grid2>
-              <Field label="Data ideal">
-                <TextInput
-                  type="date"
-                  value={inputDateValue(r.data_ideal)}
-                  onChange={(e) =>
-                    updateReuniao(i, {
-                      data_ideal: e.target.value ? fromInputDate(e.target.value) : undefined,
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Data da reunião">
-                <TextInput
-                  type="date"
-                  value={inputDateValue(r.data_reuniao)}
-                  onChange={(e) =>
-                    updateReuniao(i, {
-                      data_reuniao: e.target.value ? fromInputDate(e.target.value) : undefined,
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Status">
-                <Select
-                  value={r.status}
-                  onChange={(v) => updateReuniao(i, { status: v as CicloGaldinoReuniao["status"] })}
-                  options={[
-                    { value: "Não agendada", label: "Não agendada" },
-                    { value: "Agendada", label: "Agendada" },
-                    { value: "Realizada", label: "Realizada" },
-                    { value: "Cancelada", label: "Cancelada" },
-                  ]}
-                />
-              </Field>
-              <Field label="Próximos passos definidos">
-                <TextInput
-                  value={r.proximos_passos || ""}
-                  onChange={(e) => updateReuniao(i, { proximos_passos: e.target.value })}
-                  placeholder="O que ficou combinado..."
-                />
-              </Field>
-            </Grid2>
-          </Section>
-        ))}
-      </div>
-    </>
-  );
-}
-
-function ConsultoresTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cliente>) => void }) {
-  const reunioes = cliente.consultor_reunioes || [];
-  const realizadas = reunioes.filter((r) => r.status === "Realizada");
-  const ordenadas = [...reunioes].sort(
-    (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
-  );
-  const ultima = realizadas[0];
-  const proxima = reunioes.find((r) => r.status === "Agendada");
-
-  // consultor mais acionado
-  const counts: Record<string, number> = {};
-  reunioes.forEach((r) => {
-    counts[r.consultor] = (counts[r.consultor] || 0) + 1;
-  });
-  const topConsultor =
-    Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
-
-  function add() {
-    const nova: ConsultorReuniao = {
-      id: uid(),
-      consultor: CONSULTORES[0],
-      data: new Date().toISOString(),
-      status: "Realizada",
-    };
-    patch({ consultor_reunioes: [nova, ...reunioes] });
-  }
-  function update(id: string, p: Partial<ConsultorReuniao>) {
-    patch({
-      consultor_reunioes: reunioes.map((r) => (r.id === id ? { ...r, ...p } : r)),
-    });
-  }
-  function remove(id: string) {
-    patch({ consultor_reunioes: reunioes.filter((r) => r.id !== id) });
-  }
-
-  return (
-    <>
-      <Section title="Consultores">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
-          <Stat n={reunioes.length} l="Total de reuniões" />
-          <Stat n={ultima ? formatBR(ultima.data) : "—"} l="Última reunião" />
-          <Stat n={topConsultor} l="Consultor + acionado" />
-          <Stat n="—" l="Frequência média" />
-          <Stat n={proxima ? formatBR(proxima.data) : "—"} l="Próxima agendada" />
-        </div>
-        <button
-          onClick={add}
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-4 py-2 rounded-lg text-sm hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" /> Registrar nova reunião
-        </button>
-      </Section>
-
-      <div className="space-y-2">
-        {ordenadas.length === 0 && (
-          <div className="text-sm text-muted-foreground text-center py-6">
-            Sem reuniões registradas.
-          </div>
-        )}
-        {ordenadas.map((r, i) => (
-          <div
-            key={r.id}
-            className="bg-background border border-border rounded-lg p-3 border-l-4 border-l-primary"
-          >
-            <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
-                {ordenadas.length - i}ª
-              </div>
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
-                <Select
-                  value={r.consultor}
-                  onChange={(v) => update(r.id, { consultor: v })}
-                  options={CONSULTORES.map((c) => ({ value: c, label: c }))}
-                />
-                <TextInput
-                  type="date"
-                  value={inputDateValue(r.data)}
-                  onChange={(e) =>
-                    update(r.id, {
-                      data: e.target.value ? fromInputDate(e.target.value) : r.data,
-                    })
-                  }
-                />
-                <Select
-                  value={r.status}
-                  onChange={(v) => update(r.id, { status: v as ConsultorReuniao["status"] })}
-                  options={[
-                    { value: "Realizada", label: "Realizada" },
-                    { value: "Agendada", label: "Agendada" },
-                    { value: "Cancelada", label: "Cancelada" },
-                  ]}
-                />
-                <TextInput
-                  className="md:col-span-3"
-                  value={r.observacao || ""}
-                  onChange={(e) => update(r.id, { observacao: e.target.value })}
-                  placeholder="Observação..."
-                />
-              </div>
-              <button
-                onClick={() => remove(r.id)}
-                className="text-status-red hover:opacity-80"
-                title="Remover"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
     </>
   );
 }
@@ -1115,122 +687,6 @@ function HistoricoTab({ cliente }: { cliente: Cliente }) {
         </div>
       )}
     </Section>
-  );
-}
-
-function RenovacaoTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cliente>) => void }) {
-  return (
-    <Section title="Renovação">
-      <Grid2>
-        <Field label="Data de renovação">
-          <TextInput
-            type="date"
-            value={inputDateValue(cliente.data_renovacao)}
-            onChange={(e) =>
-              patch({
-                data_renovacao: e.target.value ? fromInputDate(e.target.value) : undefined,
-                proximo_renovacao: !!e.target.value,
-              })
-            }
-          />
-        </Field>
-        <Field label="Valor (R$)">
-          <TextInput
-            type="number"
-            min={0}
-            step="0.01"
-            value={cliente.renovacao_valor ?? ""}
-            onChange={(e) =>
-              patch({
-                renovacao_valor: e.target.value === "" ? undefined : Number(e.target.value),
-              })
-            }
-          />
-        </Field>
-        <Field label="Status da renovação" className="md:col-span-2">
-          <Select
-            value={cliente.renovacao_status || "Ainda distante"}
-            onChange={(v) => patch({ renovacao_status: v as Cliente["renovacao_status"] })}
-            options={[
-              { value: "Ainda distante", label: "Ainda distante" },
-              { value: "Aproximando", label: "Aproximando" },
-              { value: "Em negociação", label: "Em negociação" },
-              { value: "Confirmada", label: "Confirmada" },
-              { value: "Perdida", label: "Perdida" },
-            ]}
-          />
-        </Field>
-        <Field label="Observações sobre renovação" className="md:col-span-2">
-          <TextArea
-            value={cliente.renovacao_obs || ""}
-            onChange={(e) => patch({ renovacao_obs: e.target.value })}
-          />
-        </Field>
-      </Grid2>
-    </Section>
-  );
-}
-
-function ComunicacaoTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cliente>) => void }) {
-  return (
-    <Section title="Comunicação ideal com o cliente">
-      <p className="text-xs text-muted-foreground -mt-2">
-        Defina como o CS deve se comunicar com este cliente. Útil para evitar ruído com o time e
-        respeitar a preferência do cliente.
-      </p>
-      <Grid2>
-        <Field label="Preferência de comunicação">
-          <Select
-            value={cliente.comunicacao_preferencia || "Grupo individual do cliente"}
-            onChange={(v) =>
-              patch({ comunicacao_preferencia: v as Cliente["comunicacao_preferencia"] })
-            }
-            options={[
-              { value: "Grupo individual do cliente", label: "Grupo individual do cliente" },
-              { value: "Grupo geral", label: "Grupo geral" },
-              { value: "Privado com CS", label: "Privado com CS" },
-              { value: "Direto com Galdino", label: "Direto com Galdino" },
-            ]}
-          />
-        </Field>
-        <Field label="Canal preferido">
-          <Select
-            value={cliente.comunicacao_canal || "WhatsApp"}
-            onChange={(v) => patch({ comunicacao_canal: v as Cliente["comunicacao_canal"] })}
-            options={[
-              { value: "WhatsApp", label: "WhatsApp" },
-              { value: "Telefone", label: "Telefone" },
-              { value: "E-mail", label: "E-mail" },
-              { value: "Reunião", label: "Reunião" },
-            ]}
-          />
-        </Field>
-      </Grid2>
-      <Field label="Restrições / o que NÃO falar no grupo geral">
-        <TextArea
-          value={cliente.comunicacao_restricoes || ""}
-          onChange={(e) => patch({ comunicacao_restricoes: e.target.value })}
-          placeholder="Ex.: assuntos financeiros, reclamações, ajustes de contrato — falar apenas no privado."
-        />
-      </Field>
-      <Field label="Resumo da comunicação ideal (escreva aqui o contexto)">
-        <TextArea
-          rows={4}
-          value={cliente.comunicacao_resumo || ""}
-          onChange={(e) => patch({ comunicacao_resumo: e.target.value })}
-          placeholder="Ex.: O cliente prefere que falem com ele no privado. Não gosta que assuntos sensíveis vão para o grupo geral. Costuma responder à noite. Gosta de áudios curtos."
-        />
-      </Field>
-    </Section>
-  );
-}
-
-function Stat({ n, l, tone }: { n: string | number; l: string; tone?: string }) {
-  return (
-    <div>
-      <div className={`text-xl font-bold tabular-nums ${tone || ""}`}>{n}</div>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{l}</div>
-    </div>
   );
 }
 
