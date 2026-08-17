@@ -16,14 +16,16 @@ reunião em `docs/reuniao-crm.md`.
 | 5 · Atendimento (WhatsApp) | ✅ | `aef41a9` |
 | 6 · Edge functions de IA (saudação, transcrição) | ✅ | `e70c768` |
 | 7 · Promoção DEV→PROD | ✅ (backfill cancelado — ver abaixo) | `88c414b`, `a11d453` |
+| 8 · Unificação com o perfil do cliente | ✅ | `583aefd`, `23adfe6`, `6eb0165` |
 
 O **schema e as edge functions já estão no PROD** (`hqczwextifessaztyyyk`) desde
 10/08/2026 — ver Fase 7. Falta publicar o frontend (push → Vercel). A rota `/crm`
 antiga saiu do código e virou redirect para `/crm/meu-dia`.
 
-As datas de entrada que faltam **serão preenchidas à mão**, cliente a cliente. O
-backfill automático foi cancelado; o motivo está na Fase 7 e vale como regra
-geral do projeto.
+As datas de entrada que faltam **serão preenchidas à mão**, cliente a cliente —
+sobraram 25 clientes ativos, não 106: a Fase 8 descobriu que 81 já estavam
+preenchidos, no campo que o perfil do cliente usa. O backfill automático foi
+cancelado; o motivo está na Fase 7 e vale como regra geral do projeto.
 
 ## Decisões tomadas (não reabrir sem falar com o David)
 
@@ -34,7 +36,9 @@ geral do projeto.
    precisou mudar.
 3. **Backend**: reaproveitar `clientes_entrada_new`, `cliente_atividades` e as
    tabelas `reunioes_*`; criar `crm_*` só onde faltava.
-4. **Início do ciclo** = data de entrada/onboarding (`clientes_entrada_new.data`).
+4. **Início do ciclo** = data de entrada/onboarding. A fonte é
+   `cliente_informacoes_empresa.data_entrada` (o campo que a CS mantém no perfil
+   do cliente), com `clientes_entrada_new.data` de reserva — ver Fase 8.
    O David escolheu isso; a reunião apontava para a data da 1ª reunião com o
    Galdino, e a Mayara ia validar com ele. Se mudar, muda o cálculo de toda a
    carteira.
@@ -120,32 +124,36 @@ arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
 
 ## Pendências que dependem do David / da Mayara
 
-1. **Preencher à mão a data de entrada de 104 clientes ativos** (143 no total
-   estão sem ela). Enquanto isso não acontece, esses clientes não têm ciclo,
-   checkpoint nem alerta de prazo — aparecem como "Sem data de entrada".
-   As ferramentas já existem: em `/crm/clientes`, o filtro
-   **"Sem data de entrada (N)"** lista exatamente quem falta, e o campo
-   "Data de entrada" no drawer do cliente grava direto em
-   `clientes_entrada_new.data`. Dá para limpar o campo também, se digitar errado.
-2. **Redistribuir os 52 clientes ativos que ainda estão com a Fernanda**, que saiu
+1. **Preencher à mão a data de entrada de 25 clientes ativos.** Eram 106 antes
+   da Fase 8; a unificação com o perfil devolveu 81 que já estavam preenchidos.
+   Enquanto faltar, esses clientes não têm ciclo, checkpoint nem alerta de prazo.
+   Em `/crm/clientes`, o filtro **"Sem data de entrada (N)"** lista quem falta;
+   o campo "Data de entrada" no drawer grava em
+   `cliente_informacoes_empresa.data_entrada` (onde o perfil lê) e no cadastro.
+   Dá para limpar o campo, se digitar errado.
+2. **Conferir 11 datas de entrada no futuro** (até dezembro/2026, provável erro
+   de ano) e **50 divergências** entre a data do perfil e a do cadastro. As duas
+   listas saem de `scripts/backup/20260817-datas-cliente-conferencia.sql`.
+   Nenhuma das duas dá para adivinhar: depende de quem acompanhou o cliente.
+3. **Redistribuir os 52 clientes ativos que ainda estão com a Fernanda**, que saiu
    do time. Sem isso eles não aparecem no "Meu Dia" de ninguém.
-3. **Danielly entra em `mentores` no PROD?** Existe no mock da Mayara, não no banco.
-4. **"Novo Cliente" dentro do CRM** ou aponta para o cadastro que já existe no
+4. **Danielly entra em `mentores` no PROD?** Existe no mock da Mayara, não no banco.
+5. **"Novo Cliente" dentro do CRM** ou aponta para o cadastro que já existe no
    PMC OS? O botão foi removido no port (não há `createCliente`, e
    `clientes_entrada_new` é a tabela mestre).
-5. **Projeto sem tela para definir responsável e prazo** — o modal diz "o time
+6. **Projeto sem tela para definir responsável e prazo** — o modal diz "o time
    define depois", mas essa tela não existe. Vem do original.
-6. **Gargalo tem `pessoas_atribuidas` no banco sem UI para preencher.**
-7. **Regra "não sugerir consultor antes do Galdino"** não é explícita no catálogo
+7. **Gargalo tem `pessoas_atribuidas` no banco sem UI para preencher.**
+8. **Regra "não sugerir consultor antes do Galdino"** não é explícita no catálogo
    de alertas. Funciona por acidente para cliente novo. Depende da definição de
    início de ciclo.
-8. **Envio de mensagem pelo Atendimento está desligado** (`ENVIO_HABILITADO`
+9. **Envio de mensagem pelo Atendimento está desligado** (`ENVIO_HABILITADO`
    em `lib/crm/conversas.ts`), e não há webhook de entrada: as conversas só
    aparecem se alguém escrever em `crm_conversas`/`crm_mensagens`. Falta
    decidir o provedor (chips estavam sendo comprados em 05/08) e quem vincula
    `crm_conversas.id_cliente` ao cliente certo — a lista mostra no rodapé
    quantos grupos ficaram sem vínculo.
-9. **Mudança de temperatura e pausa de cliente não têm UI** (`updateClienteTemperatura`
+10. **Mudança de temperatura e pausa de cliente não têm UI** (`updateClienteTemperatura`
    e `setClientePausado` existem e ninguém chama). Enquanto isso, o histórico de
    temperatura fica vazio e a Visão Estratégica não tem o que mostrar.
 
@@ -231,3 +239,68 @@ corrigir quem digitar errado.
   `/crm` antiga vira redirect para `/crm/meu-dia` em produção.
 
 **Não promover** nada de `scripts/seed-crm-dev*.sql`: é dado sintético de DEV.
+
+## Fase 8 — unificação com o perfil do cliente (17/08/2026)
+
+Veio de uma pergunta do David: "o que foi preenchido no perfil do cliente está
+também no CRM?". A resposta era **não**, e a causa explica a Fase 7 inteira.
+
+### O que estava errado
+
+O drawer do CRM era uma **segunda cópia** das mesmas abas do perfil admin
+(`pages/client-profile-admin.tsx`) — 1.521 linhas reconstruindo o mesmo
+cadastro, só sem o Balanço. Como as duas cópias liam fontes diferentes, o CRM
+mostrava vazio onde a equipe já tinha preenchido:
+
+| Fato | Perfil grava/lê | CRM lia |
+| --- | --- | --- |
+| Data de entrada | `cliente_informacoes_empresa.data_entrada` | `clientes_entrada_new.data` |
+| Cadência do ciclo Galdino | `cliente_informacoes_empresa.total_galdino` | `clientes_entrada_new.ciclo_galdino_cadencia` (coluna criada em paralelo) |
+| Vitórias | `pages/vitorias` → `cliente_vitorias` | nada; a aba abria vazia |
+| Cancelamento | `cliente_cancelamento` | nada |
+
+**81 clientes ativos** apareciam como "Sem data de entrada" no CRM tendo a data
+preenchida pela CS no perfil. A Fase 7 quase derivou de reuniões uma data que
+já existia digitada por gente.
+
+Pior que vazio: as abas Vitórias, Cancelamento, Ciclo Galdino e Consultores
+**aceitavam edição e descartavam em silêncio** — os campos estavam em
+`SEM_COLUNA`. A CS registrava uma vitória e parecia ter salvo.
+
+### O que passou a valer
+
+- **Data de entrada**: `anexarInformacoesEmpresa` (mappers.ts) resolve como
+  `pages/informacoes-empresa.tsx:91` já fazia — vale a do perfil, o cadastro é
+  reserva. A escrita vai para as duas colunas (`salvarDataEntrada` em store.ts),
+  porque `cliente_informacoes_empresa` tem FK para `auth.users` e 3 clientes
+  ativos não têm login.
+- **Data de entrada no futuro não inicia ciclo.** São 11 no PROD, até
+  dezembro/2026 — provável erro de ano. Cai para o cadastro.
+- **Divergência fica à vista**: 50 clientes têm as duas datas discordando (151
+  dias em média, até 459). O drawer mostra `cadastro antigo: dd/mm/aaaa`.
+- **O drawer reusa as abas do perfil**: Programa, Black CRM, Ciclo Galdino,
+  Consultores, Renovação, Comunicação, Vitórias, Cancelamento e Balanço.
+  Ficaram nativas do CRM só as que são melhores aqui: Perfil (tem situação na
+  jornada e estado atual), Histórico (a do perfil é placeholder vazio),
+  Atividades e Visão da CS. O arquivo caiu para 945 linhas.
+
+### Retrato antes de mexer
+
+`scripts/backup/20260817-datas-cliente.sql` guarda as três colunas de data dos
+305 clientes, com `UPDATE` por cliente. A transcrição foi conferida contra o
+banco por md5 (`66418d89040cdafcd59ba57a0e80f7a1`).
+`…-conferencia.sql` só lê: números do dia, impressão digital, as 11 datas no
+futuro e os 50 divergentes.
+
+### Migrations
+
+`20260817_crm_remove_cadencia_duplicada.sql` (com rollback) remove
+`ciclo_galdino_cadencia`, que estava NULL nas 305 linhas. Aplicada no DEV e no
+PROD, junto com a remoção pendente de `data_backfilled`.
+
+### A lição, que é a mesma da Fase 7 em outra forma
+
+Antes de criar tabela ou coluna, procure quem já é dono do fato. `total_galdino`
+e `data_entrada` existiam desde sempre; criar `ciclo_galdino_cadencia` e ler a
+coluna errada não deu erro nenhum — deu tela vazia com cara de "ainda não
+preencheram", que é o modo de falha mais caro deste projeto.
