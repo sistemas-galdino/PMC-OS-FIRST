@@ -9,6 +9,7 @@
 //   2. PENDENTE_VALIDACAO nunca aparece na tela nem nas opções de filtro (por
 //      isso todo texto passa por exibivel/opcoesFiltro).
 import { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/layout/page-header"
@@ -17,24 +18,32 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SearchIcon as Search, XIcon as X, CompassIcon as Compass } from "@/components/ui/icons"
 import {
-  exibivel,
-  normalizar,
+  SearchIcon as Search,
+  XIcon as X,
+  CompassIcon as Compass,
+  PlayCircleIcon as PlayCircle,
+} from "@/components/ui/icons"
+import {
+  FILTRO_VAZIO,
+  TODOS,
+  filtrarCases,
+  filtroParaQuery,
   opcoesFiltro,
   ordenarVitrine,
+  temFiltroAtivo,
   type ShowcaseCase,
 } from "@/lib/vitrine"
 
-/** Radix não aceita SelectItem com value vazio — sentinela para "todos". */
-const TODOS = "__todos__"
-
 export default function VitrinePage() {
+  const navigate = useNavigate()
   const [cases, setCases] = useState<ShowcaseCase[]>([])
   const [loading, setLoading] = useState(true)
-  const [busca, setBusca] = useState("")
-  const [nicho, setNicho] = useState(TODOS)
-  const [area, setArea] = useState(TODOS)
+  const [filtro, setFiltro] = useState(FILTRO_VAZIO)
+  const { busca, nicho, area } = filtro
+  const setBusca = (v: string) => setFiltro((f) => ({ ...f, busca: v }))
+  const setNicho = (v: string) => setFiltro((f) => ({ ...f, nicho: v }))
+  const setArea = (v: string) => setFiltro((f) => ({ ...f, area: v }))
 
   useEffect(() => {
     let ativo = true
@@ -58,37 +67,12 @@ export default function VitrinePage() {
   const nichos = useMemo(() => opcoesFiltro(cases.map((c) => c.nicho)), [cases])
   const areas = useMemo(() => opcoesFiltro(cases.map((c) => c.categoria)), [cases])
 
-  const filtrados = useMemo(() => {
-    const q = normalizar(busca)
-    return cases.filter((c) => {
-      if (nicho !== TODOS && exibivel(c.nicho) !== nicho) return false
-      if (area !== TODOS && exibivel(c.categoria) !== area) return false
-      if (!q) return true
-      const alvo = normalizar(
-        [
-          c.empresa_nome,
-          exibivel(c.cliente_nome),
-          exibivel(c.headline_vitrine),
-          exibivel(c.headline_impacto),
-          exibivel(c.ferramenta_card),
-          exibivel(c.nicho),
-          exibivel(c.subnicho),
-          exibivel(c.categoria),
-          ...(c.palavras_chave ?? []),
-        ]
-          .filter(Boolean)
-          .join(" ")
-      )
-      return alvo.includes(q)
-    })
-  }, [cases, busca, nicho, area])
+  const filtrados = useMemo(() => filtrarCases(cases, filtro), [cases, filtro])
 
-  const temFiltro = Boolean(busca.trim()) || nicho !== TODOS || area !== TODOS
+  const temFiltro = temFiltroAtivo(filtro)
 
   function limpar() {
-    setBusca("")
-    setNicho(TODOS)
-    setArea(TODOS)
+    setFiltro(FILTRO_VAZIO)
   }
 
   return (
@@ -96,6 +80,18 @@ export default function VitrinePage() {
       <PageHeader
         title="Vitrine de Cases"
         description="O acervo das transformações que os clientes viveram com o PMC — do gargalo do dia a dia ao processo que passou a rodar sozinho. Filtre pelo nicho do cliente ou pela área do negócio impactada para mostrar o case certo na conversa certa."
+        action={
+          /* Abre a apresentação LEVANDO O FILTRO ATUAL: o que está na tela é
+             exatamente o deck que a pessoa quer mostrar na reunião. */
+          <Button
+            className="h-11 gap-2 rounded-xl px-4 text-[11px] font-bold uppercase tracking-wider"
+            onClick={() => navigate(`/vitrine/apresentar${filtroParaQuery(filtro)}`)}
+            disabled={loading || filtrados.length === 0}
+          >
+            <PlayCircle className="size-4" />
+            Modo apresentação
+          </Button>
+        }
       />
 
       {/* Filtros: nicho do cliente e área impactada são conceitos distintos */}

@@ -55,6 +55,7 @@ const SkillsPage = lazy(() => import("@/pages/skills"))
 const SkillsAdminPage = lazy(() => import("@/pages/skills-admin"))
 const RepositorioVitoriasPage = lazy(() => import("@/pages/repositorio-vitorias"))
 const VitrinePage = lazy(() => import("@/pages/vitrine"))
+const VitrineApresentarPage = lazy(() => import("@/pages/vitrine-apresentar"))
 const VitrineCasePage = lazy(() => import("@/pages/vitrine-case"))
 const VitrineCasesPage = lazy(() => import("@/pages/vitrine-cases"))
 const VitrineClientesPage = lazy(() => import("@/pages/vitrine-clientes"))
@@ -187,6 +188,35 @@ function AppRoutes() {
           <Route path="/atendimento" element={<AtendimentoPublicoPage />} />
           <Route path="/atendimento/:slug" element={<AtendimentoPublicoPage />} />
           <Route path="/guardiao/r/:token" element={<GuardiaoResponderPage />} />
+
+          {/* Modo apresentação: FORA do DashboardLayout de propósito — sem menu,
+              sem cabeçalho e sem o container max-w-7xl, porque esta tela é
+              projetada ao vivo em reunião. Como o bloco externo não passa pelos
+              guards implícitos do catch-all, o `session` vai explícito aqui. */}
+          <Route
+            path="/vitrine/apresentar"
+            element={
+              session ? (
+                <RequireSecao secao="vitrine">
+                  <VitrineApresentarPage />
+                </RequireSecao>
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/vitrine/apresentar/:caseId"
+            element={
+              session ? (
+                <RequireSecao secao="vitrine">
+                  <VitrineApresentarPage />
+                </RequireSecao>
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
           <Route
             path="/*"
             element={session ? (

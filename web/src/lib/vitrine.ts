@@ -216,6 +216,69 @@ export function opcoesFiltro(valores: (string | null)[]): string[] {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Filtro da vitrine — compartilhado entre /vitrine e o modo apresentação, para
+// que o deck aberto na apresentação seja exatamente o que estava na tela.
+// ---------------------------------------------------------------------------
+
+/** Radix Select não aceita value="", então "todos" precisa de um valor real. */
+export const TODOS = "__todos__"
+
+export type FiltroVitrine = { busca: string; nicho: string; area: string }
+
+export const FILTRO_VAZIO: FiltroVitrine = { busca: "", nicho: TODOS, area: TODOS }
+
+export function temFiltroAtivo(f: FiltroVitrine): boolean {
+  return Boolean(f.busca.trim()) || f.nicho !== TODOS || f.area !== TODOS
+}
+
+export function filtrarCases<T extends ShowcaseCase>(cases: T[], f: FiltroVitrine): T[] {
+  const q = normalizar(f.busca)
+  return cases.filter((c) => {
+    // nicho do cliente e área impactada são eixos distintos — dois testes
+    if (f.nicho !== TODOS && exibivel(c.nicho) !== f.nicho) return false
+    if (f.area !== TODOS && exibivel(c.categoria) !== f.area) return false
+    if (!q) return true
+    const alvo = normalizar(
+      [
+        c.empresa_nome,
+        exibivel(c.cliente_nome),
+        exibivel(c.headline_vitrine),
+        exibivel(c.headline_impacto),
+        exibivel(c.ferramenta_card),
+        exibivel(c.nicho),
+        exibivel(c.subnicho),
+        exibivel(c.categoria),
+        ...(c.palavras_chave ?? []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+    )
+    return alvo.includes(q)
+  })
+}
+
+/**
+ * Filtro na querystring (e não no state do router) para o deck sobreviver a um
+ * reload — dá pra deixar a apresentação aberta num monitor e recarregar.
+ */
+export function filtroParaQuery(f: FiltroVitrine): string {
+  const p = new URLSearchParams()
+  if (f.busca.trim()) p.set("busca", f.busca.trim())
+  if (f.nicho !== TODOS) p.set("nicho", f.nicho)
+  if (f.area !== TODOS) p.set("area", f.area)
+  const s = p.toString()
+  return s ? `?${s}` : ""
+}
+
+export function queryParaFiltro(sp: URLSearchParams): FiltroVitrine {
+  return {
+    busca: sp.get("busca") ?? "",
+    nicho: sp.get("nicho") ?? TODOS,
+    area: sp.get("area") ?? TODOS,
+  }
+}
+
 export function normalizar(v: string): string {
   return v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 }

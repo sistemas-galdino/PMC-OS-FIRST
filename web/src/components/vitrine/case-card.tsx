@@ -14,7 +14,14 @@ import { cn } from "@/lib/utils"
 import { exibivel, nomeEmpresa, type ShowcaseCase } from "@/lib/vitrine"
 import { LogoCliente } from "./logo-cliente"
 
-export function CaseCard({ c, className }: { c: ShowcaseCase; className?: string }) {
+type Props = {
+  c: ShowcaseCase
+  className?: string
+  /** Destino do card. O modo apresentação usa /vitrine/apresentar/:caseId. */
+  to?: string
+}
+
+export function CaseCard({ c, className, to }: Props) {
   const nicho = exibivel(c.nicho)
   const area = exibivel(c.categoria)
   const ferramenta = exibivel(c.ferramenta_card)
@@ -23,7 +30,7 @@ export function CaseCard({ c, className }: { c: ShowcaseCase; className?: string
 
   return (
     <Link
-      to={`/vitrine/case/${encodeURIComponent(c.case_id)}`}
+      to={to ?? `/vitrine/case/${encodeURIComponent(c.case_id)}`}
       className={cn(
         "group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all",
         "hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5",
