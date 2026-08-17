@@ -113,6 +113,13 @@ export interface Cliente {
   temperatura: Temperatura;
   engajamento: Engajamento;
   data_inicio: string;
+  /**
+   * A data que o cadastro legado (`clientes_entrada_new.data`) tem, quando ela
+   * discorda da que a CS mantém no perfil. Só existe para a tela poder mostrar
+   * as duas e a correção ser decisão de gente — 50 clientes divergem, com 151
+   * dias de diferença em média. Não é editável e não volta para o banco.
+   */
+  data_inicio_cadastro?: string;
   observacoes: string;
   notas?: NotaCliente[];
   historico_temperatura?: TempHist[];

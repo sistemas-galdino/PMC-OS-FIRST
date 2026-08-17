@@ -233,7 +233,6 @@ export interface ClienteRow {
   pausado_por: string | null
   whatsapp_grupo_id: string | null
   whatsapp_grupo_nome: string | null
-  ciclo_galdino_cadencia: number | null
   data_cancelamento: string | null
 }
 
@@ -256,7 +255,7 @@ export const CLIENTE_COLUNAS = [
   "area_membros_acesso_cliente", "area_membros_acesso_equipe",
   "area_membros_ultimo_acesso", "pausado", "pausado_motivo", "pausado_em",
   "pausado_por", "whatsapp_grupo_id", "whatsapp_grupo_nome",
-  "ciclo_galdino_cadencia", "data_cancelamento",
+  "data_cancelamento",
 ].join(", ")
 
 const simNao = (v: string | null): "Sim" | "Não" | undefined =>
@@ -339,7 +338,6 @@ export function rowToCliente(row: ClienteRow): Cliente {
     whatsapp_grupo_id: row.whatsapp_grupo_id ?? undefined,
     whatsapp_grupo_nome: row.whatsapp_grupo_nome ?? undefined,
 
-    ciclo_galdino_cadencia: (row.ciclo_galdino_cadencia as 4 | 6 | 12) ?? undefined,
 
     pausado: row.pausado ?? false,
     pausado_motivo: row.pausado_motivo ?? undefined,
@@ -382,9 +380,16 @@ const simNaoInv = (v: "Sim" | "Não" | undefined) =>
  *   · status                    -> status_atual é da ficha do cliente do PMC OS
  *                                  (9 valores); mapear de volta a partir dos 3
  *                                  do CRM perderia informação
+ *   · data_inicio,
+ *     ciclo_galdino_cadencia    -> cliente_informacoes_empresa (data_entrada,
+ *                                  total_galdino), onde o perfil do cliente lê
+ *                                  e grava. Ver salvarDataEntrada em store.ts.
+ *   · data_inicio_cadastro      -> só leitura: é o valor legado, mostrado ao
+ *                                  lado quando discorda do perfil
  */
 const SEM_COLUNA = new Set<keyof Cliente>([
   "id", "nome", "status", "engajamento", "estado_atual_obs",
+  "data_inicio", "data_inicio_cadastro", "ciclo_galdino_cadencia",
   "notas", "anotacoes_internas", "historico_temperatura",
   "vitorias", "vitoria", "vitoria_registrada", "oportunidade_case",
   "ciclo_galdino_reunioes", "consultor_reunioes",
@@ -408,10 +413,10 @@ export function clientePatchToRow(patch: Partial<Cliente>): Record<string, unkno
   if (patch.empresa !== undefined) out.nome_empresa = patch.empresa
   if (patch.nicho !== undefined) out.nicho = patch.nicho
   if (patch.subnicho !== undefined) out.subnicho = patch.subnicho
-  // A data de entrada é editável de propósito: é o campo que a CS usa para
-  // destravar o ciclo dos clientes que entraram antes do sistema.
-  if (patch.data_inicio !== undefined)
-    out.data = patch.data_inicio ? patch.data_inicio.slice(0, 10) : null
+  // `data_inicio` NÃO sai daqui: vai para cliente_informacoes_empresa.data_entrada,
+  // que é onde o perfil do cliente lê e grava. Ver salvarDataEntrada em store.ts.
+  // Escrever em clientes_entrada_new.data faria a data digitada no CRM sumir do
+  // perfil — foi exatamente essa divergência que escondeu 81 clientes.
   if (patch.em_risco_cancelamento !== undefined)
     out.em_risco_cancelamento = patch.em_risco_cancelamento === "Sim"
   if (patch.saude !== undefined) out.saude_cliente = patch.saude ? SAUDE_INV[patch.saude] : null
@@ -442,7 +447,6 @@ export function clientePatchToRow(patch: Partial<Cliente>): Record<string, unkno
   // ── Renovação e comunicação ──
   if (patch.renovacao_valor !== undefined) out.renovacao_valor = patch.renovacao_valor ?? null
   if (patch.comunicacao_restricoes !== undefined) out.comunicacao_restricoes = patch.comunicacao_restricoes
-  if (patch.ciclo_galdino_cadencia !== undefined) out.ciclo_galdino_cadencia = patch.ciclo_galdino_cadencia
   if (patch.pausado !== undefined) out.pausado = patch.pausado
   if (patch.pausado_motivo !== undefined) out.pausado_motivo = patch.pausado_motivo
   if (patch.pausado_em !== undefined) out.pausado_em = patch.pausado_em
@@ -508,7 +512,7 @@ const MAPEADAS = new Set<keyof Cliente>([
   "bcrm_tem_conta", "bcrm_qtd_contas", "bcrm_tem_guardiao", "bcrm_guardiao_nome",
   "bcrm_guardiao_telefone", "bcrm_nomes_contas", "bcrm_tem_vitorias",
   "bcrm_quais_vitorias", "renovacao_valor", "comunicacao_restricoes",
-  "ciclo_galdino_cadencia", "pausado", "pausado_motivo", "pausado_em",
+  "pausado", "pausado_motivo", "pausado_em",
   "pausado_por", "guardiao_ia_etapa", "guardiao_ia_etapa_desde",
   "guardiao_ia_nome", "guardiao_ia_telefone", "guardiao_ia_cargo",
   "bcrm_status_impl", "bcrm_status_conta", "bcrm_tutoria",
@@ -797,6 +801,72 @@ export function anexarHistoricoTemperatura(
   return clientes.map((c) => {
     const h = porCliente.get(c.id)
     return h ? { ...c, historico_temperatura: h } : c
+  })
+}
+
+export interface InfoEmpresaRow {
+  id_cliente: string
+  data_entrada: string | null
+  total_galdino: number | null
+}
+
+/**
+ * Reconcilia a data de entrada e a cadência do ciclo com o perfil do cliente.
+ *
+ * O perfil admin (`/cliente/:id`, aba Perfil) sempre gravou a data de entrada
+ * em `cliente_informacoes_empresa.data_entrada`, e o CRM lia
+ * `clientes_entrada_new.data`. Duas colunas para o mesmo fato: 81 clientes
+ * ativos apareciam como "Sem data de entrada" no CRM tendo a data preenchida
+ * pela CS no perfil, e o ciclo deles não contava.
+ *
+ * A resolução é a mesma que `pages/informacoes-empresa.tsx` já usava: vale a
+ * data do perfil, que é a que a equipe mantém; a do cadastro legado é reserva.
+ *
+ * Duas exceções deliberadas:
+ *
+ *   · Data de entrada no FUTURO não inicia ciclo. São 11 casos no PROD, até
+ *     dezembro/2026 — quase certamente erro de ano na digitação. Aceitar
+ *     geraria ciclo com idade negativa. Cai para a data do cadastro; se não
+ *     houver, o cliente fica "Sem data de entrada", que é a verdade.
+ *   · Quando as duas discordam, a do cadastro fica em `data_inicio_cadastro`
+ *     para a tela mostrar as duas. Trocar 50 datas em silêncio seria repetir o
+ *     erro que derrubou o backfill da Fase 7.
+ *
+ * `total_galdino` é a cadência do ciclo (4, 6 ou 12) que o perfil já editava.
+ * O CRM tinha criado `clientes_entrada_new.ciclo_galdino_cadencia` em paralelo;
+ * a fonte é esta.
+ */
+export function anexarInformacoesEmpresa(
+  clientes: Cliente[],
+  info: InfoEmpresaRow[],
+  hoje = new Date(),
+): Cliente[] {
+  if (info.length === 0) return clientes
+  const porCliente = new Map<string, InfoEmpresaRow>()
+  for (const i of info) porCliente.set(i.id_cliente, i)
+
+  const limite = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(
+    hoje.getDate(),
+  ).padStart(2, "0")}`
+
+  return clientes.map((c) => {
+    const i = porCliente.get(c.id)
+    if (!i) return c
+
+    const cadastro = c.data_inicio || ""
+    const perfil = i.data_entrada ?? ""
+    // Comparação lexicográfica: as duas são AAAA-MM-DD puras.
+    const perfilVale = !!perfil && perfil <= limite
+    const data_inicio = perfilVale ? perfil : cadastro
+
+    return {
+      ...c,
+      data_inicio,
+      data_inicio_cadastro:
+        cadastro && cadastro !== data_inicio ? cadastro : undefined,
+      ciclo_galdino_cadencia:
+        (i.total_galdino as 4 | 6 | 12 | null) ?? c.ciclo_galdino_cadencia,
+    }
   })
 }
 

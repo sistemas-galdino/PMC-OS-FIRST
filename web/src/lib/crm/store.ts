@@ -6,6 +6,7 @@ import {
   ATIVIDADE_COLUNAS,
   CLIENTE_COLUNAS,
   anexarHistoricoTemperatura,
+  anexarInformacoesEmpresa,
   anexarReunioes,
   atividadeToRow,
   clientePatchToRow,
@@ -15,6 +16,7 @@ import {
   type AtividadeRow,
   type ClienteRow,
   type ReuniaoRow,
+  type InfoEmpresaRow,
   type TempHistRow,
 } from "./mappers"
 import { criarPreparacaoPadrao } from "./preparacao"
@@ -108,7 +110,11 @@ export async function fetchClientes(): Promise<Cliente[]> {
   // negócio leem de dentro do Cliente: o motor de alertas usa
   // consultor_reunioes/ciclo_galdino_reunioes e a Visão Estratégica usa
   // historico_temperatura. Ver anexarReunioes/anexarHistoricoTemperatura.
-  const [{ data, error }, reunioes, hist] = await Promise.all([
+  //
+  // cliente_informacoes_empresa entra pelo mesmo motivo: é onde o perfil do
+  // cliente guarda a data de entrada e a cadência do ciclo. Sem ela, 81
+  // clientes ativos apareciam sem ciclo tendo a data preenchida pela CS.
+  const [{ data, error }, reunioes, hist, info] = await Promise.all([
     supabase.from("clientes_entrada_new").select(CLIENTE_COLUNAS).limit(LIMITE),
     fetchReunioesRaw(),
     supabase
@@ -116,13 +122,21 @@ export async function fetchClientes(): Promise<Cliente[]> {
       .select("id_cliente, temperatura, motivo, observacao, autor, data")
       .order("data", { ascending: true })
       .limit(LIMITE),
+    supabase
+      .from("cliente_informacoes_empresa")
+      .select("id_cliente, data_entrada, total_galdino")
+      .limit(LIMITE),
   ])
   if (error) throw error
   if (hist.error) throw hist.error
+  if (info.error) throw info.error
   const clientes = ((data ?? []) as unknown as ClienteRow[]).map(rowToCliente)
-  return anexarHistoricoTemperatura(
-    anexarReunioes(clientes, reunioes),
-    (hist.data ?? []) as unknown as TempHistRow[],
+  return anexarInformacoesEmpresa(
+    anexarHistoricoTemperatura(
+      anexarReunioes(clientes, reunioes),
+      (hist.data ?? []) as unknown as TempHistRow[],
+    ),
+    (info.data ?? []) as unknown as InfoEmpresaRow[],
   )
 }
 
@@ -155,9 +169,46 @@ export async function upsertCliente(c: Cliente) {
   invalidar(qk.clientes)
 }
 
+/**
+ * Grava a data de entrada nos DOIS lugares que a guardam hoje.
+ *
+ * `cliente_informacoes_empresa.data_entrada` é onde o perfil do cliente lê e
+ * grava — é ela que faz a data digitada aqui aparecer lá. Mas essa tabela tem
+ * FK para `auth.users`: cliente sem login não pode ter linha (3 clientes ativos
+ * no PROD). Por isso `clientes_entrada_new.data` também é atualizada: ela não
+ * tem essa restrição, é lida por outras telas (radar de renovação, funis) e
+ * serve de reserva na resolução de `anexarInformacoesEmpresa`.
+ *
+ * Escrever nas duas mantém as telas de acordo. Depois de a CS digitar, as duas
+ * fontes concordam e o aviso "cadastro antigo" some sozinho — que é o
+ * comportamento certo: ela acabou de resolver a divergência.
+ */
+async function salvarDataEntrada(id: string, dataInicio: string) {
+  const valor = dataInicio ? dataInicio.slice(0, 10) : null
+
+  const { error: erroCadastro } = await supabase
+    .from("clientes_entrada_new")
+    .update({ data: valor })
+    .eq("id_cliente", id)
+  if (erroCadastro) throw erroCadastro
+
+  const { error } = await supabase
+    .from("cliente_informacoes_empresa")
+    .upsert({ id_cliente: id, data_entrada: valor }, { onConflict: "id_cliente" })
+
+  // 23503 = FK violation: cliente sem login em auth.users. A data já foi salva
+  // no cadastro acima, e o perfil desse cliente também não conseguiria gravar
+  // aqui — é limite da tabela, não erro do CRM. Qualquer outra falha sobe.
+  if (error && error.code !== "23503") throw error
+}
+
 export async function updateCliente(id: string, patch: Partial<Cliente>) {
   const row = clientePatchToRow(patch)
-  if (Object.keys(row).length === 0) return
+  if (patch.data_inicio !== undefined) await salvarDataEntrada(id, patch.data_inicio)
+  if (Object.keys(row).length === 0) {
+    if (patch.data_inicio !== undefined) invalidar(qk.clientes)
+    return
+  }
   const { error } = await supabase
     .from("clientes_entrada_new")
     .update(row)

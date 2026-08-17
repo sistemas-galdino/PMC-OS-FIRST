@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, Plus, Trash2, MessageCircle, Trophy, XCircle, Pause, Pin, Image as ImageIcon, Send, Edit2, ListPlus } from "lucide-react";
+import { X, Plus, Trash2, MessageCircle, Pause, Pin, Image as ImageIcon, Send, Edit2, ListPlus } from "lucide-react";
 import { toast } from "sonner";
 import { CicloProgressBar } from "@/components/crm/CarteiraVisuals";
 import { Badge } from "@/components/crm/Badge";
@@ -26,18 +26,16 @@ import {
   useReunioes,
   useSelectedClienteId,
 } from "@/lib/crm/storage";
+import VitoriasPage from "@/pages/vitorias";
+import TabCancelamento from "@/components/client-profile/admin-tabs/tab-cancelamento";
 import { formatBR, inputDateValue, fromInputDate } from "@/lib/crm/format";
 import { useCsList } from "@/lib/crm/equipe";
 import {
   CONSULTORES,
-  MOTIVOS_CANCELAMENTO,
-  FORMATOS_CASE,
   type Cliente,
   type CSName,
   type CicloGaldinoReuniao,
   type ConsultorReuniao,
-  type VitoriaItem,
-  type VitoriaFormato,
   type AnotacaoInterna,
   type ProfileName,
   type Reuniao,
@@ -99,7 +97,6 @@ function ClientDrawer({ clienteId, onClose }: { clienteId: string; onClose: () =
     [atividades, cliente.id],
   );
   const atvCount = atvCliente.length;
-  const vitCount = (cliente.vitorias || []).length;
 
   // A escrita agora é remota. No original, `patch` era chamado a cada onChange
   // e escrevia em localStorage — barato. Contra o Supabase, isso vira um
@@ -181,14 +178,15 @@ function ClientDrawer({ clienteId, onClose }: { clienteId: string; onClose: () =
         <div className="border-b border-border px-3 flex gap-1 flex-wrap sticky top-[235px] bg-card z-[5] mx-auto max-w-6xl">
           {TABS.map((t) => {
             const active = tab === t.key;
+            // Vitórias não tem contador: a lista vive em cliente_vitorias e é
+            // carregada dentro da aba. Contar por `cliente.vitorias` — que
+            // nunca é preenchido — mostraria (0) para quem tem vitória.
             const count =
               t.key === "atividades"
                 ? atvCount
-                : t.key === "vitorias"
-                  ? vitCount
-                  : t.key === "anotacoes"
-                    ? anotacoes.length
-                    : null;
+                : t.key === "anotacoes"
+                  ? anotacoes.length
+                  : null;
             return (
               <button
                 key={t.key}
@@ -217,10 +215,15 @@ function ClientDrawer({ clienteId, onClose }: { clienteId: string; onClose: () =
           {tab === "atividades" && <AtividadesTab cliente={cliente} />}
           {tab === "historico" && <HistoricoTab cliente={cliente} />}
           {tab === "renovacao" && <RenovacaoTab cliente={cliente} patch={patch} />}
-          {tab === "vitorias" && <VitoriasTab cliente={cliente} patch={patch} />}
+          {/* Vitórias e Cancelamento reusam as telas do perfil do cliente, que
+              gravam nas tabelas de verdade (cliente_vitorias,
+              cliente_cancelamento). As versões que existiam aqui escreviam em
+              campos sem coluna: a CS registrava uma vitória, o patch era
+              descartado em silêncio e parecia ter salvo. */}
+          {tab === "vitorias" && <VitoriasPage clientId={cliente.id} />}
           {tab === "anotacoes" && <AnotacoesTab cliente={cliente} />}
           {tab === "comunicacao" && <ComunicacaoTab cliente={cliente} patch={patch} />}
-          {tab === "cancelamento" && <CancelamentoTab cliente={cliente} patch={patch} />}
+          {tab === "cancelamento" && <TabCancelamento clientId={cliente.id} />}
         </div>
       </div>
     </div>
@@ -368,11 +371,22 @@ function PerfilTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cl
             <TextInput
               type="date"
               value={inputDateValue(cliente.data_inicio)}
-              // Limpar o campo grava null (clientePatchToRow). A data é
-              // preenchida à mão, cliente a cliente — quem digita errado
-              // precisa conseguir voltar ao vazio, não só trocar por outra data.
+              // Limpar o campo grava null. A data é preenchida à mão, cliente a
+              // cliente — quem digita errado precisa conseguir voltar ao vazio,
+              // não só trocar por outra data. Grava em
+              // cliente_informacoes_empresa.data_entrada, que é onde o perfil
+              // do cliente lê (ver salvarDataEntrada em store.ts).
               onChange={(e) => patch({ data_inicio: e.target.value ? fromInputDate(e.target.value) : "" })}
             />
+            {cliente.data_inicio_cadastro && (
+              // As duas fontes discordam (50 clientes no PROD, 151 dias de
+              // diferença em média). Vale a do perfil, mas a do cadastro fica à
+              // vista: trocar 50 datas em silêncio seria repetir o erro que
+              // derrubou o backfill.
+              <span className="text-[10px] text-muted-foreground">
+                cadastro antigo: {formatBR(cliente.data_inicio_cadastro)}
+              </span>
+            )}
           </Field>
         </Grid2>
       </Section>
@@ -1157,95 +1171,6 @@ function RenovacaoTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial
   );
 }
 
-function VitoriasTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cliente>) => void }) {
-  const vitorias = cliente.vitorias || [];
-  const [titulo, setTitulo] = useState("");
-  const [formato, setFormato] = useState<VitoriaFormato>("depoimento");
-  const [descricao, setDescricao] = useState("");
-
-  function add() {
-    if (!titulo.trim()) return;
-    const nova: VitoriaItem = {
-      id: uid(),
-      data: new Date().toISOString(),
-      titulo: titulo.trim(),
-      formato,
-      descricao: descricao.trim() || undefined,
-    };
-    patch({ vitorias: [nova, ...vitorias], vitoria_registrada: true });
-    setTitulo("");
-    setDescricao("");
-  }
-  function remove(id: string) {
-    const next = vitorias.filter((v) => v.id !== id);
-    patch({ vitorias: next, vitoria_registrada: next.length > 0 });
-  }
-
-  return (
-    <>
-      <Section title="Registrar nova vitória" icon={<Trophy className="h-4 w-4" />}>
-        <Field label="Título">
-          <TextInput
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            placeholder="Ex.: Cliente bateu meta de leads"
-          />
-        </Field>
-        <Grid2>
-          <Field label="Formato">
-            <Select
-              value={formato}
-              onChange={(v) => setFormato(v as VitoriaFormato)}
-              options={FORMATOS_CASE.map((f) => ({ value: f.value, label: f.label }))}
-            />
-          </Field>
-          <div className="flex items-end">
-            <button
-              onClick={add}
-              className="w-full bg-primary text-primary-foreground font-semibold px-3 py-2 rounded-lg text-sm hover:bg-primary/90"
-            >
-              Adicionar vitória
-            </button>
-          </div>
-        </Grid2>
-        <Field label="Descrição">
-          <TextArea value={descricao} onChange={(e) => setDescricao(e.target.value)} />
-        </Field>
-      </Section>
-
-      {vitorias.length === 0 ? (
-        <div className="text-sm text-muted-foreground text-center py-8 bg-background border border-border rounded-lg">
-          <Trophy className="h-8 w-8 mx-auto mb-2 opacity-40" />
-          Nenhuma vitória registrada.
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {vitorias.map((v) => (
-            <div
-              key={v.id}
-              className="bg-background border border-border rounded-lg p-3 flex items-start justify-between gap-2"
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-bold">{v.titulo}</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">
-                  {formatBR(v.data)}
-                  {v.formato ? ` · ${v.formato}` : ""}
-                </div>
-                {v.descricao && (
-                  <div className="text-xs text-muted-foreground mt-1">{v.descricao}</div>
-                )}
-              </div>
-              <button onClick={() => remove(v.id)} className="text-status-red hover:opacity-80">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
-
 function ComunicacaoTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cliente>) => void }) {
   return (
     <Section title="Comunicação ideal com o cliente">
@@ -1300,99 +1225,6 @@ function ComunicacaoTab({ cliente, patch }: { cliente: Cliente; patch: (p: Parti
   );
 }
 
-function CancelamentoTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cliente>) => void }) {
-  const motivos = cliente.cancelamento_motivos || [];
-  function toggleMotivo(m: string) {
-    const next = motivos.includes(m)
-      ? motivos.filter((x) => x !== m)
-      : [...motivos, m];
-    patch({ cancelamento_motivos: next });
-  }
-  function registrar() {
-    patch({
-      status: "Cancelado",
-      cancelamento_data: cliente.cancelamento_data || new Date().toISOString(),
-    });
-  }
-  return (
-    <Section title="Estrutura de cancelamento" icon={<XCircle className="h-4 w-4" />} tone="danger">
-      <Field label="Motivos (multi-seleção)">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {MOTIVOS_CANCELAMENTO.map((m) => {
-            const checked = motivos.includes(m);
-            return (
-              <label
-                key={m}
-                className="flex items-center gap-2 text-sm cursor-pointer select-none"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleMotivo(m)}
-                  className="accent-status-red"
-                />
-                {m}
-              </label>
-            );
-          })}
-        </div>
-      </Field>
-      <Grid2>
-        <Field label="Responsabilidade do cancelamento">
-          <Select
-            value={cliente.cancelamento_responsab || ""}
-            onChange={(v) => patch({ cancelamento_responsab: v as Cliente["cancelamento_responsab"] })}
-            options={[
-              { value: "", label: "Selecionar..." },
-              { value: "Cliente", label: "Cliente" },
-              { value: "Time PMC", label: "Time PMC" },
-              { value: "Compartilhada", label: "Compartilhada" },
-            ]}
-          />
-        </Field>
-        <Field label="Tentativa de reversão">
-          <Select
-            value={cliente.cancelamento_tentativa_reversao || "Não"}
-            onChange={(v) =>
-              patch({ cancelamento_tentativa_reversao: v as "Sim" | "Não" })
-            }
-            options={[
-              { value: "Não", label: "Não" },
-              { value: "Sim", label: "Sim" },
-            ]}
-          />
-        </Field>
-      </Grid2>
-      <Field label="Resumo do ocorrido / contexto">
-        <TextArea
-          rows={4}
-          value={cliente.cancelamento_resumo || ""}
-          onChange={(e) => patch({ cancelamento_resumo: e.target.value })}
-        />
-      </Field>
-      <Field label="Data do cancelamento">
-        <TextInput
-          type="date"
-          value={inputDateValue(cliente.cancelamento_data)}
-          onChange={(e) =>
-            patch({
-              cancelamento_data: e.target.value ? fromInputDate(e.target.value) : undefined,
-            })
-          }
-        />
-      </Field>
-      <button
-        onClick={registrar}
-        className="inline-flex items-center gap-2 bg-status-red text-white font-semibold px-4 py-2 rounded-lg text-sm hover:opacity-90"
-      >
-        <XCircle className="h-4 w-4" /> Registrar cancelamento
-      </button>
-    </Section>
-  );
-}
-
-// ============ Subcomponentes pequenos ============
-
 function Stat({ n, l, tone }: { n: string | number; l: string; tone?: string }) {
   return (
     <div>
@@ -1401,8 +1233,6 @@ function Stat({ n, l, tone }: { n: string | number; l: string; tone?: string }) 
     </div>
   );
 }
-
-// ============ Anotações internas (Giovano) ============
 
 function AnotacoesTab({ cliente }: { cliente: Cliente }) {
   const [profile] = useProfile();
