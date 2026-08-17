@@ -368,7 +368,10 @@ function PerfilTab({ cliente, patch }: { cliente: Cliente; patch: (p: Partial<Cl
             <TextInput
               type="date"
               value={inputDateValue(cliente.data_inicio)}
-              onChange={(e) => patch({ data_inicio: e.target.value ? fromInputDate(e.target.value) : cliente.data_inicio })}
+              // Limpar o campo grava null (clientePatchToRow). A data é
+              // preenchida à mão, cliente a cliente — quem digita errado
+              // precisa conseguir voltar ao vazio, não só trocar por outra data.
+              onChange={(e) => patch({ data_inicio: e.target.value ? fromInputDate(e.target.value) : "" })}
             />
           </Field>
         </Grid2>

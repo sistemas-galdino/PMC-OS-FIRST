@@ -15,12 +15,15 @@ reunião em `docs/reuniao-crm.md`.
 | 4 · Abas de gestão (Visão Geral, Torre, Acompanhamento, Projetos, Manual) | ✅ | `6e7c6c7` |
 | 5 · Atendimento (WhatsApp) | ✅ | `aef41a9` |
 | 6 · Edge functions de IA (saudação, transcrição) | ✅ | `e70c768` |
-| 7 · Backfill + promoção DEV→PROD | 🟡 migrations e funções no PROD; falta rodar o backfill | `88c414b` |
+| 7 · Promoção DEV→PROD | ✅ (backfill cancelado — ver abaixo) | `88c414b`, `a11d453` |
 
 O **schema e as edge functions já estão no PROD** (`hqczwextifessaztyyyk`) desde
-10/08/2026 — ver Fase 7. Falta rodar o backfill das datas de entrada e publicar
-o frontend. A rota `/crm` antiga saiu do código e virou redirect para
-`/crm/meu-dia`.
+10/08/2026 — ver Fase 7. Falta publicar o frontend (push → Vercel). A rota `/crm`
+antiga saiu do código e virou redirect para `/crm/meu-dia`.
+
+As datas de entrada que faltam **serão preenchidas à mão**, cliente a cliente. O
+backfill automático foi cancelado; o motivo está na Fase 7 e vale como regra
+geral do projeto.
 
 ## Decisões tomadas (não reabrir sem falar com o David)
 
@@ -75,6 +78,12 @@ arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
    Para saudação/cabeçalho existe `useNomeExibicao()`.
 5. **Nada de inventar dado para tapar buraco.** Sem data de entrada, o cliente é
    "Sem data de entrada" — não se usa `created_at` como substituto.
+   A versão sutil desse erro derrubou o backfill da Fase 7: a tentação não era
+   inventar a data do nada, era derivá-la de um dado **real** (a primeira
+   reunião do cliente) que responde a **outra pergunta**. Primeira reunião
+   prova que o cliente já estava ativo naquela data, não que entrou nela.
+   Dado real usado fora do seu significado passa por todas as conferências e
+   ainda assim está errado.
 6. **Trava de duplicidade tem que ser do banco.** Verificar-e-depois-criar em
    código não sobrevive a duas execuções concorrentes.
 7. **Data pura vira o dia anterior.** `new Date("2026-08-10")` é meia-noite
@@ -111,25 +120,32 @@ arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
 
 ## Pendências que dependem do David / da Mayara
 
-1. **Redistribuir os 52 clientes ativos que ainda estão com a Fernanda**, que saiu
+1. **Preencher à mão a data de entrada de 104 clientes ativos** (143 no total
+   estão sem ela). Enquanto isso não acontece, esses clientes não têm ciclo,
+   checkpoint nem alerta de prazo — aparecem como "Sem data de entrada".
+   As ferramentas já existem: em `/crm/clientes`, o filtro
+   **"Sem data de entrada (N)"** lista exatamente quem falta, e o campo
+   "Data de entrada" no drawer do cliente grava direto em
+   `clientes_entrada_new.data`. Dá para limpar o campo também, se digitar errado.
+2. **Redistribuir os 52 clientes ativos que ainda estão com a Fernanda**, que saiu
    do time. Sem isso eles não aparecem no "Meu Dia" de ninguém.
-2. **Danielly entra em `mentores` no PROD?** Existe no mock da Mayara, não no banco.
-3. **"Novo Cliente" dentro do CRM** ou aponta para o cadastro que já existe no
+3. **Danielly entra em `mentores` no PROD?** Existe no mock da Mayara, não no banco.
+4. **"Novo Cliente" dentro do CRM** ou aponta para o cadastro que já existe no
    PMC OS? O botão foi removido no port (não há `createCliente`, e
    `clientes_entrada_new` é a tabela mestre).
-4. **Projeto sem tela para definir responsável e prazo** — o modal diz "o time
+5. **Projeto sem tela para definir responsável e prazo** — o modal diz "o time
    define depois", mas essa tela não existe. Vem do original.
-5. **Gargalo tem `pessoas_atribuidas` no banco sem UI para preencher.**
-6. **Regra "não sugerir consultor antes do Galdino"** não é explícita no catálogo
+6. **Gargalo tem `pessoas_atribuidas` no banco sem UI para preencher.**
+7. **Regra "não sugerir consultor antes do Galdino"** não é explícita no catálogo
    de alertas. Funciona por acidente para cliente novo. Depende da definição de
    início de ciclo.
-7. **Envio de mensagem pelo Atendimento está desligado** (`ENVIO_HABILITADO`
+8. **Envio de mensagem pelo Atendimento está desligado** (`ENVIO_HABILITADO`
    em `lib/crm/conversas.ts`), e não há webhook de entrada: as conversas só
    aparecem se alguém escrever em `crm_conversas`/`crm_mensagens`. Falta
    decidir o provedor (chips estavam sendo comprados em 05/08) e quem vincula
    `crm_conversas.id_cliente` ao cliente certo — a lista mostra no rodapé
    quantos grupos ficaram sem vínculo.
-8. **Mudança de temperatura e pausa de cliente não têm UI** (`updateClienteTemperatura`
+9. **Mudança de temperatura e pausa de cliente não têm UI** (`updateClienteTemperatura`
    e `setClientePausado` existem e ninguém chama). Enquanto isso, o histórico de
    temperatura fica vazio e a Visão Estratégica não tem o que mostrar.
 
@@ -144,9 +160,9 @@ arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
    diferente de `mentores.nome` conta nos totais mas some das tabelas por CS.
 
 
-## Fase 7 — backfill e promoção (a única que toca produção)
+## Fase 7 — promoção para o PROD (a única fase que toca produção)
 
-Executada em 10/08/2026. Commits `88c414b` (backfill + limpeza) e o deste texto.
+Promovida em 10/08/2026; o backfill que ela previa foi cancelado em 11/08.
 
 ### O que já está no PROD (`hqczwextifessaztyyyk`)
 
@@ -179,51 +195,39 @@ ACTIVE com `verify_jwt=true` e devolvem 401 sem token. O PROD tem
 o `proconfig` das 5 funções continuava nulo — ou seja, **não** tinha aplicado.
 Reaplicada e conferida. É o gotcha 8 na prática: confira o efeito, não a mensagem.
 
+
+### O backfill foi cancelado (11/08/2026)
+
+O plano era preencher automaticamente a data de entrada dos 104 clientes ativos
+que estão sem ela, derivando da primeira reunião já realizada. O David vetou, e
+a razão vale como regra do projeto:
+
+> "se o cliente está ativo e não tem data de entrada não é certo olhar para a
+> reunião mais antiga, pois isso não é necessariamente a data de entrada dele.
+> Deixa que depois isso será preenchido manualmente"
+
+A primeira reunião prova que o cliente **já estava ativo** naquela data — não
+que entrou nela. Quem entrou em março e só teve reunião em maio ficaria com o
+ciclo dois meses mais novo. E esse erro não faz barulho: a data aparece
+preenchida, com cara de correta, e ninguém volta para conferir. Campo vazio é
+honesto; número errado com aparência de certo, não.
+
+Os scripts do backfill foram removidos do repo para ninguém rodá-los depois sem
+conhecer o veto, e a coluna `data_backfilled` (criada em
+`20260810_crm_clientes_colunas.sql` só para marcar as linhas inferidas) sai por
+`20260811_crm_remove_data_backfilled.sql`.
+
+**Como as datas entram agora**: à mão, cliente a cliente. Em `/crm/clientes`, o
+filtro "Sem data de entrada (N)" lista quem falta; no drawer do cliente, o campo
+"Data de entrada" grava em `clientes_entrada_new.data` e aceita ser limpo, para
+corrigir quem digitar errado.
+
 ### O que falta
 
-1. **Rodar o backfill no PROD** — `scripts/backfill-data-entrada.sql`. É dado de
-   negócio, e o combinado é o David ler o que muda antes de rodar. O script tem
-   uma seção 1 só de conferência (contagens, distribuição por trimestre, linha a
-   linha, quem fica de fora) e uma seção 2 que escreve.
-   Desfazer: `scripts/backfill-data-entrada-desfazer.sql`.
-2. **Deploy do frontend** (push da branch → Vercel). Só depois disso a rota
-   `/crm` antiga vira redirect para `/crm/meu-dia`.
-
-### A regra do backfill, e as duas correções que os números forçaram
-
-`data` = a **primeira reunião já realizada**, menor data entre Galdino,
-consultor e BlackCRM. O plano dizia "Galdino → consultor → BlackCRM"; medir
-mostrou que essa ordem erra:
-
-- **34 de 96** clientes têm reunião de consultor antes da primeira do Galdino,
-  até **77 dias** antes. Preferir o Galdino daria data de entrada mais tarde que
-  a real e encolheria o ciclo em silêncio.
-- **11** clientes têm a primeira do Galdino ainda no futuro. Usá-la geraria data
-  de entrada futura, isto é, ciclo com idade negativa.
-
-| | |
-| --- | --- |
-| Clientes no PROD | 303 |
-| Sem data de entrada | 143 |
-| Desses, "Ativo no Programa" | 104 |
-| **Recebem data pelo backfill** | **92** |
-| Continuam sem data | 12 (8 sem reunião nenhuma, 4 só com reunião futura) |
-
-Distribuição das 92: 62 em 2026-T2, 27 em T3, 3 mais antigas — sem pico
-suspeito. Quatro têm data anterior ao próprio `created_at`: são clientes que já
-existiam quando a base foi importada (01/04/2026), não erro da regra.
-
-Os 12 que ficam sem data continuam assim de propósito — a tela sabe dizer
-"Sem data de entrada", e inventar data é o gotcha 5. Cancelados, desistências,
-pendentes de onboarding e congelados não têm relógio de ciclo e ficam fora.
-
-**Limite honesto**: a data derivada é a primeira *evidência* de atividade, não a
-entrada de fato. Quem entrou em março e só teve reunião em maio vai parecer dois
-meses mais novo. Por isso toda linha escrita leva `data_backfilled = true` — dá
-para listar e corrigir à mão quando a CS souber a data real.
-
-Testado no DEV com round-trip dentro de transação revertida (zerar a data de 8
-clientes reais do seed, rodar, conferir, `ROLLBACK`): 8 de 8 preenchidas e
-marcadas, banco intacto depois.
+- **Aplicar `20260811_crm_remove_data_backfilled.sql`** no DEV e no PROD.
+  Ficou pendente porque a conexão MCP do Supabase trocou de conta no meio da
+  sessão e perdeu acesso aos dois projetos. Migration e rollback estão escritos.
+- **Deploy do frontend** (push da branch → Vercel). Só depois disso a rota
+  `/crm` antiga vira redirect para `/crm/meu-dia` em produção.
 
 **Não promover** nada de `scripts/seed-crm-dev*.sql`: é dado sintético de DEV.
