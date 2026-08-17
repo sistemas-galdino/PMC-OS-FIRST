@@ -46,8 +46,11 @@ CREATE TABLE IF NOT EXISTS public.vitrine_clientes (
   instagram text,
   logo_path text,                        -- caminho no bucket vitrine-logos
   logo_display_path text,                -- cópia normalizada p/ apresentação
+  -- 'oficial' e 'oficial_verificado_site' vêm do legado e guardam a PROCEDÊNCIA
+  -- da logo (veio no handoff oficial / foi conferida no site da empresa).
+  -- Contam como validadas; o que importa na tela é o que ainda é 'pendente'.
   logo_status text NOT NULL DEFAULT 'pendente'
-    CHECK (logo_status IN ('pendente','enviada_cs','validada')),
+    CHECK (logo_status IN ('pendente','enviada_cs','validada','oficial','oficial_verificado_site')),
   logo_origem text,
   logo_validada_em timestamptz,
   logo_validada_por uuid,
