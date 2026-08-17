@@ -33,6 +33,8 @@ import {
   ShieldCheckIcon as ShieldCheck,
   Sparkles2Icon as Sparkles,
   Building2Icon as Building,
+  CameraIcon as Camera,
+  LightbulbIcon as Lightbulb,
   BarChart3Icon as BarChart3,
   CompassIcon as Compass,
   FileTextIcon as FileText,
@@ -150,10 +152,21 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       ],
     },
     {
+      label: "Vitórias dos Clientes",
+      items: [
+        { title: "Vitrine", icon: Sparkles, url: "/vitrine" },
+        { title: "Cases", icon: Trophy, url: "/vitrine-cases" },
+        { title: "Logos & Clientes", icon: Building, url: "/vitrine-clientes" },
+        { title: "Evidências", icon: Camera, url: "/vitrine-evidencias" },
+        { title: "Oportunidades", icon: Lightbulb, url: "/vitrine-oportunidades" },
+        // Mesmo domínio: a curadoria kanban alimenta o acervo da vitrine.
+        { title: "Repositório de Vitórias", icon: Trophy, url: "/repositorio-vitorias" },
+      ],
+    },
+    {
       label: "Conteúdo",
       items: [
         { title: "Novidades", icon: Megaphone, url: "/novidades-admin" },
-        { title: "Repositório de Vitórias", icon: Trophy, url: "/repositorio-vitorias" },
         { title: "Estudos de Caso", icon: BookOpen, url: "/estudos-caso-admin" },
         { title: "Multiplicadores", icon: Package, url: "/multiplicadores-admin" },
         { title: "Skills", icon: Sparkles, url: "/skills-admin" },

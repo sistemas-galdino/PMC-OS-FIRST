@@ -54,6 +54,12 @@ const MultiplicadoresAdminPage = lazy(() => import("@/pages/multiplicadores-admi
 const SkillsPage = lazy(() => import("@/pages/skills"))
 const SkillsAdminPage = lazy(() => import("@/pages/skills-admin"))
 const RepositorioVitoriasPage = lazy(() => import("@/pages/repositorio-vitorias"))
+const VitrinePage = lazy(() => import("@/pages/vitrine"))
+const VitrineCasePage = lazy(() => import("@/pages/vitrine-case"))
+const VitrineCasesPage = lazy(() => import("@/pages/vitrine-cases"))
+const VitrineClientesPage = lazy(() => import("@/pages/vitrine-clientes"))
+const VitrineEvidenciasPage = lazy(() => import("@/pages/vitrine-evidencias"))
+const VitrineOportunidadesPage = lazy(() => import("@/pages/vitrine-oportunidades"))
 const VitoriasPage = lazy(() => import("@/pages/vitorias"))
 const MeuTimePage = lazy(() => import("@/pages/meu-time"))
 const TrilhasPage = lazy(() => import("@/pages/trilhas"))
@@ -218,6 +224,12 @@ function AppRoutes() {
                     <Route path="/skills" element={<SkillsPage />} />
                     <Route path="/skills-admin" element={<RequireSecao secao="skills-admin"><SkillsAdminPage /></RequireSecao>} />
                     <Route path="/repositorio-vitorias" element={<RequireSecao secao="repositorio-vitorias"><RepositorioVitoriasPage /></RequireSecao>} />
+                    <Route path="/vitrine" element={<RequireSecao secao="vitrine"><VitrinePage /></RequireSecao>} />
+                    <Route path="/vitrine/case/:caseId" element={<RequireSecao secao="vitrine"><VitrineCasePage /></RequireSecao>} />
+                    <Route path="/vitrine-cases" element={<RequireSecao secao="vitrine-cases"><VitrineCasesPage /></RequireSecao>} />
+                    <Route path="/vitrine-clientes" element={<RequireSecao secao="vitrine-clientes"><VitrineClientesPage /></RequireSecao>} />
+                    <Route path="/vitrine-evidencias" element={<RequireSecao secao="vitrine-evidencias"><VitrineEvidenciasPage /></RequireSecao>} />
+                    <Route path="/vitrine-oportunidades" element={<RequireSecao secao="vitrine-oportunidades"><VitrineOportunidadesPage /></RequireSecao>} />
                     <Route path="/mentores" element={<RequireSecao secao="consultores"><MentoresPage isAdmin={isAdmin} /></RequireSecao>} />
                     <Route path="/clientes" element={<RequireSecao secao="clientes"><ClientesPage /></RequireSecao>} />
                     <Route path="/radar-renovacao" element={<RequireSecao secao="radar-renovacao"><RadarRenovacaoPage /></RequireSecao>} />
