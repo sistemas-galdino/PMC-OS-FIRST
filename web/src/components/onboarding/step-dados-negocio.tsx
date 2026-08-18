@@ -4,13 +4,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { OnboardingFormData } from "@/lib/onboarding-schema"
 
-export const NICHO_OPTIONS = [
-  'Agronegócio', 'Alimentação e Bebidas', 'Automotivo', 'Beleza e Estética',
-  'Construção Civil', 'Consultoria', 'E-commerce', 'Educação', 'Energia',
-  'Engenharia', 'Entretenimento', 'Finanças', 'Imobiliário', 'Indústria',
-  'Jurídico', 'Logística', 'Marketing e Publicidade', 'Moda',
-  'Pet', 'Saúde', 'Serviços', 'Tecnologia', 'Turismo', 'Varejo', 'Outro'
-]
+// A lista canônica mora em @/data/nichos. Reexportamos para não quebrar quem
+// já importava daqui.
+export { NICHO_OPTIONS } from "@/data/nichos"
+import { NICHO_OPTIONS } from "@/data/nichos"
 
 interface Props {
   register: UseFormRegister<OnboardingFormData>

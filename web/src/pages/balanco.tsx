@@ -32,6 +32,7 @@ import {
   CheckCircle2Icon as CheckCircle2,
   ClockIcon as Clock,
   TrendingUpIcon as TrendingUp,
+  Building2Icon as Building2,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 
@@ -41,6 +42,37 @@ const brl = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })
 const num = (n: number) => n.toLocaleString("pt-BR")
 const toNum = (x: unknown) => Number(x || 0)
+
+// Fórmula IAVS do valor gerado. Vive aqui uma vez só porque é usada no total e
+// no recorte por área — se divergirem, a soma das áreas não bate com o total.
+// Recorrente conta ×12 no ano; únicos e decisões entram uma vez; "capacidade
+// nova" fica de fora (é receita potencial, não economia realizada).
+function calcularIAVS(linhas: any[]): { valorAno: number; economiaMensal: number; horasLiberadas: number } {
+  const ok = linhas.filter((e) => !e.capacidade_nova)
+  const som = (fn: (e: any) => boolean, campo: string) =>
+    ok.filter(fn).reduce((acc, e) => acc + toNum(e[campo]), 0)
+  const custoMes   = som((e) => e.natureza === "custo_evitado" && e.recorrencia === "mensal", "valor_mes")
+  const custoUnico = som((e) => e.natureza === "custo_evitado" && e.recorrencia === "unico", "valor_mes")
+  const tempoMes   = som((e) => e.natureza === "tempo_liberado" && e.recorrencia === "mensal", "valor_mes")
+  const tempoUnico = som((e) => e.natureza === "tempo_liberado" && e.recorrencia === "unico", "valor_mes")
+  const decisao    = som((e) => e.natureza === "valor_decisao", "valor_mes")
+  const horas      = som((e) => e.natureza === "tempo_liberado" && e.recorrencia === "mensal", "horas_mes")
+  return {
+    valorAno: (custoMes + tempoMes) * 12 + custoUnico + tempoUnico + decisao,
+    economiaMensal: custoMes + tempoMes,
+    horasLiberadas: horas,
+  }
+}
+
+export interface ValorArea {
+  id: string
+  nome: string
+  valorAno: number
+  horas: number
+  copilotos: number
+  sistemas: number
+  gargalosResolvidos: number
+}
 
 // cliente_compareceu é boolean no banco novo, mas foi texto no legado — trata os dois.
 const compareceu = (v: unknown) =>
@@ -104,6 +136,8 @@ interface Balanco {
   economiaMensal: number
   horasLiberadas: number
   fasesFeitas: boolean[]
+  // Recorte por área (Fase 2 → fases 3-6): quanto a IA gerou em cada setor
+  porArea: ValorArea[]
 }
 
 const FASES_METODO = [
@@ -122,11 +156,15 @@ export default function BalancoPage({ session, clientId }: Props) {
 
     async function carregar() {
       try {
-      const reunioes = (t: string) =>
-        supabase.from(t).select("ganho, nps, acoes_cliente, cliente_compareceu, data_reuniao").eq("id_cliente", cid)
+      // `soConsultoria`: em reunioes_mentoria_new convivem consultoria e os
+      // atendimentos do Sucesso do Cliente — o balanço conta só consultoria.
+      const reunioes = (t: string, soConsultoria = false) => {
+        const q = supabase.from(t).select("ganho, nps, acoes_cliente, cliente_compareceu, data_reuniao").eq("id_cliente", cid)
+        return soConsultoria ? q.eq("equipe", "consultor") : q
+      }
 
       const cnt = (t: string) => supabase.from(t).select("id", { count: "exact", head: true }).eq("id_cliente", cid)
-      const [entrada, form, rg, rm, rb, vit, enc, cop, sis, eco, mg, ma, mga] = await Promise.all([
+      const [entrada, form, rg, rm, rb, vit, enc, cop, sis, eco, areasRes, gargRes, mg, ma, mga] = await Promise.all([
         supabase
           .from("clientes_entrada_new")
           .select("nome_cliente, nome_empresa, data, nivel_multiplicador, renovacao_data")
@@ -138,7 +176,7 @@ export default function BalancoPage({ session, clientId }: Props) {
           .eq("id_cliente", cid)
           .maybeSingle(),
         reunioes("reunioes_galdino"),
-        reunioes("reunioes_mentoria_new"),
+        reunioes("reunioes_mentoria_new", true),
         reunioes("reunioes_blackcrm"),
         supabase
           .from("cliente_vitorias")
@@ -151,10 +189,13 @@ export default function BalancoPage({ session, clientId }: Props) {
           .select("data_hora_inicio_iso, status")
           .eq("status", "realizado"),
         // Construído no Método MC: skills/co-pilotos (com rotina) e sistemas (por categoria)
-        supabase.from("metodo_copilotos").select("rotina").eq("id_cliente", cid),
-        supabase.from("metodo_sistemas").select("categoria").eq("id_cliente", cid),
+        supabase.from("metodo_copilotos").select("rotina, id_area").eq("id_cliente", cid),
+        supabase.from("metodo_sistemas").select("categoria, id_area").eq("id_cliente", cid),
         // Valor gerado (economia/IAVS) — fundido do antigo "Meu Relatório"
-        supabase.from("metodo_economias").select("valor_mes, natureza, recorrencia, capacidade_nova, horas_mes").eq("id_cliente", cid),
+        supabase.from("metodo_economias").select("valor_mes, natureza, recorrencia, capacidade_nova, horas_mes, id_area").eq("id_cliente", cid),
+        // Recorte por área: as áreas da Fase 2 atravessam o Método inteiro.
+        supabase.from("metodo_areas").select("id, nome").eq("id_cliente", cid).order("nome"),
+        supabase.from("metodo_gargalos").select("id_area, status").eq("id_cliente", cid),
         cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
       ])
 
@@ -220,16 +261,26 @@ export default function BalancoPage({ session, clientId }: Props) {
       // Recorrente conta ×12 no ano; únicos e decisões entram uma vez; ignora
       // "capacidade nova" (receita potencial, não economia).
       const ecoRows = (eco.data ?? []) as any[]
-      const okEco = ecoRows.filter((e) => !e.capacidade_nova)
-      const somEco = (fn: (e: any) => boolean, campo: string) => okEco.filter(fn).reduce((acc, e) => acc + toNum(e[campo]), 0)
-      const custoMes = somEco((e) => e.natureza === "custo_evitado" && e.recorrencia === "mensal", "valor_mes")
-      const custoUnico = somEco((e) => e.natureza === "custo_evitado" && e.recorrencia === "unico", "valor_mes")
-      const tempoMes = somEco((e) => e.natureza === "tempo_liberado" && e.recorrencia === "mensal", "valor_mes")
-      const tempoUnico = somEco((e) => e.natureza === "tempo_liberado" && e.recorrencia === "unico", "valor_mes")
-      const decisaoEco = somEco((e) => e.natureza === "valor_decisao", "valor_mes")
-      const horasLiberadas = somEco((e) => e.natureza === "tempo_liberado" && e.recorrencia === "mensal", "horas_mes")
-      const economiaMensal = custoMes + tempoMes
-      const valorAno = (custoMes + tempoMes) * 12 + custoUnico + tempoUnico + decisaoEco
+      const { valorAno, economiaMensal, horasLiberadas } = calcularIAVS(ecoRows)
+
+      // Recorte por área — só entram áreas que produziram algo.
+      const areasRows = (areasRes.data ?? []) as { id: string; nome: string }[]
+      const gargRows = (gargRes.data ?? []) as any[]
+      const porArea: ValorArea[] = areasRows
+        .map((a) => {
+          const iavs = calcularIAVS(ecoRows.filter((r: any) => r.id_area === a.id))
+          return {
+            id: a.id,
+            nome: a.nome,
+            valorAno: iavs.valorAno,
+            horas: iavs.horasLiberadas,
+            copilotos: copRows.filter((c: any) => c.id_area === a.id).length,
+            sistemas: sisRows.filter((s: any) => s.id_area === a.id).length,
+            gargalosResolvidos: gargRows.filter((g) => g.id_area === a.id && g.status === "resolvido").length,
+          }
+        })
+        .filter((a) => a.valorAno > 0 || a.copilotos > 0 || a.sistemas > 0 || a.gargalosResolvidos > 0)
+        .sort((x, y) => y.valorAno - x.valorAno)
 
       // Avanço no Método MC (6 fases com dados).
       const fasesFeitas = [
@@ -269,6 +320,7 @@ export default function BalancoPage({ session, clientId }: Props) {
         economiaMensal,
         horasLiberadas,
         fasesFeitas,
+        porArea,
       })
       } catch (e) {
         if (!cancel) console.error(e)
@@ -358,6 +410,52 @@ export default function BalancoPage({ session, clientId }: Props) {
             <Destaque icon={TrendingUp} cor="text-emerald-400 bg-emerald-500/10" valor={brl(b.economiaMensal)} label="Economia recorrente / mês" />
             <Destaque icon={Clock} cor="text-sky-400 bg-sky-500/10" valor={`${num(b.horasLiberadas)}h`} label="Horas economizadas / mês" />
           </div>
+        </div>
+      )}
+
+      {/* VALOR POR ÁREA — as áreas nascem na Fase 2 e atravessam as fases 3-6,
+          então dá para ler o retorno da IA setor a setor, não só no total. */}
+      {b.porArea.length > 0 && (
+        <div className="space-y-4">
+          <SectionTitle
+            icon={Building2}
+            texto="O que a IA gerou em cada área"
+            sub="O retorno setor a setor — a mesma conta do valor total, aberta por área da empresa."
+          />
+          <Card>
+            <CardContent className="pt-6 space-y-3">
+              {b.porArea.map((a) => {
+                // Barra proporcional à área que mais gerou, para comparar de relance.
+                const topo = b.porArea[0].valorAno
+                const pct = topo > 0 ? Math.round((a.valorAno / topo) * 100) : 0
+                return (
+                  <div key={a.id} className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-2.5">
+                    <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                      <p className="text-sm font-bold text-foreground">{a.nome}</p>
+                      <p className="text-base font-bold text-emerald-400 tabular-nums">
+                        {a.valorAno > 0 ? brl(a.valorAno) : "—"}
+                      </p>
+                    </div>
+                    {a.valorAno > 0 && (
+                      <div className="h-1.5 w-full rounded-full bg-muted/30 overflow-hidden">
+                        <div className="h-full rounded-full bg-emerald-500/70 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-medium text-muted-foreground">
+                      {a.horas > 0 && <span><span className="font-bold text-foreground">{num(a.horas)}h</span> / mês liberadas</span>}
+                      {a.copilotos > 0 && <span><span className="font-bold text-foreground">{num(a.copilotos)}</span> co-piloto{a.copilotos !== 1 ? "s" : ""}</span>}
+                      {a.sistemas > 0 && <span><span className="font-bold text-foreground">{num(a.sistemas)}</span> sistema{a.sistemas !== 1 ? "s" : ""}</span>}
+                      {a.gargalosResolvidos > 0 && <span><span className="font-bold text-foreground">{num(a.gargalosResolvidos)}</span> gargalo{a.gargalosResolvidos !== 1 ? "s" : ""} resolvido{a.gargalosResolvidos !== 1 ? "s" : ""}</span>}
+                    </div>
+                  </div>
+                )
+              })}
+              <p className="text-[11px] font-medium text-muted-foreground/80 pt-1">
+                Só aparecem as áreas com entregas registradas. O que ainda não tem área vinculada
+                continua contando no valor total acima.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       )}
 

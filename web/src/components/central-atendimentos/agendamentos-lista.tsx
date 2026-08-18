@@ -29,15 +29,16 @@ import {
   STATUS_EFETIVO_LABEL,
   STATUS_EFETIVO_LIST,
 } from "@/lib/atendimentos"
-import type { Consultor, AgendamentoCentral } from "@/lib/atendimentos"
+import type { Consultor, AgendamentoCentral, EquipeConfig } from "@/lib/atendimentos"
 
 interface Props {
   agendamentos: AgendamentoCentral[]
   consultores: Consultor[]
+  cfg: EquipeConfig
   onOpenDetails: (ag: AgendamentoCentral) => void
 }
 
-export function AgendamentosLista({ agendamentos, consultores, onOpenDetails }: Props) {
+export function AgendamentosLista({ agendamentos, consultores, cfg, onOpenDetails }: Props) {
   const [sp, setSp] = useSearchParams()
 
   const consultorFilter = sp.get("consultor") ?? "all"
@@ -87,7 +88,7 @@ export function AgendamentosLista({ agendamentos, consultores, onOpenDetails }: 
           <div className="relative w-full sm:w-64">
             <SearchIcon className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar consultor, cliente, empresa..."
+              placeholder={`Buscar ${cfg.profSingular}, cliente, empresa...`}
               className="pl-11 h-11 bg-muted/10 border-border focus-visible:border-primary/50"
               value={searchTerm}
               onChange={e => updateParams({ q: e.target.value })}
@@ -96,10 +97,10 @@ export function AgendamentosLista({ agendamentos, consultores, onOpenDetails }: 
           <Select value={consultorFilter} onValueChange={v => updateParams({ consultor: v })}>
             <SelectTrigger className="w-full sm:w-48 h-11 bg-muted/10 border-border rounded-xl">
               <FilterIcon className="mr-2 size-4 text-primary/60" />
-              <SelectValue placeholder="Consultor" />
+              <SelectValue placeholder={cfg.profSingularTitulo} />
             </SelectTrigger>
             <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
-              <SelectItem value="all" className="rounded-lg font-medium">Todos consultores</SelectItem>
+              <SelectItem value="all" className="rounded-lg font-medium">Todos</SelectItem>
               {consultorOpts.map(n => (
                 <SelectItem key={n} value={n} className="rounded-lg font-medium">{n}</SelectItem>
               ))}
@@ -141,7 +142,7 @@ export function AgendamentosLista({ agendamentos, consultores, onOpenDetails }: 
               <TableRow className="bg-muted/20 hover:bg-muted/20">
                 <TableHead className="text-[10px] uppercase tracking-widest font-bold">Data</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-widest font-bold">Hora</TableHead>
-                <TableHead className="text-[10px] uppercase tracking-widest font-bold">Consultor</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-widest font-bold">{cfg.profSingularTitulo}</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-widest font-bold">Cliente</TableHead>
                 <TableHead className="hidden md:table-cell text-[10px] uppercase tracking-widest font-bold">Empresa</TableHead>
                 <TableHead className="hidden lg:table-cell text-[10px] uppercase tracking-widest font-bold">Email</TableHead>

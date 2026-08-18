@@ -117,6 +117,7 @@ export default function ClientDashboard({ session, clientId }: ClientDashboardPr
           const { data: meetings } = await supabase
             .from('reunioes_mentoria_new')
             .select('acoes_cliente')
+            .eq('equipe', 'consultor')
             .eq('id_cliente', clientEntry.id_cliente)
             .order('data_reuniao', { ascending: false })
             .limit(5)

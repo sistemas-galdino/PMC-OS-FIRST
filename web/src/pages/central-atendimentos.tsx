@@ -24,19 +24,23 @@ import type {
   TabelaDestino,
   ExcecaoConsultor,
   Feriado,
+  Equipe,
 } from "@/lib/atendimentos"
+import { EQUIPE_CONFIG } from "@/lib/atendimentos"
 import { FERIADOS_NACIONAIS_BR } from "@/lib/feriados-br"
 
 type Toast = { type: "ok" | "err"; msg: string } | null
 type TabKey = "visao-geral" | "agendamentos" | "disponibilidade" | "link-publico" | "area-consultor"
 
-const TABS: { key: TabKey; label: string; icon: typeof LayoutDashboardIcon }[] = [
-  { key: "visao-geral", label: "Visão Geral", icon: LayoutDashboardIcon },
-  { key: "agendamentos", label: "Agendamentos", icon: CalendarIcon },
-  { key: "disponibilidade", label: "Disponibilidade", icon: ClockIcon },
-  { key: "link-publico", label: "Link Público", icon: LinkIcon },
-  { key: "area-consultor", label: "Área do Consultor", icon: UserCheckIcon },
-]
+function tabs(labelAbaArea: string): { key: TabKey; label: string; icon: typeof LayoutDashboardIcon }[] {
+  return [
+    { key: "visao-geral", label: "Visão Geral", icon: LayoutDashboardIcon },
+    { key: "agendamentos", label: "Agendamentos", icon: CalendarIcon },
+    { key: "disponibilidade", label: "Disponibilidade", icon: ClockIcon },
+    { key: "link-publico", label: "Link Público", icon: LinkIcon },
+    { key: "area-consultor", label: labelAbaArea, icon: UserCheckIcon },
+  ]
+}
 
 const TABELA_ORIGEM: Record<AgendamentoCentral["origem"], TabelaDestino> = {
   galdino: "reunioes_galdino",
@@ -44,7 +48,11 @@ const TABELA_ORIGEM: Record<AgendamentoCentral["origem"], TabelaDestino> = {
   blackcrm: "reunioes_blackcrm",
 }
 
-export default function CentralAtendimentosPage() {
+// A MESMA página serve as duas centrais: a dos consultores (/central-atendimentos)
+// e a do Sucesso do Cliente (/central-sucesso-cliente). Só muda o recorte por
+// `equipe` nas cargas e a rotulagem, que vem de EQUIPE_CONFIG.
+export default function CentralAtendimentosPage({ equipe = "consultor" }: { equipe?: Equipe }) {
+  const cfg = EQUIPE_CONFIG[equipe]
   const [sp, setSp] = useSearchParams()
   const tab = (sp.get("tab") as TabKey | null) ?? "visao-geral"
 
@@ -69,9 +77,9 @@ export default function CentralAtendimentosPage() {
 
   async function refresh() {
     const [{ data: cs }, { data: ds }, { data: ags }, { data: exs }, { data: fs }] = await Promise.all([
-      supabase.from("consultores_atendimento").select("*").order("ordem", { ascending: true }),
+      supabase.from("consultores_atendimento").select("*").eq("equipe", equipe).order("ordem", { ascending: true }),
       supabase.from("consultores_disponibilidade").select("*"),
-      supabase.from("agendamentos_central").select("*").order("data_reuniao", { ascending: false }),
+      supabase.from("agendamentos_central").select("*").eq("equipe", equipe).order("data_reuniao", { ascending: false }),
       supabase.from("consultores_excecoes").select("*"),
       supabase.from("feriados").select("*").order("data", { ascending: true }),
     ])
@@ -84,8 +92,10 @@ export default function CentralAtendimentosPage() {
   }
 
   useEffect(() => {
+    setLoading(true)
     refresh()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [equipe])
 
   function setTab(k: TabKey) {
     const next = new URLSearchParams(sp)
@@ -97,17 +107,18 @@ export default function CentralAtendimentosPage() {
     if (id) {
       const { error } = await supabase.from("consultores_atendimento").update(payload).eq("id", id)
       if (error) {
-        setToast({ type: "err", msg: "Erro ao salvar consultor" })
+        setToast({ type: "err", msg: "Erro ao salvar cadastro" })
         return
       }
-      setToast({ type: "ok", msg: "Consultor atualizado" })
+      setToast({ type: "ok", msg: `${cfg.profSingularTitulo} atualizado` })
     } else {
-      const { error } = await supabase.from("consultores_atendimento").insert(payload)
+      // Agenda nasce na equipe da central onde foi criada.
+      const { error } = await supabase.from("consultores_atendimento").insert({ ...payload, equipe })
       if (error) {
-        setToast({ type: "err", msg: "Erro ao criar consultor: " + error.message })
+        setToast({ type: "err", msg: "Erro ao criar cadastro: " + error.message })
         return
       }
-      setToast({ type: "ok", msg: "Consultor criado" })
+      setToast({ type: "ok", msg: `${cfg.profSingularTitulo} criado` })
     }
     await refresh()
     setConsultorDialogOpen(false)
@@ -365,15 +376,15 @@ export default function CentralAtendimentosPage() {
         transition={{ duration: 0.6 }}
         className="flex flex-col gap-3 border-l-4 border-primary pl-8 py-2"
       >
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Central de Atendimentos</h1>
+        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">{cfg.tituloPagina}</h1>
         <p className="text-muted-foreground font-medium text-sm">
-          Agende reuniões com os consultores PMC direto pelo sistema. Os eventos vão pro Google Calendar do consultor e do cliente, e o convite chega por email.
+          {cfg.subtitulo} Os eventos vão pro Google Calendar e o convite chega por email.
         </p>
       </motion.div>
 
       <Tabs value={tab} onValueChange={v => setTab(v as TabKey)}>
         <TabsList className="w-full flex-wrap h-auto p-1">
-          {TABS.map(t => {
+          {tabs(cfg.labelAbaArea).map(t => {
             const Icon = t.icon
             return (
               <TabsTrigger key={t.key} value={t.key} className="flex-1 min-w-[160px]">
@@ -385,13 +396,14 @@ export default function CentralAtendimentosPage() {
         </TabsList>
 
         <TabsContent value="visao-geral" className="mt-6">
-          <VisaoGeral consultores={consultores} agendamentos={agendamentos} />
+          <VisaoGeral consultores={consultores} agendamentos={agendamentos} cfg={cfg} />
         </TabsContent>
 
         <TabsContent value="agendamentos" className="mt-6">
           <AgendamentosLista
             agendamentos={agendamentos}
             consultores={consultores}
+            cfg={cfg}
             onOpenDetails={ag => {
               setSelectedAgendamento(ag)
               setAgendamentoDialogOpen(true)
@@ -402,6 +414,7 @@ export default function CentralAtendimentosPage() {
         <TabsContent value="disponibilidade" className="mt-6">
           <DisponibilidadeConsultores
             consultores={consultores}
+            cfg={cfg}
             disponibilidade={disponibilidade}
             excecoes={excecoes}
             feriados={feriados}
@@ -424,12 +437,13 @@ export default function CentralAtendimentosPage() {
         </TabsContent>
 
         <TabsContent value="link-publico" className="mt-6">
-          <LinkPublico consultores={consultoresAtivos} />
+          <LinkPublico consultores={consultoresAtivos} cfg={cfg} />
         </TabsContent>
 
         <TabsContent value="area-consultor" className="mt-6">
           <AreaConsultor
             consultores={consultoresAtivos}
+            cfg={cfg}
             agendamentos={agendamentos}
             onExcluir={excluirAgendamento}
             onReagendar={reagendarAgendamento}
@@ -441,6 +455,7 @@ export default function CentralAtendimentosPage() {
       <ConsultorFormDialog
         open={consultorDialogOpen}
         consultor={editConsultor}
+        cfg={cfg}
         onClose={() => setConsultorDialogOpen(false)}
         onSave={saveConsultor}
       />
@@ -448,6 +463,7 @@ export default function CentralAtendimentosPage() {
       <AgendamentoDetalhesDialog
         open={agendamentoDialogOpen}
         agendamento={selectedAgendamento}
+        cfg={cfg}
         onClose={() => setAgendamentoDialogOpen(false)}
         onSave={updateAgendamento}
       />

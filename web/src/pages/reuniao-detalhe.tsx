@@ -25,6 +25,9 @@ interface Meeting {
   id_unico: string
   id_cliente: string | null
   mentor: string
+  // 'sucesso_cliente' = atendimento do CS (onboarding/alinhamento), não consultoria.
+  // A tela de detalhe NÃO filtra por equipe de propósito: link direto tem que abrir.
+  equipe: 'consultor' | 'sucesso_cliente' | null
   nome_cliente_formatado: string
   nome_empresa_formatado: string
   data_reuniao: string
@@ -135,7 +138,9 @@ export default function ReuniaoDetalhePage({ isAdmin: isAdminProp = false }: { i
                 <span className="font-medium">{new Date(meeting.data_reuniao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
               </div>
               <span className="text-border">|</span>
-              <span className="font-medium">Consultor: {meeting.mentor}</span>
+              <span className="font-medium">
+                {meeting.equipe === 'sucesso_cliente' ? 'Sucesso do Cliente' : 'Consultor'}: {meeting.mentor}
+              </span>
               {meeting.nps != null && (
                 <>
                   <span className="text-border">|</span>

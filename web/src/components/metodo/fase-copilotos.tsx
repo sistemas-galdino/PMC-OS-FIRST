@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/icons"
 import { invokeMetodoIA, type SugestaoCopilotoIA } from "@/lib/metodo-ia"
 import { FaseHeader, VazioFase, MarkdownBox } from "./compartilhados"
+import { SeletorArea, useAreasMetodo } from "./seletor-area"
 
 interface Colaborador { id: string; nome: string; cargo: string; setor: string; nivel: string | null; guardiao_ia: boolean }
 
@@ -55,6 +56,7 @@ interface Copiloto {
   status: string
   origem: string
   rotina: string | null
+  id_area: string | null
 }
 
 const STATUS_LABEL: Record<string, string> = { ideia: "Ideia", em_criacao: "Em criação", ativo: "Ativo" }
@@ -74,11 +76,12 @@ function iniciais(nome: string): string {
 
 export function FaseCopilotos({ clientId }: { clientId: string }) {
   const navigate = useNavigate()
+  const areas = useAreasMetodo(clientId)
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([])
   const [copilotos, setCopilotos] = useState<Copiloto[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ colaborador_id: "", nome: "", funcao: "", url: "", rotina: "" })
+  const [form, setForm] = useState({ colaborador_id: "", nome: "", funcao: "", url: "", rotina: "", id_area: null as string | null })
   const [salvando, setSalvando] = useState(false)
   const [detalhe, setDetalhe] = useState<Copiloto | null>(null)
   const [gerandoSkill, setGerandoSkill] = useState(false)
@@ -121,11 +124,12 @@ export function FaseCopilotos({ clientId }: { clientId: string }) {
       funcao: form.funcao.trim() || null,
       url: form.url.trim() || null,
       rotina: form.rotina || null,
+      id_area: form.id_area,
     })
     setSalvando(false)
     if (!error) {
       setShowForm(false)
-      setForm({ colaborador_id: "", nome: "", funcao: "", url: "", rotina: "" })
+      setForm({ colaborador_id: "", nome: "", funcao: "", url: "", rotina: "", id_area: null })
       fetchTudo()
     }
   }
@@ -413,6 +417,11 @@ export function FaseCopilotos({ clientId }: { clientId: string }) {
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Link do co-piloto</Label>
               <Input className="h-11 rounded-xl" placeholder="https://... (projeto no Claude, ferramenta)" value={form.url} onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))} />
             </div>
+            <SeletorArea
+              areas={areas}
+              value={form.id_area}
+              onChange={(id) => setForm((p) => ({ ...p, id_area: id }))}
+            />
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Rotina — com que frequência ele executa</Label>
               <Select value={form.rotina} onValueChange={(v) => setForm((p) => ({ ...p, rotina: v }))}>

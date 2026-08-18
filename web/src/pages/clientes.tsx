@@ -203,6 +203,7 @@ export default function ClientesPage() {
   const [quickFilter, setQuickFilter] = useState<null | 'ativos' | 'semcs' | 'risco' | 'renova' | 'cancelados'>(null)
   const [drawerClient, setDrawerClient] = useState<Client | null>(null)
   const [drawerReunioes, setDrawerReunioes] = useState<{ data: string; fonte: string }[]>([])
+  const [drawerPulsos, setDrawerPulsos] = useState<{ semana: string; faturamento: number | null; confianca: number }[]>([])
   const filterRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -327,14 +328,16 @@ export default function ClientesPage() {
   // Drawer: últimas reuniões do cliente selecionado.
   useEffect(() => {
     const dc = drawerClient
-    if (!dc) { setDrawerReunioes([]); return }
+    if (!dc) { setDrawerReunioes([]); setDrawerPulsos([]); return }
     let cancel = false
     async function load() {
-      const [m, g] = await Promise.all([
-        supabase.from('reunioes_mentoria_new').select('data_reuniao, mentor').eq('id_cliente', dc!.id_cliente).order('data_reuniao', { ascending: false }).limit(3),
+      const [m, g, pu] = await Promise.all([
+        supabase.from('reunioes_mentoria_new').select('data_reuniao, mentor').eq('equipe', 'consultor').eq('id_cliente', dc!.id_cliente).order('data_reuniao', { ascending: false }).limit(3),
         supabase.from('reunioes_galdino').select('data_reuniao').eq('id_cliente', dc!.id_cliente).order('data_reuniao', { ascending: false }).limit(3),
+        supabase.from('pulso_semanal').select('semana, faturamento, confianca').eq('id_cliente', dc!.id_cliente).order('semana', { ascending: false }).limit(4),
       ])
       if (cancel) return
+      setDrawerPulsos(((pu.data as any[]) ?? []) as { semana: string; faturamento: number | null; confianca: number }[])
       const lista = [
         ...((m.data as any[]) ?? []).map((r) => ({ data: r.data_reuniao as string, fonte: (r.mentor as string) || 'Consultor' })),
         ...((g.data as any[]) ?? []).map((r) => ({ data: r.data_reuniao as string, fonte: 'Galdino' })),
@@ -1186,6 +1189,31 @@ export default function ClientesPage() {
                     </ul>
                   )}
                 </div>
+
+                {/* Pulso semanal — tendência de confiança do dono */}
+                {drawerPulsos.length > 0 && (
+                  <div className="rounded-2xl border border-border bg-muted/10 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Pulso semanal (últimas semanas)</p>
+                    <div className="space-y-1.5">
+                      {drawerPulsos.map((p) => (
+                        <div key={p.semana} className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+                            {new Date(p.semana + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          </span>
+                          <span className="text-[11px] font-bold tabular-nums text-foreground">
+                            {p.faturamento != null ? `R$ ${Number(p.faturamento).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'}
+                          </span>
+                          <span className={`text-[11px] font-bold tabular-nums ${p.confianca <= 5 ? 'text-red-400' : p.confianca <= 7 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            confiança {p.confianca}/10
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {drawerPulsos.length >= 2 && drawerPulsos[0].confianca < drawerPulsos[1].confianca && (
+                      <p className="text-[11px] font-bold text-amber-400 mt-2">⚠ Confiança caindo — vale um contato.</p>
+                    )}
+                  </div>
+                )}
 
                 {/* Últimas reuniões */}
                 <div>

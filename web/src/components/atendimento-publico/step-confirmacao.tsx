@@ -19,7 +19,9 @@ export function StepConfirmacao({ consultor, data, horario, duracaoMinutos, iden
       <div className="flex items-center gap-4 pb-5 border-b border-border">
         <ConsultorAvatar nome={consultor.nome} url={consultor.avatar_url} className="size-14 rounded-2xl" />
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Consultor</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {consultor.equipe === "sucesso_cliente" ? "Sucesso do Cliente" : "Consultor"}
+          </div>
           <div className="text-lg font-bold tracking-tight text-foreground">{consultor.nome}</div>
           {consultor.especialidade && (
             <div className="text-xs text-muted-foreground">{consultor.especialidade}</div>

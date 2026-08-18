@@ -55,7 +55,7 @@ export default function RelatorioPage({ session, clientId }: Props) {
       ] = await Promise.all([
         supabase.from("cliente_vitorias").select("id", { count: "exact", head: true }).eq("id_cliente", cid),
         supabase.from("reunioes_galdino").select("id_unico", { count: "exact", head: true }).eq("id_cliente", cid),
-        supabase.from("reunioes_mentoria_new").select("id_unico", { count: "exact", head: true }).eq("id_cliente", cid),
+        supabase.from("reunioes_mentoria_new").select("id_unico", { count: "exact", head: true }).eq("equipe", "consultor").eq("id_cliente", cid),
         supabase.from("reunioes_blackcrm").select("id_unico", { count: "exact", head: true }).eq("id_cliente", cid),
         supabase.from("metodo_economias").select("horas_mes, valor_mes, natureza, recorrencia, capacidade_nova").eq("id_cliente", cid),
         ...FASES.map((f) => countFase(f.tabela)),

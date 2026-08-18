@@ -18,6 +18,15 @@ import {
 import { ItemThumb, COR } from "@/components/biblioteca/biblioteca-ui"
 import { CATEGORIAS, type SkillPMC } from "@/data/skills-pmc"
 import { logarDownload } from "@/lib/log-download"
+import { parseVideo } from "@/lib/video-embed"
+
+// Os passos ao lado do player: quem não assiste o vídeo já resolve por aqui.
+// Texto curto de propósito — o detalhe fica no vídeo.
+const PASSOS_INSTALACAO = [
+  "Baixe o arquivo da skill aqui no PMC OS",
+  "No Claude, abra Configurações → Personalizar → Habilidades",
+  "Importe o arquivo — a skill fica disponível nas suas conversas",
+]
 
 function normalizar(row: any): SkillPMC {
   return {
@@ -37,16 +46,28 @@ export default function SkillsPage() {
 
   const [itens, setItens] = useState<SkillPMC[]>([])
   const [loading, setLoading] = useState(true)
+  // URL do vídeo vem de configuracoes_links: o time troca sem deploy, e
+  // desativar a chave esconde o bloco inteiro.
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
   useEffect(() => {
     async function carregar() {
-      const { data } = await supabase
-        .from("conhecimento_skills")
-        .select("*")
-        .eq("publicado", true)
-        .order("ordem", { ascending: true })
-        .order("created_at", { ascending: true })
+      const [{ data }, { data: link }] = await Promise.all([
+        supabase
+          .from("conhecimento_skills")
+          .select("*")
+          .eq("publicado", true)
+          .order("ordem", { ascending: true })
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("configuracoes_links")
+          .select("url")
+          .eq("chave", "video_instalar_skill")
+          .eq("ativo", true)
+          .maybeSingle(),
+      ])
       setItens((data ?? []).map(normalizar))
+      setVideoUrl(link?.url?.trim() ? link.url.trim() : null)
       setLoading(false)
     }
     carregar()
@@ -69,6 +90,9 @@ export default function SkillsPage() {
   }, [itens, q, cat])
 
   const aberto = abertoSlug ? itens.find((s) => s.slug === abertoSlug) ?? null : null
+
+  // parseVideo trata Vimeo não listado (id + hash de privacidade) e já manda dnt=1.
+  const videoEmbed = useMemo(() => parseVideo(videoUrl)?.embedUrl ?? null, [videoUrl])
 
   const catsDisponiveis = useMemo(() => {
     const set = new Set(itens.map((s) => s.categoria))
@@ -108,6 +132,47 @@ export default function SkillsPage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Como instalar — player + passos. O cliente trava justamente aqui: baixa
+          o arquivo e não sabe o que fazer com ele. Os passos ao lado resolvem
+          isso mesmo para quem não dá play. Some se a chave estiver inativa. */}
+      {videoEmbed && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }}>
+          <Card className="border-primary/25 bg-primary/[0.04]">
+            <CardContent className="p-5 lg:p-6 grid gap-6 lg:grid-cols-[1.15fr_1fr] lg:items-center">
+              <div className="relative w-full overflow-hidden rounded-xl border border-border bg-black aspect-video">
+                <iframe
+                  src={videoEmbed}
+                  title="Como instalar uma skill no seu Claude"
+                  className="absolute inset-0 size-full"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Comece por aqui</p>
+                <h2 className="mt-1.5 text-lg font-bold tracking-tight text-foreground">
+                  Como instalar uma skill no seu Claude
+                </h2>
+                <p className="mt-1.5 text-[13px] font-medium text-muted-foreground leading-relaxed">
+                  Assista uma vez e instale qualquer skill do PMC em poucos minutos.
+                </p>
+                <ol className="mt-4 space-y-2.5">
+                  {PASSOS_INSTALACAO.map((passo, i) => (
+                    <li key={passo} className="flex items-start gap-2.5">
+                      <span className="mt-0.5 shrink-0 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-primary">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <span className="text-[13px] font-medium text-foreground leading-snug">{passo}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Busca */}
       <div className="relative max-w-xl">

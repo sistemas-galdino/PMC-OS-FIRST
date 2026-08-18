@@ -17,10 +17,11 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { formatarData, iniciais, statusEfetivo, STATUS_EFETIVO_BADGE, STATUS_EFETIVO_LABEL } from "@/lib/atendimentos"
-import type { Consultor, AgendamentoCentral } from "@/lib/atendimentos"
+import type { Consultor, AgendamentoCentral, EquipeConfig } from "@/lib/atendimentos"
 
 interface Props {
   consultores: Consultor[]
+  cfg: EquipeConfig
   agendamentos: AgendamentoCentral[]
 }
 
@@ -30,7 +31,7 @@ function dentroDoMes(dataIso: string | null, ano: number, mes: number): boolean 
   return d.getFullYear() === ano && d.getMonth() === mes
 }
 
-export function VisaoGeral({ consultores, agendamentos }: Props) {
+export function VisaoGeral({ consultores, agendamentos, cfg }: Props) {
   const hoje = new Date()
   const ano = hoje.getFullYear()
   const mes = hoje.getMonth()
@@ -59,7 +60,7 @@ export function VisaoGeral({ consultores, agendamentos }: Props) {
     const map: Record<string, number> = {}
     for (const a of agendamentos) {
       if (statusEfetivo(a) === "cancelado") continue
-      const k = a.consultor_nome ?? "Sem consultor"
+      const k = a.consultor_nome ?? `Sem ${cfg.profSingular}`
       map[k] = (map[k] ?? 0) + 1
     }
     return Object.entries(map)
@@ -74,7 +75,7 @@ export function VisaoGeral({ consultores, agendamentos }: Props) {
         <StatCard label="Reuniões no mês" value={stats.totalMes} icon={<CalendarIcon className="size-5 text-primary" />} />
         <StatCard label="Realizadas no mês" value={stats.realizadasMes} icon={<CheckCircle2Icon className="size-5 text-primary" />} />
         <StatCard label="Agendadas (futuras)" value={stats.agendadasFuturas} icon={<ClockIcon className="size-5 text-amber-400" />} />
-        <StatCard label="Consultores ativos" value={consultores.filter(c => c.ativo).length} icon={<UsersIcon className="size-5 text-primary" />} />
+        <StatCard label="Agendas ativas" value={consultores.filter(c => c.ativo).length} icon={<UsersIcon className="size-5 text-primary" />} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -117,7 +118,7 @@ export function VisaoGeral({ consultores, agendamentos }: Props) {
 
         <Card>
           <CardContent className="p-6 space-y-5">
-            <h3 className="text-base font-bold tracking-tight text-foreground">Reuniões por consultor</h3>
+            <h3 className="text-base font-bold tracking-tight text-foreground">Reuniões por {cfg.profSingular}</h3>
             {distribuicao.length === 0 ? (
               <p className="text-sm text-muted-foreground py-8 text-center">Sem dados ainda.</p>
             ) : (

@@ -76,13 +76,13 @@ export default function AtendimentoPublicoPage() {
           .from("consultores_atendimento")
           // Só colunas públicas: anon não tem grant em email/email_calendar/
           // tabela_destino/nomes_match (ver migration 20260609_hardening_link_publico).
-          .select("id,nome,slug,especialidade,descricao,avatar_url,accent,duracao_padrao_minutos,ordem,ativo,tipo_reuniao,tipos_reuniao")
+          .select("id,nome,slug,especialidade,descricao,avatar_url,accent,duracao_padrao_minutos,ordem,ativo,tipo_reuniao,tipos_reuniao,equipe")
           .eq("slug", slug)
           .eq("ativo", true)
           .maybeSingle()
 
         if (cErr || !c) {
-          setErroFatal("Consultor não encontrado ou indisponível.")
+          setErroFatal("Agenda não encontrada ou indisponível.")
           setLoading(false)
           return
         }
@@ -133,7 +133,7 @@ export default function AtendimentoPublicoPage() {
       } else {
         const { data: cs } = await supabase
           .from("consultores_atendimento")
-          .select("id,nome,slug,especialidade,descricao,avatar_url,accent,duracao_padrao_minutos,ordem,ativo,tipo_reuniao,tipos_reuniao")
+          .select("id,nome,slug,especialidade,descricao,avatar_url,accent,duracao_padrao_minutos,ordem,ativo,tipo_reuniao,tipos_reuniao,equipe")
           .eq("ativo", true)
           .order("ordem", { ascending: true })
         setConsultores((cs as Consultor[]) ?? [])
@@ -259,7 +259,7 @@ export default function AtendimentoPublicoPage() {
         <Card className="p-8 text-center space-y-4">
           <AlertCircleIcon className="size-12 text-destructive mx-auto" />
           <p className="text-base">{erroFatal}</p>
-          <Button onClick={() => navigate("/atendimento")} variant="outline">Ver todos os consultores</Button>
+          <Button onClick={() => navigate("/atendimento")} variant="outline">Ver todas as agendas</Button>
         </Card>
       </PublicoLayout>
     )
@@ -270,7 +270,7 @@ export default function AtendimentoPublicoPage() {
       <PublicoLayout
         pretitle="PMC OS"
         title="Agende seu atendimento"
-        subtitle="Escolha um consultor para iniciar uma conversa estratégica. Selecione abaixo quem mais se alinha com o desafio da sua empresa."
+        subtitle="Escolha com quem você quer falar. Selecione abaixo quem mais se alinha com o momento da sua empresa."
       >
         <div className="grid gap-3 md:grid-cols-2">
           {consultores.map(c => (
@@ -283,7 +283,7 @@ export default function AtendimentoPublicoPage() {
         </div>
         {consultores.length === 0 && (
           <Card className="p-8 text-center">
-            <p className="text-sm text-muted-foreground">Nenhum consultor disponível no momento.</p>
+            <p className="text-sm text-muted-foreground">Nenhuma agenda disponível no momento.</p>
           </Card>
         )}
       </PublicoLayout>
@@ -308,7 +308,7 @@ export default function AtendimentoPublicoPage() {
 
   return (
     <PublicoLayout
-      pretitle={consultor.especialidade ?? "Atendimento"}
+      pretitle={consultor.especialidade ?? (consultor.equipe === "sucesso_cliente" ? "Sucesso do Cliente" : "Atendimento")}
       title={`Agende com ${consultor.nome}`}
       subtitle={consultor.descricao ?? `Escolha a melhor data e horário para conversar com ${consultor.nome}.`}
     >

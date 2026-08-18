@@ -20,7 +20,7 @@ Banco Postgres (Supabase) do programa PMC. Tabelas/views principais (somente lei
     origem ('galdino'|'mentoria'|'blackcrm'), id_unico, id_reuniao, data_reuniao (date),
     horario, consultor_nome, cliente_nome, cliente_email, empresa, status_agendamento,
     codigo_cliente (NUMERO do cliente), id_cliente, link_meet, link_gravacao
-- reunioes_mentoria_new (reunioes com consultores; tem transcricao/resumo):
+- reunioes_mentoria_new (reunioes com consultores; tem transcricao/resumo). ATENCAO: esta tabela tambem guarda os atendimentos do time de Sucesso do Cliente — ao contar/analisar CONSULTORIA, filtre equipe = 'consultor' (equipe = 'sucesso_cliente' é onboarding/alinhamento do CS):
     id_unico (uuid), id_cliente (uuid), id_reuniao, data_reuniao (date), horario, mentor,
     pessoa, empresa, cliente_email, status_agendamento, link_meet, link_gravacao,
     link_geminidoc, transcricao, resumo

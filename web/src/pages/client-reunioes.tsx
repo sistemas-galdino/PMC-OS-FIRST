@@ -78,6 +78,8 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
       const { data, error } = await supabase
         .from('reunioes_mentoria_new')
         .select('*')
+        // A lista de reuniões do cliente é de CONSULTORIA (CS tem central própria).
+        .eq('equipe', 'consultor')
         .eq('id_cliente', clientEntry.id_cliente)
         .order('data_reuniao', { ascending: false })
 

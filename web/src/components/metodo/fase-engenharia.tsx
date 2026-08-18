@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/icons"
 import { invokeMetodoIA, type EconomiaItemIA } from "@/lib/metodo-ia"
 import { FaseHeader, VazioFase, BadgeIA } from "./compartilhados"
+import { SeletorArea, useAreasMetodo } from "./seletor-area"
 
 type Natureza = "custo_evitado" | "tempo_liberado" | "valor_decisao"
 type Recorrencia = "mensal" | "unico"
@@ -111,6 +112,7 @@ const TIPO_TEMPLATE: Record<string, { natureza: Natureza; recorrencia: Recorrenc
 
 const ECO_VAZIA = {
   referencia: "",
+  id_area: null as string | null,
   tipo: "copiloto",
   natureza: "tempo_liberado" as Natureza,
   recorrencia: "mensal" as Recorrencia,
@@ -131,6 +133,7 @@ const fmtBRL = (v: number) => `R$ ${v.toLocaleString("pt-BR", { maximumFractionD
 interface SistemaResumo { nome: string; categoria: string | null; descricao: string | null; status: string }
 
 export function FaseEngenharia({ clientId }: { clientId: string }) {
+  const areas = useAreasMetodo(clientId)
   const [economias, setEconomias] = useState<Economia[]>([])
   const [perfis, setPerfis] = useState<PerfilCusto[]>([])
   const [ferramentas, setFerramentas] = useState<Ferramenta[]>([])
@@ -312,6 +315,7 @@ export function FaseEngenharia({ clientId }: { clientId: string }) {
     const { error } = await supabase.from("metodo_economias").insert({
       id_cliente: clientId,
       referencia: formEco.referencia.trim(),
+      id_area: formEco.id_area,
       tipo: formEco.tipo,
       natureza: formEco.natureza,
       recorrencia: formEco.recorrencia,
@@ -720,6 +724,11 @@ export function FaseEngenharia({ clientId }: { clientId: string }) {
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">O que gerou o valor *</Label>
               <Input className="h-11 rounded-xl" placeholder="Ex.: Copiloto de Propostas" value={formEco.referencia} onChange={(e) => setFormEco((p) => ({ ...p, referencia: e.target.value }))} />
             </div>
+            <SeletorArea
+              areas={areas}
+              value={formEco.id_area}
+              onChange={(id) => setFormEco((p) => ({ ...p, id_area: id }))}
+            />
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tipo de entrega</Label>

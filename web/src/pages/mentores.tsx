@@ -97,6 +97,8 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
       const { data, error } = await supabase
         .from('reunioes_mentoria_new')
         .select('*')
+        // Só consultoria: atendimentos do Sucesso do Cliente têm central própria.
+        .eq('equipe', 'consultor')
         .order('data_reuniao', { ascending: false })
       
       if (data && !error) {

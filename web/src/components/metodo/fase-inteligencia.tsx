@@ -33,6 +33,7 @@ import {
 import { invokeMetodoIA, type FluxosInteligenciaIA } from "@/lib/metodo-ia"
 import { extrairTextoDocumento, formatoSuportado, ACCEPT_DOCUMENTO } from "@/lib/extrair-documento"
 import { FaseHeader, VazioFase, MarkdownBox, BadgeIA } from "./compartilhados"
+import { parseVideo } from "@/lib/video-embed"
 
 const DOC_BUCKET = "metodo-documentos"
 
@@ -89,16 +90,21 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
   const [novoAno, setNovoAno] = useState(hoje.getFullYear())
   const [docs, setDocs] = useState<DocCiclo[]>([])
   const [editText, setEditText] = useState<Set<string>>(new Set())
+  // Vídeo do framework: a URL vem de configuracoes_links (o time troca pelo
+  // painel, sem deploy) e some se a chave for desativada.
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
   async function fetchTudo() {
-    const [{ data: as }, { data: cs }, { data: ds }] = await Promise.all([
+    const [{ data: as }, { data: cs }, { data: ds }, { data: link }] = await Promise.all([
       supabase.from("metodo_areas").select("id, nome, descricao").eq("id_cliente", clientId).order("created_at"),
       supabase.from("metodo_area_ciclos").select("*").eq("id_cliente", clientId).order("ano", { ascending: false }).order("mes", { ascending: false }),
       supabase.from("metodo_ciclo_documentos").select("id, id_ciclo, nome, url").eq("id_cliente", clientId).order("created_at"),
+      supabase.from("configuracoes_links").select("url").eq("chave", "video_framework_ie").eq("ativo", true).maybeSingle(),
     ])
     setAreas(as ?? [])
     setCiclos(cs ?? [])
     setDocs(ds ?? [])
+    setVideoUrl(link?.url?.trim() ? link.url.trim() : null)
     setLoading(false)
   }
 
@@ -340,6 +346,8 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
     atualizaCicloLocal({ fluxos_json: { ...f, acoes } })
   }
 
+  // parseVideo trata Vimeo não listado (id + hash) e já manda dnt=1.
+  const videoEmbed = parseVideo(videoUrl)?.embedUrl ?? null
   const ciclosDaArea = areaSel ? ciclos.filter((c) => c.id_area === areaSel.id) : []
   const docsDoCiclo = cicloSel ? docs.filter((d) => d.id_ciclo === cicloSel.id) : []
 
@@ -357,6 +365,85 @@ export function FaseInteligencia({ clientId }: { clientId: string }) {
         cada etapa tem um entregável. Você pode preencher sozinho ou enviar o documento da área
         (ex.: o DRE do mês) e deixar o PMC OS gerar os 4 fluxos. Isso se repete todo mês — é a bússola do negócio.
       </p>
+
+      {/* O framework antes do ciclo: até aqui as 4 etapas só apareciam DEPOIS de
+          criar um ciclo, então quem chegava pela primeira vez não via a lógica
+          Dado → Informação → Estratégia → Receita antes de já estar dentro dela. */}
+      <section className="space-y-3">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Como funciona · 2 passos
+          </h3>
+          <span className="text-[11px] font-medium text-muted-foreground/70">
+            Cada mês é um novo ciclo, e as áreas seguem com você pelo Método inteiro.
+          </span>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card className="border-primary/20 bg-primary/[0.03]">
+            <CardContent className="p-4 flex items-start gap-3">
+              <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-primary/15 font-mono text-[11px] font-bold text-primary">01</span>
+              <div>
+                <p className="text-[13.5px] font-bold tracking-tight text-foreground">Escolha a área e traga os dados</p>
+                <p className="text-[12px] font-medium text-muted-foreground leading-relaxed mt-0.5">
+                  Comece pela área que já tem número — uma planilha, um relatório, o DRE. Sem dado, não há
+                  o que a IA analisar.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-primary/20 bg-primary/[0.03]">
+            <CardContent className="p-4 flex items-start gap-3">
+              <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-primary/15 font-mono text-[11px] font-bold text-primary">02</span>
+              <div>
+                <p className="text-[13.5px] font-bold tracking-tight text-foreground">Aplique a Inteligência Empresarial</p>
+                <p className="text-[12px] font-medium text-muted-foreground leading-relaxed mt-0.5">
+                  Rode as quatro etapas abaixo. Cada uma transforma o que veio antes em algo utilizável.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* As 4 transformações do framework. Com vídeo, o player fica ao lado
+            (2x2) — assistir e ler as etapas na mesma tela; sem vídeo, as 4
+            ocupam a largura inteira, como antes. */}
+        <div className={videoEmbed ? "grid gap-4 lg:grid-cols-2 lg:items-start" : ""}>
+          {videoEmbed && (
+            <div className="space-y-2">
+              <div className="relative w-full overflow-hidden rounded-xl border border-primary/25 bg-black aspect-video">
+                <iframe
+                  src={videoEmbed}
+                  title="O framework de 4 etapas da Inteligência Empresarial"
+                  className="absolute inset-0 size-full"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              </div>
+              <p className="text-[11.5px] font-medium text-muted-foreground leading-relaxed">
+                <strong className="text-foreground">Assista antes do primeiro ciclo:</strong> as quatro etapas
+                explicadas com exemplo real.
+              </p>
+            </div>
+          )}
+          <div className={`grid gap-3 sm:grid-cols-2 ${videoEmbed ? "" : "lg:grid-cols-4"}`}>
+            {ETAPAS.map((etapa) => (
+              <Card key={etapa.key}>
+                <CardContent className="p-4 flex flex-col gap-2">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/25">
+                    <etapa.icon className="size-4.5 text-primary" />
+                  </div>
+                  <p className="text-[13px] font-bold tracking-tight text-foreground">
+                    {etapa.titulo} <span className="text-muted-foreground/50">→</span> <span className="text-primary">{etapa.entregavel}</span>
+                  </p>
+                  <p className="text-[11.5px] font-medium text-muted-foreground leading-relaxed">{etapa.desc}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {loading ? (
         <div className="h-40 rounded-2xl bg-card/40 animate-pulse" />

@@ -83,11 +83,13 @@ export function ExecutiveSummaryHeader({ clientId }: ExecutiveSummaryHeaderProps
         supabase
           .from("reunioes_mentoria_new")
           .select("id_cliente", { count: "exact", head: true })
+          .eq("equipe", "consultor")
           .eq("id_cliente", clientId)
           .eq("cliente_compareceu", true),
         supabase
           .from("reunioes_mentoria_new")
           .select("data_reuniao")
+          .eq("equipe", "consultor")
           .eq("id_cliente", clientId)
           .eq("cliente_compareceu", true)
           .lte("data_reuniao", nowIso)

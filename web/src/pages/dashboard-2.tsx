@@ -73,7 +73,7 @@ export default function Dashboard2({ embedded = false }: { embedded?: boolean } 
         ),
         supabase.from("canais_vendas_metas").select("produto, planejado, realizado").eq("ano", ano),
         supabase.from("reunioes_galdino").select("id_cliente, data_reuniao, cliente_compareceu"),
-        supabase.from("reunioes_mentoria_new").select("id_cliente, data_reuniao, cliente_compareceu"),
+        supabase.from("reunioes_mentoria_new").select("id_cliente, data_reuniao, cliente_compareceu").eq("equipe", "consultor"),
       ])
       // último contato = reunião mais recente em que o cliente compareceu
       const uc: Record<string, string> = {}

@@ -47,6 +47,7 @@ export default function AcoesPage({ session, clientId }: { session?: Session, cl
           supabase
             .from('reunioes_mentoria_new')
             .select('id_unico, data_reuniao, mentor, acoes_cliente, ganho')
+            .eq('equipe', 'consultor')
             .eq('id_cliente', clientEntry.id_cliente)
             .order('data_reuniao', { ascending: false }),
           supabase

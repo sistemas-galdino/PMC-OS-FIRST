@@ -29,6 +29,7 @@ import type {
   Disponibilidade,
   ExcecaoConsultor,
   Feriado,
+  EquipeConfig,
 } from "@/lib/atendimentos"
 import { FeriadosSection } from "./feriados-section"
 import { CalendarioMesConsultor } from "./calendario-mes-consultor"
@@ -45,6 +46,7 @@ function formatarDataExtra(iso: string): string {
 
 interface Props {
   consultores: Consultor[]
+  cfg: EquipeConfig
   disponibilidade: Disponibilidade[]
   excecoes: ExcecaoConsultor[]
   feriados: Feriado[]
@@ -170,12 +172,12 @@ export function DisponibilidadeConsultores({
 
       <div className="flex items-center justify-between pt-2">
         <div>
-          <h3 className="text-base font-bold tracking-tight text-foreground">Consultores</h3>
+          <h3 className="text-base font-bold tracking-tight text-foreground">Agendas</h3>
           <p className="text-xs text-muted-foreground">{consultores.length} cadastrado{consultores.length !== 1 ? "s" : ""}</p>
         </div>
         <Button onClick={onNovo} className="gap-2" size="sm">
           <PlusIcon className="size-4" />
-          Novo consultor
+          Nova agenda
         </Button>
       </div>
 
@@ -268,7 +270,7 @@ export function DisponibilidadeConsultores({
                             Disponibilidade semanal
                           </div>
                           <p className="text-xs text-muted-foreground -mt-1">
-                            Defina os horários em que esse consultor atende toda semana.
+                            Defina os horários dessa agenda toda semana.
                           </p>
 
                           <div className="divide-y divide-border/50 rounded-lg border border-border/50 bg-background/40">
@@ -410,7 +412,7 @@ export function DisponibilidadeConsultores({
         {consultores.length === 0 && (
           <Card>
             <CardContent className="p-8 text-center text-sm text-muted-foreground">
-              Nenhum consultor cadastrado. Clique em "Novo consultor".
+              Nenhuma agenda cadastrada. Clique em "Nova agenda".
             </CardContent>
           </Card>
         )}

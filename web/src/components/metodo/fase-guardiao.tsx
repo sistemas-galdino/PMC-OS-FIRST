@@ -18,13 +18,14 @@ import {
   MessageCircleIcon as MessageCircle,
   UploadIcon as Upload,
   XIcon as X,
-  ClockIcon as Clock,
-  CalendarIcon as Calendar,
+  MapIcon as MapTrilha,
+  RefreshCwIcon as RefreshCw,
   ChevronRightIcon as ChevronRight,
+  PlayCircleIcon as PlayCircle,
 } from "@/components/ui/icons"
 import { FaseHeader } from "./compartilhados"
-import { MetodoNotas } from "./metodo-notas"
 import { GuiaGuardiao } from "@/components/guardiao/guia-guardiao"
+import { parseVideo } from "@/lib/video-embed"
 
 const FOTO_BUCKET = "guardiao-fotos"
 
@@ -55,17 +56,27 @@ export function FaseGuardiao({ clientId, assessmentUrl }: {
   const [file, setFile] = useState<File | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [uploadErro, setUploadErro] = useState<string | null>(null)
+  // Vídeo de abertura da fase: URL em configuracoes_links (o time troca pelo
+  // painel, sem deploy); chave inativa esconde o bloco inteiro.
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
   async function fetchGuardioes() {
-    const { data } = await supabase
-      .from("metodo_guardioes")
-      .select("*")
-      .eq("id_cliente", clientId)
-      .order("principal", { ascending: false })
-      .order("created_at")
+    const [{ data }, { data: link }] = await Promise.all([
+      supabase
+        .from("metodo_guardioes")
+        .select("*")
+        .eq("id_cliente", clientId)
+        .order("principal", { ascending: false })
+        .order("created_at"),
+      supabase.from("configuracoes_links").select("url").eq("chave", "video_fase_guardiao").eq("ativo", true).maybeSingle(),
+    ])
     setGuardioes(data ?? [])
+    setVideoUrl(link?.url?.trim() ? link.url.trim() : null)
     setLoading(false)
   }
+
+  // parseVideo trata Vimeo não listado (id + hash) e já manda dnt=1.
+  const videoEmbed = parseVideo(videoUrl)?.embedUrl ?? null
 
   useEffect(() => { fetchGuardioes() }, [clientId]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -164,6 +175,90 @@ export function FaseGuardiao({ clientId, assessmentUrl }: {
           comando do negócio. A empresa pode ter mais de um.
         </p>
       )}
+
+      {/* Mesmo enquadramento da Fase 2: o vídeo à esquerda e, ao lado, o que
+          fazer com ele. Explicar o papel antes de pedir o cadastro — a maioria
+          chega aqui sem saber o que um Guardião faz no dia a dia. */}
+      <section className="space-y-3">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Foco do Guardião nos primeiros 30 dias
+          </h3>
+          <span className="text-[11px] font-medium text-muted-foreground/70">
+            A rotina detalhada mora em Guardião de IA → Rotinas e Rituais.
+          </span>
+        </div>
+
+        <div className={videoEmbed ? "grid gap-4 lg:grid-cols-2 lg:items-start" : ""}>
+          {videoEmbed && (
+            <div className="space-y-2">
+              <div className="relative w-full overflow-hidden rounded-xl border border-primary/25 bg-black aspect-video">
+                <iframe
+                  src={videoEmbed}
+                  title="O papel do Guardião da IA"
+                  className="absolute inset-0 size-full"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              </div>
+              <p className="flex items-start gap-1.5 text-[11.5px] font-medium text-muted-foreground leading-relaxed">
+                <PlayCircle className="size-3.5 shrink-0 mt-0.5 text-primary" />
+                <span>
+                  <strong className="text-foreground">O papel do Guardião da IA:</strong> quem é, o que faz
+                  no dia a dia e por que essa é a primeira fase do Método.
+                </span>
+              </p>
+            </div>
+          )}
+          <div className={`grid gap-4 ${videoEmbed ? "" : "md:grid-cols-2"}`}>
+            <Card className="border-primary/30 bg-primary/[0.04]">
+              <CardContent className="p-5 flex flex-col gap-2.5 h-full">
+                <span className="inline-flex items-center gap-1.5 self-start rounded-lg bg-primary/10 border border-primary/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                  <MapTrilha className="size-3.5" />
+                  Prioridade
+                </span>
+                <p className="text-[15px] font-bold tracking-tight text-foreground">
+                  Conclua a Trilha do Guardião da IA
+                </p>
+                <p className="text-[12px] font-medium text-muted-foreground leading-relaxed">
+                  É o caminho completo de implementação: da definição do Guardião até a IA rodando nos setores.
+                </p>
+                <Button
+                  className="mt-auto h-10 gap-2 rounded-xl text-xs font-bold uppercase tracking-wider"
+                  onClick={() => navigate("/trilhas")}
+                >
+                  Acessar trilha
+                  <ChevronRight className="size-4" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-5 flex flex-col gap-2.5 h-full">
+                <span className="inline-flex items-center gap-1.5 self-start rounded-lg bg-muted/40 border border-border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <RefreshCw className="size-3.5" />
+                  Cadência
+                </span>
+                <p className="text-[15px] font-bold tracking-tight text-foreground">
+                  Conheça a rotina do Guardião
+                </p>
+                <p className="text-[12px] font-medium text-muted-foreground leading-relaxed">
+                  As quatro cadências que mantêm a máquina rodando: diária, semanal, quinzenal e mensal.
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-auto h-10 gap-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:border-primary/30 hover:bg-primary/5"
+                  onClick={() => navigate("/rotinas")}
+                >
+                  Ver rotinas e rituais
+                  <ChevronRight className="size-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
 
       {/* Seção: guardiões cadastrados */}
       <section className="space-y-3">
@@ -283,44 +378,6 @@ export function FaseGuardiao({ clientId, assessmentUrl }: {
       )}
       </section>
 
-      {/* Seção: rotina dos primeiros 30 dias */}
-      <section className="space-y-3">
-        <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-          Rotina do Guardião — primeiros 30 dias
-        </h3>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardContent className="p-5 space-y-2.5">
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-                <Clock className="size-3.5" />
-                Diário · 15 min
-              </span>
-              <p className="text-sm font-bold tracking-tight text-foreground">Reunião rápida em pé</p>
-              <p className="text-[12px] font-medium text-muted-foreground leading-relaxed">
-                Cada pessoa responde: <strong className="text-foreground">o que usou de IA ontem?</strong> e <strong className="text-foreground">o que vai usar de IA hoje?</strong>
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-5 space-y-2.5">
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-                <Calendar className="size-3.5" />
-                Semanal · 45 min
-              </span>
-              <p className="text-sm font-bold tracking-tight text-foreground">Melhores boas práticas</p>
-              <p className="text-[12px] font-medium text-muted-foreground leading-relaxed">
-                Apresentação das melhores práticas de IA da semana. Use o <strong className="text-foreground">NotebookLM</strong> para montar a apresentação.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-        <MetodoNotas
-          clientId={clientId}
-          chave="guardiao"
-          titulo="Melhorias da rotina"
-          placeholder="Anote aqui as melhorias, ajustes e ideias que surgirem na rotina do Guardião — o que funcionou, o que testar, o que padronizar…"
-        />
-      </section>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-md">

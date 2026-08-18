@@ -28,6 +28,7 @@ const ReunioesBlackCRMPage = lazy(() => import("@/pages/reunioes-blackcrm"))
 const ReuniaoBlackCRMDetalhePage = lazy(() => import("@/pages/reuniao-blackcrm-detalhe"))
 const RecursosPage = lazy(() => import("@/pages/recursos"))
 const FerramentasPage = lazy(() => import("@/pages/ferramentas"))
+const PromptSupremoPage = lazy(() => import("@/pages/prompt-supremo"))
 const CalendarioEncontrosPage = lazy(() => import("@/pages/calendario-encontros"))
 const ConfiguracoesPage = lazy(() => import("@/pages/configuracoes"))
 const AgendarPage = lazy(() => import("@/pages/agendar"))
@@ -53,6 +54,13 @@ const MultiplicadoresAdminPage = lazy(() => import("@/pages/multiplicadores-admi
 const SkillsPage = lazy(() => import("@/pages/skills"))
 const SkillsAdminPage = lazy(() => import("@/pages/skills-admin"))
 const RepositorioVitoriasPage = lazy(() => import("@/pages/repositorio-vitorias"))
+const VitrinePage = lazy(() => import("@/pages/vitrine"))
+const VitrineApresentarPage = lazy(() => import("@/pages/vitrine-apresentar"))
+const VitrineCasePage = lazy(() => import("@/pages/vitrine-case"))
+const VitrineCasesPage = lazy(() => import("@/pages/vitrine-cases"))
+const VitrineClientesPage = lazy(() => import("@/pages/vitrine-clientes"))
+const VitrineEvidenciasPage = lazy(() => import("@/pages/vitrine-evidencias"))
+const VitrineOportunidadesPage = lazy(() => import("@/pages/vitrine-oportunidades"))
 const VitoriasPage = lazy(() => import("@/pages/vitorias"))
 const MeuTimePage = lazy(() => import("@/pages/meu-time"))
 const TrilhasPage = lazy(() => import("@/pages/trilhas"))
@@ -60,6 +68,7 @@ const TrilhaEvidenciasPage = lazy(() => import("@/pages/trilha-evidencias"))
 const InformacoesEmpresaPage = lazy(() => import("@/pages/informacoes-empresa"))
 const RoadmapSistemasPage = lazy(() => import("@/pages/roadmap-sistemas"))
 const CentralAtendimentosPage = lazy(() => import("@/pages/central-atendimentos"))
+const CentralSucessoClientePage = lazy(() => import("@/pages/central-sucesso-cliente"))
 const AtendimentoPublicoPage = lazy(() => import("@/pages/atendimento-publico"))
 const FunisPage = lazy(() => import("@/pages/funis"))
 const RespostasOnboardingPage = lazy(() => import("@/pages/respostas-onboarding"))
@@ -79,6 +88,7 @@ const GuardiaoPage = lazy(() => import("@/pages/guardiao"))
 const GuardiaoResponderPage = lazy(() => import("@/pages/guardiao-responder"))
 const GuardiaoAdminPage = lazy(() => import("@/pages/guardiao-admin"))
 const TimePermissoesPage = lazy(() => import("@/pages/time-permissoes"))
+const InteligenciaNichoPage = lazy(() => import("@/pages/inteligencia-nicho"))
 
 // Um deploy novo troca os hashes dos chunks JS e apaga os antigos do servidor.
 // Se o navegador já tinha a página aberta de antes do deploy, o import()
@@ -168,7 +178,7 @@ function RequireSecao({ secao, children }: { secao: string; children: ReactNode 
 }
 
 function AppRoutes() {
-  const { session, isAdmin, needsPassword, needsOnboarding, loading, idCliente } = useAuth()
+  const { session, isAdmin, needsPassword, needsOnboarding, loading, idCliente, papelEmpresa } = useAuth()
   // Portal do cliente: resolve a empresa (cliente legado OU 2º usuário vinculado).
   // Só passa quando NÃO é admin (admin usa clientId por rota/params). undefined
   // deixa a página cair no session.user.id (comportamento legado).
@@ -188,6 +198,35 @@ function AppRoutes() {
           <Route path="/atendimento" element={<AtendimentoPublicoPage />} />
           <Route path="/atendimento/:slug" element={<AtendimentoPublicoPage />} />
           <Route path="/guardiao/r/:token" element={<GuardiaoResponderPage />} />
+
+          {/* Modo apresentação: FORA do DashboardLayout de propósito — sem menu,
+              sem cabeçalho e sem o container max-w-7xl, porque esta tela é
+              projetada ao vivo em reunião. Como o bloco externo não passa pelos
+              guards implícitos do catch-all, o `session` vai explícito aqui. */}
+          <Route
+            path="/vitrine/apresentar"
+            element={
+              session ? (
+                <RequireSecao secao="vitrine">
+                  <VitrineApresentarPage />
+                </RequireSecao>
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/vitrine/apresentar/:caseId"
+            element={
+              session ? (
+                <RequireSecao secao="vitrine">
+                  <VitrineApresentarPage />
+                </RequireSecao>
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
           <Route
             path="/*"
             element={session ? (
@@ -195,7 +234,12 @@ function AppRoutes() {
               (!isAdmin && needsOnboarding) ? <Navigate to="/cadastro" replace /> : (
                 <DashboardLayout isAdmin={isAdmin}>
                   <Routes>
-                    <Route path="/" element={isAdmin ? <AdminDashboard /> : <Navigate to="/inicio" replace />} />
+                    {/* Home por pessoa: o Guardião opera o dia, o dono acompanha a jornada.
+                        Cadências diferentes pedem portas de entrada diferentes. */}
+                    <Route path="/" element={
+                      isAdmin ? <AdminDashboard />
+                        : <Navigate to={papelEmpresa === "guardiao" ? "/meu-dia" : "/inicio"} replace />
+                    } />
                     <Route path="/inicio" element={<InicioPage session={session} clientId={cid} />} />
                     <Route path="/relatorio" element={<Navigate to="/balanco" replace />} />
                     <Route path="/balanco" element={<BalancoPage session={session} clientId={cid} />} />
@@ -210,6 +254,7 @@ function AppRoutes() {
                     <Route path="/novidades-admin" element={<RequireSecao secao="novidades-admin"><NovidadesAdminPage /></RequireSecao>} />
                     <Route path="/logs-download" element={<RequireSecao secao="logs-download"><LogsDownloadPage /></RequireSecao>} />
                     <Route path="/mensagens" element={<RequireSecao secao="mensagens"><MensagensPage /></RequireSecao>} />
+                    <Route path="/inteligencia-nicho" element={<RequireSecao secao="inteligencia-nicho"><InteligenciaNichoPage /></RequireSecao>} />
                     <Route path="/estudos-caso" element={<EstudosCasoPage session={session} clientId={cid} />} />
                     <Route path="/estudos-caso-admin" element={<RequireSecao secao="estudos-caso-admin"><EstudosCasoAdminPage /></RequireSecao>} />
                     <Route path="/dashboard-2" element={<Navigate to="/" replace />} />
@@ -219,6 +264,12 @@ function AppRoutes() {
                     <Route path="/skills" element={<SkillsPage />} />
                     <Route path="/skills-admin" element={<RequireSecao secao="skills-admin"><SkillsAdminPage /></RequireSecao>} />
                     <Route path="/repositorio-vitorias" element={<RequireSecao secao="repositorio-vitorias"><RepositorioVitoriasPage /></RequireSecao>} />
+                    <Route path="/vitrine" element={<RequireSecao secao="vitrine"><VitrinePage /></RequireSecao>} />
+                    <Route path="/vitrine/case/:caseId" element={<RequireSecao secao="vitrine"><VitrineCasePage /></RequireSecao>} />
+                    <Route path="/vitrine-cases" element={<RequireSecao secao="vitrine-cases"><VitrineCasesPage /></RequireSecao>} />
+                    <Route path="/vitrine-clientes" element={<RequireSecao secao="vitrine-clientes"><VitrineClientesPage /></RequireSecao>} />
+                    <Route path="/vitrine-evidencias" element={<RequireSecao secao="vitrine-evidencias"><VitrineEvidenciasPage /></RequireSecao>} />
+                    <Route path="/vitrine-oportunidades" element={<RequireSecao secao="vitrine-oportunidades"><VitrineOportunidadesPage /></RequireSecao>} />
                     <Route path="/mentores" element={<RequireSecao secao="consultores"><MentoresPage isAdmin={isAdmin} /></RequireSecao>} />
                     <Route path="/clientes" element={<RequireSecao secao="clientes"><ClientesPage /></RequireSecao>} />
                     <Route path="/radar-renovacao" element={<RequireSecao secao="radar-renovacao"><RadarRenovacaoPage /></RequireSecao>} />
@@ -237,6 +288,7 @@ function AppRoutes() {
                     <Route path="/reuniao-blackcrm/:id" element={<ReuniaoBlackCRMDetalhePage isAdmin={isAdmin} />} />
                     <Route path="/recursos" element={<RecursosPage session={session} clientId={cid} />} />
                     <Route path="/ferramentas" element={<FerramentasPage session={session} forceAdmin={isAdmin} />} />
+                    <Route path="/prompt-supremo" element={<PromptSupremoPage />} />
                     <Route path="/calendario" element={<CalendarioEncontrosPage isAdmin={isAdmin} />} />
                     <Route path="/onboarding" element={<RequireSecao secao="onboarding"><OnboardingPage /></RequireSecao>} />
                     <Route path="/configuracoes" element={<RequireSecao secao="configuracoes"><ConfiguracoesPage /></RequireSecao>} />
@@ -250,6 +302,7 @@ function AppRoutes() {
                     <Route path="/informacoes-empresa" element={<InformacoesEmpresaPage session={session} clientId={cid} />} />
                     <Route path="/roadmap-sistemas" element={<RequireSecao secao="roadmap-sistemas"><RoadmapSistemasPage /></RequireSecao>} />
                     <Route path="/central-atendimentos" element={<RequireSecao secao="central-atendimentos"><CentralAtendimentosPage /></RequireSecao>} />
+                    <Route path="/central-sucesso-cliente" element={<RequireSecao secao="central-sucesso-cliente"><CentralSucessoClientePage /></RequireSecao>} />
                     <Route path="/funis" element={<RequireSecao secao="funis"><FunisPage /></RequireSecao>} />
                     <Route path="/respostas-onboarding" element={<RequireSecao secao="respostas-onboarding"><RespostasOnboardingPage /></RequireSecao>} />
                     {/* A aba única /crm foi substituída pelas 10 rotas abaixo. */}

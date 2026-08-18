@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { isStatusAtivo } from "@/lib/status-cliente"
 import { useNavigate } from "react-router-dom"
@@ -47,6 +47,15 @@ import {
   Trash2Icon as Trash2,
   SendIcon as Send,
 } from "@/components/ui/icons"
+
+// Papel dentro da empresa: define a HOME, não o acesso a dado.
+const PAPEIS_EMPRESA = [
+  { chave: "dono", label: "Dono", home: "Minha Jornada" },
+  { chave: "guardiao", label: "Guardião", home: "Meu Dia" },
+  { chave: "colaborador", label: "Colaborador", home: "Minha Jornada" },
+] as const
+
+interface UsuarioEmpresa { auth_user_id: string; papel: string; email: string | null }
 
 interface AccessRow {
   id_entrada: number
@@ -128,8 +137,18 @@ export default function AcessosPage() {
   const [showAddUser, setShowAddUser] = useState(false)
   const [addUserEmpresa, setAddUserEmpresa] = useState("")
   const [addUserEmail, setAddUserEmail] = useState("")
+  const [addUserPapel, setAddUserPapel] = useState<string>("colaborador")
   const [addUserBusy, setAddUserBusy] = useState(false)
+  // Usuários já vinculados à empresa selecionada — para trocar o papel de quem já existe.
+  const [usuariosEmpresa, setUsuariosEmpresa] = useState<UsuarioEmpresa[]>([])
+  const [salvandoPapel, setSalvandoPapel] = useState<string | null>(null)
   const [addUserResult, setAddUserResult] = useState<{ ok: boolean; msg: string; link?: string } | null>(null)
+  const [addUserLinkCopied, setAddUserLinkCopied] = useState(false)
+  // Busca da empresa por nome ou código (substitui o <select> com ~300 opções).
+  const [empresaBusca, setEmpresaBusca] = useState("")
+  const [empresaAberta, setEmpresaAberta] = useState(false)
+  const [codigosByCliente, setCodigosByCliente] = useState<Map<string, number>>(new Map())
+  const empresaBoxRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
@@ -150,9 +169,12 @@ export default function AcessosPage() {
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const [overview, acessos] = await Promise.all([
+      const [overview, acessos, codigos] = await Promise.all([
         supabase.rpc("get_client_access_overview"),
         supabase.rpc("get_empresa_acessos"),
+        // A RPC de overview não devolve codigo_cliente, e é por ele que o admin
+        // busca a empresa ao adicionar um login.
+        supabase.from("clientes_entrada_new").select("id_cliente, codigo_cliente"),
       ])
       if (cancelled) return
       if (overview.error) {
@@ -162,6 +184,16 @@ export default function AcessosPage() {
         return
       }
       setRows((overview.data as AccessRow[]) ?? [])
+      if (codigos.error) {
+        // Não bloqueia: a busca por nome da empresa continua funcionando.
+        console.error("codigo_cliente error:", codigos.error)
+      } else {
+        const mapCod = new Map<string, number>()
+        for (const c of ((codigos.data ?? []) as { id_cliente: string; codigo_cliente: number | null }[])) {
+          if (c.id_cliente && c.codigo_cliente != null) mapCod.set(c.id_cliente, c.codigo_cliente)
+        }
+        setCodigosByCliente(mapCod)
+      }
       if (acessos.error) {
         // Não bloqueia a tela: só perde a contagem/expansão de logins.
         console.error("get_empresa_acessos error:", acessos.error)
@@ -312,15 +344,64 @@ export default function AcessosPage() {
     }
   }
 
-  async function copyLinkToClipboard(link: string) {
+  async function copyLinkToClipboard(link: string, alvo: "convite" | "addUser" = "convite") {
     try {
       await navigator.clipboard.writeText(link)
-      setLinkCopied(true)
-      setTimeout(() => setLinkCopied(false), 2500)
+      // O diálogo de reenvio e o bloco de novo usuário podem estar abertos ao
+      // mesmo tempo — cada um acende o seu próprio "Copiado!".
+      const acender = alvo === "addUser" ? setAddUserLinkCopied : setLinkCopied
+      acender(true)
+      setTimeout(() => acender(false), 2500)
     } catch {
       setToast({ type: "err", msg: "Não foi possível copiar o link" })
     }
   }
+
+  // Empresas que batem com o texto digitado: nome da empresa, nome do
+  // responsável ou código do cliente (mesmo critério da Gestão de Clientes).
+  const empresasFiltradas = useMemo(() => {
+    const q = empresaBusca.trim().toLowerCase()
+    if (!q) return [] as AccessRow[]
+    return rows
+      .filter((r) => {
+        const cod = codigosByCliente.get(r.id_cliente)
+        return (
+          (r.nome_empresa || "").toLowerCase().includes(q) ||
+          (r.nome_cliente || "").toLowerCase().includes(q) ||
+          (cod != null && String(cod).includes(q))
+        )
+      })
+      .sort((a, b) => (a.nome_empresa || a.nome_cliente || "").localeCompare(b.nome_empresa || b.nome_cliente || ""))
+      .slice(0, 8)
+  }, [rows, empresaBusca, codigosByCliente])
+
+  const empresaSelecionada = useMemo(
+    () => rows.find((r) => r.id_cliente === addUserEmpresa) ?? null,
+    [rows, addUserEmpresa],
+  )
+
+  function selecionarEmpresa(r: AccessRow) {
+    setAddUserEmpresa(r.id_cliente)
+    setEmpresaBusca("")
+    setEmpresaAberta(false)
+    carregarUsuariosEmpresa(r.id_cliente)
+  }
+
+  useEffect(() => {
+    if (!empresaAberta) return
+    function onClickFora(e: MouseEvent) {
+      if (empresaBoxRef.current && !empresaBoxRef.current.contains(e.target as Node)) setEmpresaAberta(false)
+    }
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setEmpresaAberta(false)
+    }
+    document.addEventListener("mousedown", onClickFora)
+    document.addEventListener("keydown", onEsc)
+    return () => {
+      document.removeEventListener("mousedown", onClickFora)
+      document.removeEventListener("keydown", onEsc)
+    }
+  }, [empresaAberta])
 
   function shareOnWhatsApp(row: AccessRow, link: string) {
     const nome = (row.nome_cliente || "").split(" ")[0] || "Olá"
@@ -440,6 +521,24 @@ export default function AcessosPage() {
     )
   }
 
+  // Lista quem já tem login naquela empresa, para o admin poder trocar o papel.
+  async function carregarUsuariosEmpresa(idCliente: string) {
+    if (!idCliente) { setUsuariosEmpresa([]); return }
+    const { data } = await supabase
+      .from("empresa_usuarios")
+      .select("auth_user_id, papel")
+      .eq("id_cliente", idCliente)
+    setUsuariosEmpresa(((data ?? []) as any[]).map((u) => ({ ...u, email: null })))
+  }
+
+  async function trocarPapelUsuario(uid: string, papel: string) {
+    setSalvandoPapel(uid)
+    const { error } = await supabase.from("empresa_usuarios").update({ papel }).eq("auth_user_id", uid)
+    if (error) console.error("Erro ao trocar papel:", error.message)
+    else setUsuariosEmpresa((prev) => prev.map((u) => (u.auth_user_id === uid ? { ...u, papel } : u)))
+    setSalvandoPapel(null)
+  }
+
   async function provisionarUsuario() {
     if (!addUserEmpresa || !addUserEmail.trim()) return
     setAddUserBusy(true)
@@ -449,11 +548,19 @@ export default function AcessosPage() {
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/provisionar-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
-        body: JSON.stringify({ tipo: "empresa_usuario", email: addUserEmail.trim(), id_cliente: addUserEmpresa, app_url: window.location.origin }),
+        body: JSON.stringify({ tipo: "empresa_usuario", email: addUserEmail.trim(), id_cliente: addUserEmpresa, papel: addUserPapel, app_url: window.location.origin }),
       })
       const data = await res.json()
       if (!res.ok) setAddUserResult({ ok: false, msg: data.error || "Erro ao provisionar usuário." })
-      else { setAddUserResult({ ok: true, msg: "Usuário criado. Envie o link de acesso:", link: data.invite_link }); setAddUserEmail("") }
+      else {
+        // A edge function pode ainda não gravar o papel: garantimos aqui.
+        if (data.auth_user_id) {
+          await supabase.from("empresa_usuarios").update({ papel: addUserPapel }).eq("auth_user_id", data.auth_user_id)
+        }
+        setAddUserResult({ ok: true, msg: "Usuário criado. Envie o link de acesso:", link: data.invite_link })
+        setAddUserEmail("")
+        await carregarUsuariosEmpresa(addUserEmpresa)
+      }
     } catch (e: any) {
       setAddUserResult({ ok: false, msg: e.message })
     }
@@ -490,20 +597,105 @@ export default function AcessosPage() {
           <CardContent className="p-5 space-y-4">
             <p className="text-[13px] font-semibold text-foreground">Novo login para uma empresa existente</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <select
-                value={addUserEmpresa} onChange={(e) => setAddUserEmpresa(e.target.value)}
-                className="rounded-lg bg-card border border-border px-3 py-2 text-[13px] text-foreground"
-              >
-                <option value="">Selecione a empresa…</option>
-                {rows.slice().sort((a, b) => (a.nome_empresa || a.nome_cliente || "").localeCompare(b.nome_empresa || b.nome_cliente || "")).map((r) => (
-                  <option key={r.id_cliente} value={r.id_cliente}>{r.nome_empresa || r.nome_cliente || r.id_cliente}</option>
-                ))}
-              </select>
+              {/* Busca por nome ou código em vez de um <select> com ~300 opções.
+                  O código aparece em cada resultado para conferir antes de escolher. */}
+              <div ref={empresaBoxRef} className="relative">
+                {empresaSelecionada ? (
+                  <div className="flex items-center gap-2 rounded-lg bg-card border border-primary/40 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-semibold text-foreground truncate">
+                        {empresaSelecionada.nome_empresa || empresaSelecionada.nome_cliente || "—"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {codigosByCliente.get(empresaSelecionada.id_cliente) != null && (
+                          <span className="font-medium">Cód. {codigosByCliente.get(empresaSelecionada.id_cliente)} · </span>
+                        )}
+                        {empresaSelecionada.nome_cliente || "—"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setAddUserEmpresa(""); setUsuariosEmpresa([]); setEmpresaBusca(""); setEmpresaAberta(true) }}
+                      className="shrink-0 rounded-md border border-border px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+                    >
+                      Trocar
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    placeholder="Buscar empresa por nome ou código…"
+                    value={empresaBusca}
+                    onChange={(e) => { setEmpresaBusca(e.target.value); setEmpresaAberta(true) }}
+                    onFocus={() => setEmpresaAberta(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && empresasFiltradas.length > 0) {
+                        e.preventDefault()
+                        selecionarEmpresa(empresasFiltradas[0])
+                      }
+                    }}
+                    className="w-full rounded-lg bg-card border border-border px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                  />
+                )}
+
+                {empresaAberta && !empresaSelecionada && empresaBusca.trim() && (
+                  <div className="absolute z-50 mt-1 w-full max-h-64 overflow-y-auto rounded-xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl py-1">
+                    {empresasFiltradas.length === 0 ? (
+                      <p className="px-3 py-2.5 text-[12px] text-muted-foreground">Nenhuma empresa encontrada.</p>
+                    ) : (
+                      empresasFiltradas.map((r) => {
+                        const cod = codigosByCliente.get(r.id_cliente)
+                        return (
+                          <button
+                            key={r.id_cliente}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => selecionarEmpresa(r)}
+                            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-primary/10 transition-colors"
+                          >
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[13px] font-semibold text-foreground truncate">
+                                {r.nome_empresa || r.nome_cliente || "—"}
+                              </span>
+                              <span className="block text-[11px] text-muted-foreground truncate">{r.nome_cliente || "—"}</span>
+                            </span>
+                            {cod != null && (
+                              <span className="shrink-0 rounded-md bg-muted/40 px-2 py-0.5 text-[10px] font-bold tabular-nums text-muted-foreground">
+                                Cód. {cod}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
               <input
                 type="email" placeholder="E-mail do novo usuário" value={addUserEmail}
                 onChange={(e) => setAddUserEmail(e.target.value)}
                 className="rounded-lg bg-card border border-border px-3 py-2 text-[13px] text-foreground"
               />
+            </div>
+            {/* O papel define só a HOME: o Guardião entra no cockpit do dia,
+                os demais na jornada. Todos continuam vendo os mesmos dados. */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Abre o sistema em:</span>
+              {PAPEIS_EMPRESA.map((p) => (
+                <button
+                  key={p.chave}
+                  type="button"
+                  onClick={() => setAddUserPapel(p.chave)}
+                  className={`rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                    addUserPapel === p.chave
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/30"
+                  }`}
+                >
+                  {p.label} <span className="font-normal opacity-70">· {p.home}</span>
+                </button>
+              ))}
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -518,9 +710,55 @@ export default function AcessosPage() {
               <div className={`rounded-lg p-3 text-[12px] ${addUserResult.ok ? "bg-primary/10 text-foreground" : "bg-destructive/10 text-destructive"}`}>
                 <p className="font-medium">{addUserResult.msg}</p>
                 {addUserResult.link && (
-                  <input readOnly value={addUserResult.link} onFocus={(e) => e.target.select()}
-                    className="mt-2 w-full rounded-md bg-background border border-border px-2 py-1.5 text-[11px] text-muted-foreground font-mono" />
+                  <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                    <input readOnly value={addUserResult.link} onFocus={(e) => e.target.select()}
+                      className="flex-1 rounded-md bg-background border border-border px-2 py-1.5 text-[11px] text-muted-foreground font-mono" />
+                    <button
+                      type="button"
+                      onClick={() => copyLinkToClipboard(addUserResult.link!, "addUser")}
+                      className={`shrink-0 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                        addUserLinkCopied
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border text-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      <Copy className="size-3.5" />
+                      {addUserLinkCopied ? "Link copiado!" : "Copiar link"}
+                    </button>
+                  </div>
                 )}
+              </div>
+            )}
+
+            {/* Quem já tem login nesta empresa — sem isto, os logins existentes
+                ficariam presos no papel padrão para sempre. */}
+            {addUserEmpresa && usuariosEmpresa.length > 0 && (
+              <div className="border-t border-border pt-4 space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Logins desta empresa ({usuariosEmpresa.length})
+                </p>
+                {usuariosEmpresa.map((u) => (
+                  <div key={u.auth_user_id} className="flex items-center gap-2 flex-wrap rounded-lg bg-muted/20 px-3 py-2">
+                    <span className="font-mono text-[11px] text-muted-foreground flex-1 min-w-32 truncate">
+                      {u.auth_user_id.slice(0, 8)}…
+                    </span>
+                    {PAPEIS_EMPRESA.map((p) => (
+                      <button
+                        key={p.chave}
+                        type="button"
+                        disabled={salvandoPapel === u.auth_user_id}
+                        onClick={() => trocarPapelUsuario(u.auth_user_id, p.chave)}
+                        className={`rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${
+                          u.papel === p.chave
+                            ? "border-primary/50 bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/30"
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>

@@ -34,6 +34,7 @@ interface Consultor {
   duracao_padrao_minutos: number
   ativo: boolean
   cor_agenda: number | null
+  equipe: "consultor" | "sucesso_cliente" | null
 }
 
 const TZ = "America/Fortaleza"
@@ -262,9 +263,11 @@ Deno.serve(async (req: Request) => {
 
     // Sucesso do Cliente responsável (clientes_entrada_new.sc, ligada por id_cliente).
     // Vira convidado confirmado no evento. Lookup tolerante a falha: nunca bloqueia o agendamento.
+    // Pulado quando a própria agenda já é de CS — senão convidaríamos a mesma
+    // pessoa duas vezes (a caixa da agenda + o atendimento_0X@ dela).
     let csEmail: string | null = null
     let csNome: string | null = null
-    {
+    if (consultor.equipe !== "sucesso_cliente") {
       const { data: entradaCli } = await supabase
         .from("clientes_entrada_new")
         .select("sc")
@@ -304,6 +307,8 @@ Deno.serve(async (req: Request) => {
 
     if (consultor.tabela_destino === "reunioes_mentoria_new") {
       base.mentor = consultor.nome
+      // Separa atendimento de CS de reunião de consultoria nas telas do cliente.
+      base.equipe = consultor.equipe ?? "consultor"
     } else if (consultor.tabela_destino === "reunioes_blackcrm") {
       base.responsavel = consultor.nome
       base.tipo_reuniao = consultor.tipo_reuniao ?? "tutoria"
@@ -351,6 +356,7 @@ Deno.serve(async (req: Request) => {
           cliente_nome,
           empresa: empresaFinal,
           assunto: assuntoLabel,
+          equipe: consultor.equipe,
         }),
         description: descricaoEvento({
           cliente_nome,
@@ -360,6 +366,8 @@ Deno.serve(async (req: Request) => {
           observacoes: observacoes ?? null,
           codigo_cliente: matchCli.codigo_cliente,
           assunto: assuntoLabel,
+          equipe: consultor.equipe,
+          nome: consultor.nome,
         }),
         start: { dateTime: startISO, timeZone: TZ },
         end: { dateTime: endISO, timeZone: TZ },

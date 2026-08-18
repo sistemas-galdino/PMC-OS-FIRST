@@ -24,16 +24,17 @@ import {
   STATUS_BADGE,
   formatarData,
 } from "@/lib/atendimentos"
-import type { AgendamentoCentral, StatusAgendamento } from "@/lib/atendimentos"
+import type { AgendamentoCentral, StatusAgendamento, EquipeConfig } from "@/lib/atendimentos"
 
 interface Props {
   open: boolean
   agendamento: AgendamentoCentral | null
+  cfg: EquipeConfig
   onClose: () => void
   onSave: (ag: AgendamentoCentral, patch: Partial<AgendamentoCentral>) => Promise<void>
 }
 
-export function AgendamentoDetalhesDialog({ open, agendamento, onClose, onSave }: Props) {
+export function AgendamentoDetalhesDialog({ open, agendamento, cfg, onClose, onSave }: Props) {
   const [status, setStatus] = useState<StatusAgendamento>("pendente_sync")
   const [observacoes, setObservacoes] = useState("")
   const [compareceu, setCompareceu] = useState<boolean | null>(null)
@@ -71,7 +72,7 @@ export function AgendamentoDetalhesDialog({ open, agendamento, onClose, onSave }
           <div className="grid grid-cols-2 gap-3">
             <Info label="Data" value={formatarData(agendamento.data_reuniao)} />
             <Info label="Horário" value={(agendamento.horario ?? "").slice(0, 5) || "—"} />
-            <Info label="Consultor" value={agendamento.consultor_nome ?? "—"} />
+            <Info label={cfg.profSingularTitulo} value={agendamento.consultor_nome ?? "—"} />
             <Info label="Origem" value={<Badge variant="outline" className="font-bold uppercase text-[9px] px-2">{agendamento.origem}</Badge>} />
             <Info label="Cliente" value={agendamento.cliente_nome ?? "—"} />
             <Info label="Empresa" value={agendamento.empresa ?? "—"} />

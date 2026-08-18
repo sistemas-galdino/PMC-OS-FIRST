@@ -60,19 +60,22 @@ export default function NiveisPage({ session, clientId }: Props) {
   const cid = clientId || session?.user?.id
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
-  const [sinaisN, setSinaisN] = useState<SinaisNivel>({ etapas: 0, fases: 0, mapeamento: 0, reunioes: 0, vitorias: 0, convites: 0, candidatos: 0, guardiaoContratado: 0, tarefas: 0, diasFechados: 0, semanasPerfeitas: 0 })
+  const [sinaisN, setSinaisN] = useState<SinaisNivel>({ etapas: 0, fases: 0, mapeamento: 0, reunioes: 0, vitorias: 0, pulsos: 0, convites: 0, candidatos: 0, guardiaoContratado: 0, tarefas: 0, diasFechados: 0, semanasPerfeitas: 0 })
 
   useEffect(() => {
     if (!cid) return
     async function carregar() {
       try {
       const cnt = (t: string, col = "id") => supabase.from(t).select(col, { count: "exact", head: true }).eq("id_cliente", cid)
-      const [etapasRes, g, a, ga, cp, si, ec, vit, rg, rm, rb, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk, diasRes] = await Promise.all([
+      const [etapasRes, g, a, ga, cp, si, ec, vit, rg, rm, rb, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk, diasRes, pulsosRes] = await Promise.all([
         supabase.from("cliente_etapas_metodo").select("etapa, concluida").eq("id_cliente", cid),
         cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
         cnt("metodo_copilotos"), cnt("metodo_sistemas"), cnt("metodo_economias"),
         cnt("cliente_vitorias"),
-        cnt("reunioes_galdino", "id_unico"), cnt("reunioes_mentoria_new", "id_unico"), cnt("reunioes_blackcrm", "id_unico"),
+        cnt("reunioes_galdino", "id_unico"),
+        // Consultoria só: atendimento do Sucesso do Cliente não pontua como reunião de consultoria.
+        supabase.from("reunioes_mentoria_new").select("id_unico", { count: "exact", head: true }).eq("id_cliente", cid).eq("equipe", "consultor"),
+        cnt("reunioes_blackcrm", "id_unico"),
         // Mapeamento (cliente_objetivos_programa não tem coluna id — conta por id_cliente)
         cnt("cliente_metas", "id_cliente"), cnt("cliente_produtos", "id_cliente"),
         cnt("cliente_canais", "id_cliente"), cnt("cliente_objetivos_programa", "id_cliente"),
@@ -83,6 +86,7 @@ export default function NiveisPage({ session, clientId }: Props) {
         supabase.from("metodo_tarefas").select("id", { count: "exact", head: true }).eq("id_cliente", cid).eq("status", "concluido"),
         // Ritual diário: as datas fechadas (a RLS já escopa) — agregamos aqui.
         supabase.from("metodo_dia_fechamentos").select("data").eq("id_cliente", cid).not("fechado_em", "is", null),
+        cnt("pulso_semanal"),
       ])
 
       const manual = new Set<number>((etapasRes.data ?? []).filter((r: any) => r.concluida).map((r: any) => r.etapa))
@@ -104,6 +108,7 @@ export default function NiveisPage({ session, clientId }: Props) {
 
       setSinaisN({
         etapas, fases, mapeamento, reunioes, vitorias: vit.count ?? 0,
+        pulsos: pulsosRes.count ?? 0,
         convites: gConv.count ?? 0,
         candidatos: gCand.count ?? 0,
         guardiaoContratado: gContr.count ?? 0,

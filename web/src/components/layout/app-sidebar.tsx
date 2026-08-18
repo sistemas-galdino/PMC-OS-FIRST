@@ -33,11 +33,14 @@ import {
   ShieldCheckIcon as ShieldCheck,
   Sparkles2Icon as Sparkles,
   Building2Icon as Building,
+  CameraIcon as Camera,
+  LightbulbIcon as Lightbulb,
   BarChart3Icon as BarChart3,
   CompassIcon as Compass,
   FileTextIcon as FileText,
   TargetIcon as Target,
   MegaphoneIcon as Megaphone,
+  ZapIcon as Zap,
   VideoIcon as Video,
   PackageIcon as Package,
   TrendingUpIcon as TrendingUp,
@@ -148,6 +151,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       label: "Atendimento",
       items: [
         { title: "Central de Atendimentos", icon: MessageSquare, url: "/central-atendimentos" },
+        { title: "Central do Sucesso do Cliente", icon: MessageSquare, url: "/central-sucesso-cliente" },
         { title: "Consultores", icon: MessageSquare, url: "/mentores" },
         { title: "Guardião (Clientes)", icon: ShieldCheck, url: "/guardiao-admin" },
       ],
@@ -167,26 +171,39 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       ],
     },
     {
+      label: "Vitórias dos Clientes",
+      items: [
+        { title: "Vitrine", icon: Sparkles, url: "/vitrine" },
+        { title: "Cases", icon: Trophy, url: "/vitrine-cases" },
+        { title: "Logos & Clientes", icon: Building, url: "/vitrine-clientes" },
+        { title: "Evidências", icon: Camera, url: "/vitrine-evidencias" },
+        { title: "Oportunidades", icon: Lightbulb, url: "/vitrine-oportunidades" },
+        // Mesmo domínio: a curadoria kanban alimenta o acervo da vitrine.
+        { title: "Repositório de Vitórias", icon: Trophy, url: "/repositorio-vitorias" },
+      ],
+    },
+    {
       label: "Conteúdo",
       items: [
         { title: "Novidades", icon: Megaphone, url: "/novidades-admin" },
-        { title: "Repositório de Vitórias", icon: Trophy, url: "/repositorio-vitorias" },
         { title: "Estudos de Caso", icon: BookOpen, url: "/estudos-caso-admin" },
         { title: "Multiplicadores", icon: Package, url: "/multiplicadores-admin" },
         { title: "Skills", icon: Sparkles, url: "/skills-admin" },
       ],
     },
     {
-      label: "Recursos",
+      label: "Ferramentas",
       items: [
         { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
         { title: "Ferramentas IA", icon: Sparkles, url: "/ferramentas" },
+        { title: "Prompt Supremo", icon: Zap, url: "/prompt-supremo" },
       ],
     },
     {
       label: "Sistema",
       items: [
         { title: "Mensagens & Alcance", icon: Megaphone, url: "/mensagens" },
+        { title: "Inteligência de Nicho", icon: Sparkles, url: "/inteligencia-nicho" },
         { title: "Registro de Downloads", icon: FileText, url: "/logs-download" },
         { title: "Time & Permissões", icon: ShieldCheck, url: "/time-permissoes" },
         { title: "Configurações", icon: Settings, url: "/configuracoes" },
@@ -268,10 +285,11 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       ],
     },
     {
-      label: "Recursos",
+      label: "Ferramentas",
       items: [
         { title: "Links Importantes", icon: BookOpen, url: "/recursos" },
         { title: "Ferramentas IA", icon: Sparkles, url: "/ferramentas" },
+        { title: "Prompt Supremo", icon: Zap, url: "/prompt-supremo" },
       ],
     },
   ]

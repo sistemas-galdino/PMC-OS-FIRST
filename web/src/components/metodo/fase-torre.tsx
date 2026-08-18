@@ -21,6 +21,7 @@ import {
   XIcon as X,
 } from "@/components/ui/icons"
 import { FaseHeader, VazioFase } from "./compartilhados"
+import { SeletorArea, useAreasMetodo } from "./seletor-area"
 
 const PRINT_BUCKET = "sistema-prints"
 
@@ -31,6 +32,7 @@ interface Sistema {
   url: string | null
   plataforma: string | null
   categoria: string | null
+  id_area: string | null
   integracoes: string | null
   status: string
   print_url: string | null
@@ -38,11 +40,12 @@ interface Sistema {
 
 const STATUS_LABEL: Record<string, string> = { ideia: "Ideia", em_construcao: "Em construção", ativo: "Ativo" }
 const PLATAFORMAS = ["Claude", "Lovable", "Outro"]
-const FORM_VAZIO = { nome: "", descricao: "", url: "", plataforma: "", categoria: "", integracoes: "", status: "ativo", print_url: "" }
+const FORM_VAZIO = { nome: "", descricao: "", url: "", plataforma: "", categoria: "", id_area: null as string | null, integracoes: "", status: "ativo", print_url: "" }
 // Categorias padronizadas (usadas nos contadores do Balanço PMC).
 const CATEGORIA_OPCOES = ["Dashboard", "Site", "Sistema", "Automação", "Análise", "Outro"]
 
 export function FaseTorre({ clientId }: { clientId: string }) {
+  const areas = useAreasMetodo(clientId)
   const [sistemas, setSistemas] = useState<Sistema[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -82,7 +85,7 @@ export function FaseTorre({ clientId }: { clientId: string }) {
     setEditando(s)
     setForm({
       nome: s.nome, descricao: s.descricao ?? "", url: s.url ?? "",
-      plataforma: s.plataforma ?? "", categoria: s.categoria ?? "",
+      plataforma: s.plataforma ?? "", categoria: s.categoria ?? "", id_area: s.id_area,
       integracoes: s.integracoes ?? "", status: s.status,
       print_url: s.print_url ?? "",
     })
@@ -123,6 +126,7 @@ export function FaseTorre({ clientId }: { clientId: string }) {
       url: form.url.trim() || null,
       plataforma: form.plataforma || null,
       categoria: form.categoria.trim() || null,
+      id_area: form.id_area,
       integracoes: form.integracoes.trim() || null,
       status: form.status,
       print_url,
@@ -332,6 +336,11 @@ export function FaseTorre({ clientId }: { clientId: string }) {
                   </SelectContent>
                 </Select>
               </div>
+              <SeletorArea
+                areas={areas}
+                value={form.id_area}
+                onChange={(id) => setForm((p) => ({ ...p, id_area: id }))}
+              />
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Integrações</Label>
                 <Input className="h-11 rounded-xl" placeholder="Ex.: Supabase, Google Agenda" value={form.integracoes} onChange={(e) => setForm((p) => ({ ...p, integracoes: e.target.value }))} />
