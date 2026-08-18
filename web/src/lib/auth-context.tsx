@@ -45,7 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [needsPassword, setNeedsPassword] = useState(false)
   // Segura o roteamento até o papel resolver: sem isto, `isAdmin` ainda é false no
   // primeiro render e a rota "/" manda o admin pra /inicio (corrida de role).
-  const [roleResolved, setRoleResolved] = useState(false)
+  // Guarda PARA QUAL usuário o papel já foi resolvido, em vez de um booleano.
+  // Com booleano havia uma janela real de bug: o ramo "sem sessão" marcava
+  // resolvido=true, a sessão chegava no render seguinte e o efeito de papel só
+  // rodava depois — nesse intervalo `loading` já era false com isAdmin ainda
+  // false, e todo link direto para rota admin (RequireSecao) caía na home.
+  const [roleResolvedFor, setRoleResolvedFor] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -91,12 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setNeedsPassword(false)
       setNeedsOnboarding(false)
       // Sem sessão não há papel a resolver — libera a renderização (ex.: /login).
-      setRoleResolved(true)
+      setRoleResolvedFor(null)
       return
     }
     const { email, id } = session.user
     let cancelled = false
-    setRoleResolved(false)
 
     async function checkUserRole() {
       try {
@@ -153,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       } finally {
         // Sempre libera o roteamento (mesmo se a query falhar, pra não travar no spinner).
-        if (!cancelled) setRoleResolved(true)
+        if (!cancelled) setRoleResolvedFor(id)
       }
     }
 
@@ -166,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const can = (secao: string) => isFull || secoes.has(secao)
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, isAdmin, isSuperAdmin, papel, idCliente, papelEmpresa, secoes, can, needsPassword, needsOnboarding, loading: loading || (!!session?.user && !roleResolved) }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, isAdmin, isSuperAdmin, papel, idCliente, papelEmpresa, secoes, can, needsPassword, needsOnboarding, loading: loading || (!!session?.user && roleResolvedFor !== session.user.id) }}>
       {children}
     </AuthContext.Provider>
   )
