@@ -39,6 +39,14 @@
     --neon: oklch(0.91 0.18 135);
     --ink: oklch(0.18 0 0);
     --beige: oklch(0.91 0.012 80);
+
+    /* CRM (porting do PMC · CS Manager) — semáforo de status.
+       Usados em todo o CRM para saúde, temperatura e estado de atividade. */
+    --status-green: oklch(0.72 0.19 149);
+    --status-yellow: oklch(0.79 0.16 86);
+    --status-red: oklch(0.64 0.21 25);
+    --status-blue: oklch(0.72 0.13 256);
+    --status-gray: oklch(0.55 0.02 265);
 }
 
 .dark {
@@ -74,6 +82,13 @@
     --neon: oklch(0.91 0.18 135);
     --ink: oklch(0.18 0 0);
     --beige: oklch(0.91 0.012 80);
+
+    /* CRM — semáforo de status (tons um pouco mais claros no escuro). */
+    --status-green: oklch(0.76 0.19 149);
+    --status-yellow: oklch(0.83 0.16 86);
+    --status-red: oklch(0.68 0.21 25);
+    --status-blue: oklch(0.76 0.13 256);
+    --status-gray: oklch(0.62 0.02 265);
 }
 
 @theme inline {
@@ -107,6 +122,11 @@
     --color-neon: var(--neon);
     --color-ink: var(--ink);
     --color-beige: var(--beige);
+    --color-status-green: var(--status-green);
+    --color-status-yellow: var(--status-yellow);
+    --color-status-red: var(--status-red);
+    --color-status-blue: var(--status-blue);
+    --color-status-gray: var(--status-gray);
     --radius-sm: 0.25rem;
     --radius-md: 0.5rem;
     --radius-lg: 0.75rem;

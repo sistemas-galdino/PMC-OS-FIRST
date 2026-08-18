@@ -1,0 +1,306 @@
+# Port do "PMC · CS Manager" — estado e handoff
+
+Documento de continuidade do port do CRM da Mayara para o painel admin do PMC OS.
+Complementa `docs/crm-port-guia.md` (regras de adaptação) e a transcrição da
+reunião em `docs/reuniao-crm.md`.
+
+## Onde estamos
+
+| Fase | Status | Commit |
+| --- | --- | --- |
+| 0 · Fundação (tokens, sidebar, 10 rotas) | ✅ | `ecdc2a4` |
+| 1 · Schema no DEV (15 tabelas `crm_*`, view, RBAC) | ✅ | `fcb6e5f` |
+| 2 · Camada de dados (localStorage → Supabase) | ✅ | `51397ca`, `b2d8188` |
+| 3 · Abas núcleo (Meu Dia, Atividades, Clientes, Alertas) | ✅ | `69b16f8` + fixes |
+| 4 · Abas de gestão (Visão Geral, Torre, Acompanhamento, Projetos, Manual) | ✅ | `6e7c6c7` |
+| 5 · Atendimento (WhatsApp) | ✅ | `aef41a9` |
+| 6 · Edge functions de IA (saudação, transcrição) | ✅ | `e70c768` |
+| 7 · Promoção DEV→PROD | ✅ (backfill cancelado — ver abaixo) | `88c414b`, `a11d453` |
+| 8 · Unificação com o perfil do cliente | ✅ | `583aefd`, `23adfe6`, `6eb0165` |
+
+O **schema e as edge functions já estão no PROD** (`hqczwextifessaztyyyk`) desde
+10/08/2026 — ver Fase 7. Falta publicar o frontend (push → Vercel). A rota `/crm`
+antiga saiu do código e virou redirect para `/crm/meu-dia`.
+
+As datas de entrada que faltam **serão preenchidas à mão**, cliente a cliente —
+sobraram 25 clientes ativos, não 106: a Fase 8 descobriu que 81 já estavam
+preenchidos, no campo que o perfil do cliente usa. O backfill automático foi
+cancelado; o motivo está na Fase 7 e vale como regra geral do projeto.
+
+## Decisões tomadas (não reabrir sem falar com o David)
+
+1. **Escopo**: port completo das 10 abas, incluindo Atendimento (UI + backend de
+   conversas, sem provedor até os chips chegarem).
+2. **Navegação**: grupo "CRM" na sidebar, uma rota por aba (`/crm/meu-dia`…).
+   As chaves RBAC são a URL sem a barra (`crm/meu-dia`), então `secaoDaUrl` não
+   precisou mudar.
+3. **Backend**: reaproveitar `clientes_entrada_new`, `cliente_atividades` e as
+   tabelas `reunioes_*`; criar `crm_*` só onde faltava.
+4. **Início do ciclo** = data de entrada/onboarding. A fonte é
+   `cliente_informacoes_empresa.data_entrada` (o campo que a CS mantém no perfil
+   do cliente), com `clientes_entrada_new.data` de reserva — ver Fase 8.
+   O David escolheu isso; a reunião apontava para a data da 1ª reunião com o
+   Galdino, e a Mayara ia validar com ele. Se mudar, muda o cálculo de toda a
+   carteira.
+
+## Arquitetura em uma tela
+
+```
+web/src/lib/crm/
+  storage.ts      barril — é o que os 23 componentes importam
+  store.ts        dados e mutações (Supabase + React Query) + snapshot síncrono
+  mappers.ts      tradução banco <-> domínio  ← onde mais deu problema
+  derivados.ts    regras puras (ciclos, entregas, checkpoints)
+  sessao.ts       quem é a pessoa e o que pode ver (auth + RBAC do PMC OS)
+  equipe.ts       o time, vindo de `mentores`; useCsList() reativo
+  jornada.ts, alertas-catalogo.ts, ciclo-entregas.ts, fechamento-ciclo.ts,
+  preparacao.ts, format.ts, frases.ts, saudacoes.ts, rotinas.ts, preparacoes.ts
+```
+
+O truque central do port: `storage.ts` manteve a **mesma superfície de API** do
+arquivo de 1.624 linhas do original, então a UI dela entrou quase sem edição.
+
+## Gotchas que custaram caro (não repetir)
+
+1. **CHECK constraints em `clientes_entrada_new`.** Oito colunas têm vocabulário
+   próprio em snake_case (`nao_iniciado`, `em_negociacao`, `grupo_individual`),
+   diferente dos rótulos da UI. Escrever o rótulo direto é rejeitado pelo banco.
+   Os mapas bidirecionais estão em `mappers.ts`; o inverso é derivado do direto
+   por `inverter()` para não saírem de sincronia.
+2. **Regras de negócio leem de dentro do `Cliente`.** O motor de alertas usa
+   `cliente.consultor_reunioes` / `ciclo_galdino_reunioes`, e a Visão Estratégica
+   usa `historico_temperatura`. Como a fonte real são outras tabelas, `fetchClientes`
+   anexa tudo (`anexarReunioes`, `anexarHistoricoTemperatura`). Esquecer isso não
+   dá erro: dá número errado em silêncio (o alerta de Galdino disparava para 27 de
+   27 clientes).
+3. **`CS_LIST`/`PROFILE_LIST` são live bindings de módulo.** O React não sabe que
+   mudaram. Em componente, use `useCsList()` de `equipe.ts`, e **ponha a lista nas
+   dependências do `useMemo`**.
+4. **`useProfile()` devolve `null` para a coordenação sem CS escolhida, e isso
+   significa "todas as CSs"**. Nunca cair no nome de quem está logado: a Mayara e
+   o Galdino não aparecem em `clientes_entrada_new.sc` e a tela zera.
+   Para saudação/cabeçalho existe `useNomeExibicao()`.
+5. **Nada de inventar dado para tapar buraco.** Sem data de entrada, o cliente é
+   "Sem data de entrada" — não se usa `created_at` como substituto.
+   A versão sutil desse erro derrubou o backfill da Fase 7: a tentação não era
+   inventar a data do nada, era derivá-la de um dado **real** (a primeira
+   reunião do cliente) que responde a **outra pergunta**. Primeira reunião
+   prova que o cliente já estava ativo naquela data, não que entrou nela.
+   Dado real usado fora do seu significado passa por todas as conferências e
+   ainda assim está errado.
+6. **Trava de duplicidade tem que ser do banco.** Verificar-e-depois-criar em
+   código não sobrevive a duas execuções concorrentes.
+7. **Data pura vira o dia anterior.** `new Date("2026-08-10")` é meia-noite
+   UTC, ou seja, 21h do dia 9 no Brasil. As reuniões vêm de `crm_reunioes_v`
+   como data pura, e isso zerava "Suas reuniões", "Reuniões hoje" da Torre e
+   errava toda data exibida. Use `dataLocal()` de `format.ts` — nunca
+   `new Date(reuniao.data)`.
+8. **`execute_sql` roda tudo numa transação**: se a última instrução falha, as
+   anteriores revertem. Conferir o efeito depois, não confiar no "sucesso".
+
+## Ambiente
+
+- DEV `jkwpxttxkksqiffodonb`; `npm run dev` em `web/` já aponta para lá.
+- Login de teste: `dono@rafaelgaldino.com.br` / `dev123456` (super_admin).
+- Seed: `scripts/seed-crm-dev.sql` (+ `-limpar.sql`). 41 clientes cobrindo os 4
+  trimestres, pós-programa, pré-jornada e casos sem data; ~200 atividades em
+  todos os status; reuniões com e sem os limiares dos alertas; gargalos, projetos
+  e manual. Dados **gerados**, nunca copiados do PROD.
+  `scripts/seed-crm-dev-conversas.sql` (rodar depois do anterior) acrescenta 22
+  grupos de WhatsApp com ~235 mensagens. O silêncio de cada grupo é contado em
+  horas ÚTEIS, então as bordas amarela/vermelha da lista dependem do dia da
+  semana em que o seed roda — rodando na segunda, os silêncios curtos somem no
+  fim de semana. Por isso há dois grupos com silêncio de 76h e 100h.
+- As 4 CSs de teste (Danielly, Geovana, Gabriela, Francielly) existem em
+  `mentores` com e-mails `@dev.local` e papel `cs`. O trigger `tg_mentores_guard`
+  impede criar papel privilegiado fora de sessão de super admin.
+- Verificação no navegador: use o **menu**, não URL direta — ver limitação 1 abaixo.
+- **IA**: as duas edge functions usam o mesmo resolvedor da `metodo-ia`
+  (`_shared/llm-chat.ts`): `LOVABLE_API_KEY` → `OPENAI_API_KEY` → `LLM_API_KEY`,
+  com `LLM_BASE_URL`/`LLM_MODEL` opcionais. O plano antigo dizia "usar o modelo
+  Claude padrão do repo", mas o repo não tem esse padrão: fora o agente-chat,
+  tudo passa por provedor OpenAI-compatible. Sem chave configurada, a saudação
+  cai na frase local e a análise de transcrição devolve erro explicando.
+
+## Pendências que dependem do David / da Mayara
+
+1. **Preencher à mão a data de entrada de 25 clientes ativos.** Eram 106 antes
+   da Fase 8; a unificação com o perfil devolveu 81 que já estavam preenchidos.
+   Enquanto faltar, esses clientes não têm ciclo, checkpoint nem alerta de prazo.
+   Em `/crm/clientes`, o filtro **"Sem data de entrada (N)"** lista quem falta;
+   o campo "Data de entrada" no drawer grava em
+   `cliente_informacoes_empresa.data_entrada` (onde o perfil lê) e no cadastro.
+   Dá para limpar o campo, se digitar errado.
+2. **Conferir 11 datas de entrada no futuro** (até dezembro/2026, provável erro
+   de ano) e **50 divergências** entre a data do perfil e a do cadastro. As duas
+   listas saem de `scripts/backup/20260817-datas-cliente-conferencia.sql`.
+   Nenhuma das duas dá para adivinhar: depende de quem acompanhou o cliente.
+3. **Redistribuir os 52 clientes ativos que ainda estão com a Fernanda**, que saiu
+   do time. Sem isso eles não aparecem no "Meu Dia" de ninguém.
+4. **Danielly entra em `mentores` no PROD?** Existe no mock da Mayara, não no banco.
+5. **"Novo Cliente" dentro do CRM** ou aponta para o cadastro que já existe no
+   PMC OS? O botão foi removido no port (não há `createCliente`, e
+   `clientes_entrada_new` é a tabela mestre).
+6. **Projeto sem tela para definir responsável e prazo** — o modal diz "o time
+   define depois", mas essa tela não existe. Vem do original.
+7. **Gargalo tem `pessoas_atribuidas` no banco sem UI para preencher.**
+8. **Regra "não sugerir consultor antes do Galdino"** não é explícita no catálogo
+   de alertas. Funciona por acidente para cliente novo. Depende da definição de
+   início de ciclo.
+9. **Envio de mensagem pelo Atendimento está desligado** (`ENVIO_HABILITADO`
+   em `lib/crm/conversas.ts`), e não há webhook de entrada: as conversas só
+   aparecem se alguém escrever em `crm_conversas`/`crm_mensagens`. Falta
+   decidir o provedor (chips estavam sendo comprados em 05/08) e quem vincula
+   `crm_conversas.id_cliente` ao cliente certo — a lista mostra no rodapé
+   quantos grupos ficaram sem vínculo.
+10. **Mudança de temperatura e pausa de cliente não têm UI** (`updateClienteTemperatura`
+   e `setClientePausado` existem e ninguém chama). Enquanto isso, o histórico de
+   temperatura fica vazio e a Visão Estratégica não tem o que mostrar.
+
+## Limitações conhecidas do ambiente (anteriores a este trabalho)
+
+1. **Entrar por URL direta numa rota admin redireciona para a home.** O
+   `RequireSecao` avalia `isAdmin` antes do papel resolver. Afeta o painel
+   inteiro, não só o CRM. Pelo menu funciona.
+2. **`mentores.papel` não tem FK para `papeis`**, então o embed
+   `papeis(is_full)` do PostgREST não resolve.
+3. **`clientes_entrada_new.sc` é texto livre**: cliente com `sc` vazio ou grafado
+   diferente de `mentores.nome` conta nos totais mas some das tabelas por CS.
+
+
+## Fase 7 — promoção para o PROD (a única fase que toca produção)
+
+Promovida em 10/08/2026; o backfill que ela previa foi cancelado em 11/08.
+
+### O que já está no PROD (`hqczwextifessaztyyyk`)
+
+As **11 migrations** `20260810_crm_*`, na ordem: `cliente`, `clientes_colunas`,
+`atividades_extensao`, `operacao`, `reunioes_view`, `atendimento`,
+`conversas_view`, `fechamento_unico`, `hardening_funcoes`, `rbac_secoes`,
+`secao_antiga`.
+
+Conferido depois de aplicar — não pelo "sucesso" de cada chamada:
+
+| Verificação | Resultado |
+| --- | --- |
+| Objetos `crm_*` (15 tabelas + 2 views) | idênticos aos do DEV, nome a nome |
+| Assinatura de colunas (`crm_*` + `cliente_atividades` + `clientes_entrada_new`) | md5 **igual** ao do DEV, 282 colunas |
+| Seções RBAC `crm/*` | 10; chave `crm` antiga removida |
+| Funções `crm_*` com `search_path` fixo | 6 de 6 |
+| Tabelas `crm_*` sem policy ou sem RLS | nenhuma |
+| `crm_reunioes_v` | 1.911 reuniões |
+| Advisor de segurança | nenhum achado novo — os 7 `search_path` e as 6 tabelas sem policy são anteriores a este trabalho |
+
+As **2 edge functions** (`crm-saudacao`, `crm-analisar-transcricao`) estão
+ACTIVE com `verify_jwt=true` e devolvem 401 sem token. O PROD tem
+`OPENAI_API_KEY` nos secrets, então o resolvedor de provedor acha chave.
+
+> O deploy saiu pelo MCP porque o `supabase functions deploy` está bloqueado
+> neste ambiente. O código executável é idêntico ao do repo; só o cabeçalho de
+> comentário ficou mais curto. O próximo deploy pela CLI reescreve a partir do disco.
+
+**Um susto no caminho**: `hardening_funcoes` devolveu erro de socket fechado, e
+o `proconfig` das 5 funções continuava nulo — ou seja, **não** tinha aplicado.
+Reaplicada e conferida. É o gotcha 8 na prática: confira o efeito, não a mensagem.
+
+
+### O backfill foi cancelado (11/08/2026)
+
+O plano era preencher automaticamente a data de entrada dos 104 clientes ativos
+que estão sem ela, derivando da primeira reunião já realizada. O David vetou, e
+a razão vale como regra do projeto:
+
+> "se o cliente está ativo e não tem data de entrada não é certo olhar para a
+> reunião mais antiga, pois isso não é necessariamente a data de entrada dele.
+> Deixa que depois isso será preenchido manualmente"
+
+A primeira reunião prova que o cliente **já estava ativo** naquela data — não
+que entrou nela. Quem entrou em março e só teve reunião em maio ficaria com o
+ciclo dois meses mais novo. E esse erro não faz barulho: a data aparece
+preenchida, com cara de correta, e ninguém volta para conferir. Campo vazio é
+honesto; número errado com aparência de certo, não.
+
+Os scripts do backfill foram removidos do repo para ninguém rodá-los depois sem
+conhecer o veto, e a coluna `data_backfilled` (criada em
+`20260810_crm_clientes_colunas.sql` só para marcar as linhas inferidas) sai por
+`20260811_crm_remove_data_backfilled.sql`.
+
+**Como as datas entram agora**: à mão, cliente a cliente. Em `/crm/clientes`, o
+filtro "Sem data de entrada (N)" lista quem falta; no drawer do cliente, o campo
+"Data de entrada" grava em `clientes_entrada_new.data` e aceita ser limpo, para
+corrigir quem digitar errado.
+
+### O que falta
+
+- **Aplicar `20260811_crm_remove_data_backfilled.sql`** no DEV e no PROD.
+  Ficou pendente porque a conexão MCP do Supabase trocou de conta no meio da
+  sessão e perdeu acesso aos dois projetos. Migration e rollback estão escritos.
+- **Deploy do frontend** (push da branch → Vercel). Só depois disso a rota
+  `/crm` antiga vira redirect para `/crm/meu-dia` em produção.
+
+**Não promover** nada de `scripts/seed-crm-dev*.sql`: é dado sintético de DEV.
+
+## Fase 8 — unificação com o perfil do cliente (17/08/2026)
+
+Veio de uma pergunta do David: "o que foi preenchido no perfil do cliente está
+também no CRM?". A resposta era **não**, e a causa explica a Fase 7 inteira.
+
+### O que estava errado
+
+O drawer do CRM era uma **segunda cópia** das mesmas abas do perfil admin
+(`pages/client-profile-admin.tsx`) — 1.521 linhas reconstruindo o mesmo
+cadastro, só sem o Balanço. Como as duas cópias liam fontes diferentes, o CRM
+mostrava vazio onde a equipe já tinha preenchido:
+
+| Fato | Perfil grava/lê | CRM lia |
+| --- | --- | --- |
+| Data de entrada | `cliente_informacoes_empresa.data_entrada` | `clientes_entrada_new.data` |
+| Cadência do ciclo Galdino | `cliente_informacoes_empresa.total_galdino` | `clientes_entrada_new.ciclo_galdino_cadencia` (coluna criada em paralelo) |
+| Vitórias | `pages/vitorias` → `cliente_vitorias` | nada; a aba abria vazia |
+| Cancelamento | `cliente_cancelamento` | nada |
+
+**81 clientes ativos** apareciam como "Sem data de entrada" no CRM tendo a data
+preenchida pela CS no perfil. A Fase 7 quase derivou de reuniões uma data que
+já existia digitada por gente.
+
+Pior que vazio: as abas Vitórias, Cancelamento, Ciclo Galdino e Consultores
+**aceitavam edição e descartavam em silêncio** — os campos estavam em
+`SEM_COLUNA`. A CS registrava uma vitória e parecia ter salvo.
+
+### O que passou a valer
+
+- **Data de entrada**: `anexarInformacoesEmpresa` (mappers.ts) resolve como
+  `pages/informacoes-empresa.tsx:91` já fazia — vale a do perfil, o cadastro é
+  reserva. A escrita vai para as duas colunas (`salvarDataEntrada` em store.ts),
+  porque `cliente_informacoes_empresa` tem FK para `auth.users` e 3 clientes
+  ativos não têm login.
+- **Data de entrada no futuro não inicia ciclo.** São 11 no PROD, até
+  dezembro/2026 — provável erro de ano. Cai para o cadastro.
+- **Divergência fica à vista**: 50 clientes têm as duas datas discordando (151
+  dias em média, até 459). O drawer mostra `cadastro antigo: dd/mm/aaaa`.
+- **O drawer reusa as abas do perfil**: Programa, Black CRM, Ciclo Galdino,
+  Consultores, Renovação, Comunicação, Vitórias, Cancelamento e Balanço.
+  Ficaram nativas do CRM só as que são melhores aqui: Perfil (tem situação na
+  jornada e estado atual), Histórico (a do perfil é placeholder vazio),
+  Atividades e Visão da CS. O arquivo caiu para 945 linhas.
+
+### Retrato antes de mexer
+
+`scripts/backup/20260817-datas-cliente.sql` guarda as três colunas de data dos
+305 clientes, com `UPDATE` por cliente. A transcrição foi conferida contra o
+banco por md5 (`66418d89040cdafcd59ba57a0e80f7a1`).
+`…-conferencia.sql` só lê: números do dia, impressão digital, as 11 datas no
+futuro e os 50 divergentes.
+
+### Migrations
+
+`20260817_crm_remove_cadencia_duplicada.sql` (com rollback) remove
+`ciclo_galdino_cadencia`, que estava NULL nas 305 linhas. Aplicada no DEV e no
+PROD, junto com a remoção pendente de `data_backfilled`.
+
+### A lição, que é a mesma da Fase 7 em outra forma
+
+Antes de criar tabela ou coluna, procure quem já é dono do fato. `total_galdino`
+e `data_entrada` existiam desde sempre; criar `ciclo_galdino_cadencia` e ler a
+coluna errada não deu erro nenhum — deu tela vazia com cara de "ainda não
+preencheram", que é o modo de falha mais caro deste projeto.
