@@ -1,15 +1,15 @@
 // Importa o acervo da Vitrine de Cases (backup do sistema antigo) para as
 // tabelas vitrine_* do PMC OS.
 //
-// Autentica como admin (login de verdade, via GoTrue) em vez de usar
-// SECRET_KEY: as políticas de RLS são `is_admin()`, então um admin logado
-// escreve normalmente — e assim o script não depende de service role nenhum.
+// Usa a SECRET_KEY (service role) do .env quando ela existe; sem ela, faz login
+// de admin de verdade via GoTrue — as políticas de RLS são `is_admin()`, então
+// um admin logado também escreve normalmente.
 //
 // Idempotente: upsert por origem_legado_uuid (clientes) e case_id (cases).
 //
 // Uso:
-//   node scripts/vitrine/importar.mjs --env=dev  --email=... --senha=...
-//   node scripts/vitrine/importar.mjs --env=prod --email=... --senha=...
+//   node scripts/vitrine/importar.mjs --env=prod
+//   node scripts/vitrine/importar.mjs --env=dev --email=... --senha=...
 //   ... --dry-run   → só imprime o de-para, não escreve nada
 
 import { readFileSync } from 'fs'
@@ -43,6 +43,12 @@ function lerEnv(arquivo) {
 const env = lerEnv(AMBIENTE === 'prod' ? 'web/.env.local' : 'web/.env.development.local')
 const URL_BASE = env.VITE_SUPABASE_URL
 const ANON = env.VITE_SUPABASE_ANON_KEY
+
+// SECRET_KEY (service role) ignora RLS e é o padrão dos outros scripts Node do
+// repo. Quando ela não está no .env, cai no login de admin via GoTrue — que
+// também passa nas políticas is_admin(). Nunca logar essa chave.
+const SERVICE = env.SECRET_KEY || null
+const APIKEY = SERVICE || ANON
 
 // PENDENTE_VALIDACAO é marcador interno do legado: nunca pode chegar na tela.
 const SENTINELA = new Set(['PENDENTE_VALIDACAO', 'N/A', 'NA', '', 'Sem site'])
@@ -84,7 +90,7 @@ async function entrar() {
 
 function rest(token) {
   const cab = {
-    apikey: ANON,
+    apikey: APIKEY,
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
   }
@@ -167,7 +173,7 @@ async function main() {
 
   if (DRY) { console.log('\n--dry-run: nada foi escrito.'); return }
 
-  const token = await entrar()
+  const token = SERVICE || (await entrar())
   const api = rest(token)
 
   await api.upsert('vitrine_clientes', 'origem_legado_uuid', linhasClientes)
@@ -218,7 +224,7 @@ async function main() {
   await api.upsert('vitrine_cases', 'case_id', linhasCases)
 
   // Confere no banco em vez de confiar no "inseridos = N".
-  const cabecalho = { apikey: ANON, Authorization: `Bearer ${token}`, Prefer: 'count=exact', Range: '0-0' }
+  const cabecalho = { apikey: APIKEY, Authorization: `Bearer ${token}`, Prefer: 'count=exact', Range: '0-0' }
   for (const t of ['vitrine_clientes', 'vitrine_cases', 'vitrine_showcase']) {
     const r = await fetch(`${URL_BASE}/rest/v1/${t}?select=*`, { headers: cabecalho })
     console.log(`  ${t}: ${r.headers.get('content-range')?.split('/')[1]} linhas no banco`)

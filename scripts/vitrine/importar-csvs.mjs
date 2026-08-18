@@ -38,6 +38,12 @@ const env = Object.fromEntries(
 const URL_BASE = env.VITE_SUPABASE_URL
 const ANON = env.VITE_SUPABASE_ANON_KEY
 
+// SECRET_KEY (service role) ignora RLS e é o padrão dos outros scripts Node do
+// repo. Quando ela não está no .env, cai no login de admin via GoTrue — que
+// também passa nas políticas is_admin(). Nunca logar essa chave.
+const SERVICE = env.SECRET_KEY || null
+const APIKEY = SERVICE || ANON
+
 const SENTINELA = new Set(['PENDENTE_VALIDACAO', 'N/A', 'NA', ''])
 const limpo = (v) => {
   if (v == null) return null
@@ -84,8 +90,8 @@ async function main() {
 
   if (DRY) { console.log('--dry-run: nada foi escrito.'); return }
 
-  const token = await entrar()
-  const cab = { apikey: ANON, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+  const token = SERVICE || (await entrar())
+  const cab = { apikey: APIKEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
   const get = async (p) => {
     const r = await fetch(`${URL_BASE}/rest/v1/${p}`, { headers: cab })
     if (!r.ok) throw new Error(`GET ${p}: ${r.status} ${await r.text()}`)
