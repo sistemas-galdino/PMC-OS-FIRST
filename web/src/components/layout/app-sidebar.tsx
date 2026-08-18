@@ -45,7 +45,6 @@ import {
   PackageIcon as Package,
   TrendingUpIcon as TrendingUp,
   RefreshCwIcon as RefreshCw,
-  ZapIcon as Zap,
   AlertTriangleIcon as AlertTriangle,
   LayoutKanbanIcon as LayoutKanban,
 } from "@/components/ui/icons"
