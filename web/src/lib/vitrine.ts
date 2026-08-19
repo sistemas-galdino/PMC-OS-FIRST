@@ -77,6 +77,13 @@ export type VitrineCase = {
   capa_url: string | null
   palavras_chave: string[]
   observacoes: string | null
+  /** Vitória do Repositório que originou o case (NULL nos cases do legado). */
+  repositorio_vitoria_id: string | null
+  gerado_por_ia: boolean
+  ia_gerado_em: string | null
+  /** Acende o selo "Gerando vitória…" no kanban; 'erro' deixa o retry visível. */
+  ia_status: 'gerando' | 'pronto' | 'erro' | null
+  ia_erro: string | null
 }
 
 /** Linha da view vitrine_showcase (case + cliente, só o que pode aparecer). */

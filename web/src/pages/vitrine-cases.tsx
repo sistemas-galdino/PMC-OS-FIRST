@@ -12,14 +12,10 @@ import { useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/layout/page-header"
-import { CaseCard } from "@/components/vitrine/case-card"
 import { LogoCliente } from "@/components/vitrine/logo-cliente"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -27,7 +23,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -44,12 +39,12 @@ import {
   StarIcon as Star,
 } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
+import { CaseEditorForm, type CaseComCliente } from "@/components/vitrine/case-editor-form"
 import {
   exibivel,
   nomeEmpresa,
   normalizar,
   opcoesFiltro,
-  type ShowcaseCase,
   type VitrineCase,
   type VitrineCliente,
 } from "@/lib/vitrine"
@@ -72,78 +67,6 @@ function ordenar(linhas: Linha[]): Linha[] {
   })
 }
 
-/** Monta o objeto que o CaseCard consome, pra ver a headline como ela vai sair. */
-function paraShowcase(l: Linha, headlineVitrine: string, categoria: string, ferramenta: string, focoIa: boolean): ShowcaseCase {
-  return {
-    case_id: l.case_id,
-    vitrine_case_id: l.id,
-    vitrine_cliente_id: l.vitrine_cliente_id,
-    id_cliente: l.id_cliente,
-    codigo_cliente: l.codigo_cliente,
-    empresa_nome: l.empresa_nome ?? l.cliente?.empresa_nome ?? "Empresa",
-    cliente_nome: l.cliente?.cliente_nome ?? null,
-    nicho: l.cliente?.nicho ?? null,
-    subnicho: l.cliente?.subnicho ?? null,
-    cs_responsavel: l.cliente?.cs_responsavel ?? null,
-    logo_path: l.cliente?.logo_path ?? null,
-    logo_display_path: l.cliente?.logo_display_path ?? null,
-    categoria: categoria || null,
-    foco_ia: focoIa,
-    ferramenta_card: ferramenta || null,
-    headline_impacto: l.headline_impacto,
-    headline_vitrine: headlineVitrine || null,
-    resumo_executivo: l.resumo_executivo,
-    como_era_antes: l.como_era_antes,
-    principais_gargalos: l.principais_gargalos ?? [],
-    como_ficou_depois: l.como_ficou_depois,
-    o_que_pmc_transformou: l.o_que_pmc_transformou,
-    principais_ganhos: l.principais_ganhos ?? [],
-    solucao_criada: l.solucao_criada,
-    processo_atual: l.processo_atual,
-    resultado_principal: l.resultado_principal,
-    capa_url: l.capa_url,
-    palavras_chave: l.palavras_chave ?? [],
-    destaque: l.destaque,
-    ordem_vitrine: l.ordem_vitrine,
-  }
-}
-
-const paraLinhas = (v: string) => v.split("\n").map((x) => x.trim()).filter(Boolean)
-
-type Form = {
-  headline_vitrine: string
-  categoria: string
-  ferramenta_card: string
-  foco_ia: boolean
-  destaque: boolean
-  ordem_vitrine: string
-  resumo_executivo: string
-  como_era_antes: string
-  como_ficou_depois: string
-  o_que_pmc_transformou: string
-  solucao_criada: string
-  principais_gargalos: string
-  principais_ganhos: string
-}
-
-function formDe(l: Linha): Form {
-  return {
-    headline_vitrine: exibivel(l.headline_vitrine) ?? "",
-    categoria: exibivel(l.categoria) ?? "",
-    ferramenta_card: exibivel(l.ferramenta_card) ?? "",
-    foco_ia: l.foco_ia,
-    destaque: l.destaque,
-    ordem_vitrine: l.ordem_vitrine == null ? "" : String(l.ordem_vitrine),
-    resumo_executivo: exibivel(l.resumo_executivo) ?? "",
-    como_era_antes: exibivel(l.como_era_antes) ?? "",
-    como_ficou_depois: exibivel(l.como_ficou_depois) ?? "",
-    o_que_pmc_transformou: exibivel(l.o_que_pmc_transformou) ?? "",
-    solucao_criada: exibivel(l.solucao_criada) ?? "",
-    principais_gargalos: (l.principais_gargalos ?? []).join("\n"),
-    principais_ganhos: (l.principais_ganhos ?? []).join("\n"),
-  }
-}
-
 export default function VitrineCasesPage() {
   const [linhas, setLinhas] = useState<Linha[]>([])
   const [loading, setLoading] = useState(true)
@@ -152,8 +75,6 @@ export default function VitrineCasesPage() {
   const [statusVitrine, setStatusVitrine] = useState<StatusVitrine>("todos")
   const [area, setArea] = useState(TODOS)
   const [editando, setEditando] = useState<Linha | null>(null)
-  const [form, setForm] = useState<Form | null>(null)
-  const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
     let ativo = true
@@ -247,52 +168,15 @@ export default function VitrineCasesPage() {
     toast.success(novo ? "Case entrou na vitrine." : "Case saiu da vitrine.")
   }
 
-  function abrirEdicao(l: Linha) {
-    setEditando(l)
-    setForm(formDe(l))
-  }
-
   function fecharEdicao() {
     setEditando(null)
-    setForm(null)
   }
 
-  async function salvar() {
-    if (!editando || !form) return
-    setSalvando(true)
-    const ordem = form.ordem_vitrine.trim() === "" ? null : Number(form.ordem_vitrine)
-    if (ordem != null && Number.isNaN(ordem)) {
-      toast.error("A ordem na vitrine precisa ser um número.")
-      setSalvando(false)
-      return
-    }
-    const patch = {
-      headline_vitrine: form.headline_vitrine.trim() || null,
-      categoria: form.categoria.trim() || null,
-      ferramenta_card: form.ferramenta_card.trim() || null,
-      foco_ia: form.foco_ia,
-      destaque: form.destaque,
-      ordem_vitrine: ordem,
-      resumo_executivo: form.resumo_executivo.trim() || null,
-      como_era_antes: form.como_era_antes.trim() || null,
-      como_ficou_depois: form.como_ficou_depois.trim() || null,
-      o_que_pmc_transformou: form.o_que_pmc_transformou.trim() || null,
-      solucao_criada: form.solucao_criada.trim() || null,
-      principais_gargalos: paraLinhas(form.principais_gargalos),
-      principais_ganhos: paraLinhas(form.principais_ganhos),
-    }
-    const { error } = await supabase.from("vitrine_cases").update(patch).eq("id", editando.id)
-    setSalvando(false)
-    if (error) {
-      toast.error("Não foi possível salvar o case.")
-      return
-    }
-    setLinhas((atual) => ordenar(atual.map((x) => (x.id === editando.id ? { ...x, ...patch } : x))))
-    toast.success("Case atualizado.")
+  /** O editor devolve o case já com o patch aplicado — sem refetch da lista. */
+  function aoSalvar(atualizado: CaseComCliente) {
+    setLinhas((atual) => ordenar(atual.map((x) => (x.id === atualizado.id ? { ...x, ...atualizado } : x))))
     fecharEdicao()
   }
-
-  const preview = editando && form ? paraShowcase(editando, form.headline_vitrine, form.categoria, form.ferramenta_card, form.foco_ia) : null
 
   return (
     <div className="space-y-8 pb-10">
@@ -493,7 +377,7 @@ export default function VitrineCasesPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 gap-1 rounded-lg text-[10px] font-bold uppercase tracking-wider"
-                          onClick={() => abrirEdicao(l)}
+                          onClick={() => setEditando(l)}
                         >
                           <Edit3 className="size-3" />
                           Editar
@@ -518,133 +402,10 @@ export default function VitrineCasesPage() {
             </DialogDescription>
           </DialogHeader>
 
-          {form && (
-            <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="headline">Headline da vitrine</Label>
-                  <Textarea
-                    id="headline"
-                    rows={3}
-                    value={form.headline_vitrine}
-                    onChange={(e) => setForm({ ...form, headline_vitrine: e.target.value })}
-                    placeholder="A transformação em uma frase — é o que aparece no card."
-                  />
-                  {editando && exibivel(editando.headline_impacto) && (
-                    <p className="text-[11px] text-muted-foreground">
-                      Headline de impacto original: {exibivel(editando.headline_impacto)}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="categoria">Área impactada</Label>
-                    <Input
-                      id="categoria"
-                      value={form.categoria}
-                      onChange={(e) => setForm({ ...form, categoria: e.target.value })}
-                      placeholder="Ex.: Vendas, Financeiro, Operações"
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      A área do negócio transformada — não é o nicho do cliente.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ferramenta">Ferramenta do card</Label>
-                    <Input
-                      id="ferramenta"
-                      value={form.ferramenta_card}
-                      onChange={(e) => setForm({ ...form, ferramenta_card: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-6">
-                  <label className="flex items-center gap-2 text-xs font-medium text-foreground">
-                    <Checkbox
-                      checked={form.foco_ia}
-                      onCheckedChange={(v) => setForm({ ...form, foco_ia: v === true })}
-                    />
-                    Case com foco em IA
-                  </label>
-                  <label className="flex items-center gap-2 text-xs font-medium text-foreground">
-                    <Checkbox
-                      checked={form.destaque}
-                      onCheckedChange={(v) => setForm({ ...form, destaque: v === true })}
-                    />
-                    Destaque
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="ordem" className="text-xs">
-                      Ordem na vitrine
-                    </Label>
-                    <Input
-                      id="ordem"
-                      inputMode="numeric"
-                      className="h-9 w-24"
-                      value={form.ordem_vitrine}
-                      onChange={(e) => setForm({ ...form, ordem_vitrine: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="resumo">Resumo executivo</Label>
-                  <Textarea id="resumo" rows={3} value={form.resumo_executivo} onChange={(e) => setForm({ ...form, resumo_executivo: e.target.value })} />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="antes">Como era antes</Label>
-                    <Textarea id="antes" rows={4} value={form.como_era_antes} onChange={(e) => setForm({ ...form, como_era_antes: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="depois">Como ficou depois</Label>
-                    <Textarea id="depois" rows={4} value={form.como_ficou_depois} onChange={(e) => setForm({ ...form, como_ficou_depois: e.target.value })} />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="gargalos">Principais gargalos (um por linha)</Label>
-                    <Textarea id="gargalos" rows={4} value={form.principais_gargalos} onChange={(e) => setForm({ ...form, principais_gargalos: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ganhos">Principais ganhos (um por linha)</Label>
-                    <Textarea id="ganhos" rows={4} value={form.principais_ganhos} onChange={(e) => setForm({ ...form, principais_ganhos: e.target.value })} />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="transformou">O que o PMC transformou</Label>
-                  <Textarea id="transformou" rows={3} value={form.o_que_pmc_transformou} onChange={(e) => setForm({ ...form, o_que_pmc_transformou: e.target.value })} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="solucao">Solução criada</Label>
-                  <Textarea id="solucao" rows={3} value={form.solucao_criada} onChange={(e) => setForm({ ...form, solucao_criada: e.target.value })} />
-                </div>
-              </div>
-
-              {/* Preview ao vivo — é assim que o card sai na vitrine */}
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Preview do card
-                </p>
-                {preview && <CaseCard c={preview} className="pointer-events-none" />}
-              </div>
-            </div>
+          {editando && (
+            <CaseEditorForm caso={editando} onSalvo={aoSalvar} onCancelar={fecharEdicao} />
           )}
 
-          <DialogFooter>
-            <Button variant="ghost" onClick={fecharEdicao} disabled={salvando}>
-              Cancelar
-            </Button>
-            <Button onClick={salvar} disabled={salvando}>
-              {salvando ? "Salvando..." : "Salvar"}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

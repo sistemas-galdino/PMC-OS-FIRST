@@ -1,7 +1,9 @@
 // Repositório de Vitórias (admin/CS): cura de vitórias de clientes com evidência e
 // workflow de aprovação em kanban. As aprovadas podem ser marcadas como "case" — o time
 // entra em contato com o cliente para gravar o vídeo do estudo de caso.
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import {
   DndContext,
@@ -31,8 +33,14 @@ import {
   ExternalLinkIcon as ExternalLink,
   Trash2Icon as Trash2,
   SearchIcon as Search,
+  Sparkles2Icon as Sparkles,
+  RefreshCwIcon as RefreshCw,
+  AlertTriangleIcon as AlertTriangle,
 } from "@/components/ui/icons"
 import { cn } from "@/lib/utils"
+import { CaseEditorForm } from "@/components/vitrine/case-editor-form"
+import { gerarCaseIA } from "@/lib/vitrine-ia"
+import type { VitrineCase, VitrineCliente } from "@/lib/vitrine"
 
 const BUCKET = "repositorio-vitorias"
 
@@ -56,6 +64,9 @@ interface Vitoria {
 }
 
 interface ClienteOpt { id_cliente: string; nome: string }
+
+/** Case da vitrine nascido de uma vitória — indexado por repositorio_vitoria_id. */
+type CaseVinculado = VitrineCase & { cliente?: VitrineCliente | null }
 
 const COLUNAS: { key: Status; label: string; icon: any; hint?: string }[] = [
   { key: "aguardando", label: "Aguardando aprovação", icon: Clock },
@@ -95,14 +106,35 @@ export default function RepositorioVitoriasPage() {
   const [detalhe, setDetalhe] = useState<Vitoria | null>(null)
   const [motivo, setMotivo] = useState("")
   const [activeId, setActiveId] = useState<string | null>(null)
+  /** Case da vitrine de cada vitória, por repositorio_vitoria_id. */
+  const [cases, setCases] = useState<Map<string, CaseVinculado>>(new Map())
+  const navigate = useNavigate()
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+
+  /** Só os cases nascidos aqui; os 143 do legado não interessam a esta tela. */
+  async function fetchCases() {
+    const [{ data: cs }, { data: clis }] = await Promise.all([
+      supabase.from("vitrine_cases").select("*").not("repositorio_vitoria_id", "is", null),
+      supabase.from("vitrine_clientes").select("*"),
+    ])
+    const porId = new Map(((clis ?? []) as VitrineCliente[]).map((c) => [c.id, c]))
+    setCases(
+      new Map(
+        ((cs ?? []) as VitrineCase[]).map((c) => [
+          c.repositorio_vitoria_id as string,
+          { ...c, cliente: porId.get(c.vitrine_cliente_id) ?? null },
+        ])
+      )
+    )
+  }
 
   async function fetchTudo() {
     const [{ data: vs }, { data: cs }] = await Promise.all([
       supabase.from("repositorio_vitorias").select("*").order("created_at", { ascending: false }),
       supabase.from("clientes_entrada_new").select("id_cliente, nome_cliente_formatado, nome_empresa_formatado").order("nome_empresa_formatado"),
     ])
+    fetchCases()
     setVitorias((vs ?? []) as Vitoria[])
     setClientes(
       (cs ?? [])
@@ -116,6 +148,20 @@ export default function RepositorioVitoriasPage() {
   }
 
   useEffect(() => { fetchTudo() }, [])
+
+  // Enquanto algum case estiver com a IA escrevendo, o selo do card precisa
+  // apagar sozinho — inclusive se a geração foi disparada em outra máquina ou
+  // se a página foi recarregada no meio.
+  const gerando = useMemo(() => [...cases.values()].some((c) => c.ia_status === "gerando"), [cases])
+  const timerRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (!gerando) return
+    timerRef.current = window.setInterval(fetchCases, 4000)
+    return () => {
+      if (timerRef.current) window.clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+  }, [gerando])
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
@@ -177,13 +223,63 @@ export default function RepositorioVitoriasPage() {
     if (status === "reprovada") patch.motivo_reprovacao = motivoReprovacao ?? v.motivo_reprovacao ?? null
     setVitorias((prev) => prev.map((x) => (x.id === v.id ? { ...x, ...patch, status } : x)))
     setDetalhe((prev) => (prev?.id === v.id ? { ...prev, ...patch, status } as Vitoria : prev))
-    await supabase.from("repositorio_vitorias").update(patch).eq("id", v.id)
+    const { error } = await supabase.from("repositorio_vitorias").update(patch).eq("id", v.id)
+    if (error) {
+      toast.error("Não foi possível mudar o status da vitória.")
+      fetchTudo()
+      return
+    }
+    await sincronizarVitrine(v, status)
+  }
+
+  /**
+   * Aprovada (ou "virou case") entra na vitrine; voltar para aguardando ou
+   * reprovada só tira do ar — o case e o texto já revisado ficam. Quando o case
+   * nasce agora, a IA escreve os blocos editoriais em seguida.
+   */
+  async function sincronizarVitrine(v: Vitoria, status: Status) {
+    const { data, error } = await supabase.rpc("sincronizar_vitoria_vitrine", { p_vitoria_id: v.id })
+    if (error) {
+      toast.error(`A vitória mudou de status, mas a vitrine não acompanhou: ${error.message}`)
+      return
+    }
+    const linha = (Array.isArray(data) ? data[0] : data) as
+      | { vitrine_case_id: string | null; criado: boolean }
+      | null
+    const caseId = linha?.vitrine_case_id
+    if (!caseId) {
+      await fetchCases()
+      return
+    }
+    if (!linha?.criado) {
+      await fetchCases()
+      if (status === "aguardando" || status === "reprovada") toast.info("O case saiu da vitrine.")
+      return
+    }
+    await fetchCases()
+    toast.success("Case criado na vitrine — a IA está escrevendo o texto.")
+    gerarTexto(caseId)
+  }
+
+  /** A falha da IA não desfaz o case: o texto pode ser escrito à mão depois. */
+  async function gerarTexto(vitrineCaseId: string) {
+    try {
+      await gerarCaseIA(vitrineCaseId, { persistir: true })
+      toast.success("Texto do case pronto.")
+    } catch (e) {
+      toast.error(`O case entrou na vitrine, mas a IA falhou: ${e instanceof Error ? e.message : e}`)
+    } finally {
+      fetchCases()
+    }
   }
 
   async function excluir(id: string) {
     setDetalhe(null)
     setVitorias((prev) => prev.filter((v) => v.id !== id))
     await supabase.from("repositorio_vitorias").delete().eq("id", id)
+    // O case vinculado não é apagado junto (ON DELETE SET NULL): vira um case
+    // órfão, editável na aba Cases.
+    fetchCases()
   }
 
   function handleDragEnd(e: DragEndEvent) {
@@ -233,13 +329,13 @@ export default function RepositorioVitoriasPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {COLUNAS.map((col) => {
               const itens = filtradas.filter((v) => v.status === col.key)
-              return <Coluna key={col.key} col={col} itens={itens} onAbrir={setDetalhe} />
+              return <Coluna key={col.key} col={col} itens={itens} cases={cases} onAbrir={setDetalhe} onRegerar={gerarTexto} />
             })}
           </div>
           <DragOverlay>
             {active ? (
               <div className="w-64 rotate-2">
-                <VitoriaCardConteudo v={active} />
+                <VitoriaCardConteudo v={active} caseVinculado={cases.get(active.id) ?? null} />
               </div>
             ) : null}
           </DragOverlay>
@@ -330,7 +426,7 @@ export default function RepositorioVitoriasPage() {
 
       {/* Detalhe */}
       <Dialog open={!!detalhe} onOpenChange={(o) => { if (!o) { setDetalhe(null); setMotivo("") } }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className={cn("max-h-[90vh] overflow-y-auto", detalhe && cases.has(detalhe.id) ? "sm:max-w-3xl" : "sm:max-w-lg")}>
           {detalhe && (
             <>
               <DialogHeader><DialogTitle className="flex items-center gap-2"><Trophy className="size-5 text-primary" />{detalhe.titulo}</DialogTitle></DialogHeader>
@@ -390,6 +486,43 @@ export default function RepositorioVitoriasPage() {
                     </p>
                   </div>
                 )}
+
+                {/* Como a vitória aparece na vitrine — mesmo editor da aba Cases */}
+                {(() => {
+                  const c = cases.get(detalhe.id)
+                  if (!c) return null
+                  return (
+                    <div className="rounded-xl border border-border bg-muted/10 p-4 space-y-4">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-foreground">Como aparece na vitrine</p>
+                        <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0 text-[10px] font-bold">{c.case_id}</Badge>
+                        {c.ia_status === "gerando" && (
+                          <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                            <RefreshCw className="size-3 animate-spin" /> Gerando…
+                          </span>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto h-8 gap-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider"
+                          onClick={() => navigate(`/vitrine/case/${c.case_id}`)}
+                        >
+                          <ExternalLink className="size-3.5" /> Ver na vitrine
+                        </Button>
+                      </div>
+                      {!c.aprovado_vitrine && (
+                        <p className="text-[12px] font-medium text-muted-foreground">
+                          Este case está fora da vitrine — o texto continua salvo e volta ao ar quando a vitória for aprovada de novo.
+                        </p>
+                      )}
+                      <CaseEditorForm
+                        caso={c}
+                        comPreview={false}
+                        onSalvo={(atualizado) => setCases((prev) => new Map(prev).set(detalhe.id, atualizado))}
+                      />
+                    </div>
+                  )
+                })()}
               </div>
             </>
           )}
@@ -399,7 +532,7 @@ export default function RepositorioVitoriasPage() {
   )
 }
 
-function Coluna({ col, itens, onAbrir }: { col: { key: Status; label: string; icon: any; hint?: string }; itens: Vitoria[]; onAbrir: (v: Vitoria) => void }) {
+function Coluna({ col, itens, cases, onAbrir, onRegerar }: { col: { key: Status; label: string; icon: any; hint?: string }; itens: Vitoria[]; cases: Map<string, CaseVinculado>; onAbrir: (v: Vitoria) => void; onRegerar: (vitrineCaseId: string) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key })
   const Icon = col.icon
   return (
@@ -413,13 +546,15 @@ function Coluna({ col, itens, onAbrir }: { col: { key: Status; label: string; ic
         {col.hint && <p className="text-[10px] font-medium text-muted-foreground/70 mt-1">{col.hint}</p>}
       </header>
       <div className="flex flex-col gap-2.5 p-2.5">
-        {itens.map((v) => <VitoriaCard key={v.id} v={v} onAbrir={onAbrir} />)}
+        {itens.map((v) => (
+          <VitoriaCard key={v.id} v={v} caseVinculado={cases.get(v.id) ?? null} onAbrir={onAbrir} onRegerar={onRegerar} />
+        ))}
       </div>
     </div>
   )
 }
 
-function VitoriaCard({ v, onAbrir }: { v: Vitoria; onAbrir: (v: Vitoria) => void }) {
+function VitoriaCard({ v, caseVinculado, onAbrir, onRegerar }: { v: Vitoria; caseVinculado: CaseVinculado | null; onAbrir: (v: Vitoria) => void; onRegerar: (vitrineCaseId: string) => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: v.id })
   return (
     <div
@@ -429,22 +564,48 @@ function VitoriaCard({ v, onAbrir }: { v: Vitoria; onAbrir: (v: Vitoria) => void
       onClick={() => onAbrir(v)}
       className={cn("cursor-grab active:cursor-grabbing", isDragging && "opacity-40")}
     >
-      <VitoriaCardConteudo v={v} />
+      <VitoriaCardConteudo v={v} caseVinculado={caseVinculado} onRegerar={onRegerar} />
     </div>
   )
 }
 
-function VitoriaCardConteudo({ v }: { v: Vitoria }) {
+function VitoriaCardConteudo({ v, caseVinculado, onRegerar }: { v: Vitoria; caseVinculado?: CaseVinculado | null; onRegerar?: (vitrineCaseId: string) => void }) {
   const preview = evidenciaPreview(v)
+  const ia = caseVinculado?.ia_status
   return (
     <div className="rounded-xl border border-border bg-card p-3 shadow-sm transition-shadow hover:border-primary/40 space-y-2.5">
-      {preview ? (
-        <img src={preview} alt="" className="w-full h-24 rounded-lg object-cover border border-border" />
-      ) : (
-        <div className="w-full h-24 rounded-lg border border-dashed border-border bg-muted/20 flex items-center justify-center">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">{EVID_TIPO_LABEL[v.evidencia_tipo]}</span>
-        </div>
-      )}
+      <div className="relative">
+        {ia === "gerando" && (
+          <div className="absolute right-1.5 top-1.5 z-10 flex items-center gap-1.5 rounded-lg border border-primary/40 bg-background/90 px-2 py-1 shadow-sm backdrop-blur">
+            <RefreshCw className="size-3 animate-spin text-primary" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-primary animate-pulse">Gerando vitória</span>
+          </div>
+        )}
+        {ia === "erro" && (
+          <button
+            type="button"
+            title={caseVinculado?.ia_erro ?? "Falha ao gerar o texto do case"}
+            onClick={(e) => { e.stopPropagation(); if (caseVinculado) onRegerar?.(caseVinculado.id) }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="absolute right-1.5 top-1.5 z-10 flex items-center gap-1.5 rounded-lg border border-destructive/40 bg-background/90 px-2 py-1 shadow-sm backdrop-blur hover:bg-destructive/10"
+          >
+            <AlertTriangle className="size-3 text-destructive" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-destructive">Falha ao gerar</span>
+          </button>
+        )}
+        {ia === "pronto" && (
+          <div className="absolute right-1.5 top-1.5 z-10 flex items-center gap-1 rounded-lg border border-primary/30 bg-background/90 px-2 py-1 shadow-sm backdrop-blur" title="Na vitrine, com texto gerado por IA">
+            <Sparkles className="size-3 text-primary" />
+          </div>
+        )}
+        {preview ? (
+          <img src={preview} alt="" className="w-full h-24 rounded-lg object-cover border border-border" />
+        ) : (
+          <div className="w-full h-24 rounded-lg border border-dashed border-border bg-muted/20 flex items-center justify-center">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">{EVID_TIPO_LABEL[v.evidencia_tipo]}</span>
+          </div>
+        )}
+      </div>
       <p className="text-[13px] font-bold leading-snug text-foreground line-clamp-2">{v.titulo}</p>
       {v.cliente_nome && <p className="text-[11px] font-medium text-muted-foreground">{v.cliente_nome}</p>}
       <div className="flex items-center gap-1.5 flex-wrap">
