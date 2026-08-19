@@ -79,6 +79,9 @@ const SYSTEM =
   `Sem dado numérico no material, escreva qualitativo.\n` +
   `- Campo sem base no material: devolva string vazia ("") ou lista vazia ([]). NUNCA escreva "N/A", "PENDENTE_VALIDACAO", ` +
   `"não informado" ou qualquer placeholder — a tela esconde bloco vazio, e isso é o comportamento certo.\n` +
+  `- O contrário também vale: número, valor, percentual ou prazo que ESTÁ no material tem que ser PRESERVADO, ` +
+  `com destaque na headline e em "principais_ganhos". Não inventar é diferente de apagar — nunca troque ` +
+  `"economia de R$ 10 mil" por "economia significativa"; o número é o que convence na reunião.\n` +
   `- NÃO DEDUZA o que não foi contado. Se o material não descreve como era antes, "como_era_antes" e "principais_gargalos" ficam vazios; ` +
   `se não descreve a solução, "solucao_criada" e "o_que_pmc_transformou" ficam vazios. Material curto gera case curto — ` +
   `um bloco vazio é sempre melhor que um bloco plausível e falso, porque isso vai ser lido na frente de um cliente real ` +
