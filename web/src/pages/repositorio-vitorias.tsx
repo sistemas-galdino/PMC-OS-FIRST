@@ -61,9 +61,17 @@ interface Vitoria {
   status: Status
   motivo_reprovacao: string | null
   created_at: string
+  /** Preenchido = veio do painel do cliente. É o marcador confiável da origem:
+   *  o campo `origem` é texto livre e o cliente escreve o que quiser nele. */
+  cliente_vitoria_id: string | null
 }
 
-interface ClienteOpt { id_cliente: string; nome: string }
+interface ClienteOpt { id_cliente: string; nome: string; sc: string | null }
+
+/** Radix não aceita SelectItem com value vazio — sentinelas dos filtros. */
+const TODAS = "__todas__"
+const SEM_CS = "__sem_cs__"
+type FiltroOrigem = "todas" | "cliente" | "time"
 
 /** Case da vitrine nascido de uma vitória — indexado por repositorio_vitoria_id. */
 type CaseVinculado = VitrineCase & { cliente?: VitrineCliente | null }
@@ -98,6 +106,8 @@ export default function RepositorioVitoriasPage() {
   const [clientes, setClientes] = useState<ClienteOpt[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState("")
+  const [filtroOrigem, setFiltroOrigem] = useState<FiltroOrigem>("todas")
+  const [filtroCs, setFiltroCs] = useState<string>(TODAS)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(FORM_VAZIO)
   const [file, setFile] = useState<File | null>(null)
@@ -132,7 +142,10 @@ export default function RepositorioVitoriasPage() {
   async function fetchTudo() {
     const [{ data: vs }, { data: cs }] = await Promise.all([
       supabase.from("repositorio_vitorias").select("*").order("created_at", { ascending: false }),
-      supabase.from("clientes_entrada_new").select("id_cliente, nome_cliente_formatado, nome_empresa_formatado").order("nome_empresa_formatado"),
+      supabase
+        .from("clientes_entrada_new")
+        .select("id_cliente, nome_cliente_formatado, nome_empresa_formatado, sc")
+        .order("nome_empresa_formatado"),
     ])
     fetchCases()
     setVitorias((vs ?? []) as Vitoria[])
@@ -142,6 +155,7 @@ export default function RepositorioVitoriasPage() {
         .map((c: any) => ({
           id_cliente: c.id_cliente as string,
           nome: (c.nome_empresa_formatado || c.nome_cliente_formatado || "Cliente") as string,
+          sc: (c.sc ?? null) as string | null,
         }))
     )
     setLoading(false)
@@ -163,11 +177,49 @@ export default function RepositorioVitoriasPage() {
     }
   }, [gerando])
 
+  /** id_cliente → CS responsável (clientes_entrada_new.sc). A vitória guarda o
+   *  id do cliente, não a CS, então o cruzamento é aqui. */
+  const csPorCliente = useMemo(
+    () => new Map(clientes.map((c) => [c.id_cliente, (c.sc ?? "").trim()])),
+    [clientes]
+  )
+
+  /** Opções do filtro de CS: os valores que realmente existem na carteira. */
+  const opcoesCs = useMemo(() => {
+    const nomes = new Set<string>()
+    let temSemCs = false
+    for (const v of vitorias) {
+      const cs = v.id_cliente ? csPorCliente.get(v.id_cliente) : ""
+      if (cs) nomes.add(cs)
+      else temSemCs = true
+    }
+    return {
+      lista: [...nomes].sort((a, b) => a.localeCompare(b, "pt-BR")),
+      temSemCs,
+    }
+  }, [vitorias, csPorCliente])
+
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
-    if (!q) return vitorias
-    return vitorias.filter((v) => `${v.titulo} ${v.cliente_nome ?? ""} ${v.area ?? ""}`.toLowerCase().includes(q))
-  }, [vitorias, busca])
+    return vitorias.filter((v) => {
+      if (filtroOrigem === "cliente" && !v.cliente_vitoria_id) return false
+      if (filtroOrigem === "time" && v.cliente_vitoria_id) return false
+      if (filtroCs !== TODAS) {
+        const cs = v.id_cliente ? csPorCliente.get(v.id_cliente) ?? "" : ""
+        if (filtroCs === SEM_CS ? Boolean(cs) : cs !== filtroCs) return false
+      }
+      if (!q) return true
+      return `${v.titulo} ${v.cliente_nome ?? ""} ${v.area ?? ""}`.toLowerCase().includes(q)
+    })
+  }, [vitorias, busca, filtroOrigem, filtroCs, csPorCliente])
+
+  const temFiltro = Boolean(busca.trim()) || filtroOrigem !== "todas" || filtroCs !== TODAS
+
+  function limparFiltros() {
+    setBusca("")
+    setFiltroOrigem("todas")
+    setFiltroCs(TODAS)
+  }
 
   function abrirNovo() {
     setForm(FORM_VAZIO)
@@ -310,10 +362,48 @@ export default function RepositorioVitoriasPage() {
         </Button>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
-        <Input className="h-11 pl-10 rounded-xl bg-muted/10" placeholder="Buscar por cliente, título ou área..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="relative w-full md:max-w-md">
+          <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
+          <Input className="h-11 pl-10 rounded-xl bg-muted/10" placeholder="Buscar por cliente, título ou área..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+        </div>
+
+        <Select value={filtroOrigem} onValueChange={(v) => setFiltroOrigem(v as FiltroOrigem)}>
+          <SelectTrigger className="h-11 rounded-xl bg-muted/10 md:w-56">
+            <SelectValue placeholder="Origem" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas as origens</SelectItem>
+            <SelectItem value="cliente">Registradas pelo cliente</SelectItem>
+            <SelectItem value="time">Registradas pelo time</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={filtroCs} onValueChange={setFiltroCs}>
+          <SelectTrigger className="h-11 rounded-xl bg-muted/10 md:w-52">
+            <SelectValue placeholder="CS responsável" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODAS}>Todas as CS</SelectItem>
+            {opcoesCs.lista.map((cs) => (
+              <SelectItem key={cs} value={cs}>{cs}</SelectItem>
+            ))}
+            {opcoesCs.temSemCs && <SelectItem value={SEM_CS}>Sem CS atribuída</SelectItem>}
+          </SelectContent>
+        </Select>
+
+        {temFiltro && (
+          <Button variant="ghost" className="h-11 gap-1.5 rounded-xl text-xs font-bold uppercase tracking-wider text-muted-foreground" onClick={limparFiltros}>
+            <X className="size-3.5" /> Limpar
+          </Button>
+        )}
       </div>
+
+      {temFiltro && (
+        <p className="-mt-4 text-[12px] font-medium text-muted-foreground">
+          Mostrando {filtradas.length} de {vitorias.length} vitórias.
+        </p>
+      )}
 
       {loading ? (
         <div className="grid gap-4 md:grid-cols-4">
@@ -433,6 +523,10 @@ export default function RepositorioVitoriasPage() {
               <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   {detalhe.cliente_nome && <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0.5 text-[11px] font-bold">{detalhe.cliente_nome}</Badge>}
+                  {detalhe.cliente_vitoria_id && <Badge variant="outline" className="rounded-lg border-primary/40 bg-primary/5 text-primary px-2 py-0.5 text-[11px] font-bold">Registrada pelo cliente</Badge>}
+                  {detalhe.id_cliente && csPorCliente.get(detalhe.id_cliente) && (
+                    <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0.5 text-[11px] font-bold">CS: {csPorCliente.get(detalhe.id_cliente)}</Badge>
+                  )}
                   {detalhe.area && <Badge variant="outline" className="rounded-lg border-primary/30 text-primary px-2 py-0.5 text-[11px] font-bold">{detalhe.area}</Badge>}
                   {detalhe.origem && <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0.5 text-[11px] font-bold">{detalhe.origem}</Badge>}
                 </div>
@@ -609,6 +703,9 @@ function VitoriaCardConteudo({ v, caseVinculado, onRegerar }: { v: Vitoria; case
       <p className="text-[13px] font-bold leading-snug text-foreground line-clamp-2">{v.titulo}</p>
       {v.cliente_nome && <p className="text-[11px] font-medium text-muted-foreground">{v.cliente_nome}</p>}
       <div className="flex items-center gap-1.5 flex-wrap">
+        {v.cliente_vitoria_id && (
+          <Badge variant="outline" className="rounded-lg border-primary/40 bg-primary/5 text-primary px-2 py-0 text-[9px] font-bold uppercase">Do cliente</Badge>
+        )}
         {v.area && <Badge variant="outline" className="rounded-lg border-primary/30 text-primary px-2 py-0 text-[9px] font-bold uppercase">{v.area}</Badge>}
         {v.origem && <Badge variant="outline" className="rounded-lg border-border text-muted-foreground px-2 py-0 text-[9px] font-bold uppercase">{v.origem}</Badge>}
       </div>
