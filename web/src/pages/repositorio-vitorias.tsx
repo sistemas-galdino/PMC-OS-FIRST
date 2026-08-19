@@ -325,13 +325,35 @@ export default function RepositorioVitoriasPage() {
     }
   }
 
+  /**
+   * Excluir é destrutivo de verdade: o banco cascateia para vitrine_cases (e das
+   * evidências do case), então o texto escrito pela IA e as revisões manuais vão
+   * junto. Por isso a confirmação nomeia o case que vai sumir. Para só tirar da
+   * vitrine sem perder o trabalho, o caminho é devolver a vitória para
+   * aguardando/reprovada ou desmarcar "Na vitrine" na aba Cases.
+   */
   async function excluir(id: string) {
+    const caso = cases.get(id)
+    const aviso = caso
+      ? `Excluir esta vitória?\n\nO case ${caso.case_id} também sai da vitrine e da aba Cases, com todo o texto escrito. A ação não pode ser desfeita.`
+      : "Excluir esta vitória? A ação não pode ser desfeita."
+    if (!confirm(aviso)) return
+
     setDetalhe(null)
     setVitorias((prev) => prev.filter((v) => v.id !== id))
-    await supabase.from("repositorio_vitorias").delete().eq("id", id)
-    // O case vinculado não é apagado junto (ON DELETE SET NULL): vira um case
-    // órfão, editável na aba Cases.
-    fetchCases()
+    setCases((prev) => {
+      if (!prev.has(id)) return prev
+      const proximo = new Map(prev)
+      proximo.delete(id)
+      return proximo
+    })
+    const { error } = await supabase.from("repositorio_vitorias").delete().eq("id", id)
+    if (error) {
+      toast.error("Não foi possível excluir a vitória.")
+      fetchTudo()
+      return
+    }
+    toast.success(caso ? `Vitória e case ${caso.case_id} excluídos.` : "Vitória excluída.")
   }
 
   function handleDragEnd(e: DragEndEvent) {
@@ -609,6 +631,10 @@ export default function RepositorioVitoriasPage() {
                           Este case está fora da vitrine — o texto continua salvo e volta ao ar quando a vitória for aprovada de novo.
                         </p>
                       )}
+                      <p className="text-[11px] font-medium text-muted-foreground/80">
+                        Excluir esta vitória apaga o case {c.case_id} da vitrine e da aba Cases. Para só tirar do ar, mova a
+                        vitória para Aguardando ou Reprovada — o texto fica salvo.
+                      </p>
                       <CaseEditorForm
                         caso={c}
                         comPreview={false}
