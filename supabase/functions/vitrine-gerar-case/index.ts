@@ -79,6 +79,10 @@ const SYSTEM =
   `Sem dado numérico no material, escreva qualitativo.\n` +
   `- Campo sem base no material: devolva string vazia ("") ou lista vazia ([]). NUNCA escreva "N/A", "PENDENTE_VALIDACAO", ` +
   `"não informado" ou qualquer placeholder — a tela esconde bloco vazio, e isso é o comportamento certo.\n` +
+  `- NÃO DEDUZA o que não foi contado. Se o material não descreve como era antes, "como_era_antes" e "principais_gargalos" ficam vazios; ` +
+  `se não descreve a solução, "solucao_criada" e "o_que_pmc_transformou" ficam vazios. Material curto gera case curto — ` +
+  `um bloco vazio é sempre melhor que um bloco plausível e falso, porque isso vai ser lido na frente de um cliente real ` +
+  `que sabe o que aconteceu na empresa dele.\n` +
   `- "categoria" é a ÁREA DO NEGÓCIO IMPACTADA pela transformação (ex.: Vendas, Financeiro, Operações, Marketing, Gestão, Pessoas). ` +
   `Nunca é o nicho/setor da empresa do cliente — são dois eixos diferentes na vitrine.\n` +
   `- "o_que_pmc_transformou" é o clímax da narrativa: o que mudou no negócio POR CAUSA da mentoria/consultoria do PMC. ` +
