@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense } from "react"
 import type { ReactNode } from "react"
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom"
 import { AuthProvider, useAuth } from "@/lib/auth-context"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { BackgroundShaderPaper } from "@/components/ui/background-shader-paper"
@@ -177,6 +177,17 @@ function RequireSecao({ secao, children }: { secao: string; children: ReactNode 
   return can(secao) ? <>{children}</> : <Navigate to="/" replace />
 }
 
+// /atendimento e /atendimento/:slug renderizam o MESMO componente, na mesma
+// posição da árvore — o React reconcilia por tipo + posição, então trocar de
+// consultor NÃO desmontava nada e o estado do wizard sobrevivia à navegação
+// (inclusive o `sucesso`, que jogava a pessoa direto na tela de "agendamento
+// confirmado" do agendamento anterior). A key força a remontagem: cada
+// consultor começa o fluxo do zero.
+function AtendimentoPublicoRota() {
+  const { slug } = useParams<{ slug?: string }>()
+  return <AtendimentoPublicoPage key={slug ?? "__lista__"} />
+}
+
 function AppRoutes() {
   const { session, isAdmin, needsPassword, needsOnboarding, loading, idCliente, papelEmpresa } = useAuth()
   // Portal do cliente: resolve a empresa (cliente legado OU 2º usuário vinculado).
@@ -195,8 +206,8 @@ function AppRoutes() {
           <Route path="/ativar-conta" element={<AtivarContaPage />} />
           <Route path="/recuperar-senha" element={<RecuperarSenhaPage />} />
           <Route path="/cadastro" element={session ? <CadastroPage session={session} /> : <Navigate to="/login" replace />} />
-          <Route path="/atendimento" element={<AtendimentoPublicoPage />} />
-          <Route path="/atendimento/:slug" element={<AtendimentoPublicoPage />} />
+          <Route path="/atendimento" element={<AtendimentoPublicoRota />} />
+          <Route path="/atendimento/:slug" element={<AtendimentoPublicoRota />} />
           <Route path="/guardiao/r/:token" element={<GuardiaoResponderPage />} />
 
           {/* Modo apresentação: FORA do DashboardLayout de propósito — sem menu,

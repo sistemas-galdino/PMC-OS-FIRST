@@ -50,6 +50,11 @@ export default function AtendimentoPublicoPage() {
   const { slug } = useParams<{ slug?: string }>()
   const navigate = useNavigate()
 
+  // Todo o estado abaixo é em memória e NÃO é zerado na troca de consultor: o
+  // efeito de [slug] só recarrega os dados da agenda. Quem garante o fluxo limpo
+  // é a key em AtendimentoPublicoRota (App.tsx), que remonta a página a cada
+  // slug. Se aquele wrapper sumir, o wizard volta a vazar de um consultor para
+  // o outro — inclusive o `sucesso`.
   const [consultores, setConsultores] = useState<Consultor[]>([])
   const [consultor, setConsultor] = useState<Consultor | null>(null)
   const [disponibilidade, setDisponibilidade] = useState<Disponibilidade[]>([])
