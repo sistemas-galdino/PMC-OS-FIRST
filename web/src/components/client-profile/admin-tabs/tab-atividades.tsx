@@ -28,6 +28,7 @@ import {
   UserCheckIcon,
   Trash2Icon,
 } from "@/components/ui/icons"
+import { useCsList } from "@/lib/crm/equipe"
 
 const TIPO_OPTIONS = [
   { v: "enviar_proximos_passos", l: "Enviar próximos passos" },
@@ -74,13 +75,6 @@ const STATUS_OPTIONS = [
   { v: "realizado", l: "Realizado" },
   { v: "atrasado", l: "Atrasado" },
   { v: "cancelado", l: "Cancelado" },
-] as const
-
-const RESPONSAVEL_OPTIONS = [
-  { v: "Geovana", l: "Geovana" },
-  { v: "Francielly", l: "Francielly" },
-  { v: "Gabriela", l: "Gabriela" },
-  { v: "Fernanda", l: "Fernanda" },
 ] as const
 
 const SENTINEL_NONE = "__none__"
@@ -143,6 +137,17 @@ export default function TabAtividades({ clientId }: { clientId: string }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+
+  // Time de CS vem de `mentores` (papel='cs'), não de lista fixa. Um responsável
+  // que saiu do time continua listado se já estiver gravado na atividade.
+  const csList = useCsList()
+  const responsavelOptions = useMemo(() => {
+    const nomes =
+      form.responsavel_cs && !csList.includes(form.responsavel_cs)
+        ? [...csList, form.responsavel_cs]
+        : csList
+    return nomes.map((n) => ({ v: n, l: n }))
+  }, [csList, form.responsavel_cs])
 
   async function load() {
     setLoading(true)
@@ -427,7 +432,7 @@ export default function TabAtividades({ clientId }: { clientId: string }) {
                 label="Responsável CS"
                 value={form.responsavel_cs}
                 onChange={(v) => setForm((f) => ({ ...f, responsavel_cs: v }))}
-                options={RESPONSAVEL_OPTIONS}
+                options={responsavelOptions}
               />
             </div>
 

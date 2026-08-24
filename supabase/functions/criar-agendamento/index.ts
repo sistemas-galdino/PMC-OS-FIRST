@@ -56,14 +56,9 @@ const EMAILS_CALENDAR_VALIDOS = new Set([
   "mentor@rafaelgaldino.com.br",
 ])
 
-// Sucesso do Cliente (coluna clientes_entrada_new.sc) → caixa Workspace.
-// Espelha CS_OPTIONS do front (tab-perfil.tsx). Atualizar aqui se a equipe mudar.
-const CS_EMAILS: Record<string, string> = {
-  fernanda: "atendimento_01@rafaelgaldino.com.br",
-  gabriela: "atendimento_02@rafaelgaldino.com.br",
-  geovana: "atendimento_03@rafaelgaldino.com.br",
-  francielly: "atendimento_04@rafaelgaldino.com.br",
-}
+// Domínio das caixas Workspace do time. Uma CS cadastrada com e-mail pessoal
+// (Gmail) não entra como convidado de calendário — o convite iria para fora.
+const DOMINIO_WORKSPACE = "@rafaelgaldino.com.br"
 
 function addMinutos(h5: string, mins: number): string {
   const [hh, mm] = h5.split(":").map(Number)
@@ -273,10 +268,23 @@ Deno.serve(async (req: Request) => {
         .select("sc")
         .eq("id_cliente", matchCli.id_cliente)
         .maybeSingle<{ sc: string | null }>()
-      const scNorm = entradaCli?.sc?.trim().toLowerCase()
-      if (scNorm && CS_EMAILS[scNorm]) {
-        csEmail = CS_EMAILS[scNorm]
-        csNome = entradaCli!.sc!.trim()
+      const scNome = entradaCli?.sc?.trim()
+      if (scNome) {
+        // A caixa da CS sai de `mentores` (papel='cs'), a mesma fonte do RBAC e do
+        // CRM — antes era um mapa hardcoded aqui, que ficava velho a cada troca de
+        // time. `sc` é texto livre, então o casamento é case-insensitive pelo nome.
+        const { data: csRow } = await supabase
+          .from("mentores")
+          .select("nome, email")
+          .eq("papel", "cs")
+          // escapa curingas do LIKE: `sc` é texto livre digitado por humano
+          .ilike("nome", scNome.replace(/[%_\\]/g, "\\$&"))
+          .maybeSingle<{ nome: string; email: string | null }>()
+        const email = csRow?.email?.trim().toLowerCase()
+        if (email && email.endsWith(DOMINIO_WORKSPACE)) {
+          csEmail = email
+          csNome = csRow!.nome
+        }
       }
     }
 

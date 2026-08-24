@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { UsersIcon, Sparkles2Icon } from "@/components/ui/icons"
 import { STATUS_CLIENTE } from "@/lib/status-cliente"
+import { useCsList } from "@/lib/crm/equipe"
 
 const SAUDE_OPTIONS = [
   { v: "saudavel", l: "Saudável" },
@@ -27,8 +28,6 @@ const ENGAJAMENTO_OPTIONS = [
   { v: "morno", l: "Cliente morno" },
   { v: "frio", l: "Cliente frio" },
 ] as const
-
-const CS_OPTIONS = ["Geovana", "Francielly", "Gabriela", "Fernanda"] as const
 
 const SENTINEL_NONE = "__none__"
 
@@ -63,6 +62,9 @@ const EMPTY: PerfilState = {
 }
 
 export default function TabPerfil({ clientId }: { clientId: string }) {
+  // Time de CS vem de `mentores` (papel='cs'), não de lista fixa: quem entra ou
+  // sai do time aparece aqui sem deploy.
+  const csList = useCsList()
   const [snapshot, setSnapshot] = useState<PerfilState>(EMPTY)
   const [form, setForm] = useState<PerfilState>(EMPTY)
   const [loading, setLoading] = useState(true)
@@ -125,6 +127,12 @@ export default function TabPerfil({ clientId }: { clientId: string }) {
       cancelled = true
     }
   }, [clientId])
+
+  // Cliente marcado com uma CS que saiu do time continua legível em vez de o
+  // Select aparecer vazio.
+  const csOptions = useMemo(() => {
+    return form.sc && !csList.includes(form.sc) ? [...csList, form.sc] : csList
+  }, [csList, form.sc])
 
   const dirty = useMemo(() => {
     const keys = Object.keys(form) as (keyof PerfilState)[]
@@ -257,7 +265,7 @@ export default function TabPerfil({ clientId }: { clientId: string }) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={SENTINEL_NONE}>Não atribuído</SelectItem>
-                  {CS_OPTIONS.map((cs) => (
+                  {csOptions.map((cs) => (
                     <SelectItem key={cs} value={cs}>
                       {cs}
                     </SelectItem>

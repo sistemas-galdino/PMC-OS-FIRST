@@ -315,7 +315,7 @@ async function main() {
   // Inclui o time de Sucesso do Cliente: os eventos deles caem na mesma tabela
   // (a coluna `equipe` os separa da consultoria). Sem isso, findMentor devolvia
   // null e a reunião entrava sem mentor.
-  const mentoresNomes = ['Ayslan Leite', 'David Abner', 'Diego Silva', 'Issao Yokoi', 'Jeff Duarte', 'Matheus Moura', 'Maxsuell Lopes', 'Railson Alves', 'Rodrigo Nogueira', 'Danielly', 'Fernanda', 'Francielly', 'Gabriela', 'Geovana', 'Maiara Gadelha']
+  const mentoresNomes = ['Ayslan Leite', 'David Abner', 'Diego Silva', 'Issao Yokoi', 'Jeff Duarte', 'Matheus Moura', 'Maxsuell Lopes', 'Railson Alves', 'Rodrigo Nogueira', 'Bruna', 'Danielly', 'Fernanda', 'Francielly', 'Gabriela', 'Geovana', 'Maiara Gadelha']
   console.log(`👤 ${mentoresNomes.length} mentores:`, mentoresNomes.join(', '))
 
   const accessToken = await getAccessToken()
