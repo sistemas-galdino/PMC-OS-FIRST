@@ -1028,7 +1028,7 @@ function FormularioAntigoTable({
         <TableBody>
           {rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={kind === "enviadas" ? 5 : 4} className="text-center py-16 text-muted-foreground font-medium">
+              <TableCell colSpan={4} className="text-center py-16 text-muted-foreground font-medium">
                 Nenhuma resposta do formulário antigo.
               </TableCell>
             </TableRow>
@@ -1172,7 +1172,7 @@ function RespostasTable({
         <TableBody>
           {rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-center py-16 text-muted-foreground font-medium">
+              <TableCell colSpan={kind === "enviadas" ? 5 : 4} className="text-center py-16 text-muted-foreground font-medium">
                 {kind === "enviadas"
                   ? "Nenhuma resposta enviada ainda."
                   : "Nenhum cliente preenchendo o formulário no momento."}
