@@ -90,6 +90,11 @@ interface LoginRow {
 
 type TabKey = "todos" | "nunca" | "ativos" | "inativos" | "aguardando"
 
+// Escopo da tela: por padrão só quem está ativo no programa. Cliente cancelado
+// ou congelado continua tendo login, então "Todos os status" segue disponível
+// pra achar (e revogar) o acesso de quem saiu.
+type EscopoKey = "ativos" | "todos"
+
 function papelLabel(login: LoginRow): string {
   if (login.tipo === "principal") return "Dono"
   const p = (login.papel || "").toLowerCase()
@@ -154,6 +159,7 @@ export default function AcessosPage() {
   const [search, setSearch] = useState("")
   const [activeTab, setActiveTab] = useState<TabKey>("todos")
   const [csFilter, setCsFilter] = useState<string>("all")
+  const [escopo, setEscopo] = useState<EscopoKey>("ativos")
   const [resendingId, setResendingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null)
   const [confirmRow, setConfirmRow] = useState<AccessRow | null>(null)
@@ -227,19 +233,23 @@ export default function AcessosPage() {
     return () => clearTimeout(t)
   }, [toast])
 
+  // Universo da tela. Tudo daqui pra baixo (cards, abas, filtro de CS, tabela e
+  // o "mostrando X de Y") sai desta lista — antes os cards contavam só ativos e
+  // as abas contavam o cadastro inteiro, então os números não fechavam.
+  const rowsEscopo = useMemo(
+    () => (escopo === "ativos" ? rows.filter(r => isStatusAtivo(r.status_atual)) : rows),
+    [rows, escopo],
+  )
+
   const metrics = useMemo(() => {
     const now = Date.now()
-    const total = rows.length
-    let totalAtivos = 0
-    let nuncaAtivos = 0
+    const total = rowsEscopo.length
     let jaAcessaram = 0
     let nunca = 0
     let ativos = 0
     let inativos = 0
     let aguardando = 0
-    for (const r of rows) {
-      const isClienteAtivo = isStatusAtivo(r.status_atual)
-      if (isClienteAtivo) totalAtivos++
+    for (const r of rowsEscopo) {
       if (r.last_sign_in_at) {
         jaAcessaram++
         const diff = now - new Date(r.last_sign_in_at).getTime()
@@ -247,27 +257,26 @@ export default function AcessosPage() {
         else inativos++
       } else {
         nunca++
-        if (isClienteAtivo) nuncaAtivos++
         if (r.tem_auth_user) aguardando++
       }
     }
-    return { total, totalAtivos, jaAcessaram, nunca, nuncaAtivos, ativos, inativos, aguardando }
-  }, [rows])
+    return { total, jaAcessaram, nunca, ativos, inativos, aguardando }
+  }, [rowsEscopo])
 
   const csOptions = useMemo(() => {
     const set = new Set<string>()
     let temSemCs = false
-    for (const r of rows) {
+    for (const r of rowsEscopo) {
       if (r.sc && r.sc.trim()) set.add(r.sc.trim())
       else temSemCs = true
     }
     const arr = Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"))
     return { lista: arr, temSemCs }
-  }, [rows])
+  }, [rowsEscopo])
 
   const filtered = useMemo(() => {
     const now = Date.now()
-    let list = rows
+    let list = rowsEscopo
     if (activeTab === "nunca") list = list.filter(r => !r.last_sign_in_at)
     else if (activeTab === "ativos") list = list.filter(r => r.last_sign_in_at && (now - new Date(r.last_sign_in_at).getTime()) <= THRESHOLD_ATIVO)
     else if (activeTab === "inativos") list = list.filter(r => r.last_sign_in_at && (now - new Date(r.last_sign_in_at).getTime()) > THRESHOLD_ATIVO)
@@ -290,7 +299,7 @@ export default function AcessosPage() {
       const bT = b.last_sign_in_at ? new Date(b.last_sign_in_at).getTime() : 0
       return bT - aT
     })
-  }, [rows, activeTab, search, csFilter])
+  }, [rowsEscopo, activeTab, search, csFilter])
 
   async function confirmResend() {
     const row = confirmRow
@@ -480,10 +489,12 @@ export default function AcessosPage() {
     }
   }
 
+  const descEscopo = escopo === "ativos" ? "entre os ativos no programa" : "entre todos os cadastrados"
+
   const cards = [
-    { title: "Total de Membros", value: metrics.totalAtivos, icon: Users, cls: "text-primary bg-primary/10", desc: "Clientes ativos no programa" },
-    { title: "Já Acessaram", value: metrics.jaAcessaram, icon: ShieldCheck, cls: "text-emerald-400 bg-emerald-500/10", desc: "Logaram ao menos 1 vez" },
-    { title: "Nunca Acessaram", value: metrics.nuncaAtivos, icon: AlertCircle, cls: "text-red-400 bg-red-500/10", desc: "Ativos sem registro de login" },
+    { title: "Total de Membros", value: metrics.total, icon: Users, cls: "text-primary bg-primary/10", desc: escopo === "ativos" ? "Clientes ativos no programa" : "Todos os clientes cadastrados" },
+    { title: "Já Acessaram", value: metrics.jaAcessaram, icon: ShieldCheck, cls: "text-emerald-400 bg-emerald-500/10", desc: `Logaram ao menos 1 vez ${descEscopo}` },
+    { title: "Nunca Acessaram", value: metrics.nunca, icon: AlertCircle, cls: "text-red-400 bg-red-500/10", desc: `Sem registro de login ${descEscopo}` },
     { title: "Ativos (14 dias)", value: metrics.ativos, icon: TrendingUp, cls: "text-emerald-400 bg-emerald-500/10", desc: "Logaram recentemente" },
     { title: "Inativos (>14 dias)", value: metrics.inativos, icon: Clock, cls: "text-orange-400 bg-orange-500/10", desc: "Sumiram do sistema" },
     { title: "Aguardando Acesso", value: metrics.aguardando, icon: Mail, cls: "text-yellow-400 bg-yellow-500/10", desc: "Convite enviado, sem acesso" },
@@ -492,8 +503,8 @@ export default function AcessosPage() {
   const tabs: { key: TabKey; label: string; count: number }[] = [
     { key: "todos", label: "Todos", count: metrics.total },
     { key: "nunca", label: "Nunca acessaram", count: metrics.nunca },
-    { key: "ativos", label: "Ativos", count: metrics.ativos },
-    { key: "inativos", label: "Inativos", count: metrics.inativos },
+    { key: "ativos", label: "Ativos (14d)", count: metrics.ativos },
+    { key: "inativos", label: "Inativos (>14d)", count: metrics.inativos },
     { key: "aguardando", label: "Aguardando", count: metrics.aguardando },
   ]
 
@@ -809,6 +820,17 @@ export default function AcessosPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+          </div>
+          <div className="w-full md:w-auto md:min-w-[210px]">
+            <Select value={escopo} onValueChange={(v) => setEscopo(v as EscopoKey)}>
+              <SelectTrigger className="h-12 bg-background border-border focus:border-primary/50">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ativos">Ativos no programa</SelectItem>
+                <SelectItem value="todos">Todos os status</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="w-full md:w-auto md:min-w-[200px]">
             <Select value={csFilter} onValueChange={setCsFilter}>
