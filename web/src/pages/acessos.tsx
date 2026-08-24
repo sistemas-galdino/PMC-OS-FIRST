@@ -88,6 +88,15 @@ interface LoginRow {
   criado_em: string | null
 }
 
+// Linha da tabela já resolvida no nível da EMPRESA: uma empresa pode ter vários
+// logins (dono + colaborador + guardião), então o que vale é o acesso mais
+// recente de qualquer um deles — não o do dono.
+interface AccessRowCalc extends AccessRow {
+  ultimo_acesso: string | null
+  ultimo_acesso_por: LoginRow | null
+  tem_login: boolean
+}
+
 type TabKey = "todos" | "nunca" | "ativos" | "inativos" | "aguardando"
 
 // Escopo da tela: por padrão só quem está ativo no programa. Cliente cancelado
@@ -241,46 +250,67 @@ export default function AcessosPage() {
     [rows, escopo],
   )
 
+  // Acesso efetivo da empresa = o login mais recente entre todos os dela.
+  // Fallback pro login do dono (o que a RPC de overview devolve) quando o mapa
+  // de logins não veio: get_empresa_acessos é carregado em modo "não bloqueia a
+  // tela", e sem o fallback uma falha dela zeraria todas as datas.
+  const rowsCalc = useMemo<AccessRowCalc[]>(() => {
+    return rowsEscopo.map(r => {
+      const logins = loginsByCliente.get(r.id_cliente) ?? []
+      let melhor: LoginRow | null = null
+      for (const l of logins) {
+        if (!l.last_sign_in_at) continue
+        if (!melhor || new Date(l.last_sign_in_at).getTime() > new Date(melhor.last_sign_in_at!).getTime()) melhor = l
+      }
+      return {
+        ...r,
+        ultimo_acesso: melhor?.last_sign_in_at ?? (logins.length > 0 ? null : r.last_sign_in_at),
+        ultimo_acesso_por: melhor,
+        tem_login: logins.length > 0 || r.tem_auth_user,
+      }
+    })
+  }, [rowsEscopo, loginsByCliente])
+
   const metrics = useMemo(() => {
     const now = Date.now()
-    const total = rowsEscopo.length
+    const total = rowsCalc.length
     let jaAcessaram = 0
     let nunca = 0
     let ativos = 0
     let inativos = 0
     let aguardando = 0
-    for (const r of rowsEscopo) {
-      if (r.last_sign_in_at) {
+    for (const r of rowsCalc) {
+      if (r.ultimo_acesso) {
         jaAcessaram++
-        const diff = now - new Date(r.last_sign_in_at).getTime()
+        const diff = now - new Date(r.ultimo_acesso).getTime()
         if (diff <= THRESHOLD_ATIVO) ativos++
         else inativos++
       } else {
         nunca++
-        if (r.tem_auth_user) aguardando++
+        if (r.tem_login) aguardando++
       }
     }
     return { total, jaAcessaram, nunca, ativos, inativos, aguardando }
-  }, [rowsEscopo])
+  }, [rowsCalc])
 
   const csOptions = useMemo(() => {
     const set = new Set<string>()
     let temSemCs = false
-    for (const r of rowsEscopo) {
+    for (const r of rowsCalc) {
       if (r.sc && r.sc.trim()) set.add(r.sc.trim())
       else temSemCs = true
     }
     const arr = Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"))
     return { lista: arr, temSemCs }
-  }, [rowsEscopo])
+  }, [rowsCalc])
 
   const filtered = useMemo(() => {
     const now = Date.now()
-    let list = rowsEscopo
-    if (activeTab === "nunca") list = list.filter(r => !r.last_sign_in_at)
-    else if (activeTab === "ativos") list = list.filter(r => r.last_sign_in_at && (now - new Date(r.last_sign_in_at).getTime()) <= THRESHOLD_ATIVO)
-    else if (activeTab === "inativos") list = list.filter(r => r.last_sign_in_at && (now - new Date(r.last_sign_in_at).getTime()) > THRESHOLD_ATIVO)
-    else if (activeTab === "aguardando") list = list.filter(r => r.tem_auth_user && !r.last_sign_in_at)
+    let list = rowsCalc
+    if (activeTab === "nunca") list = list.filter(r => !r.ultimo_acesso)
+    else if (activeTab === "ativos") list = list.filter(r => r.ultimo_acesso && (now - new Date(r.ultimo_acesso).getTime()) <= THRESHOLD_ATIVO)
+    else if (activeTab === "inativos") list = list.filter(r => r.ultimo_acesso && (now - new Date(r.ultimo_acesso).getTime()) > THRESHOLD_ATIVO)
+    else if (activeTab === "aguardando") list = list.filter(r => r.tem_login && !r.ultimo_acesso)
 
     if (csFilter !== "all") {
       if (csFilter === "__sem") list = list.filter(r => !r.sc || !r.sc.trim())
@@ -295,11 +325,11 @@ export default function AcessosPage() {
         r.email?.toLowerCase().includes(q))
     }
     return [...list].sort((a, b) => {
-      const aT = a.last_sign_in_at ? new Date(a.last_sign_in_at).getTime() : 0
-      const bT = b.last_sign_in_at ? new Date(b.last_sign_in_at).getTime() : 0
+      const aT = a.ultimo_acesso ? new Date(a.ultimo_acesso).getTime() : 0
+      const bT = b.ultimo_acesso ? new Date(b.ultimo_acesso).getTime() : 0
       return bT - aT
     })
-  }, [rowsEscopo, activeTab, search, csFilter])
+  }, [rowsCalc, activeTab, search, csFilter])
 
   async function confirmResend() {
     const row = confirmRow
@@ -984,9 +1014,14 @@ export default function AcessosPage() {
                     </div>
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-muted-foreground/70 font-semibold uppercase tracking-wider text-[9px]">Acesso</span>
-                      <span className={`font-semibold ${lastAccessClass(row.last_sign_in_at)}`}>
-                        {formatRelativeTime(row.last_sign_in_at)}
+                      <span className={`font-semibold ${lastAccessClass(row.ultimo_acesso)}`}>
+                        {formatRelativeTime(row.ultimo_acesso)}
                       </span>
+                      {/* Quando quem acessou por último não é o dono, dizer de quem
+                          é a data — senão a empresa aparece ativa sem explicação. */}
+                      {row.ultimo_acesso_por && row.ultimo_acesso_por.tipo !== "principal" && (
+                        <span className="text-muted-foreground">· {papelLabel(row.ultimo_acesso_por)}</span>
+                      )}
                     </div>
                   </div>
                 </TableCell>
