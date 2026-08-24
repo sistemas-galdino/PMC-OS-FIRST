@@ -4,5 +4,5 @@ delete from public.emails_multi_empresa
    'brmoitinho@yahoo.com.br',
    'adm@xrmpremoldados.com.br',
    'financeiro@xrmpremoldados.com.br',
-   'oaovitor20062006@gmail.com'
+   'joaovitor20062006@gmail.com'
  );
