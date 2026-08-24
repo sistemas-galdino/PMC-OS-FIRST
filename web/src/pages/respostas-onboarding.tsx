@@ -177,7 +177,15 @@ const STEP_LABELS = [
   "6. Maturidade em IA",
 ] as const
 
-const STEP_FIELDS: { label: string; key: keyof OnboardingRow; multiline?: boolean }[][] = [
+// `descontinuada`: pergunta que saiu do formulário. Só aparece pra quem já
+// respondeu — quem entrou depois nunca viu a pergunta, e mostrar "Não
+// respondido" ali só faria o admin procurar uma lacuna que não existe.
+const STEP_FIELDS: {
+  label: string
+  key: keyof OnboardingRow
+  multiline?: boolean
+  descontinuada?: boolean
+}[][] = [
   [
     { label: "País", key: "pais" },
     { label: "Nome Completo", key: "nome_completo" },
@@ -212,7 +220,7 @@ const STEP_FIELDS: { label: string; key: keyof OnboardingRow; multiline?: boolea
   ],
   [
     { label: "Expectativas ao Entrar", key: "expectativas", multiline: true },
-    { label: "Motivo que Quase Impediu", key: "motivo_impedimento", multiline: true },
+    { label: "Motivo que Quase Impediu", key: "motivo_impedimento", multiline: true, descontinuada: true },
     { label: "Como Conheceu o PMC", key: "como_conheceu" },
     { label: "Por que Decidiu Entrar", key: "motivo_entrada", multiline: true },
     { label: "3 Entregas Mais Importantes", key: "tres_entregas", multiline: true },
@@ -911,14 +919,24 @@ function RespostasOnboardingContent() {
                       {stepLabel}
                     </h3>
                     <div className="border border-border/50 rounded-xl bg-card/30 px-4">
-                      {STEP_FIELDS[i].map((field) => (
-                        <FieldDisplay
-                          key={field.key}
-                          label={field.label}
-                          value={(selected.row as RespostaCompleta)[field.key]}
-                          multiline={field.multiline}
-                        />
-                      ))}
+                      {STEP_FIELDS[i]
+                        .filter((field) => {
+                          if (!field.descontinuada) return true
+                          const v = (selected.row as RespostaCompleta)[field.key]
+                          return v !== null && v !== undefined && String(v).trim() !== ""
+                        })
+                        .map((field) => (
+                          <FieldDisplay
+                            key={field.key}
+                            label={
+                              field.descontinuada
+                                ? `${field.label} (pergunta descontinuada)`
+                                : field.label
+                            }
+                            value={(selected.row as RespostaCompleta)[field.key]}
+                            multiline={field.multiline}
+                          />
+                        ))}
                     </div>
                   </section>
                 ))}

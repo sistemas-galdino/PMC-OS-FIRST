@@ -1,6 +1,5 @@
 import type { UseFormRegister, FieldErrors, UseFormSetValue, UseFormWatch } from "react-hook-form"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { OnboardingFormData } from "@/lib/onboarding-schema"
 
@@ -27,12 +26,6 @@ export function StepExpectativas({ register, errors, setValue, watch }: Props) {
           className="w-full min-h-[100px] rounded-md bg-muted/10 border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50 resize-y"
         />
         {errors.expectativas && <p className="text-xs text-destructive font-medium">{errors.expectativas.message}</p>}
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Principal motivo que poderia ter impedido a entrada *</Label>
-        <Input {...register('motivo_impedimento')} placeholder="O que quase fez você não entrar" className="bg-muted/10 border-border" />
-        {errors.motivo_impedimento && <p className="text-xs text-destructive font-medium">{errors.motivo_impedimento.message}</p>}
       </div>
 
       <div className="space-y-2">

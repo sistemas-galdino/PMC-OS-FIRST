@@ -11,7 +11,10 @@
 // colunas da etapa "Dados para Contrato", removida do formulário em 00127c5
 // (tipo_pessoa, cpf, cnpj, razao_social, nacionalidade, profissao,
 // email_representante, telefone_representante) — elas são nulas em quase todo
-// mundo e não são pergunta em aberto.
+// mundo e não são pergunta em aberto. Mesmo caso de `motivo_impedimento`
+// ("principal motivo que poderia ter impedido a entrada"), retirada do
+// formulário em 2026-08-24: a coluna e as respostas antigas continuam no banco,
+// mas ninguém mais responde, então não pode contar como lacuna.
 
 export interface CampoObrigatorio {
   key: string
@@ -50,7 +53,6 @@ export const CAMPOS_OBRIGATORIOS: CampoObrigatorio[] = [
   { key: "meta_12_meses", label: "Meta de Faturamento 12m", etapa: 4, tipo: "texto" },
 
   { key: "expectativas", label: "Expectativas ao Entrar", etapa: 5, tipo: "texto" },
-  { key: "motivo_impedimento", label: "Motivo que Quase Impediu", etapa: 5, tipo: "texto" },
   { key: "como_conheceu", label: "Como Conheceu o PMC", etapa: 5, tipo: "texto" },
   { key: "motivo_entrada", label: "Por que Decidiu Entrar", etapa: 5, tipo: "texto" },
   { key: "tres_entregas", label: "3 Entregas Mais Importantes", etapa: 5, tipo: "texto" },

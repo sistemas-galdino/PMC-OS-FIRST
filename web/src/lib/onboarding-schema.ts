@@ -68,9 +68,6 @@ export const step4Schema = z.object({
 
 export const step5Schema = z.object({
   expectativas: minCaracteres(10),
-  // Campo de linha única (os demais desta etapa são dissertativos e pedem 10):
-  // respostas curtas e legítimas como "Preço" precisam passar.
-  motivo_impedimento: z.string().min(3, 'Descreva o motivo'),
   como_conheceu: z.string().min(1, 'Selecione como conheceu'),
   motivo_entrada: minCaracteres(10),
   tres_entregas: minCaracteres(10),
@@ -130,7 +127,6 @@ export type OnboardingFormData = {
   meta_12_meses: string
   // Step 5
   expectativas: string
-  motivo_impedimento: string
   como_conheceu: string
   motivo_entrada: string
   tres_entregas: string
