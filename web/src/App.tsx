@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense } from "react"
 import type { ReactNode } from "react"
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, useSearchParams } from "react-router-dom"
 import { AuthProvider, useAuth } from "@/lib/auth-context"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { BackgroundShaderPaper } from "@/components/ui/background-shader-paper"
@@ -188,6 +188,22 @@ function AtendimentoPublicoRota() {
   return <AtendimentoPublicoPage key={slug ?? "__lista__"} />
 }
 
+// O link de revisão do onboarding (/cadastro?revisar=1) chega por WhatsApp com o
+// cliente quase sempre deslogado. Sem carregar o destino até depois do login ele
+// cairia na home e perderia o ?revisar — teria que receber o link duas vezes.
+function IrParaLogin() {
+  const { pathname, search } = useLocation()
+  return <Navigate to={`/login?next=${encodeURIComponent(pathname + search)}`} replace />
+}
+
+function DepoisDoLogin() {
+  const [sp] = useSearchParams()
+  const next = sp.get("next")
+  // Só caminho interno: "//host" seria redirect pra fora.
+  const destino = next && next.startsWith("/") && !next.startsWith("//") ? next : "/"
+  return <Navigate to={destino} replace />
+}
+
 function AppRoutes() {
   const { session, isAdmin, needsPassword, needsOnboarding, loading, idCliente, papelEmpresa } = useAuth()
   // Portal do cliente: resolve a empresa (cliente legado OU 2º usuário vinculado).
@@ -201,11 +217,11 @@ function AppRoutes() {
     <BrowserRouter>
       <Suspense fallback={<PmcSpinner />}>
         <Routes>
-          <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/" replace />} />
+          <Route path="/login" element={!session ? <LoginPage /> : <DepoisDoLogin />} />
           <Route path="/definir-senha" element={<DefinirSenhaPage />} />
           <Route path="/ativar-conta" element={<AtivarContaPage />} />
           <Route path="/recuperar-senha" element={<RecuperarSenhaPage />} />
-          <Route path="/cadastro" element={session ? <CadastroPage session={session} /> : <Navigate to="/login" replace />} />
+          <Route path="/cadastro" element={session ? <CadastroPage session={session} /> : <IrParaLogin />} />
           <Route path="/atendimento" element={<AtendimentoPublicoRota />} />
           <Route path="/atendimento/:slug" element={<AtendimentoPublicoRota />} />
           <Route path="/guardiao/r/:token" element={<GuardiaoResponderPage />} />

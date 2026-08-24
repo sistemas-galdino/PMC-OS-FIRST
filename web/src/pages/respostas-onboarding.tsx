@@ -27,7 +27,21 @@ import {
   BriefcaseIcon as Briefcase,
   CheckCircle2Icon as CheckCircle2,
   XIcon,
+  CopyIcon,
+  CheckIcon,
 } from "@/components/ui/icons"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  camposFaltando,
+  LINK_REVISAO_ONBOARDING,
+  type CampoObrigatorio,
+} from "@/lib/onboarding-completude"
 import { downloadCSV, type CSVColumn } from "@/lib/csv"
 import { useAuth } from "@/lib/auth-context"
 
@@ -142,6 +156,11 @@ interface FormularioAntigoCompleto extends FormularioAntigoRow {
 }
 
 type TabKey = "enviadas" | "em-andamento" | "formulario-antigo"
+
+// Filtro de completude da aba "Enviadas": `status='enviado'` não garante
+// formulário completo — a validação por etapa só entrou em 2026-07-31, então
+// respostas antigas foram enviadas com perguntas em branco.
+type CompletudeKey = "todas" | "incompletas" | "completas"
 
 // Item aberto no painel lateral. As duas origens têm campos distintos, então o
 // tipo discrimina qual mapa de seções usar.
@@ -493,11 +512,35 @@ function RespostasOnboardingContent() {
   const { isSuperAdmin } = useAuth()
   const [sp, setSp] = useSearchParams()
   const tab = (sp.get("tab") as TabKey | null) ?? "enviadas"
+  const completude = (sp.get("completude") as CompletudeKey | null) ?? "todas"
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<RespostaCompleta[]>([])
   const [antigas, setAntigas] = useState<FormularioAntigoCompleto[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selected, setSelected] = useState<Selecionado | null>(null)
+  const [copiado, setCopiado] = useState<string | null>(null)
+
+  function setCompletude(k: CompletudeKey) {
+    const next = new URLSearchParams(sp)
+    if (k === "todas") next.delete("completude")
+    else next.set("completude", k)
+    setSp(next, { replace: true })
+  }
+
+  // O link é o mesmo pra todos — quem identifica o cliente é o login dele. O
+  // ?revisar=1 é o que destrava o formulário pra quem já enviou (cadastro.tsx).
+  const linkRevisao =
+    (typeof window !== "undefined" ? window.location.origin : "") + LINK_REVISAO_ONBOARDING
+
+  async function copiarLink(chave: string) {
+    try {
+      await navigator.clipboard.writeText(linkRevisao)
+      setCopiado(chave)
+      setTimeout(() => setCopiado((atual) => (atual === chave ? null : atual)), 2000)
+    } catch {
+      // Sem permissão de clipboard: o link fica visível no title do botão.
+    }
+  }
 
   function setTab(k: TabKey) {
     const next = new URLSearchParams(sp)
@@ -576,7 +619,28 @@ function RespostasOnboardingContent() {
     return { enviadas: sent, emAndamento: draft }
   }, [rows])
 
-  const activeList = tab === "enviadas" ? enviadas : emAndamento
+  // Perguntas obrigatórias em branco por cliente (só faz sentido pra enviadas —
+  // quem está em andamento tem lacuna por definição).
+  const faltandoPorCliente = useMemo(() => {
+    const mapa = new Map<string, CampoObrigatorio[]>()
+    enviadas.forEach((r) => mapa.set(r.id_cliente, camposFaltando(r as unknown as Record<string, unknown>)))
+    return mapa
+  }, [enviadas])
+
+  const enviadasIncompletas = useMemo(
+    () => enviadas.filter((r) => (faltandoPorCliente.get(r.id_cliente)?.length ?? 0) > 0),
+    [enviadas, faltandoPorCliente],
+  )
+
+  const enviadasEscopo = useMemo(() => {
+    if (completude === "incompletas") return enviadasIncompletas
+    if (completude === "completas") {
+      return enviadas.filter((r) => (faltandoPorCliente.get(r.id_cliente)?.length ?? 0) === 0)
+    }
+    return enviadas
+  }, [enviadas, enviadasIncompletas, faltandoPorCliente, completude])
+
+  const activeList = tab === "enviadas" ? enviadasEscopo : emAndamento
 
   const filtered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase()
@@ -673,6 +737,33 @@ function RespostasOnboardingContent() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        {tab === "enviadas" && (
+          <div className="w-full md:w-64">
+            <Select value={completude} onValueChange={(v) => setCompletude(v as CompletudeKey)}>
+              <SelectTrigger className="h-12 bg-background border-border focus:border-primary/50">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as enviadas ({enviadas.length})</SelectItem>
+                <SelectItem value="incompletas">
+                  Com perguntas em branco ({enviadasIncompletas.length})
+                </SelectItem>
+                <SelectItem value="completas">
+                  Completas ({enviadas.length - enviadasIncompletas.length})
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <Button
+          variant="outline"
+          onClick={() => copiarLink("__barra__")}
+          title={`Copiar o link pro cliente completar as respostas: ${linkRevisao}`}
+          className="h-12 px-5 gap-2 text-xs font-bold uppercase tracking-wider"
+        >
+          {copiado === "__barra__" ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
+          {copiado === "__barra__" ? "Link copiado" : "Copiar link do formulário"}
+        </Button>
         <Button
           variant="outline"
           onClick={exportCSV}
@@ -710,6 +801,9 @@ function RespostasOnboardingContent() {
             rows={filtered}
             kind="enviadas"
             onSelect={(r) => setSelected({ tipo: "novo", row: r })}
+            faltandoPorCliente={faltandoPorCliente}
+            copiado={copiado}
+            onCopiarLink={copiarLink}
           />
         </TabsContent>
 
@@ -776,6 +870,41 @@ function RespostasOnboardingContent() {
               </SheetHeader>
 
               <div className="px-4 pb-6 space-y-6">
+                {selected.row.status === "enviado" &&
+                  (faltandoPorCliente.get(selected.row.id_cliente)?.length ?? 0) > 0 && (
+                    <section className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-4">
+                      <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-orange-400">
+                        {faltandoPorCliente.get(selected.row.id_cliente)!.length} pergunta(s) em branco
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                        {faltandoPorCliente
+                          .get(selected.row.id_cliente)!
+                          .map((c) => c.label)
+                          .join(" · ")}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 h-9 gap-2 text-[10px] font-bold uppercase tracking-wider"
+                        onClick={() => copiarLink(`sheet-${selected.row.id_cliente}`)}
+                        title={linkRevisao}
+                      >
+                        {copiado === `sheet-${selected.row.id_cliente}` ? (
+                          <CheckIcon className="size-3.5" />
+                        ) : (
+                          <CopyIcon className="size-3.5" />
+                        )}
+                        {copiado === `sheet-${selected.row.id_cliente}`
+                          ? "Link copiado"
+                          : "Copiar link pro cliente completar"}
+                      </Button>
+                      <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
+                        O link abre o formulário já preenchido e só nas etapas com pergunta em
+                        aberto. Vale pra qualquer cliente — quem identifica é o login dele.
+                      </p>
+                    </section>
+                  )}
+
                 {STEP_LABELS.map((stepLabel, i) => (
                   <section key={stepLabel}>
                     <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-2">
@@ -899,7 +1028,7 @@ function FormularioAntigoTable({
         <TableBody>
           {rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-center py-16 text-muted-foreground font-medium">
+              <TableCell colSpan={kind === "enviadas" ? 5 : 4} className="text-center py-16 text-muted-foreground font-medium">
                 Nenhuma resposta do formulário antigo.
               </TableCell>
             </TableRow>
@@ -949,14 +1078,72 @@ function FormularioAntigoTable({
   )
 }
 
+// Quantas perguntas obrigatórias ficaram em branco + o link pro cliente
+// completar. O link é igual pra todos (quem identifica é o login), mas o botão
+// fica na linha porque é ali que o CS decide pra quem mandar.
+function FaltandoCell({
+  faltando,
+  copiado,
+  onCopiarLink,
+}: {
+  faltando: CampoObrigatorio[]
+  copiado: boolean
+  onCopiarLink?: () => void
+}) {
+  if (faltando.length === 0) {
+    return (
+      <Badge
+        variant="outline"
+        className="border-primary/30 text-primary bg-primary/10 text-[10px] font-bold uppercase tracking-wider"
+      >
+        Completo
+      </Badge>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Badge
+        variant="outline"
+        className="border-orange-500/30 text-orange-400 bg-orange-500/10 text-[10px] font-bold uppercase tracking-wider"
+        title={faltando.map((c) => c.label).join(" · ")}
+      >
+        {faltando.length} em branco
+      </Badge>
+      {onCopiarLink && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-wider"
+          title="Copiar o link pro cliente completar as respostas que faltam"
+          onClick={(e) => {
+            // A linha inteira abre o detalhe — copiar não deve abrir o painel.
+            e.stopPropagation()
+            onCopiarLink()
+          }}
+        >
+          {copiado ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+          {copiado ? "Copiado" : "Link"}
+        </Button>
+      )}
+    </div>
+  )
+}
+
 function RespostasTable({
   rows,
   kind,
   onSelect,
+  faltandoPorCliente,
+  copiado,
+  onCopiarLink,
 }: {
   rows: RespostaCompleta[]
   kind: "enviadas" | "em-andamento"
   onSelect: (r: RespostaCompleta) => void
+  faltandoPorCliente?: Map<string, CampoObrigatorio[]>
+  copiado?: string | null
+  onCopiarLink?: (chave: string) => void
 }) {
   return (
     <div className="border border-border bg-card/50 backdrop-blur-md rounded-2xl overflow-hidden shadow-xl">
@@ -975,6 +1162,11 @@ function RespostasTable({
             <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5">
               {kind === "enviadas" ? "Enviado em" : "Etapa atual"}
             </TableHead>
+            {kind === "enviadas" && (
+              <TableHead className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 pr-6">
+                Respostas
+              </TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1030,6 +1222,15 @@ function RespostasTable({
                     </Badge>
                   )}
                 </TableCell>
+                {kind === "enviadas" && (
+                  <TableCell className="pr-6">
+                    <FaltandoCell
+                      faltando={faltandoPorCliente?.get(r.id_cliente) ?? []}
+                      copiado={copiado === r.id_cliente}
+                      onCopiarLink={onCopiarLink ? () => onCopiarLink(r.id_cliente) : undefined}
+                    />
+                  </TableCell>
+                )}
               </TableRow>
             ))
           )}
