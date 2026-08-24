@@ -1,5 +1,7 @@
 // gerenciar-acesso — gerencia um login VINCULADO de empresa (empresa_usuarios):
-//   acao 'remover'  -> apaga a linha em empresa_usuarios + o login em auth.users.
+//   acao 'remover'  -> apaga o vínculo DESTA empresa; o login em auth.users só é
+//                      apagado se aquele era o último vínculo dele (um mesmo login
+//                      pode alcançar várias empresas via emails_multi_empresa).
 //   acao 'reenviar' -> gera um novo link bonito de acesso (/ativar-conta) pro login.
 //
 // Só logins VINCULADOS (empresa_usuarios). O login PRINCIPAL/dono
@@ -45,16 +47,36 @@ Deno.serve(async (req: Request) => {
     }
 
     // Confirma que o alvo é mesmo um vínculo em empresa_usuarios (defesa extra).
-    const { data: vinculo } = await admin
-      .from("empresa_usuarios").select("auth_user_id, id_cliente").eq("auth_user_id", authUserId).maybeSingle()
+    // Um login pode estar vinculado a VÁRIAS empresas (emails_multi_empresa), então
+    // a busca é pelo par (login, empresa) — sem o filtro de empresa, .maybeSingle()
+    // quebraria justamente nesses casos.
+    const { data: vinculos } = await admin
+      .from("empresa_usuarios").select("auth_user_id, id_cliente").eq("auth_user_id", authUserId)
+    const vinculo = (vinculos ?? []).find((v) => !idCliente || v.id_cliente === idCliente)
     if (!vinculo) return jsonResponse({ error: "acesso vinculado não encontrado" }, 404)
 
     if (acao === "remover") {
-      const { error: delErr } = await admin.from("empresa_usuarios").delete().eq("auth_user_id", authUserId)
+      // Remove só o vínculo DESTA empresa. Apagar o auth user aqui tiraria o acesso
+      // da pessoa nas outras empresas dela também.
+      const { error: delErr } = await admin.from("empresa_usuarios").delete()
+        .eq("auth_user_id", authUserId).eq("id_cliente", vinculo.id_cliente)
       if (delErr) return jsonResponse({ error: delErr.message }, 400)
+
+      // Só quando não sobrou vínculo nenhum o login em si deixa de ter razão de existir.
+      const { count: restantes } = await admin
+        .from("empresa_usuarios").select("auth_user_id", { count: "exact", head: true })
+        .eq("auth_user_id", authUserId)
+      if ((restantes ?? 0) > 0) {
+        return jsonResponse({
+          message: `Acesso removido desta empresa. O login continua ativo em ${restantes} outra(s) empresa(s).`,
+          removed_auth: false,
+          vinculos_restantes: restantes,
+        })
+      }
       // Apaga o login. Temos o uuid direto (não precisa paginar listUsers).
       const { error: authErr } = await admin.auth.admin.deleteUser(authUserId)
-      return jsonResponse({ message: "Acesso removido.", removed_auth: !authErr })
+      await admin.from("empresa_ativa").delete().eq("auth_user_id", authUserId)
+      return jsonResponse({ message: "Acesso removido.", removed_auth: !authErr, vinculos_restantes: 0 })
     }
 
     if (acao === "reenviar") {

@@ -65,6 +65,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
+import { EmpresaSwitcher } from "@/components/layout/empresa-switcher"
 import { DollarSignIcon } from "@/components/ui/icons"
 
 interface AppSidebarProps {
@@ -325,6 +326,8 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
             <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-[0.2em]">Black Eagle</span>
           </div>
         </div>
+        {/* Só renderiza para quem alcança mais de uma empresa. */}
+        {!isAdmin && <EmpresaSwitcher />}
       </SidebarHeader>
       <SidebarContent className="px-2">
         {sections.map((section, sectionIndex) => (

@@ -3,6 +3,10 @@
 //                            Só Admin/Super Admin (papel is_full) podem.
 //   tipo 'empresa_usuario' -> Fase 2: insere em `empresa_usuarios` (N logins/empresa).
 //                            Quem tem a seção 'acessos' pode.
+//                            Se o e-mail JÁ tem login, não cria outro (auth.users.email
+//                            é único no GoTrue): vincula o login existente também a esta
+//                            empresa, sem gerar convite. O trigger tg_empresa_usuarios_guard
+//                            só permite isso para e-mails em `emails_multi_empresa`.
 //
 // Segurança: verify_jwt=true (só chamadas autenticadas). Autorização re-checada
 // aqui com o token do chamador. A criação do auth user usa o service_role.
@@ -81,9 +85,38 @@ Deno.serve(async (req: Request) => {
       if (!podeAcessos) return jsonResponse({ error: "sem permissão para a seção Acessos" }, 403)
       const idCliente = body.id_cliente ? String(body.id_cliente) : ""
       if (!idCliente) return jsonResponse({ error: "id_cliente é obrigatório" }, 400)
+
+      // O e-mail já tem login? auth.users.email é único no GoTrue, então criar um
+      // segundo é impossível — o caminho é VINCULAR o login existente também a esta
+      // empresa. A RPC resolve em O(1) (paginar listUsers dependeria do tamanho da base).
+      // Com `caller` (token de quem chamou), não `admin`: a RPC guarda com
+      // is_admin() + pode_secao('acessos'), e no service_role auth.uid() é nulo.
+      const { data: existenteId, error: lookErr } = await caller
+        .rpc("auth_user_id_por_email", { p_email: email })
+      if (lookErr) return jsonResponse({ error: `falha ao checar o e-mail: ${lookErr.message}` }, 500)
+
+      if (existenteId) {
+        const userId = String(existenteId)
+        // Vincula sem gerar link e sem tocar na senha: a pessoa já tem acesso,
+        // mandar convite aqui derrubaria o login que hoje funciona.
+        // Se o e-mail não estiver em emails_multi_empresa, o trigger de guarda
+        // recusa — e a mensagem dele já diz qual empresa usa o login.
+        const { error: linkErr } = await admin.from("empresa_usuarios")
+          .upsert(
+            { auth_user_id: userId, id_cliente: idCliente, criado_por: user.id },
+            { onConflict: "auth_user_id,id_cliente", ignoreDuplicates: true },
+          )
+        if (linkErr) return jsonResponse({ error: linkErr.message }, 409)
+        return jsonResponse({
+          message: "Este e-mail já tinha login: foi vinculado também a esta empresa. A pessoa entra com a senha que já usa e escolhe a empresa no seletor.",
+          user_id: userId,
+          vinculado_existente: true,
+        })
+      }
+
       const { userId, link } = await criarLoginEGerarLink()
       const { error: insErr } = await admin.from("empresa_usuarios")
-        .upsert({ auth_user_id: userId, id_cliente: idCliente, criado_por: user.id }, { onConflict: "auth_user_id" })
+        .upsert({ auth_user_id: userId, id_cliente: idCliente, criado_por: user.id }, { onConflict: "auth_user_id,id_cliente" })
       if (insErr) return jsonResponse({ error: `login criado mas falhou ao vincular: ${insErr.message}` }, 500)
       return jsonResponse({ message: "Usuário da empresa provisionado.", user_id: userId, invite_link: link })
     }

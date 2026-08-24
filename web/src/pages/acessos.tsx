@@ -533,7 +533,10 @@ export default function AcessosPage() {
 
   async function trocarPapelUsuario(uid: string, papel: string) {
     setSalvandoPapel(uid)
-    const { error } = await supabase.from("empresa_usuarios").update({ papel }).eq("auth_user_id", uid)
+    // Escopado à empresa: um mesmo login pode estar vinculado a mais de uma
+    // (emails_multi_empresa), e sem o filtro o papel mudaria em todas elas.
+    const { error } = await supabase.from("empresa_usuarios").update({ papel })
+      .eq("auth_user_id", uid).eq("id_cliente", addUserEmpresa)
     if (error) console.error("Erro ao trocar papel:", error.message)
     else setUsuariosEmpresa((prev) => prev.map((u) => (u.auth_user_id === uid ? { ...u, papel } : u)))
     setSalvandoPapel(null)
@@ -553,11 +556,20 @@ export default function AcessosPage() {
       const data = await res.json()
       if (!res.ok) setAddUserResult({ ok: false, msg: data.error || "Erro ao provisionar usuário." })
       else {
-        // A edge function pode ainda não gravar o papel: garantimos aqui.
-        if (data.auth_user_id) {
-          await supabase.from("empresa_usuarios").update({ papel: addUserPapel }).eq("auth_user_id", data.auth_user_id)
+        // A edge function não grava o papel para empresa_usuario: garantimos aqui.
+        // (Antes se lia `data.auth_user_id`, campo que a função nunca devolveu —
+        // o papel escolhido não chegava ao banco.) Escopado à empresa.
+        if (data.user_id) {
+          await supabase.from("empresa_usuarios").update({ papel: addUserPapel })
+            .eq("auth_user_id", data.user_id).eq("id_cliente", addUserEmpresa)
         }
-        setAddUserResult({ ok: true, msg: "Usuário criado. Envie o link de acesso:", link: data.invite_link })
+        // E-mail que já tinha login: foi VINCULADO a esta empresa, sem convite —
+        // a senha atual dele continua valendo, então não há link a copiar.
+        setAddUserResult(
+          data.vinculado_existente
+            ? { ok: true, msg: data.message }
+            : { ok: true, msg: "Usuário criado. Envie o link de acesso:", link: data.invite_link },
+        )
         setAddUserEmail("")
         await carregarUsuariosEmpresa(addUserEmpresa)
       }
