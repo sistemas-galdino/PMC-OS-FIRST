@@ -1,12 +1,13 @@
 // Conhecimento → Estudos de Caso: histórias reais de membros transformando
 // negócios com IA. Galeria (cards com vídeo, tags e métricas) + página do
 // estudo com player embutido, deep-linkável via ?caso=<id>.
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
 import {
   BookOpenIcon as BookOpen,
   PlayCircleIcon as PlayCircle,
@@ -14,6 +15,11 @@ import {
   ArrowLeftIcon as ArrowLeft,
   StarIcon as Star,
   CalendarIcon as Calendar,
+  EyeIcon as Eye,
+  ThumbsUpIcon as ThumbsUp,
+  MessageCircleIcon as MessageCircle,
+  SendIcon as Send,
+  Trash2Icon as Trash2,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
@@ -37,7 +43,23 @@ interface EstudoCaso {
   metricas: Metrica[]
   destaque: boolean
   data_publicacao: string
+  visualizacoes: number
+  likeCount: number
+  comentarioCount: number
+  curtido: boolean
 }
+
+interface Comentario {
+  id: string
+  id_autor: string
+  autor_nome: string | null
+  autor_avatar_url: string | null
+  is_admin: boolean
+  texto: string
+  created_at: string
+}
+
+interface Me { id: string; nome: string; avatar: string | null; isAdmin: boolean }
 
 interface EstudosCasoPageProps {
   session?: Session
@@ -68,6 +90,24 @@ function PlayerVideo({ url, titulo }: { url: string; titulo: string }) {
 }
 
 // --- página ------------------------------------------------------------------
+// Quem sou eu (pra curtir/comentar) — mesmo resolvedor do feed de Novidades.
+async function resolverMe(): Promise<Me | null> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const uid = session?.user?.id
+  const email = session?.user?.email
+  if (!uid) return null
+  if (email) {
+    const { data: mentor } = await supabase.from("mentores").select("nome").eq("email", email).maybeSingle()
+    if (mentor) return { id: uid, nome: mentor.nome || "Equipe PMC", avatar: null, isAdmin: true }
+  }
+  const { data: cli } = await supabase
+    .from("clientes_entrada_new")
+    .select("nome_cliente_formatado, avatar_url")
+    .eq("id_cliente", uid)
+    .maybeSingle()
+  return { id: uid, nome: cli?.nome_cliente_formatado || "Você", avatar: cli?.avatar_url ?? null, isAdmin: false }
+}
+
 export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
   const [estudos, setEstudos] = useState<EstudoCaso[]>([])
   const [loading, setLoading] = useState(true)
@@ -77,6 +117,14 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
   const [thumbsVimeo, setThumbsVimeo] = useState<Map<string, string>>(new Map())
   // Filtro por nicho: vem da URL para o link ser compartilhável.
   const nichoAtivo = searchParams.get("nicho") ?? "todos"
+  const [me, setMe] = useState<Me | null>(null)
+  // comentários do case aberto
+  const [comentarios, setComentarios] = useState<Comentario[]>([])
+  const [loadingCom, setLoadingCom] = useState(false)
+  const [novoTexto, setNovoTexto] = useState("")
+  const [enviando, setEnviando] = useState(false)
+  // Cases já contados nesta sessão de página — evita inflar o contador ao reabrir.
+  const viewsContadas = useRef<Set<string>>(new Set())
 
   function filtrarNicho(nicho: string | null) {
     const next = new URLSearchParams(searchParams)
@@ -88,17 +136,30 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const { data } = await supabase
-        .from("conhecimento_estudos_caso")
-        .select("id, titulo, autor, autor_papel, resumo, sobre, video_url, thumbnail_url, tags, nicho, metricas, destaque, data_publicacao")
-        .eq("publicado", true)
-        .order("destaque", { ascending: false })
-        .order("data_publicacao", { ascending: false })
+      const meResolved = await resolverMe()
       if (cancelled) return
-      const lista = (data ?? []).map((e) => ({
+      setMe(meResolved)
+      const [{ data }, likesRes] = await Promise.all([
+        supabase
+          .from("conhecimento_estudos_caso")
+          .select("id, titulo, autor, autor_papel, resumo, sobre, video_url, thumbnail_url, tags, nicho, metricas, destaque, data_publicacao, visualizacoes, likes:conhecimento_estudos_caso_likes(count), comentarios:conhecimento_estudos_caso_comentarios(count)")
+          .eq("publicado", true)
+          .order("destaque", { ascending: false })
+          .order("data_publicacao", { ascending: false }),
+        meResolved
+          ? supabase.from("conhecimento_estudos_caso_likes").select("id_estudo").eq("id_cliente", meResolved.id)
+          : Promise.resolve({ data: [] as { id_estudo: string }[] }),
+      ])
+      if (cancelled) return
+      const curtidos = new Set((likesRes.data ?? []).map((l: { id_estudo: string }) => l.id_estudo))
+      const lista = (data ?? []).map((e: any) => ({
         ...e,
         tags: Array.isArray(e.tags) ? e.tags : [],
         metricas: Array.isArray(e.metricas) ? e.metricas : [],
+        visualizacoes: e.visualizacoes ?? 0,
+        likeCount: e.likes?.[0]?.count ?? 0,
+        comentarioCount: e.comentarios?.[0]?.count ?? 0,
+        curtido: curtidos.has(e.id),
       }))
       setEstudos(lista)
       setLoading(false)
@@ -120,6 +181,75 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
     () => estudos.find((e) => e.id === casoId) ?? null,
     [estudos, casoId]
   )
+
+  // Visualização: conta quando alguém abre o case pra assistir (clique ou deep
+  // link), uma vez por case por sessão de página. O incremento real é via RPC.
+  useEffect(() => {
+    if (!casoId || loading || viewsContadas.current.has(casoId)) return
+    if (!estudos.some((e) => e.id === casoId)) return
+    viewsContadas.current.add(casoId)
+    supabase.rpc("estudo_caso_registrar_view", { p_estudo: casoId })
+    setEstudos((prev) => prev.map((e) => (e.id === casoId ? { ...e, visualizacoes: e.visualizacoes + 1 } : e)))
+  }, [casoId, loading, estudos])
+
+  // Comentários do case aberto.
+  useEffect(() => {
+    if (!casoId) { setComentarios([]); return }
+    let cancelled = false
+    setLoadingCom(true)
+    supabase
+      .from("conhecimento_estudos_caso_comentarios")
+      .select("*")
+      .eq("id_estudo", casoId)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (cancelled) return
+        setComentarios(data ?? [])
+        setLoadingCom(false)
+      })
+    return () => { cancelled = true }
+  }, [casoId])
+
+  async function toggleCurtida(estudo: EstudoCaso) {
+    if (!me) return
+    const curtir = !estudo.curtido
+    setEstudos((prev) => prev.map((x) => (
+      x.id === estudo.id ? { ...x, curtido: curtir, likeCount: Math.max(0, x.likeCount + (curtir ? 1 : -1)) } : x
+    )))
+    if (curtir) {
+      await supabase.from("conhecimento_estudos_caso_likes").insert({ id_estudo: estudo.id, id_cliente: me.id })
+    } else {
+      await supabase.from("conhecimento_estudos_caso_likes").delete().eq("id_estudo", estudo.id).eq("id_cliente", me.id)
+    }
+  }
+
+  async function enviarComentario() {
+    if (!me || !selecionado || !novoTexto.trim()) return
+    setEnviando(true)
+    const payload = {
+      id_estudo: selecionado.id,
+      id_autor: me.id,
+      autor_nome: me.nome,
+      autor_avatar_url: me.avatar,
+      is_admin: me.isAdmin,
+      texto: novoTexto.trim(),
+    }
+    const { data, error } = await supabase.from("conhecimento_estudos_caso_comentarios").insert(payload).select().single()
+    setEnviando(false)
+    if (!error && data) {
+      setComentarios((prev) => [...prev, data])
+      setNovoTexto("")
+      setEstudos((prev) => prev.map((x) => (x.id === selecionado.id ? { ...x, comentarioCount: x.comentarioCount + 1 } : x)))
+    }
+  }
+
+  async function excluirComentario(c: Comentario) {
+    await supabase.from("conhecimento_estudos_caso_comentarios").delete().eq("id", c.id)
+    setComentarios((prev) => prev.filter((x) => x.id !== c.id))
+    if (selecionado) {
+      setEstudos((prev) => prev.map((x) => (x.id === selecionado.id ? { ...x, comentarioCount: Math.max(0, x.comentarioCount - 1) } : x)))
+    }
+  }
 
   // Nichos que realmente têm case publicado, com a contagem, do maior para o menor.
   const nichosDisponiveis = useMemo(() => {
@@ -216,6 +346,33 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
               {new Date(selecionado.data_publicacao + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
             </span>
           </div>
+
+          {/* Engajamento: visualizações, curtida e comentários */}
+          <div className="flex items-center gap-3 flex-wrap pt-1">
+            <span className="flex items-center gap-1.5 text-[13px] font-bold text-muted-foreground">
+              <Eye className="size-4" />
+              {selecionado.visualizacoes} {selecionado.visualizacoes === 1 ? "visualização" : "visualizações"}
+            </span>
+            <button
+              type="button"
+              onClick={() => toggleCurtida(selecionado)}
+              disabled={!me}
+              aria-pressed={selecionado.curtido}
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[12px] font-bold tracking-tight transition-colors ${
+                selecionado.curtido
+                  ? "border-primary/50 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+              }`}
+            >
+              <ThumbsUp className="size-4" />
+              {selecionado.curtido ? "Curtido" : "Curtir"}
+              <span className="opacity-60">· {selecionado.likeCount}</span>
+            </button>
+            <span className="flex items-center gap-1.5 text-[13px] font-bold text-muted-foreground">
+              <MessageCircle className="size-4" />
+              {selecionado.comentarioCount} {selecionado.comentarioCount === 1 ? "comentário" : "comentários"}
+            </span>
+          </div>
         </div>
 
         {/* Métricas */}
@@ -252,6 +409,77 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
             </CardContent>
           </Card>
         )}
+
+        {/* Comentários */}
+        <Card>
+          <CardContent className="p-6 lg:p-8 space-y-5">
+            <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+              <MessageCircle className="size-5 text-primary" />
+              Comentários
+              {selecionado.comentarioCount > 0 && (
+                <span className="text-[13px] font-bold text-muted-foreground">({selecionado.comentarioCount})</span>
+              )}
+            </h2>
+
+            {loadingCom ? (
+              <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-16 bg-card/40 rounded-xl animate-pulse" />)}</div>
+            ) : comentarios.length === 0 ? (
+              <p className="text-[13px] font-medium text-muted-foreground py-2">Seja o primeiro a comentar este estudo de caso.</p>
+            ) : (
+              <div className="space-y-4">
+                {comentarios.map((c) => (
+                  <div key={c.id} className="flex items-start gap-3 group/comentario">
+                    <AvatarComentario nome={c.autor_nome || "Membro"} url={c.autor_avatar_url} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[13px] font-bold text-foreground">{c.autor_nome || "Membro"}</span>
+                        {c.is_admin && (
+                          <Badge className="rounded-md bg-primary/10 text-primary border-primary/20 px-1.5 py-0 text-[9px] font-bold">EQUIPE</Badge>
+                        )}
+                        <span className="text-[11px] font-medium text-muted-foreground/70">
+                          {new Date(c.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                        </span>
+                        {me && (me.id === c.id_autor || me.isAdmin) && (
+                          <button
+                            type="button"
+                            onClick={() => excluirComentario(c)}
+                            className="opacity-0 group-hover/comentario:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                            aria-label="Excluir comentário"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[13px] font-medium text-foreground/90 leading-relaxed mt-0.5 whitespace-pre-wrap break-words">{c.texto}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Composer */}
+            {me && (
+              <div className="flex items-end gap-2 pt-2 border-t border-border/50">
+                <AvatarComentario nome={me.nome} url={me.avatar} />
+                <Textarea
+                  className="rounded-xl min-h-11 text-[13px] flex-1 resize-none"
+                  placeholder="Escreva um comentário..."
+                  value={novoTexto}
+                  onChange={(e) => setNovoTexto(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) enviarComentario() }}
+                />
+                <Button
+                  disabled={enviando || !novoTexto.trim()}
+                  className="h-11 gap-2 rounded-xl font-bold text-xs uppercase tracking-wider shrink-0"
+                  onClick={enviarComentario}
+                >
+                  <Send className="size-4" />
+                  {enviando ? "..." : "Enviar"}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Mais estudos */}
         {outros.length > 0 && (
@@ -432,12 +660,38 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
                       ))}
                     </div>
                   )}
+                  {/* Engajamento do case */}
+                  <div className="flex items-center gap-4 pt-3 border-t border-border/50 text-muted-foreground">
+                    <span className="flex items-center gap-1.5 text-[11px] font-bold">
+                      <Eye className="size-3.5" />
+                      {e.visualizacoes}
+                    </span>
+                    <span className={`flex items-center gap-1.5 text-[11px] font-bold ${e.curtido ? "text-primary" : ""}`}>
+                      <ThumbsUp className="size-3.5" />
+                      {e.likeCount}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[11px] font-bold">
+                      <MessageCircle className="size-3.5" />
+                      {e.comentarioCount}
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
             </motion.button>
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// Avatar do comentário — foto se houver, senão iniciais (mesmo padrão do feed).
+function AvatarComentario({ nome, url }: { nome: string; url?: string | null }) {
+  if (url) return <img src={url} alt={nome} className="size-9 rounded-full object-cover shrink-0" />
+  const iniciais = nome.split(" ").filter(Boolean).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "?"
+  return (
+    <div className="size-9 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[11px] font-bold shrink-0">
+      {iniciais}
     </div>
   )
 }

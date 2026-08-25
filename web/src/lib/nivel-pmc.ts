@@ -17,6 +17,10 @@ export interface SinaisNivel {
   // Ritual diário — o hábito que sustenta todo o resto
   diasFechados: number        // dias com o ritual do Meu Dia concluído
   semanasPerfeitas: number    // semanas com os 5 dias úteis fechados
+  // Estudos de Caso (Conhecimento) — aprender com quem já fez também pontua
+  estudosAssistidos: number   // estudos de caso assistidos (1x por estudo)
+  estudosCurtidos: number     // estudos de caso curtidos
+  estudosComentados: number   // comentários publicados em estudos de caso
 }
 
 export interface NivelPMC {
@@ -49,6 +53,9 @@ export const FONTES_PONTOS: FontePontos[] = [
   { chave: "tarefas", label: "Tarefa do Guardião concluída", pontos: 10, descricao: "Cada tarefa que o Guardião conclui no cockpit — das rotinas diárias/semanais/quinzenais/mensais ou avulsas.", rota: "/tarefas" },
   { chave: "diasFechados", label: "Dia fechado", pontos: 15, descricao: "Cada dia em que o Guardião completa o ritual no Meu Dia: responde as 3 perguntas da rotina e fecha o expediente.", rota: "/meu-dia" },
   { chave: "semanasPerfeitas", label: "Semana perfeita", pontos: 50, descricao: "Bônus por fechar os cinco dias úteis de uma mesma semana. Constância vale mais que intensidade.", rota: "/meu-dia" },
+  { chave: "estudosAssistidos", label: "Estudo de caso assistido", pontos: 15, descricao: "Cada estudo de caso da área de Conhecimento que você assiste. Conta uma vez por estudo — aprender com quem já fez encurta o caminho.", rota: "/estudos-caso" },
+  { chave: "estudosCurtidos", label: "Curtida em estudo de caso", pontos: 5, descricao: "Cada estudo de caso que você curte depois de assistir.", rota: "/estudos-caso" },
+  { chave: "estudosComentados", label: "Comentário em estudo de caso", pontos: 10, descricao: "Cada comentário que você publica num estudo de caso — dúvida, insight ou aplicação no seu negócio.", rota: "/estudos-caso" },
 ]
 
 // IMPORTANTE: esta fórmula existe em três lugares que precisam andar juntos —
