@@ -66,6 +66,12 @@ Deno.serve(async (req: Request) => {
       if (!isFull) return jsonResponse({ error: "só Admin ou Super Admin adicionam membros do time" }, 403)
       const nome = body.nome ? String(body.nome) : null
       const papel = body.papel ? String(body.papel) : "consultor"
+      // Carteira só existe para CS: é a string de clientes_entrada_new.sc que
+      // define o que a pessoa enxerga no CRM. Nasce vinculada para não repetir
+      // o caso da CS que abriu o Meu Dia e viu a carteira de outra.
+      const carteiraSc = papel === "cs" && body.carteira_sc
+        ? String(body.carteira_sc).trim() || null
+        : null
       // Valida o papel e impede escalonamento: papel privilegiado (is_full/is_super) só por Super Admin.
       const { data: papelRow } = await admin
         .from("papeis").select("is_full, is_super").eq("chave", papel).maybeSingle()
@@ -75,7 +81,9 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ error: "apenas Super Admin pode criar membro com papel privilegiado (Admin/Super Admin)" }, 403)
       }
       const { userId, link } = await criarLoginEGerarLink()
-      const { error: insErr } = await admin.from("mentores").upsert({ email, nome, papel }, { onConflict: "email" })
+      const { error: insErr } = await admin
+        .from("mentores")
+        .upsert({ email, nome, papel, carteira_sc: carteiraSc }, { onConflict: "email" })
       if (insErr) return jsonResponse({ error: `login criado mas falhou ao vincular: ${insErr.message}` }, 500)
       return jsonResponse({ message: "Membro do time provisionado.", user_id: userId, invite_link: link })
     }

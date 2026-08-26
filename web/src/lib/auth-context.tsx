@@ -24,6 +24,12 @@ interface AuthState {
   isSuperAdmin: boolean
   /** Chave do papel do membro do time (ex: 'super_admin', 'admin', 'cs'), ou null. */
   papel: string | null
+  /** Nome do membro do time (mentores.nome). Identidade da PESSOA logada — o CRM
+   * resolvia isso pelo papel e entregava a primeira CS da lista a todas elas. */
+  nomeMentor: string | null
+  /** Carteira de CS deste acesso (mentores.carteira_sc = clientes_entrada_new.sc).
+   * null = acesso sem carteira vinculada em Time & Permissões. */
+  carteiraSc: string | null
   /** Empresa (id_cliente) resolvida do usuário logado — vale para cliente legado
    * (= próprio auth.uid) e para 2º+ usuário vinculado à empresa. null para time. */
   idCliente: string | null
@@ -53,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [papel, setPapel] = useState<string | null>(null)
+  const [nomeMentor, setNomeMentor] = useState<string | null>(null)
+  const [carteiraSc, setCarteiraSc] = useState<string | null>(null)
   const [isFull, setIsFull] = useState(false)
   const [secoes, setSecoes] = useState<Set<string>>(new Set())
   const [idCliente, setIdCliente] = useState<string | null>(null)
@@ -108,6 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPapel(null)
       setIsFull(false)
       setSecoes(new Set())
+      setNomeMentor(null)
+      setCarteiraSc(null)
       setIdCliente(null)
       setPapelEmpresa(null)
       setEmpresas([])
@@ -124,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
       const [{ data: mentor }, { data: onboarding }] = await Promise.all([
         // papeis(...) embute o papel do membro (FK mentores.papel -> papeis.chave)
-        supabase.from("mentores").select("id, papel, papeis(is_full, is_super)").eq("email", email).maybeSingle(),
+        supabase.from("mentores").select("id, nome, carteira_sc, papel, papeis(is_full, is_super)").eq("email", email).maybeSingle(),
         supabase.from("cliente_onboarding").select("status, senha_definida").eq("id_cliente", id).maybeSingle(),
       ])
 
@@ -139,6 +149,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (admin) {
         const full = m.papeis?.is_full ?? false
         setPapel(m.papel ?? null)
+        setNomeMentor(m.nome ?? null)
+        setCarteiraSc(m.carteira_sc ?? null)
         setIsSuperAdmin(m.papeis?.is_super ?? false)
         setIsFull(full)
         if (full) {
@@ -153,6 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setEmpresas([])
       } else {
         setPapel(null)
+        setNomeMentor(null)
+        setCarteiraSc(null)
         setIsSuperAdmin(false)
         setIsFull(false)
         setSecoes(new Set())
@@ -207,7 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, isAdmin, isSuperAdmin, papel, idCliente, papelEmpresa, empresas, trocarEmpresa, secoes, can, needsPassword, needsOnboarding, loading: loading || (!!session?.user && roleResolvedFor !== session.user.id) }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, isAdmin, isSuperAdmin, papel, nomeMentor, carteiraSc, idCliente, papelEmpresa, empresas, trocarEmpresa, secoes, can, needsPassword, needsOnboarding, loading: loading || (!!session?.user && roleResolvedFor !== session.user.id) }}>
       {children}
     </AuthContext.Provider>
   )

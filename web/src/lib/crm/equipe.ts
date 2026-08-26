@@ -30,6 +30,14 @@ export interface MembroEquipe {
   papel: string
   role: Role
   cargo: string
+  /**
+   * Carteira operada por esta pessoa — a string exata de
+   * `clientes_entrada_new.sc` (mentores.carteira_sc), vinculada em Time &
+   * Permissões. É ela, não `nome`, que casa com o dado dos clientes: `nome` é
+   * rótulo de tela e pode ganhar sobrenome sem quebrar a carteira. Cai em
+   * `nome` enquanto o vínculo não foi feito.
+   */
+  carteira: string
 }
 
 const CARGO_POR_PAPEL: Record<string, string> = {
@@ -46,7 +54,7 @@ export async function fetchEquipe(): Promise<{
 }> {
   const [{ data: mentores, error: errM }, { data: configs, error: errC }] =
     await Promise.all([
-      supabase.from("mentores").select("id, nome, email, papel").order("nome"),
+      supabase.from("mentores").select("id, nome, email, papel, carteira_sc").order("nome"),
       supabase
         .from("crm_cs_config")
         .select("mentor_id, whatsapp_numero, whatsapp_grupo_id, whatsapp_automacao, whatsapp_horario_resumo"),
@@ -66,12 +74,13 @@ export async function fetchEquipe(): Promise<{
       papel: m.papel as string,
       role: roleDoPapel(m.papel),
       cargo: CARGO_POR_PAPEL[m.papel as string] ?? "Time",
+      carteira: (m.carteira_sc as string | null)?.trim() || (m.nome as string),
     }))
 
   const usuarios: UsuarioMeta[] = membros.map((m) => {
     const cfg = porMentor.get(m.mentor_id)
     return {
-      profile: m.nome,
+      profile: m.carteira,
       cargo: m.cargo,
       role: m.role,
       ativo: true,
@@ -100,8 +109,8 @@ export function useEquipe() {
   })
 
   if (q.data) {
-    const cs: CSName[] = q.data.membros.filter((m) => m.role === "cs").map((m) => m.nome)
-    const perfis: ProfileName[] = q.data.membros.map((m) => m.nome)
+    const cs: CSName[] = q.data.membros.filter((m) => m.role === "cs").map((m) => m.carteira)
+    const perfis: ProfileName[] = q.data.membros.map((m) => m.carteira)
     _setListasEquipe(cs, perfis)
     _setUsuarios(q.data.usuarios)
   }
@@ -124,7 +133,7 @@ export function useEquipe() {
 export function useCsList(): CSName[] {
   const { data } = useEquipe()
   return useMemo(
-    () => (data?.membros ?? []).filter((m) => m.role === "cs").map((m) => m.nome),
+    () => (data?.membros ?? []).filter((m) => m.role === "cs").map((m) => m.carteira),
     [data],
   )
 }
@@ -132,5 +141,5 @@ export function useCsList(): CSName[] {
 /** Todos os perfis (CS + coordenação), reativo. Mesmo racional de useCsList. */
 export function useProfileList(): ProfileName[] {
   const { data } = useEquipe()
-  return useMemo(() => (data?.membros ?? []).map((m) => m.nome), [data])
+  return useMemo(() => (data?.membros ?? []).map((m) => m.carteira), [data])
 }

@@ -24,7 +24,7 @@ import {
 
 interface Papel { chave: string; nome: string; descricao: string | null; is_full: boolean; is_super: boolean; ordem: number }
 interface Secao { chave: string; label: string; grupo: string; ordem: number; sensivel: boolean }
-interface Membro { id: number; nome: string | null; email: string | null; papel: string }
+interface Membro { id: number; nome: string | null; email: string | null; papel: string; carteira_sc: string | null }
 interface Override { mentor_id: number; secao_chave: string; permitir: boolean }
 
 export default function TimePermissoesPage() {
@@ -50,14 +50,22 @@ export default function TimePermissoesPage() {
   // Editar nome
   const [editNomeId, setEditNomeId] = useState<number | null>(null)
   const [editNomeVal, setEditNomeVal] = useState("")
+  // Carteiras de CS existentes (os `sc` gravados nos clientes) + "nova CS"
+  const [carteiras, setCarteiras] = useState<string[]>([])
+  const [novaCarteiraId, setNovaCarteiraId] = useState<number | null>(null)
+  const [novaCarteiraVal, setNovaCarteiraVal] = useState("")
+  const [addCarteira, setAddCarteira] = useState("")
 
   async function carregar() {
-    const [pRes, sRes, mRes, tRes, oRes] = await Promise.all([
+    const [pRes, sRes, mRes, tRes, oRes, cRes] = await Promise.all([
       supabase.from("papeis").select("*").order("ordem"),
       supabase.from("secoes_catalogo").select("*").order("ordem"),
-      supabase.from("mentores").select("id, nome, email, papel").order("nome"),
+      supabase.from("mentores").select("id, nome, email, papel, carteira_sc").order("nome"),
       supabase.from("papel_secoes").select("papel_chave, secao_chave"),
       supabase.from("mentor_secao_override").select("mentor_id, secao_chave, permitir"),
+      // Carteiras que já existem nos clientes: é contra este texto que o CRM
+      // casa a carteira da CS, então a lista sai do dado real, não de um enum.
+      supabase.from("clientes_entrada_new").select("sc"),
     ])
     setPapeis((pRes.data ?? []) as Papel[])
     setSecoes((sRes.data ?? []) as Secao[])
@@ -72,6 +80,13 @@ export default function TimePermissoesPage() {
       (ov[r.mentor_id] ??= {})[r.secao_chave] = r.permitir
     }
     setOverrides(ov)
+    const doBanco = ((cRes.data ?? []) as { sc: string | null }[])
+      .map((c) => (c.sc ?? "").trim())
+      .filter(Boolean)
+    const jaVinculadas = ((mRes.data ?? []) as Membro[])
+      .map((m) => (m.carteira_sc ?? "").trim())
+      .filter(Boolean)
+    setCarteiras([...new Set([...doBanco, ...jaVinculadas])].sort((a, b) => a.localeCompare(b, "pt-BR")))
     setLoading(false)
   }
 
@@ -98,7 +113,7 @@ export default function TimePermissoesPage() {
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/provisionar-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess.session?.access_token ?? ""}` },
-        body: JSON.stringify({ tipo: "membro", email: addEmail.trim(), nome: addNome.trim() || null, papel: addPapel, app_url: window.location.origin }),
+        body: JSON.stringify({ tipo: "membro", email: addEmail.trim(), nome: addNome.trim() || null, papel: addPapel, carteira_sc: addPapel === "cs" ? (addCarteira.trim() || null) : null, app_url: window.location.origin }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -109,7 +124,7 @@ export default function TimePermissoesPage() {
           : (bruto || "Erro ao provisionar membro.") })
       } else {
         setAddResult({ ok: true, msg: "Membro criado. Envie o link de acesso:", link: data.invite_link })
-        setAddEmail(""); setAddNome("")
+        setAddEmail(""); setAddNome(""); setAddCarteira("")
         await carregar()
       }
     } catch (e) {
@@ -124,6 +139,23 @@ export default function TimePermissoesPage() {
     const { error } = await supabase.from("mentores").update({ nome: novo }).eq("id", m.id)
     if (!error) setMembros((prev) => prev.map((x) => x.id === m.id ? { ...x, nome: novo } : x))
     setEditNomeId(null)
+    setSalvando(false)
+  }
+
+  // Vincula o acesso a uma carteira. É isso que faz o CRM da pessoa mostrar os
+  // clientes dela: sem vínculo o Meu Dia dela não sabe quem ela é.
+  async function salvarCarteira(m: Membro, valor: string | null) {
+    const novo = valor?.trim() || null
+    setSalvando(true)
+    const { error } = await supabase.from("mentores").update({ carteira_sc: novo }).eq("id", m.id)
+    if (!error) {
+      setMembros((prev) => prev.map((x) => x.id === m.id ? { ...x, carteira_sc: novo } : x))
+      if (novo && !carteiras.includes(novo)) {
+        setCarteiras((prev) => [...prev, novo].sort((a, b) => a.localeCompare(b, "pt-BR")))
+      }
+    }
+    setNovaCarteiraId(null)
+    setNovaCarteiraVal("")
     setSalvando(false)
   }
 
@@ -273,6 +305,29 @@ export default function TimePermissoesPage() {
                   {papeis.filter((p) => !p.is_super).map((p) => <option key={p.chave} value={p.chave}>{p.nome}</option>)}
                 </select>
               </div>
+              {addPapel === "cs" && (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <select
+                    value={carteiras.includes(addCarteira) || addCarteira === "" ? addCarteira : "__nova__"}
+                    onChange={(e) => setAddCarteira(e.target.value === "__nova__" ? " " : e.target.value)}
+                    className="rounded-lg bg-card border border-border px-3 py-2 text-[13px] font-semibold text-foreground"
+                  >
+                    <option value="">Carteira: escolher depois</option>
+                    {carteiras.map((c) => <option key={c} value={c}>{c}</option>)}
+                    <option value="__nova__">+ Nova CS…</option>
+                  </select>
+                  {!carteiras.includes(addCarteira) && addCarteira !== "" && (
+                    <input
+                      type="text" placeholder="Nome da nova CS" value={addCarteira.trim()} autoFocus
+                      onChange={(e) => setAddCarteira(e.target.value)}
+                      className="rounded-lg bg-card border border-primary/40 px-3 py-2 text-[13px] text-foreground"
+                    />
+                  )}
+                  <span className="text-[11px] text-muted-foreground self-center">
+                    A carteira é o nome que aparece nos clientes (campo CS) — é ela que define o que a pessoa vê no CRM.
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <button
                   onClick={adicionarMembro} disabled={salvando || !addEmail.trim()}
@@ -342,6 +397,50 @@ export default function TimePermissoesPage() {
                     >
                       {papeis.map((pp) => <option key={pp.chave} value={pp.chave}>{pp.nome}</option>)}
                     </select>
+
+                    {/* Carteira: só faz sentido para CS, que é quem tem clientes
+                        marcados no nome dela em clientes_entrada_new.sc. */}
+                    {m.papel === "cs" && (
+                      novaCarteiraId === m.id ? (
+                        <div className="inline-flex items-center gap-2">
+                          <input
+                            value={novaCarteiraVal}
+                            onChange={(e) => setNovaCarteiraVal(e.target.value)}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") salvarCarteira(m, novaCarteiraVal)
+                              if (e.key === "Escape") { setNovaCarteiraId(null); setNovaCarteiraVal("") }
+                            }}
+                            placeholder="Nome da nova CS"
+                            className="rounded-lg bg-card border border-primary/40 px-2 py-1.5 text-[12px] text-foreground"
+                          />
+                          <button onClick={() => salvarCarteira(m, novaCarteiraVal)} className="text-[11px] font-bold uppercase tracking-wider text-primary">Salvar</button>
+                          <button onClick={() => { setNovaCarteiraId(null); setNovaCarteiraVal("") }} className="text-[11px] uppercase tracking-wider text-muted-foreground">Cancelar</button>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-2">
+                          <select
+                            value={m.carteira_sc ?? ""}
+                            disabled={!isSuperAdmin || salvando}
+                            title="Qual CS é este acesso: define a carteira que ela vê no CRM"
+                            onChange={(e) => {
+                              if (e.target.value === "__nova__") { setNovaCarteiraId(m.id); setNovaCarteiraVal("") }
+                              else salvarCarteira(m, e.target.value || null)
+                            }}
+                            className={`rounded-lg bg-card border px-3 py-1.5 text-[12px] font-semibold text-foreground disabled:opacity-60 ${m.carteira_sc ? "border-border" : "border-amber-500/50"}`}
+                          >
+                            <option value="">Carteira: não vinculada</option>
+                            {carteiras.map((c) => <option key={c} value={c}>{c}</option>)}
+                            <option value="__nova__">+ Nova CS…</option>
+                          </select>
+                          {!m.carteira_sc && (
+                            <Badge className="rounded-md bg-amber-500/10 text-amber-500 border-transparent px-2 py-0.5 text-[11px] font-semibold">
+                              sem carteira
+                            </Badge>
+                          )}
+                        </div>
+                      )
+                    )}
 
                     <Badge className="rounded-md bg-muted/40 text-muted-foreground border-transparent px-2 py-0.5 text-[11px] font-semibold">
                       {p?.is_full ? "todas as seções" : `${nSecoes} seções`}

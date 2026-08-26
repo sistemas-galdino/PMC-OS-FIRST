@@ -50,8 +50,27 @@ const atual: { nome: string | null; role: Role | null; can: (s: string) => boole
   can: () => false,
 }
 
+/**
+ * Carteira de uma CS que ainda não foi vinculada em Time & Permissões.
+ *
+ * Precisa ser uma string que não casa com nenhum `clientes_entrada_new.sc`, e
+ * NÃO pode ser `null`: null significa "todas as CSs" para as telas, ou seja,
+ * uma CS sem vínculo passaria a ver a base inteira — o oposto do desejado.
+ */
+export const SEM_CARTEIRA = "__sem_carteira__"
+
+const CHAVE_VISAO = "pmc_crm_visao_cs"
+
 // "Vendo como": só a coordenação troca. null = visão consolidada do time.
-let visaoCs: CSName | null = null
+// Persistido porque a coordenação navega entre as abas do CRM e recarrega a
+// página; antes a escolha era variável de módulo e sumia no refresh.
+let visaoCs: CSName | null = (() => {
+  try {
+    return (localStorage.getItem(CHAVE_VISAO) as CSName | null) || null
+  } catch {
+    return null
+  }
+})()
 const listeners = new Set<() => void>()
 function emitir() {
   listeners.forEach((l) => l())
@@ -59,6 +78,12 @@ function emitir() {
 
 export function setVisaoCs(cs: CSName | null) {
   visaoCs = cs
+  try {
+    if (cs) localStorage.setItem(CHAVE_VISAO, cs)
+    else localStorage.removeItem(CHAVE_VISAO)
+  } catch {
+    // Navegador sem storage: a visão vale só para esta navegação.
+  }
   emitir()
 }
 export function getVisaoCs(): CSName | null {
@@ -70,13 +95,17 @@ export function getVisaoCs(): CSName | null {
  * (o CrmLayout faz isso) antes de qualquer componente que use getRole/canSee.
  */
 export function useSessaoCrm() {
-  const { papel, can } = useAuth()
+  const { papel, can, nomeMentor, carteiraSc } = useAuth()
   const equipe = useEquipe()
   const [, forcar] = useState(0)
 
-  const nome =
-    equipe.data?.membros.find((m) => m.papel === papel && m.nome)?.nome ?? null
+  // Identidade vem da linha de `mentores` do próprio e-mail logado (resolvida no
+  // AuthContext), não de um find por papel: com mais de uma CS, o find devolvia
+  // sempre a primeira em ordem alfabética e toda CS via a carteira dela.
+  const nome = nomeMentor
   const role = roleDoPapel(papel)
+  // CS sem carteira vinculada não cai na carteira de ninguém.
+  const minhaCarteira = carteiraSc ?? SEM_CARTEIRA
 
   atual.role = role
   atual.can = can
@@ -96,7 +125,9 @@ export function useSessaoCrm() {
     /** Coordenação vê o time inteiro e pode trocar a visão. */
     isCoordenacao: role === "admin" || role === "strategic",
     /** CS efetivamente em foco: a escolhida (coordenação) ou a própria. */
-    csEmFoco: role === "cs" ? nome : visaoCs,
+    csEmFoco: role === "cs" ? minhaCarteira : visaoCs,
+    /** CS logada cujo acesso ainda não foi vinculado a uma carteira. */
+    semCarteira: role === "cs" && !carteiraSc,
     setVisaoCs,
     carregando: equipe.isLoading,
   }
