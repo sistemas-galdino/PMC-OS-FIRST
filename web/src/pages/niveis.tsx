@@ -60,14 +60,14 @@ export default function NiveisPage({ session, clientId }: Props) {
   const cid = clientId || session?.user?.id
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
-  const [sinaisN, setSinaisN] = useState<SinaisNivel>({ etapas: 0, fases: 0, mapeamento: 0, reunioes: 0, vitorias: 0, pulsos: 0, convites: 0, candidatos: 0, guardiaoContratado: 0, tarefas: 0, diasFechados: 0, semanasPerfeitas: 0 })
+  const [sinaisN, setSinaisN] = useState<SinaisNivel>({ etapas: 0, fases: 0, mapeamento: 0, reunioes: 0, vitorias: 0, pulsos: 0, convites: 0, candidatos: 0, guardiaoContratado: 0, tarefas: 0, diasFechados: 0, semanasPerfeitas: 0, estudosAssistidos: 0, estudosCurtidos: 0, estudosComentados: 0 })
 
   useEffect(() => {
     if (!cid) return
     async function carregar() {
       try {
       const cnt = (t: string, col = "id") => supabase.from(t).select(col, { count: "exact", head: true }).eq("id_cliente", cid)
-      const [etapasRes, g, a, ga, cp, si, ec, vit, rg, rm, rb, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk, diasRes, pulsosRes] = await Promise.all([
+      const [etapasRes, g, a, ga, cp, si, ec, vit, rg, rm, rb, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk, diasRes, pulsosRes, ecAssist, ecCurt, ecComent] = await Promise.all([
         supabase.from("cliente_etapas_metodo").select("etapa, concluida").eq("id_cliente", cid),
         cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
         cnt("metodo_copilotos"), cnt("metodo_sistemas"), cnt("metodo_economias"),
@@ -87,6 +87,10 @@ export default function NiveisPage({ session, clientId }: Props) {
         // Ritual diário: as datas fechadas (a RLS já escopa) — agregamos aqui.
         supabase.from("metodo_dia_fechamentos").select("data").eq("id_cliente", cid).not("fechado_em", "is", null),
         cnt("pulso_semanal"),
+        // Estudos de Caso: assistidos (1x por estudo), curtidos e comentados
+        cnt("conhecimento_estudos_caso_views"),
+        cnt("conhecimento_estudos_caso_likes"),
+        supabase.from("conhecimento_estudos_caso_comentarios").select("id", { count: "exact", head: true }).eq("id_autor", cid),
       ])
 
       const manual = new Set<number>((etapasRes.data ?? []).filter((r: any) => r.concluida).map((r: any) => r.etapa))
@@ -115,6 +119,9 @@ export default function NiveisPage({ session, clientId }: Props) {
         tarefas: tOk.count ?? 0,
         diasFechados: datas.length,
         semanasPerfeitas: contarSemanasPerfeitas(datas),
+        estudosAssistidos: ecAssist.count ?? 0,
+        estudosCurtidos: ecCurt.count ?? 0,
+        estudosComentados: ecComent.count ?? 0,
       })
       } catch (e) {
         console.error(e)

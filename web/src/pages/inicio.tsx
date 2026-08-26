@@ -160,6 +160,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
   const [mapeamentoCount, setMapeamentoCount] = useState(0)
   const [guardOps, setGuardOps] = useState({ convites: 0, candidatos: 0, contratado: 0, tarefas: 0, dias: 0, semanas: 0 })
   const [pulsosCount, setPulsosCount] = useState(0)
+  const [estudosEng, setEstudosEng] = useState({ assistidos: 0, curtidos: 0, comentados: 0 })
   const [valorAno, setValorAno] = useState(0) // IAVS — mesmo cálculo da Fase 6/Relatório
   const [metas, setMetas] = useState({ faturamento_anual: 0, meta_2026: 0, receita_mensal: 0, colaboradores: 0 })
   const [conselho, setConselho] = useState(() => conselhoAleatorio())
@@ -269,7 +270,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
       // Mapeamento (id_cliente porque cliente_objetivos_programa não tem coluna id)
       const cntMap = (tabela: string) =>
         supabase.from(tabela).select("id_cliente", { count: "exact", head: true }).eq("id_cliente", resolvedClientId)
-      const [g, a, ga, cp, si, ec, vit, ecoRes, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk, diasRes, pulsosRes] = await Promise.all([
+      const [g, a, ga, cp, si, ec, vit, ecoRes, mMetas, mProd, mCanais, mObj, gConv, gCand, gContr, tOk, diasRes, pulsosRes, ecAssist, ecCurt, ecComent] = await Promise.all([
         cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
         cnt("metodo_copilotos"), cnt("metodo_sistemas"), cnt("metodo_economias"),
         cnt("cliente_vitorias"),
@@ -286,6 +287,10 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
         supabase.from("metodo_tarefas").select("id", { count: "exact", head: true }).eq("id_cliente", resolvedClientId).eq("status", "concluido"),
         supabase.from("metodo_dia_fechamentos").select("data").eq("id_cliente", resolvedClientId).not("fechado_em", "is", null),
         cnt("pulso_semanal"),
+        // Estudos de Caso: assistidos (1x por estudo), curtidos e comentados
+        cnt("conhecimento_estudos_caso_views"),
+        cnt("conhecimento_estudos_caso_likes"),
+        supabase.from("conhecimento_estudos_caso_comentarios").select("id", { count: "exact", head: true }).eq("id_autor", resolvedClientId),
       ])
       if (!cancelled) {
         const s = new Set<SinalEtapa>()
@@ -306,6 +311,11 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
           convites: gConv.count ?? 0, candidatos: gCand.count ?? 0,
           contratado: gContr.count ?? 0, tarefas: tOk.count ?? 0,
           dias: diasFech.length, semanas: contarSemanasPerfeitas(diasFech),
+        })
+        setEstudosEng({
+          assistidos: ecAssist.count ?? 0,
+          curtidos: ecCurt.count ?? 0,
+          comentados: ecComent.count ?? 0,
         })
         // Valor gerado no ano (IAVS) — mesma fórmula da Fase 6/Relatório.
         const nEco = (x: unknown) => Number(x || 0)
@@ -365,7 +375,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
   // Nível PMC — gamificação unificada (jornada + fases + reuniões + vitórias).
   const totalReunioes = reunioesCount.galdino + reunioesCount.consultores + reunioesCount.blackcrm
   const fasesComDados = [...sinais].filter((s) => s !== "reunioes").length
-  const nivel = calcularNivel({ etapas: totalConcluidas, fases: fasesComDados, mapeamento: mapeamentoCount, reunioes: totalReunioes, vitorias: vitoriasCount, pulsos: pulsosCount, convites: guardOps.convites, candidatos: guardOps.candidatos, guardiaoContratado: guardOps.contratado, tarefas: guardOps.tarefas, diasFechados: guardOps.dias, semanasPerfeitas: guardOps.semanas })
+  const nivel = calcularNivel({ etapas: totalConcluidas, fases: fasesComDados, mapeamento: mapeamentoCount, reunioes: totalReunioes, vitorias: vitoriasCount, pulsos: pulsosCount, convites: guardOps.convites, candidatos: guardOps.candidatos, guardiaoContratado: guardOps.contratado, tarefas: guardOps.tarefas, diasFechados: guardOps.dias, semanasPerfeitas: guardOps.semanas, estudosAssistidos: estudosEng.assistidos, estudosCurtidos: estudosEng.curtidos, estudosComentados: estudosEng.comentados })
 
   // Splash de boas-vindas: se os Pontos MC subiram desde a última visita (deste
   // aparelho), celebra a diferença — e, se cruzou de nível, mostra o level-up.

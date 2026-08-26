@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react"
+// Links Importantes — guia de ferramentas e acessos do programa.
+// v2: busca + filtro por categoria, favoritos ("Meus atalhos"), recomendação
+// pela etapa do Método, descrição/preço por recurso, favicon real (fallback
+// emoji) e contador de cliques (registrado via RPC; total visível só p/ admin).
+import { useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -25,10 +30,14 @@ import {
   Edit3Icon as Edit3,
   ExternalLinkIcon as ExternalLink,
   BookOpenIcon as BookOpen,
+  SearchIcon as Search,
+  StarIcon as Star,
+  TrendingUpIcon as TrendingUp,
 } from "@/components/ui/icons"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 import { PageHeader } from "@/components/layout/page-header"
+import { ETAPAS_METODO, type EtapaMetodo, type SinalEtapa } from "@/data/etapas-metodo"
 
 interface Recurso {
   id: string
@@ -39,6 +48,11 @@ interface Recurso {
   ordem: number
   ativo: boolean
   criado_em: string
+  descricao: string | null
+  preco: string | null
+  etapas: number[]
+  cliques: number
+  favorito: boolean
 }
 
 interface RecursosPageProps {
@@ -47,25 +61,75 @@ interface RecursosPageProps {
   forceAdmin?: boolean
 }
 
+interface FormState {
+  titulo: string
+  url: string
+  icone: string
+  categoria: string
+  ordem: number
+  ativo: boolean
+  descricao: string
+  preco: string
+  etapas: number[]
+}
+
+const EMPTY_FORM: FormState = { titulo: '', url: '', icone: '🔗', categoria: '', ordem: 0, ativo: true, descricao: '', preco: '', etapas: [] }
+
+const PRECOS: Record<string, { label: string; classe: string }> = {
+  gratis:   { label: "Grátis",   classe: "border-primary/40 bg-primary/10 text-primary" },
+  freemium: { label: "Freemium", classe: "border-sky-500/40 bg-sky-500/10 text-sky-400" },
+  pago:     { label: "Pago",     classe: "border-amber-500/40 bg-amber-500/10 text-amber-400" },
+}
+
+// Rótulos curtos das etapas do Método (pro formulário admin e chips).
+const ETAPAS_CURTAS: Record<number, string> = {
+  1: "Guardião", 2: "Inteligência", 3: "Gargalos", 4: "Engenharia", 5: "Co-Pilotos", 6: "Sistemas", 7: "Arsenal",
+}
+
+// Favicon oficial do site (só links externos); emoji continua como fallback.
+function faviconDe(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null
+    return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=64`
+  } catch {
+    return null
+  }
+}
+
+function IconeRecurso({ recurso }: { recurso: Recurso }) {
+  const [erro, setErro] = useState(false)
+  const favicon = faviconDe(recurso.url)
+  if (!favicon || erro) return <span className="text-3xl shrink-0">{recurso.icone}</span>
+  return (
+    <span className="flex items-center justify-center size-10 rounded-xl bg-muted/20 border border-border shrink-0 overflow-hidden">
+      <img src={favicon} alt="" className="size-6" onError={() => setErro(true)} />
+    </span>
+  )
+}
+
 export default function RecursosPage({ session, clientId, forceAdmin }: RecursosPageProps) {
   const { isAdmin: isAdminCtx } = useAuth()
   const isAdmin = forceAdmin ?? isAdminCtx
-  const cid = clientId || session?.user?.id
+  const uid = session?.user?.id            // dono dos favoritos (auth)
+  const cid = clientId || session?.user?.id // dono da jornada (etapa recomendada)
   const [recursos, setRecursos] = useState<Recurso[]>([])
   const [loading, setLoading] = useState(true)
   const [showSheet, setShowSheet] = useState(false)
   const [editingRecurso, setEditingRecurso] = useState<Recurso | null>(null)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ titulo: '', url: '', icone: '🔗', categoria: '', ordem: 0, ativo: true })
+  const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [quickLinks, setQuickLinks] = useState<Record<string, string>>({})
   const [clientSc, setClientSc] = useState<string | null>(null)
+  const [busca, setBusca] = useState("")
+  const [categoriaAtiva, setCategoriaAtiva] = useState("todos")
+  const [minhaEtapa, setMinhaEtapa] = useState<EtapaMetodo | null>(null)
 
   useEffect(() => {
     async function init() {
-      // Fetch recursos
       let query = supabase
         .from('recursos_programa')
-        .select('*')
+        .select('*, cliques:recursos_cliques(count)')
         .order('categoria', { ascending: true })
         .order('ordem', { ascending: true })
 
@@ -73,14 +137,25 @@ export default function RecursosPage({ session, clientId, forceAdmin }: Recursos
         query = query.eq('ativo', true)
       }
 
-      const { data: recursos } = await query
-      if (recursos) setRecursos(recursos)
+      const [{ data: recs }, favRes] = await Promise.all([
+        query,
+        uid
+          ? supabase.from('recursos_favoritos').select('id_recurso').eq('id_cliente', uid)
+          : Promise.resolve({ data: [] as { id_recurso: string }[] }),
+      ])
+      const favoritos = new Set((favRes.data ?? []).map((f: { id_recurso: string }) => f.id_recurso))
+      setRecursos((recs ?? []).map((r: any) => ({
+        ...r,
+        etapas: Array.isArray(r.etapas) ? r.etapas : [],
+        cliques: r.cliques?.[0]?.count ?? 0,
+        favorito: favoritos.has(r.id),
+      })))
       setLoading(false)
     }
 
     init()
 
-    // Fetch configurable links and client SC for non-admin
+    // Links configuráveis + SC do cliente (Acesso Rápido)
     if (cid) {
       supabase
         .from('configuracoes_links')
@@ -104,9 +179,56 @@ export default function RecursosPage({ session, clientId, forceAdmin }: Recursos
     }
   }, [session, isAdmin])
 
+  // Etapa atual da jornada (só cliente): primeira etapa sem conclusão manual
+  // nem sinal automático — mesma regra da Minha Jornada.
+  useEffect(() => {
+    if (isAdmin || !cid) return
+    let cancelled = false
+    async function etapaAtual() {
+      const cnt = (t: string, col = "id") => supabase.from(t).select(col, { count: "exact", head: true }).eq("id_cliente", cid)
+      const [etapasRes, g, a, ga, cp, si, ec, rg, rm, rb] = await Promise.all([
+        supabase.from("cliente_etapas_metodo").select("etapa, concluida").eq("id_cliente", cid),
+        cnt("metodo_guardioes"), cnt("metodo_areas"), cnt("metodo_gargalos"),
+        cnt("metodo_copilotos"), cnt("metodo_sistemas"), cnt("metodo_economias"),
+        cnt("reunioes_galdino", "id_unico"), cnt("reunioes_mentoria_new", "id_unico"), cnt("reunioes_blackcrm", "id_unico"),
+      ])
+      if (cancelled) return
+      const manual = new Set<number>((etapasRes.data ?? []).filter((r: any) => r.concluida).map((r: any) => r.etapa))
+      const sinais = new Set<SinalEtapa>()
+      if ((g.count ?? 0) > 0) sinais.add("guardiao")
+      if ((a.count ?? 0) > 0) sinais.add("areas")
+      if ((ga.count ?? 0) > 0) sinais.add("gargalos")
+      if ((cp.count ?? 0) > 0) sinais.add("copilotos")
+      if ((si.count ?? 0) > 0) sinais.add("sistemas")
+      if ((ec.count ?? 0) > 0) sinais.add("economias")
+      if (((rg.count ?? 0) + (rm.count ?? 0) + (rb.count ?? 0)) > 0) sinais.add("reunioes")
+      const atual = ETAPAS_METODO.find(e => !manual.has(e.numero) && !sinais.has(e.sinal)) ?? null
+      setMinhaEtapa(atual)
+    }
+    etapaAtual()
+    return () => { cancelled = true }
+  }, [isAdmin, cid])
+
+  function registrarClique(r: Recurso) {
+    // Fire-and-forget: não atrasa a navegação do cliente.
+    supabase.rpc('recurso_registrar_clique', { p_recurso: r.id }).then(() => {})
+    if (isAdmin) setRecursos(prev => prev.map(x => (x.id === r.id ? { ...x, cliques: x.cliques + 1 } : x)))
+  }
+
+  async function toggleFavorito(r: Recurso) {
+    if (!uid) return
+    const marcar = !r.favorito
+    setRecursos(prev => prev.map(x => (x.id === r.id ? { ...x, favorito: marcar } : x)))
+    if (marcar) {
+      await supabase.from('recursos_favoritos').insert({ id_recurso: r.id, id_cliente: uid })
+    } else {
+      await supabase.from('recursos_favoritos').delete().eq('id_recurso', r.id).eq('id_cliente', uid)
+    }
+  }
+
   function openNew() {
     setEditingRecurso(null)
-    setForm({ titulo: '', url: '', icone: '🔗', categoria: '', ordem: 0, ativo: true })
+    setForm(EMPTY_FORM)
     setShowSheet(true)
   }
 
@@ -119,6 +241,9 @@ export default function RecursosPage({ session, clientId, forceAdmin }: Recursos
       categoria: recurso.categoria,
       ordem: recurso.ordem,
       ativo: recurso.ativo,
+      descricao: recurso.descricao ?? '',
+      preco: recurso.preco ?? '',
+      etapas: recurso.etapas,
     })
     setShowSheet(true)
   }
@@ -129,30 +254,38 @@ export default function RecursosPage({ session, clientId, forceAdmin }: Recursos
   }
 
   async function handleSave() {
-    console.log('handleSave called, form:', form)
     setSaving(true)
     try {
+      const payload = {
+        titulo: form.titulo,
+        url: form.url,
+        icone: form.icone,
+        categoria: form.categoria,
+        ordem: form.ordem,
+        ativo: form.ativo,
+        descricao: form.descricao.trim() || null,
+        preco: form.preco || null,
+        etapas: form.etapas,
+      }
       if (editingRecurso) {
         const { data, error } = await supabase
           .from('recursos_programa')
-          .update(form)
+          .update(payload)
           .eq('id', editingRecurso.id)
           .select()
           .single()
-        console.log('update result:', { data, error })
         if (!error && data) {
-          setRecursos(prev => prev.map(r => r.id === editingRecurso.id ? data : r))
+          setRecursos(prev => prev.map(r => r.id === editingRecurso.id ? { ...r, ...data, etapas: data.etapas ?? [] } : r))
           setShowSheet(false)
         }
       } else {
         const { data, error } = await supabase
           .from('recursos_programa')
-          .insert([form])
+          .insert([payload])
           .select()
           .single()
-        console.log('insert result:', { data, error })
         if (!error && data) {
-          setRecursos(prev => [...prev, data])
+          setRecursos(prev => [...prev, { ...data, etapas: data.etapas ?? [], cliques: 0, favorito: false }])
           setShowSheet(false)
         }
       }
@@ -162,7 +295,27 @@ export default function RecursosPage({ session, clientId, forceAdmin }: Recursos
     setSaving(false)
   }
 
-  const grouped = recursos.reduce<Record<string, Recurso[]>>((acc, r) => {
+  // ---- filtros -------------------------------------------------------------
+  const categorias = useMemo(() => {
+    const contagem = new Map<string, number>()
+    recursos.forEach(r => contagem.set(r.categoria, (contagem.get(r.categoria) ?? 0) + 1))
+    return [...contagem.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [recursos])
+
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase()
+    return recursos.filter(r => {
+      if (categoriaAtiva !== "todos" && r.categoria !== categoriaAtiva) return false
+      if (!q) return true
+      return [r.titulo, r.descricao ?? "", r.categoria].some(s => s.toLowerCase().includes(q))
+    })
+  }, [recursos, busca, categoriaAtiva])
+
+  const semFiltro = busca.trim() === "" && categoriaAtiva === "todos"
+  const meusAtalhos = recursos.filter(r => r.favorito)
+  const recomendados = minhaEtapa ? recursos.filter(r => r.etapas.includes(minhaEtapa.numero)) : []
+
+  const grouped = filtrados.reduce<Record<string, Recurso[]>>((acc, r) => {
     const key = r.categoria
     if (!acc[key]) acc[key] = []
     acc[key].push(r)
@@ -173,13 +326,92 @@ export default function RecursosPage({ session, clientId, forceAdmin }: Recursos
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: { staggerChildren: 0.1 }
+      transition: { staggerChildren: 0.06 }
     }
   }
 
   const item = {
     hidden: { y: 20, opacity: 0 },
     show: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" as const } }
+  }
+
+  function CardRecurso({ recurso }: { recurso: Recurso }) {
+    const precoInfo = recurso.preco ? PRECOS[recurso.preco] : null
+    return (
+      <a
+        href={recurso.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => registrarClique(recurso)}
+        className={`block h-full ${!recurso.ativo ? 'opacity-50' : ''}`}
+      >
+        <Card className="group h-full overflow-hidden hover:border-primary/30 transition-all duration-300 cursor-pointer">
+          <CardContent className="flex items-start justify-between gap-3 p-5">
+            <div className="flex items-start gap-4 min-w-0">
+              <IconeRecurso recurso={recurso} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-base font-bold tracking-tight text-foreground leading-tight">{recurso.titulo}</span>
+                  {precoInfo && (
+                    <span className={`rounded-md border px-1.5 py-0 text-[9px] font-bold uppercase tracking-wider ${precoInfo.classe}`}>
+                      {precoInfo.label}
+                    </span>
+                  )}
+                </div>
+                {recurso.descricao && (
+                  <p className="text-[12px] font-medium text-muted-foreground leading-snug mt-1 line-clamp-2">{recurso.descricao}</p>
+                )}
+                {isAdmin && recurso.cliques > 0 && (
+                  <p className="text-[10px] font-bold text-muted-foreground/70 mt-1.5 flex items-center gap-1">
+                    <TrendingUp className="size-3" />
+                    {recurso.cliques} {recurso.cliques === 1 ? 'clique' : 'cliques'}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {uid && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={recurso.favorito ? "Remover dos atalhos" : "Adicionar aos atalhos"}
+                  aria-pressed={recurso.favorito}
+                  className="size-8 rounded-lg hover:bg-muted/50"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorito(recurso) }}
+                >
+                  <Star className={`size-4 ${recurso.favorito ? 'text-primary [&_path]:fill-current' : 'text-muted-foreground'}`} />
+                </Button>
+              )}
+              {isAdmin ? (
+                <>
+                  {!recurso.ativo && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Oculto</span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 rounded-lg hover:bg-muted/50"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEdit(recurso) }}
+                  >
+                    <Edit3 className="size-3.5 text-muted-foreground" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 rounded-lg hover:bg-destructive/10 hover:text-destructive"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(recurso) }}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </>
+              ) : (
+                <ExternalLink className="size-4 text-muted-foreground group-hover:text-primary transition-colors mt-1" />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </a>
+    )
   }
 
   if (loading) {
@@ -201,7 +433,63 @@ export default function RecursosPage({ session, clientId, forceAdmin }: Recursos
         )}
       />
 
-      {Object.keys(quickLinks).length > 0 && (
+      {/* Busca + filtro por categoria */}
+      <div className="space-y-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            className="h-11 rounded-xl pl-10"
+            placeholder="Buscar ferramenta ou acesso..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <ChipCategoria ativo={categoriaAtiva === "todos"} onClick={() => setCategoriaAtiva("todos")}>
+            Todos <span className="opacity-60">· {recursos.length}</span>
+          </ChipCategoria>
+          {categorias.map(([nome, qtd]) => (
+            <ChipCategoria key={nome} ativo={categoriaAtiva === nome} onClick={() => setCategoriaAtiva(nome)}>
+              {nome} <span className="opacity-60">· {qtd}</span>
+            </ChipCategoria>
+          ))}
+        </div>
+      </div>
+
+      {/* Meus atalhos (favoritos) */}
+      {semFiltro && meusAtalhos.length > 0 && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <Star className="size-5 text-primary [&_path]:fill-current" />
+            Meus Atalhos
+          </h2>
+          <motion.div variants={container} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2">
+            {meusAtalhos.map(r => (
+              <motion.div key={r.id} variants={item}><CardRecurso recurso={r} /></motion.div>
+            ))}
+          </motion.div>
+        </div>
+      )}
+
+      {/* Recomendado pela etapa do Método */}
+      {semFiltro && minhaEtapa && recomendados.length > 0 && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-foreground">Recomendado para a sua etapa</h2>
+            <p className="text-[13px] font-medium text-muted-foreground mt-1">
+              Você está na <span className="text-primary font-bold">Etapa {minhaEtapa.numero} — {minhaEtapa.titulo}</span>. Estas ferramentas aceleram exatamente esse trabalho.
+            </p>
+          </div>
+          <motion.div variants={container} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2">
+            {recomendados.map(r => (
+              <motion.div key={r.id} variants={item}><CardRecurso recurso={r} /></motion.div>
+            ))}
+          </motion.div>
+        </div>
+      )}
+
+      {/* Acesso rápido (links do programa) */}
+      {semFiltro && Object.keys(quickLinks).length > 0 && (
         <div className="space-y-6">
           <h2 className="text-xl font-bold tracking-tight text-foreground">Acesso Rápido</h2>
           <motion.div
@@ -238,7 +526,17 @@ export default function RecursosPage({ session, clientId, forceAdmin }: Recursos
           <div className="bg-muted/20 p-6 rounded-2xl border border-border mb-6">
             <BookOpen className="size-10 text-muted-foreground" />
           </div>
-          <p className="text-muted-foreground font-medium">Nenhum recurso disponível no momento.</p>
+          <p className="text-muted-foreground font-medium">
+            {recursos.length === 0 ? 'Nenhum recurso disponível no momento.' : 'Nada encontrado com esse filtro.'}
+          </p>
+          {recursos.length > 0 && (
+            <button
+              onClick={() => { setBusca(""); setCategoriaAtiva("todos") }}
+              className="text-[13px] font-bold text-primary hover:underline mt-2"
+            >
+              Limpar busca e filtros
+            </button>
+          )}
         </div>
       )}
 
@@ -252,51 +550,7 @@ export default function RecursosPage({ session, clientId, forceAdmin }: Recursos
             className="grid gap-4 md:grid-cols-2"
           >
             {items.map(recurso => (
-              <motion.div key={recurso.id} variants={item}>
-                <a
-                  href={recurso.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block ${!recurso.ativo ? 'opacity-50' : ''}`}
-                >
-                  <Card className="group overflow-hidden hover:border-primary/30 transition-all duration-300 cursor-pointer">
-                    <CardContent className="flex items-center justify-between p-5">
-                      <div className="flex items-center gap-4">
-                        <span className="text-3xl">{recurso.icone}</span>
-                        <span className="text-lg font-bold tracking-tight text-foreground">{recurso.titulo}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isAdmin && (
-                          <>
-                            {!recurso.ativo && (
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-2">Oculto</span>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 rounded-lg hover:bg-muted/50"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEdit(recurso) }}
-                            >
-                              <Edit3 className="size-3.5 text-muted-foreground" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 rounded-lg hover:bg-destructive/10 hover:text-destructive"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(recurso) }}
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          </>
-                        )}
-                        {!isAdmin && (
-                          <ExternalLink className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </a>
-              </motion.div>
+              <motion.div key={recurso.id} variants={item}><CardRecurso recurso={recurso} /></motion.div>
             ))}
           </motion.div>
         </div>
@@ -329,7 +583,56 @@ export default function RecursosPage({ session, clientId, forceAdmin }: Recursos
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ícone (Emoji)</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Descrição (1 linha)</Label>
+              <Textarea
+                className="rounded-xl min-h-16 text-[13px] resize-none"
+                placeholder="O que essa ferramenta resolve pro cliente?"
+                value={form.descricao}
+                onChange={(e) => setForm(prev => ({ ...prev, descricao: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Preço</Label>
+              <Select value={form.preco || 'nenhum'} onValueChange={(v) => setForm(prev => ({ ...prev, preco: v === 'nenhum' ? '' : v }))}>
+                <SelectTrigger className="h-11 rounded-xl border-border bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nenhum">Sem etiqueta</SelectItem>
+                  <SelectItem value="gratis">Grátis</SelectItem>
+                  <SelectItem value="freemium">Freemium</SelectItem>
+                  <SelectItem value="pago">Pago</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Etapas do Método (recomendação)</Label>
+              <div className="flex items-center gap-2 flex-wrap">
+                {ETAPAS_METODO.map(e => {
+                  const ativo = form.etapas.includes(e.numero)
+                  return (
+                    <button
+                      key={e.numero}
+                      type="button"
+                      aria-pressed={ativo}
+                      onClick={() => setForm(prev => ({
+                        ...prev,
+                        etapas: ativo ? prev.etapas.filter(n => n !== e.numero) : [...prev.etapas, e.numero].sort((x, y) => x - y),
+                      }))}
+                      className={`rounded-lg border px-2.5 py-1 text-[11px] font-bold tracking-tight transition-colors ${
+                        ativo
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                      }`}
+                    >
+                      {e.numero} · {ETAPAS_CURTAS[e.numero]}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ícone (Emoji — fallback do favicon)</Label>
               <div className="flex items-center gap-3">
                 <Input
                   className="h-11 rounded-xl flex-1"
@@ -385,5 +688,23 @@ export default function RecursosPage({ session, clientId, forceAdmin }: Recursos
         </SheetContent>
       </Sheet>
     </div>
+  )
+}
+
+// Chip de filtro por categoria — mesmo visual dos filtros de Estudos de Caso.
+function ChipCategoria({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={ativo}
+      className={`rounded-xl border px-3.5 py-1.5 text-[12px] font-bold tracking-tight transition-colors ${
+        ativo
+          ? "border-primary/50 bg-primary/10 text-primary"
+          : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
   )
 }
