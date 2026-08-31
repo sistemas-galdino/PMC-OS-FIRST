@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { celebrarPontosMC } from "@/components/pontos-mc-splash"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -118,6 +119,7 @@ export default function ObjetivosTab({ session, clientId }: Props) {
     const primeiraGravacao = Object.keys(records).length === 0
     const current = records[key] || { objetivo_key: key, prioridade: 'nao_prioridade' as Prioridade, observacoes: '' }
     const next: ObjetivoRecord = { ...current, ...patch }
+    const anterior = records[key]
     setRecords(prev => ({ ...prev, [key]: next }))
     setSavingKey(key)
     const { error } = await supabase
@@ -131,8 +133,20 @@ export default function ObjetivosTab({ session, clientId }: Props) {
         },
         { onConflict: 'id_cliente,objetivo_key' }
       )
-    if (!error && primeiraGravacao && !clientId) celebrarPontosMC(25, 'Mapeamento · Objetivos preenchido')
     setSavingKey(null)
+    // A tela é otimista: já pintou o valor novo antes de saber se gravou. Se
+    // falhou, desfaz — senão o dado só "some" no próximo carregamento.
+    if (error) {
+      setRecords(prev => {
+        const copia = { ...prev }
+        if (anterior) copia[key] = anterior
+        else delete copia[key]
+        return copia
+      })
+      toast.error('Não foi possível salvar: ' + error.message)
+      return
+    }
+    if (primeiraGravacao && !clientId) celebrarPontosMC(25, 'Mapeamento · Objetivos preenchido')
   }
 
   function getPrioridade(key: string): Prioridade {

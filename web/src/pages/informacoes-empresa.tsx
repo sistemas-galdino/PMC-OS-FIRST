@@ -121,10 +121,15 @@ export default function InformacoesEmpresaPage({ session, clientId: clientIdProp
       const em = new Date().toISOString()
       setAnalise(data as AnaliseIA)
       setAnaliseEm(em)
-      await supabase
+      // A análise já está na tela; se a gravação falhar (RLS/FK), avisa em vez de
+      // deixar o cliente achar que ficou salva — ao recarregar ela não voltaria.
+      const { error: analiseErr } = await supabase
         .from("cliente_informacoes_empresa")
         .update({ analise_ia: data, analise_ia_em: em })
         .eq("id_cliente", clientId)
+      if (analiseErr) {
+        setAnaliseErro("A análise foi gerada, mas não consegui salvar: " + analiseErr.message)
+      }
     } catch (e: any) {
       // Limpa prefixos técnicos ("AI_ERROR:", "RATE_LIMIT:" etc.) da mensagem.
       const msg = (e.message || "Não consegui analisar o negócio agora.").replace(/^[A-Z_]+:\s*/, "")

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { celebrarPontosMC } from "@/components/pontos-mc-splash"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -110,7 +111,11 @@ export default function ProdutosView({ session, clientId }: ProdutosViewProps) {
   }
 
   async function handleDelete(product: Product) {
-    await supabase.from('cliente_produtos').delete().eq('id', product.id)
+    const { error } = await supabase.from('cliente_produtos').delete().eq('id', product.id)
+    if (error) {
+      toast.error('Não foi possível excluir: ' + error.message)
+      return
+    }
     setProducts(prev => prev.filter(p => p.id !== product.id))
   }
 
@@ -132,22 +137,28 @@ export default function ProdutosView({ session, clientId }: ProdutosViewProps) {
         .eq('id', editingProduct.id)
         .select()
         .single()
-      if (!error && data) {
-        setProducts(prev => prev.map(p => p.id === editingProduct.id ? data : p))
-        setShowSheet(false)
+      if (error || !data) {
+        toast.error('Não foi possível salvar: ' + (error?.message ?? 'nenhuma linha foi gravada'))
+        setSaving(false)
+        return
       }
+      setProducts(prev => prev.map(p => p.id === editingProduct.id ? data : p))
+      setShowSheet(false)
     } else {
       const { data, error } = await supabase
         .from('cliente_produtos')
         .insert([{ id_cliente: resolvedClientId, ...payload }])
         .select()
         .single()
-      if (!error && data) {
-        // Primeira entrada da área → o cliente acabou de ganhar os Pontos MC dela.
-        if (!clientId && products.length === 0) celebrarPontosMC(25, 'Mapeamento · Produtos preenchido')
-        setProducts(prev => [...prev, data])
-        setShowSheet(false)
+      if (error || !data) {
+        toast.error('Não foi possível salvar: ' + (error?.message ?? 'nenhuma linha foi gravada'))
+        setSaving(false)
+        return
       }
+      // Primeira entrada da área → o cliente acabou de ganhar os Pontos MC dela.
+      if (!clientId && products.length === 0) celebrarPontosMC(25, 'Mapeamento · Produtos preenchido')
+      setProducts(prev => [...prev, data])
+      setShowSheet(false)
     }
     setSaving(false)
   }

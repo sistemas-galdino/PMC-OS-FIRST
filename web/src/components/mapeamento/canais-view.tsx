@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { celebrarPontosMC } from "@/components/pontos-mc-splash"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -107,7 +108,11 @@ export default function CanaisView({ session, clientId }: { session?: Session, c
   }
 
   async function handleDelete(canal: Channel) {
-    await supabase.from('cliente_canais').delete().eq('id', canal.id)
+    const { error } = await supabase.from('cliente_canais').delete().eq('id', canal.id)
+    if (error) {
+      toast.error('Não foi possível excluir: ' + error.message)
+      return
+    }
     setCanais(prev => prev.filter(c => c.id !== canal.id))
   }
 
@@ -121,22 +126,28 @@ export default function CanaisView({ session, clientId }: { session?: Session, c
         .eq('id', editingCanal.id)
         .select()
         .single()
-      if (!error && data) {
-        setCanais(prev => prev.map(c => c.id === editingCanal.id ? data : c))
-        setShowSheet(false)
+      if (error || !data) {
+        toast.error('Não foi possível salvar: ' + (error?.message ?? 'nenhuma linha foi gravada'))
+        setSaving(false)
+        return
       }
+      setCanais(prev => prev.map(c => c.id === editingCanal.id ? data : c))
+      setShowSheet(false)
     } else {
       const { data, error } = await supabase
         .from('cliente_canais')
         .insert([{ id_cliente: resolvedClientId, ...form }])
         .select()
         .single()
-      if (!error && data) {
-        // Primeira entrada da área → o cliente acabou de ganhar os Pontos MC dela.
-        if (!clientId && channels.length === 0) celebrarPontosMC(25, 'Mapeamento · Canais preenchido')
-        setCanais(prev => [...prev, data])
-        setShowSheet(false)
+      if (error || !data) {
+        toast.error('Não foi possível salvar: ' + (error?.message ?? 'nenhuma linha foi gravada'))
+        setSaving(false)
+        return
       }
+      // Primeira entrada da área → o cliente acabou de ganhar os Pontos MC dela.
+      if (!clientId && channels.length === 0) celebrarPontosMC(25, 'Mapeamento · Canais preenchido')
+      setCanais(prev => [...prev, data])
+      setShowSheet(false)
     }
     setSaving(false)
   }

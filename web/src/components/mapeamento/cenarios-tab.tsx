@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { celebrarPontosMC } from "@/components/pontos-mc-splash"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -118,13 +119,17 @@ export default function CenariosTab({ session, clientId }: Props) {
         { onConflict: 'id_cliente' }
       )
     setSaving(false)
-    if (!error) {
-      if (!isAdminView && !tinhaMetas) celebrarPontosMC(25, 'Mapeamento · Cenários & Metas preenchido')
-      setTinhaMetas(true)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-      window.dispatchEvent(new CustomEvent('cliente-metas-updated'))
+    // Sem o else, uma falha de gravação (RLS ou FK) passava em silêncio: a tela
+    // não acusava nada e o dado só "sumia" no próximo carregamento.
+    if (error) {
+      toast.error('Não foi possível salvar: ' + error.message)
+      return
     }
+    if (!isAdminView && !tinhaMetas) celebrarPontosMC(25, 'Mapeamento · Cenários & Metas preenchido')
+    setTinhaMetas(true)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+    window.dispatchEvent(new CustomEvent('cliente-metas-updated'))
   }
 
   if (loading) {
