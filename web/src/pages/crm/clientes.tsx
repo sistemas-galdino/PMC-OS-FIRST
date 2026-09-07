@@ -95,14 +95,14 @@ export default function CrmClientesPage() {
         .filter((c) => {
           const ql = q.toLowerCase();
           if (!ql) return true;
-          const id = (idMap.get(c.id) || "").toLowerCase();
+          // Substring no código, como em /clientes: "31" acha 31, 310 e 316.
           return (
-            id.includes(ql) ||
+            (c.codigo != null && String(c.codigo).includes(ql)) ||
             c.nome.toLowerCase().includes(ql) ||
             (c.empresa || "").toLowerCase().includes(ql)
           );
         }),
-    [scoped, tempF, cicloF, situacaoF, entregaF, q, idMap],
+    [scoped, tempF, cicloF, situacaoF, entregaF, q],
   );
 
   const semDataCount = useMemo(() => scoped.filter(semDataDeEntrada).length, [scoped]);

@@ -59,22 +59,24 @@ export function sameDay(isoA: string, isoB: string): boolean {
   );
 }
 
-// ============= Display IDs ("#001", "#002"...) =============
-// Stable: based on data_inicio ascending, fallback to id alphabetical.
+// ============= Display IDs ("#316") =============
+// É o `codigo_cliente` do cadastro — o mesmo número que /clientes, a Visão
+// Admin e a Central de Atendimentos mostram. Antes daqui saía um contador de
+// posição na carteira (#001, #002... por data_inicio): batia com nada, e
+// mudava de dono a cada cliente novo ou data de entrada corrigida.
 export function buildDisplayIdMap(clientes: Cliente[]): Map<string, string> {
-  const sorted = [...clientes].sort((a, b) => {
-    const ta = new Date(a.data_inicio).getTime();
-    const tb = new Date(b.data_inicio).getTime();
-    if (ta !== tb) return ta - tb;
-    return a.id.localeCompare(b.id);
-  });
   const m = new Map<string, string>();
-  sorted.forEach((c, i) => m.set(c.id, `#${String(i + 1).padStart(3, "0")}`));
+  for (const c of clientes) m.set(c.id, formatarCodigoCliente(c.codigo));
   return m;
 }
 
 export function clienteDisplayId(id: string, clientes: Cliente[]): string {
-  return buildDisplayIdMap(clientes).get(id) || "#---";
+  const cliente = clientes.find((c) => c.id === id);
+  return cliente ? formatarCodigoCliente(cliente.codigo) : "#---";
+}
+
+export function formatarCodigoCliente(codigo: number | null | undefined): string {
+  return codigo == null ? "—" : `#${codigo}`;
 }
 
 

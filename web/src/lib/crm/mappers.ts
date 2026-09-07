@@ -179,6 +179,7 @@ function statusComercial(row: ClienteRow): ClienteStatus {
 /** Colunas de clientes_entrada_new que o CRM lê. */
 export interface ClienteRow {
   id_cliente: string
+  codigo_cliente: number | null
   nome_cliente: string | null
   nome_empresa: string | null
   nome_empresa_formatado: string | null
@@ -237,7 +238,7 @@ export interface ClienteRow {
 }
 
 export const CLIENTE_COLUNAS = [
-  "id_cliente", "nome_cliente", "nome_empresa", "nome_empresa_formatado",
+  "id_cliente", "codigo_cliente", "nome_cliente", "nome_empresa", "nome_empresa_formatado",
   "status_atual", "situacao", "sc", "data", "created_at", "nicho", "subnicho",
   "temperatura_cliente", "nivel_engajamento", "saude_cliente",
   "em_risco_cancelamento", "observacoes_cs", "presenca_treinamentos",
@@ -265,6 +266,7 @@ export function rowToCliente(row: ClienteRow): Cliente {
   const impl = row.blackcrm_status_implementacao
   return {
     id: row.id_cliente,
+    codigo: row.codigo_cliente ?? null,
     nome: row.nome_empresa_formatado || row.nome_empresa || row.nome_cliente || "(sem nome)",
     empresa: row.nome_empresa ?? undefined,
     responsavel_cs: row.sc ?? "",

@@ -2096,7 +2096,9 @@ function FiltroPopover({
 
   const clientesFiltrados = busca.trim()
     ? clientes.filter((c) =>
-        `${c.nome} ${c.empresa ?? ""}`.toLowerCase().includes(busca.toLowerCase()),
+        `${c.codigo ?? ""} ${c.nome} ${c.empresa ?? ""}`
+          .toLowerCase()
+          .includes(busca.toLowerCase()),
       )
     : clientes
 

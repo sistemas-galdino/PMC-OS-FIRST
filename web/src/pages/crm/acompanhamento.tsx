@@ -228,7 +228,11 @@ export default function CrmAcompanhamentoPage() {
   const listaClientes = useMemo(() => {
     const q = busca.trim().toLowerCase()
     return escopo
-      .filter((c) => !q || `${c.nome} ${c.empresa ?? ""}`.toLowerCase().includes(q))
+      .filter(
+        (c) =>
+          !q ||
+          `${c.codigo ?? ""} ${c.nome} ${c.empresa ?? ""}`.toLowerCase().includes(q),
+      )
       .sort((a, b) => a.nome.localeCompare(b.nome))
   }, [escopo, busca])
 

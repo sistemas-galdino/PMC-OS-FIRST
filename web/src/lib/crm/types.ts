@@ -105,6 +105,9 @@ export const SITUACAO_LIST: SituacaoCliente[] = [
 
 export interface Cliente {
   id: string;
+  /** Código do cliente (clientes_entrada_new.codigo_cliente) — o mesmo número
+   *  mostrado em /clientes, na Visão Admin e na Central de Atendimentos. */
+  codigo: number | null;
   nome: string;
   empresa?: string;
   responsavel_cs: CSName;
