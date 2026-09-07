@@ -39,6 +39,7 @@ import {
   DownloadIcon as Download,
 } from "@/components/ui/icons"
 import { exportarCsv } from "@/lib/export-csv"
+import { useCsList } from "@/lib/crm/equipe"
 import { faixaPorPontos } from "@/lib/nivel-pmc"
 import {
   DndContext,
@@ -187,6 +188,10 @@ function BulkField({ label, enabled, onToggle, children }: { label: string; enab
 
 export default function ClientesPage() {
   const navigate = useNavigate()
+  // Quem pode receber clientes é o TIME (mentores com papel='cs'), não a lista de
+  // valores já gravados em clientes_entrada_new.sc. Derivar da base fazia CS nova
+  // só aparecer depois de já ter cliente, e CS que saiu nunca sumir.
+  const csDoTime = useCsList()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -502,13 +507,22 @@ export default function ClientesPage() {
     return (a.nome_cliente_formatado ?? '').localeCompare(b.nome_cliente_formatado ?? '', 'pt-BR')
   })
 
+  // Carteiras que existem nos dados — inclui as legadas (CS que saiu). Serve para
+  // FILTRAR, nunca para atribuir.
   const uniqueScs = Array.from(new Set(clients.map(c => c.sc).filter(Boolean)))
+  // Opções de atribuição: o time atual. `atual` mantém na lista a carteira que o
+  // cliente já tem, mesmo fora do time, para o Select não exibir campo vazio.
+  const csAtribuiveis = (atual?: string | null) => {
+    const v = atual?.trim()
+    return v && !csDoTime.includes(v) ? [...csDoTime, v] : csDoTime
+  }
   const hasClientesSemCs = clients.some(c => !c.sc || !c.sc.trim())
   const produtoOptions = [...new Set(clients.map(c => c.produto).filter(Boolean) as string[])].sort()
   const canalOptions = [...new Set(clients.map(c => c.canal_de_venda).filter(Boolean) as string[])].sort()
   const unidadeOptions = [...new Set(clients.map(c => c.unidade_treinamento).filter(Boolean) as string[])].sort()
 
-  const csFilterOptions = hasClientesSemCs ? [...uniqueScs, 'Sem CS'] : uniqueScs
+  const csUnion = [...new Set([...csDoTime, ...uniqueScs])].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const csFilterOptions = hasClientesSemCs ? [...csUnion, 'Sem CS'] : csUnion
 
   const filterCategories: { key: string; label: string; options: string[] }[] = [
     { key: 'status', label: 'Status', options: [...STATUS_CLIENTE] },
@@ -1315,7 +1329,7 @@ export default function ClientesPage() {
                   <SelectValue placeholder="Selecionar..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {uniqueScs.map(sc => (
+                  {csAtribuiveis(formSc).map(sc => (
                     <SelectItem key={sc} value={sc}>{sc}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1441,13 +1455,13 @@ export default function ClientesPage() {
               </Select>
             </BulkField>
 
-            <BulkField label="CS Responsável" enabled={bulkSc !== null} onToggle={() => setBulkSc(prev => prev === null ? (uniqueScs[0] || "") : null)}>
+            <BulkField label="CS Responsável" enabled={bulkSc !== null} onToggle={() => setBulkSc(prev => prev === null ? (csDoTime[0] || "") : null)}>
               <Select value={bulkSc ?? ""} onValueChange={setBulkSc}>
                 <SelectTrigger className="h-11 rounded-xl border-border bg-background">
                   <SelectValue placeholder="Selecionar..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {uniqueScs.map(sc => (
+                  {csDoTime.map(sc => (
                     <SelectItem key={sc} value={sc}>{sc}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1543,7 +1557,7 @@ export default function ClientesPage() {
       <RegistrarClienteDialog
         open={showRegistrar}
         onOpenChange={setShowRegistrar}
-        scOptions={uniqueScs}
+        scOptions={csDoTime}
         onSuccess={() => {
           // Refresh client list
           supabase

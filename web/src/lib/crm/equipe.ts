@@ -20,7 +20,8 @@ import {
  * sem deploy, e a autenticação é a do PMC OS.
  *
  * Ligação com a carteira: `clientes_entrada_new.sc` guarda o NOME da CS em
- * texto livre, então o casamento é por `mentores.nome`.
+ * texto livre, e o casamento é por `mentores.carteira_sc` (com fallback em
+ * `nome` enquanto o vínculo não foi feito) — ver `MembroEquipe.carteira`.
  */
 
 export interface MembroEquipe {

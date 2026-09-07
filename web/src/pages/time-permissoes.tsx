@@ -144,12 +144,27 @@ export default function TimePermissoesPage() {
 
   // Vincula o acesso a uma carteira. É isso que faz o CRM da pessoa mostrar os
   // clientes dela: sem vínculo o Meu Dia dela não sabe quem ela é.
+  //
+  // Invariante: carteira vinculada ⇔ papel='cs'. É `papel='cs'` que coloca a
+  // pessoa em `useCsList()` — que é de onde saem os dropdowns de CS do sistema
+  // inteiro (registrar cliente, atribuir CS, CRM) e o convite do agendamento.
+  // Uma CS nova não depende mais de já ter cliente com aquele `sc` para existir.
   async function salvarCarteira(m: Membro, valor: string | null) {
     const novo = valor?.trim() || null
+    if (novo && m.papel !== "cs") {
+      const ok = window.confirm(
+        `Vincular a carteira "${novo}" também marca ${m.nome} como Sucesso do Cliente (papel CS). Continuar?`,
+      )
+      if (!ok) { setNovaCarteiraId(null); setNovaCarteiraVal(""); return }
+    }
+    const papelNovo = novo && m.papel !== "cs" ? "cs" : m.papel
     setSalvando(true)
-    const { error } = await supabase.from("mentores").update({ carteira_sc: novo }).eq("id", m.id)
+    const { error } = await supabase
+      .from("mentores")
+      .update({ carteira_sc: novo, papel: papelNovo })
+      .eq("id", m.id)
     if (!error) {
-      setMembros((prev) => prev.map((x) => x.id === m.id ? { ...x, carteira_sc: novo } : x))
+      setMembros((prev) => prev.map((x) => x.id === m.id ? { ...x, carteira_sc: novo, papel: papelNovo } : x))
       if (novo && !carteiras.includes(novo)) {
         setCarteiras((prev) => [...prev, novo].sort((a, b) => a.localeCompare(b, "pt-BR")))
       }
@@ -159,10 +174,20 @@ export default function TimePermissoesPage() {
     setSalvando(false)
   }
 
+  // Tirar o papel de CS solta a carteira junto: vínculo sem papel='cs' é órfão
+  // (não aparece em lugar nenhum e ainda esconde que a carteira ficou sem dono).
   async function trocarPapel(m: Membro, novo: string) {
+    const soltarCarteira = m.papel === "cs" && novo !== "cs" && !!m.carteira_sc
+    if (soltarCarteira) {
+      const ok = window.confirm(
+        `${m.nome} deixa de ser CS e a carteira "${m.carteira_sc}" fica sem dono. Os clientes continuam com esse nome em SC — vincule a carteira a outra pessoa depois. Continuar?`,
+      )
+      if (!ok) return
+    }
     setSalvando(true)
-    const { error } = await supabase.from("mentores").update({ papel: novo }).eq("id", m.id)
-    if (!error) setMembros((prev) => prev.map((x) => x.id === m.id ? { ...x, papel: novo } : x))
+    const patch = soltarCarteira ? { papel: novo, carteira_sc: null } : { papel: novo }
+    const { error } = await supabase.from("mentores").update(patch).eq("id", m.id)
+    if (!error) setMembros((prev) => prev.map((x) => x.id === m.id ? { ...x, ...patch } : x))
     setSalvando(false)
   }
 

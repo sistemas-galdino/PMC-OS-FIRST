@@ -38,6 +38,11 @@ interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  /**
+   * CSs que podem receber o cliente. Vem do TIME (`mentores` com papel='cs',
+   * via `useCsList()`), não dos valores já gravados em `clientes_entrada_new.sc`
+   * — senão CS nova só apareceria depois de já ter cliente.
+   */
   scOptions: string[]
 }
 
