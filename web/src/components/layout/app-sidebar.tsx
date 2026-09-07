@@ -318,15 +318,31 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
   // rotas sem seção própria (ex.: /notificacoes, no rodapé), que ficam sempre
   // visíveis. Vale para os filhos também: Reuniões abre Galdino e BlackCRM, que
   // são seções distintas e podem estar bloqueadas separadamente.
+  const chaveCliente = (url: string) => url.replace(/^\//, "")
   const filtrarCliente = (secs: NavSection[]): NavSection[] =>
     secs
       .map((sec) => ({
         ...sec,
-        items: sec.items
-          .filter((it) => podeCliente(it.url.replace(/^\//, "")))
-          .map((it) => (it.children
-            ? { ...it, children: it.children.filter((c) => !c.url || podeCliente(c.url.replace(/^\//, ""))) }
-            : it)),
+        items: sec.items.flatMap((it) => {
+          if (!it.children) return podeCliente(chaveCliente(it.url)) ? [it] : []
+
+          // Duas formas de filho, e elas se comportam ao contrário uma da outra:
+          //
+          // - com `url` própria (Reuniões: Consultores, Galdino, BlackCRM) são
+          //   SEÇÕES DISTINTAS, liberadas uma a uma pelo dono;
+          // - sem `url` (Guardião: Assessment, Convites, Candidatos) são abas da
+          //   MESMA página, então seguem a permissão do pai.
+          const filhos = it.children.filter((c) => !c.url || podeCliente(chaveCliente(c.url)))
+          const paiLiberado = podeCliente(chaveCliente(it.url))
+
+          // O pai é só um gatilho de expandir (CollapsibleTrigger), não navega.
+          // Por isso ele sobrevive enquanto restar algum filho de url própria,
+          // mesmo com a seção dele bloqueada: sem esta linha, tirar "Consultores"
+          // de alguém derrubaria o grupo inteiro e deixaria Galdino e BlackCRM
+          // liberados mas inalcançáveis pelo menu.
+          if (filhos.some((c) => c.url)) return [{ ...it, children: filhos }]
+          return paiLiberado ? [{ ...it, children: filhos }] : []
+        }),
       }))
       .filter((sec) => sec.items.length > 0)
 
