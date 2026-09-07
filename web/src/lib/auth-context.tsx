@@ -46,6 +46,15 @@ interface AuthState {
   secoes: Set<string>
   /** true se o usuário pode ver a seção (papéis "full" liberam tudo). */
   can: (secao: string) => boolean
+  /** Seções do PAINEL DO CLIENTE liberadas para este login NA EMPRESA ATIVA
+   * (chaves de secoes_cliente_catalogo). Vazio para membro do time. */
+  secoesCliente: Set<string>
+  /** true se o cliente pode ver a seção. Deliberadamente separado de can():
+   * as duas árvores têm catálogos próprios e chaves homônimas com significados
+   * diferentes ("reunioes-galdino" no admin é de todas as empresas; no cliente
+   * é das minhas). Enquanto o papel não resolve, retorna false — quem chama
+   * está sob `loading`, então nada renderiza nesse intervalo. */
+  podeCliente: (secao: string) => boolean
   needsPassword: boolean
   needsOnboarding: boolean
   loading: boolean
@@ -66,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [idCliente, setIdCliente] = useState<string | null>(null)
   const [papelEmpresa, setPapelEmpresa] = useState<string | null>(null)
   const [empresas, setEmpresas] = useState<EmpresaAcesso[]>([])
+  const [secoesCliente, setSecoesCliente] = useState<Set<string>>(new Set())
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [needsPassword, setNeedsPassword] = useState(false)
   // Segura o roteamento até o papel resolver: sem isto, `isAdmin` ainda é false no
@@ -121,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIdCliente(null)
       setPapelEmpresa(null)
       setEmpresas([])
+      setSecoesCliente(new Set())
       setNeedsPassword(false)
       setNeedsOnboarding(false)
       // Sem sessão não há papel a resolver — libera a renderização (ex.: /login).
@@ -163,6 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIdCliente(null)   // membro do time não é cliente
         setPapelEmpresa(null)
         setEmpresas([])
+        setSecoesCliente(new Set())
       } else {
         setPapel(null)
         setNomeMentor(null)
@@ -172,15 +184,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSecoes(new Set())
         // Cliente: resolve a empresa (legado = próprio id; 2º usuário = a empresa)
         // e o papel dentro dela, que define qual é a home desta pessoa.
-        const [{ data: cid }, { data: pe }, { data: emps }] = await Promise.all([
+        const [{ data: cid }, { data: pe }, { data: emps }, { data: secs }] = await Promise.all([
           supabase.rpc("meu_id_cliente"),
           supabase.rpc("meu_papel_empresa"),
           supabase.rpc("minhas_empresas"),
+          supabase.rpc("minhas_secoes_cliente"),
         ])
         if (cancelled) return
         setIdCliente((cid as string | null) ?? id)
         setPapelEmpresa((pe as string | null) ?? null)
         setEmpresas((emps as EmpresaAcesso[] | null) ?? [])
+        setSecoesCliente(new Set((secs ?? []) as string[]))
       }
 
       if (!admin && onboarding && onboarding.status === "em_andamento") {
@@ -204,24 +218,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // limitados veem só as chaves resolvidas em `secoes`.
   const can = (secao: string) => isFull || secoes.has(secao)
 
+  // Sem fallback "libera tudo" quando o Set está vazio: um erro na RPC tem que
+  // fechar a porta, não abri-la. O dono recebe o catálogo inteiro do banco
+  // (papeis_empresa.is_full), então Set vazio nunca é o caso normal dele.
+  const podeCliente = (secao: string) => secoesCliente.has(secao)
+
   // Troca de empresa ativa. A RPC valida o vínculo no banco (não confiar no
   // que a UI ofereceu), e o clear() do cache é o que faz a tela inteira
   // recarregar sob a nova empresa — praticamente todo dado vem por RLS.
   const trocarEmpresa = useCallback(async (novoIdCliente: string) => {
     const { error } = await supabase.rpc("trocar_empresa_ativa", { p_id_cliente: novoIdCliente })
     if (error) throw error
-    const [{ data: pe }, { data: emps }] = await Promise.all([
+    // As permissões são por pessoa E por empresa: a mesma pessoa pode ser dona
+    // de uma e colaboradora de outra. Re-resolver as seções aqui é obrigatório.
+    const [{ data: pe }, { data: emps }, { data: secs }] = await Promise.all([
       supabase.rpc("meu_papel_empresa"),
       supabase.rpc("minhas_empresas"),
+      supabase.rpc("minhas_secoes_cliente"),
     ])
     setIdCliente(novoIdCliente)
     setPapelEmpresa((pe as string | null) ?? null)
     setEmpresas((emps as EmpresaAcesso[] | null) ?? [])
+    setSecoesCliente(new Set((secs ?? []) as string[]))
     queryClient.clear()
   }, [])
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, isAdmin, isSuperAdmin, papel, nomeMentor, carteiraSc, idCliente, papelEmpresa, empresas, trocarEmpresa, secoes, can, needsPassword, needsOnboarding, loading: loading || (!!session?.user && roleResolvedFor !== session.user.id) }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, isAdmin, isSuperAdmin, papel, nomeMentor, carteiraSc, idCliente, papelEmpresa, empresas, trocarEmpresa, secoes, can, secoesCliente, podeCliente, needsPassword, needsOnboarding, loading: loading || (!!session?.user && roleResolvedFor !== session.user.id) }}>
       {children}
     </AuthContext.Provider>
   )

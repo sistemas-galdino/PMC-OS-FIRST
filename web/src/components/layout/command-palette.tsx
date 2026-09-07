@@ -29,6 +29,7 @@ const ROTAS_CLIENTE: Destino[] = [
   { label: "Ferramentas IA", url: "/ferramentas", grupo: "Recursos" },
   { label: "Balanço PMC", url: "/balanco", grupo: "Acompanhamento" },
   { label: "Meu Nível PMC", url: "/niveis", grupo: "Acompanhamento" },
+  { label: "Time & Permissões", url: "/acessos-empresa", grupo: "Configurações" },
 ]
 
 const ROTAS_ADMIN: Destino[] = [
@@ -102,13 +103,15 @@ export function CommandPalette({ isAdmin }: { isAdmin: boolean }) {
   const [clientes, setClientes] = useState<ClienteHit[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const { can } = useAuth()
+  const { can, podeCliente } = useAuth()
   // RBAC: esconde da busca as seções admin que o papel não libera.
   const secaoDaUrl = (url: string): string | null =>
     url === "/" ? null : url === "/mentores" ? "consultores" : url === "/time-permissoes" ? "permissoes" : url.replace(/^\//, "")
   const rotas = isAdmin
     ? ROTAS_ADMIN.filter((r) => { const c = secaoDaUrl(r.url); return c === null || can(c) })
-    : ROTAS_CLIENTE
+    // Sem este filtro a aba escondida da sidebar reaparece aqui: esta lista é
+    // paralela e hardcoded, e o ⌘K navega direto para a rota.
+    : ROTAS_CLIENTE.filter((r) => podeCliente(r.url.replace(/^\//, "")))
 
   // abrir/fechar via ⌘K, Ctrl+K e evento do trigger
   useEffect(() => {

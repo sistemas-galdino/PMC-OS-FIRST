@@ -10,6 +10,7 @@ const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"))
 const MentoresPage = lazy(() => import("@/pages/mentores"))
 const ClientesPage = lazy(() => import("@/pages/clientes"))
 const AcessosPage = lazy(() => import("@/pages/acessos"))
+const AcessosEmpresaPage = lazy(() => import("@/pages/acessos-empresa"))
 const MapeamentoPage = lazy(() => import("@/pages/mapeamento"))
 const IndicadoresPage = lazy(() => import("@/pages/indicadores"))
 const AcoesPage = lazy(() => import("@/pages/acoes"))
@@ -177,6 +178,45 @@ function RequireSecao({ secao, children }: { secao: string; children: ReactNode 
   return can(secao) ? <>{children}</> : <Navigate to="/" replace />
 }
 
+// Guarda por seção no PAINEL DO CLIENTE. O dono libera/bloqueia abas por pessoa
+// (secoes_cliente_catalogo + papel_empresa_secoes + empresa_usuario_secao).
+//
+// Admin passa direto: várias destas rotas são compartilhadas com o time
+// (/reunioes-galdino, /calendario, /ferramentas, /estudos-caso...), e para ele
+// quem manda é o RequireSecao do RBAC do admin, não este.
+//
+// Esconder a rota é só a metade visível: as seções marcadas `sensivel` no
+// catálogo também têm a permissão replicada na RLS
+// (20260907_permissoes_cliente_rls_sensiveis.sql). Sem isso, seria cosmético.
+// Para onde mandar o cliente na rota "/". O papel escolhe a porta preferida,
+// mas ela pode estar bloqueada — e aí um Navigate fixo para /inicio criaria um
+// laço: "/" manda para /inicio, o guard nega e devolve para "/", sem fim.
+// Por isso cai para a primeira seção que a pessoa realmente alcança.
+const ORDEM_HOME = ["inicio", "meu-dia", "metodo", "acoes", "tarefas", "novidades", "trilhas"]
+function HomeDoCliente({ papelEmpresa, secoes }: { papelEmpresa: string | null; secoes: Set<string> }) {
+  const preferida = papelEmpresa === "guardiao" ? "meu-dia" : "inicio"
+  const destino = [preferida, ...ORDEM_HOME].find((s) => secoes.has(s))
+    ?? [...secoes].sort()[0]
+
+  if (!destino) {
+    return (
+      <div className="p-6 max-w-lg mx-auto text-center space-y-2">
+        <h1 className="text-lg font-semibold">Sem abas liberadas</h1>
+        <p className="text-sm text-muted-foreground">
+          O seu acesso a esta empresa não tem nenhuma aba liberada. Fale com o dono da conta.
+        </p>
+      </div>
+    )
+  }
+  return <Navigate to={`/${destino}`} replace />
+}
+
+function RequireSecaoCliente({ secao, children }: { secao: string; children: ReactNode }) {
+  const { isAdmin, podeCliente } = useAuth()
+  if (isAdmin) return <>{children}</>
+  return podeCliente(secao) ? <>{children}</> : <Navigate to="/" replace />
+}
+
 // /atendimento e /atendimento/:slug renderizam o MESMO componente, na mesma
 // posição da árvore — o React reconcilia por tipo + posição, então trocar de
 // consultor NÃO desmontava nada e o estado do wizard sobrevivia à navegação
@@ -205,7 +245,7 @@ function DepoisDoLogin() {
 }
 
 function AppRoutes() {
-  const { session, isAdmin, needsPassword, needsOnboarding, loading, idCliente, papelEmpresa } = useAuth()
+  const { session, isAdmin, needsPassword, needsOnboarding, loading, idCliente, papelEmpresa, secoesCliente } = useAuth()
   // Portal do cliente: resolve a empresa (cliente legado OU 2º usuário vinculado).
   // Só passa quando NÃO é admin (admin usa clientId por rota/params). undefined
   // deixa a página cair no session.user.id (comportamento legado).
@@ -265,30 +305,30 @@ function AppRoutes() {
                         Cadências diferentes pedem portas de entrada diferentes. */}
                     <Route path="/" element={
                       isAdmin ? <AdminDashboard />
-                        : <Navigate to={papelEmpresa === "guardiao" ? "/meu-dia" : "/inicio"} replace />
+                        : <HomeDoCliente papelEmpresa={papelEmpresa} secoes={secoesCliente} />
                     } />
-                    <Route path="/inicio" element={<InicioPage session={session} clientId={cid} />} />
+                    <Route path="/inicio" element={<RequireSecaoCliente secao="inicio"><InicioPage session={session} clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/relatorio" element={<Navigate to="/balanco" replace />} />
-                    <Route path="/balanco" element={<BalancoPage session={session} clientId={cid} />} />
-                    <Route path="/niveis" element={<NiveisPage session={session} clientId={cid} />} />
-                    <Route path="/metodo" element={<MetodoPage session={session} clientId={cid} />} />
-                    <Route path="/meu-dia" element={<MeuDiaPage session={session} clientId={cid} />} />
-                    <Route path="/rotinas" element={<RotinasPage session={session} clientId={cid} />} />
+                    <Route path="/balanco" element={<RequireSecaoCliente secao="balanco"><BalancoPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/niveis" element={<RequireSecaoCliente secao="niveis"><NiveisPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/metodo" element={<RequireSecaoCliente secao="metodo"><MetodoPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/meu-dia" element={<RequireSecaoCliente secao="meu-dia"><MeuDiaPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/rotinas" element={<RequireSecaoCliente secao="rotinas"><RotinasPage session={session} clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/notificacoes" element={<NotificacoesPage session={session} clientId={cid} />} />
-                    <Route path="/tarefas" element={<TarefasPage session={session} clientId={cid} />} />
-                    <Route path="/novidades" element={<NovidadesPage session={session} clientId={cid} />} />
-                    <Route path="/ranking-guardioes" element={<RankingGuardioesPage clientId={cid} />} />
+                    <Route path="/tarefas" element={<RequireSecaoCliente secao="tarefas"><TarefasPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/novidades" element={<RequireSecaoCliente secao="novidades"><NovidadesPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/ranking-guardioes" element={<RequireSecaoCliente secao="ranking-guardioes"><RankingGuardioesPage clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/novidades-admin" element={<RequireSecao secao="novidades-admin"><NovidadesAdminPage /></RequireSecao>} />
                     <Route path="/logs-download" element={<RequireSecao secao="logs-download"><LogsDownloadPage /></RequireSecao>} />
                     <Route path="/mensagens" element={<RequireSecao secao="mensagens"><MensagensPage /></RequireSecao>} />
                     <Route path="/inteligencia-nicho" element={<RequireSecao secao="inteligencia-nicho"><InteligenciaNichoPage /></RequireSecao>} />
-                    <Route path="/estudos-caso" element={<EstudosCasoPage session={session} clientId={cid} />} />
+                    <Route path="/estudos-caso" element={<RequireSecaoCliente secao="estudos-caso"><EstudosCasoPage session={session} clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/estudos-caso-admin" element={<RequireSecao secao="estudos-caso-admin"><EstudosCasoAdminPage /></RequireSecao>} />
                     <Route path="/dashboard-2" element={<Navigate to="/" replace />} />
                     <Route path="/canais-vendas" element={<RequireSecao secao="canais-vendas"><CanaisVendasPage /></RequireSecao>} />
-                    <Route path="/multiplicadores" element={<MultiplicadoresPage />} />
+                    <Route path="/multiplicadores" element={<RequireSecaoCliente secao="multiplicadores"><MultiplicadoresPage /></RequireSecaoCliente>} />
                     <Route path="/multiplicadores-admin" element={<RequireSecao secao="multiplicadores-admin"><MultiplicadoresAdminPage /></RequireSecao>} />
-                    <Route path="/skills" element={<SkillsPage />} />
+                    <Route path="/skills" element={<RequireSecaoCliente secao="skills"><SkillsPage /></RequireSecaoCliente>} />
                     <Route path="/skills-admin" element={<RequireSecao secao="skills-admin"><SkillsAdminPage /></RequireSecao>} />
                     <Route path="/repositorio-vitorias" element={<RequireSecao secao="repositorio-vitorias"><RepositorioVitoriasPage /></RequireSecao>} />
                     <Route path="/vitrine" element={<RequireSecao secao="vitrine"><VitrinePage /></RequireSecao>} />
@@ -301,32 +341,33 @@ function AppRoutes() {
                     <Route path="/clientes" element={<RequireSecao secao="clientes"><ClientesPage /></RequireSecao>} />
                     <Route path="/radar-renovacao" element={<RequireSecao secao="radar-renovacao"><RadarRenovacaoPage /></RequireSecao>} />
                     <Route path="/acessos" element={<RequireSecao secao="acessos"><AcessosPage /></RequireSecao>} />
-                    <Route path="/mapeamento" element={<MapeamentoPage session={session} clientId={cid} />} />
+                    <Route path="/mapeamento" element={<RequireSecaoCliente secao="mapeamento"><MapeamentoPage session={session} clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/produtos" element={<Navigate to="/mapeamento?tab=produtos" replace />} />
                     <Route path="/canais" element={<Navigate to="/mapeamento?tab=canais" replace />} />
-                    <Route path="/indicadores" element={<IndicadoresPage session={session} clientId={cid} />} />
-                    <Route path="/acoes" element={<AcoesPage session={session} clientId={cid} />} />
-                    <Route path="/reunioes" element={<ClientReunioesPage session={session} clientId={cid} />} />
+                    <Route path="/indicadores" element={<RequireSecaoCliente secao="indicadores"><IndicadoresPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/acoes" element={<RequireSecaoCliente secao="acoes"><AcoesPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/reunioes" element={<RequireSecaoCliente secao="reunioes"><ClientReunioesPage session={session} clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/cliente/:id" element={<RequireSecao secao="clientes"><ClientProfilePage /></RequireSecao>} />
-                    <Route path="/reuniao/:id" element={<ReuniaoDetalhePage isAdmin={isAdmin} />} />
-                    <Route path="/reunioes-galdino" element={<ReunioesGaldinoPage session={session} isAdmin={isAdmin} />} />
-                    <Route path="/reuniao-galdino/:id" element={<ReuniaoGaldinoDetalhePage isAdmin={isAdmin} />} />
-                    <Route path="/reunioes-blackcrm" element={<ReunioesBlackCRMPage session={session} isAdmin={isAdmin} />} />
-                    <Route path="/reuniao-blackcrm/:id" element={<ReuniaoBlackCRMDetalhePage isAdmin={isAdmin} />} />
-                    <Route path="/recursos" element={<RecursosPage session={session} clientId={cid} />} />
-                    <Route path="/ferramentas" element={<FerramentasPage session={session} forceAdmin={isAdmin} />} />
-                    <Route path="/prompt-supremo" element={<PromptSupremoPage />} />
-                    <Route path="/calendario" element={<CalendarioEncontrosPage isAdmin={isAdmin} />} />
+                    <Route path="/reuniao/:id" element={<RequireSecaoCliente secao="reunioes"><ReuniaoDetalhePage isAdmin={isAdmin} /></RequireSecaoCliente>} />
+                    <Route path="/reunioes-galdino" element={<RequireSecaoCliente secao="reunioes-galdino"><ReunioesGaldinoPage session={session} isAdmin={isAdmin} /></RequireSecaoCliente>} />
+                    <Route path="/reuniao-galdino/:id" element={<RequireSecaoCliente secao="reunioes-galdino"><ReuniaoGaldinoDetalhePage isAdmin={isAdmin} /></RequireSecaoCliente>} />
+                    <Route path="/reunioes-blackcrm" element={<RequireSecaoCliente secao="reunioes-blackcrm"><ReunioesBlackCRMPage session={session} isAdmin={isAdmin} /></RequireSecaoCliente>} />
+                    <Route path="/reuniao-blackcrm/:id" element={<RequireSecaoCliente secao="reunioes-blackcrm"><ReuniaoBlackCRMDetalhePage isAdmin={isAdmin} /></RequireSecaoCliente>} />
+                    <Route path="/recursos" element={<RequireSecaoCliente secao="recursos"><RecursosPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/ferramentas" element={<RequireSecaoCliente secao="ferramentas"><FerramentasPage session={session} forceAdmin={isAdmin} /></RequireSecaoCliente>} />
+                    <Route path="/prompt-supremo" element={<RequireSecaoCliente secao="prompt-supremo"><PromptSupremoPage /></RequireSecaoCliente>} />
+                    <Route path="/calendario" element={<RequireSecaoCliente secao="calendario"><CalendarioEncontrosPage isAdmin={isAdmin} /></RequireSecaoCliente>} />
                     <Route path="/onboarding" element={<RequireSecao secao="onboarding"><OnboardingPage /></RequireSecao>} />
                     <Route path="/configuracoes" element={<RequireSecao secao="configuracoes"><ConfiguracoesPage /></RequireSecao>} />
                     <Route path="/time-permissoes" element={<RequireSecao secao="permissoes"><TimePermissoesPage /></RequireSecao>} />
+                    <Route path="/acessos-empresa" element={<RequireSecaoCliente secao="acessos-empresa"><AcessosEmpresaPage /></RequireSecaoCliente>} />
                     <Route path="/trocar-senha" element={<TrocarSenhaPage />} />
                     <Route path="/agendar" element={<AgendarPage />} />
-                    <Route path="/vitorias" element={<VitoriasPage session={session} clientId={cid} />} />
-                    <Route path="/meu-time" element={<MeuTimePage session={session} clientId={cid} />} />
-                    <Route path="/trilhas" element={<TrilhasPage session={session} clientId={cid} />} />
-                    <Route path="/trilhas/evidencias" element={<TrilhaEvidenciasPage session={session} clientId={cid} />} />
-                    <Route path="/informacoes-empresa" element={<InformacoesEmpresaPage session={session} clientId={cid} />} />
+                    <Route path="/vitorias" element={<RequireSecaoCliente secao="vitorias"><VitoriasPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/meu-time" element={<RequireSecaoCliente secao="meu-time"><MeuTimePage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/trilhas" element={<RequireSecaoCliente secao="trilhas"><TrilhasPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/trilhas/evidencias" element={<RequireSecaoCliente secao="trilhas"><TrilhaEvidenciasPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/informacoes-empresa" element={<RequireSecaoCliente secao="informacoes-empresa"><InformacoesEmpresaPage session={session} clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/roadmap-sistemas" element={<RequireSecao secao="roadmap-sistemas"><RoadmapSistemasPage /></RequireSecao>} />
                     <Route path="/central-atendimentos" element={<RequireSecao secao="central-atendimentos"><CentralAtendimentosPage /></RequireSecao>} />
                     <Route path="/central-sucesso-cliente" element={<RequireSecao secao="central-sucesso-cliente"><CentralSucessoClientePage /></RequireSecao>} />
@@ -345,7 +386,7 @@ function AppRoutes() {
                     <Route path="/crm/acompanhamento" element={<RequireSecao secao="crm/acompanhamento"><CrmAcompanhamentoPage /></RequireSecao>} />
                     <Route path="/crm/manual" element={<RequireSecao secao="crm/manual"><CrmManualPage /></RequireSecao>} />
                     <Route path="/agente" element={<RequireSecao secao="agente"><AgentePage /></RequireSecao>} />
-                    <Route path="/guardiao" element={<GuardiaoPage session={session} clientId={cid} hideTabList />} />
+                    <Route path="/guardiao" element={<RequireSecaoCliente secao="guardiao"><GuardiaoPage session={session} clientId={cid} hideTabList /></RequireSecaoCliente>} />
                     <Route path="/guardiao-admin" element={<RequireSecao secao="guardiao-admin"><GuardiaoAdminPage /></RequireSecao>} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

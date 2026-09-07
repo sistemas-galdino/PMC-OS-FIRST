@@ -73,7 +73,7 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
-  const { can } = useAuth()
+  const { can, podeCliente } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -292,6 +292,12 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
         { title: "Prompt Supremo", icon: Zap, url: "/prompt-supremo" },
       ],
     },
+    {
+      label: "Configurações",
+      items: [
+        { title: "Time & Permissões", icon: ShieldCheck, url: "/acessos-empresa" },
+      ],
+    },
   ]
 
   // RBAC: esconde do menu admin as seções que o papel não libera.
@@ -307,7 +313,24 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
       .map((sec) => ({ ...sec, items: sec.items.filter((it) => { const c = secaoDaUrl(it.url); return c === null || can(c) }) }))
       .filter((sec) => sec.items.length > 0)
 
-  const sections: NavSection[] = isAdmin ? filtrarAdmin(adminSections) : clientSections
+  // Mesma ideia do filtrarAdmin, com o catálogo do cliente. A chave é a url sem
+  // a barra, então secoes_cliente_catalogo.chave casa direto — menos "/" e as
+  // rotas sem seção própria (ex.: /notificacoes, no rodapé), que ficam sempre
+  // visíveis. Vale para os filhos também: Reuniões abre Galdino e BlackCRM, que
+  // são seções distintas e podem estar bloqueadas separadamente.
+  const filtrarCliente = (secs: NavSection[]): NavSection[] =>
+    secs
+      .map((sec) => ({
+        ...sec,
+        items: sec.items
+          .filter((it) => podeCliente(it.url.replace(/^\//, "")))
+          .map((it) => (it.children
+            ? { ...it, children: it.children.filter((c) => !c.url || podeCliente(c.url.replace(/^\//, ""))) }
+            : it)),
+      }))
+      .filter((sec) => sec.items.length > 0)
+
+  const sections: NavSection[] = isAdmin ? filtrarAdmin(adminSections) : filtrarCliente(clientSections)
 
   return (
     <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border bg-sidebar/40 text-sidebar-foreground backdrop-blur-xl">
