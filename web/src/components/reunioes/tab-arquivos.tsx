@@ -163,11 +163,11 @@ export function TabArquivos({ idReuniao, tabelaOrigem, idCliente, isAdmin }: Pro
     if (!file || !idCliente || !uid) return
     const contentType = resolveContentType(file)
     if (!contentType) {
-      setError("Tipo de arquivo nao suportado.")
+      setError("Tipo de arquivo não suportado.")
       return
     }
     if (file.size > MAX_BYTES) {
-      setError("Arquivo muito grande (max. 25 MB).")
+      setError("Arquivo muito grande (máx. 25 MB).")
       return
     }
     setBusy(true)
