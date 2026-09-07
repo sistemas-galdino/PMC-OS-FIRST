@@ -60,7 +60,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
+import { LinkLinha } from "@/components/ui/link-linha"
 import { motion, AnimatePresence } from "framer-motion"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ComboboxInput } from "@/components/ui/combobox-input"
@@ -187,7 +188,6 @@ function BulkField({ label, enabled, onToggle, children }: { label: string; enab
 }
 
 export default function ClientesPage() {
-  const navigate = useNavigate()
   // Quem pode receber clientes é o TIME (mentores com papel='cs'), não a lista de
   // valores já gravados em clientes_entrada_new.sc. Derivar da base fazia CS nova
   // só aparecer depois de já ter cliente, e CS que saiu nunca sumir.
@@ -1036,7 +1036,9 @@ export default function ClientesPage() {
                 <TableCell className="py-5 px-3">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-foreground tracking-tight truncate">{client.nome_empresa_formatado}</span>
+                      <LinkLinha to={'/cliente/' + client.id_cliente} className="font-bold text-sm text-foreground tracking-tight truncate hover:text-primary">
+                        {client.nome_empresa_formatado}
+                      </LinkLinha>
                       {renova !== null && renova >= 0 && renova <= 90 && (
                         <Badge variant="outline" className={`rounded-md px-1.5 py-0 text-[9px] font-bold shrink-0 ${renova <= 30 ? 'border-red-500/30 text-red-400 bg-red-500/10' : 'border-sky-500/30 text-sky-400 bg-sky-500/10'}`}>
                           renova em {renova}d
@@ -1120,10 +1122,12 @@ export default function ClientesPage() {
                     <DropdownMenuContent align="end" className="w-56 bg-card/95 backdrop-blur-xl border-border rounded-xl p-2 shadow-2xl">
                       <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-2">Operações</DropdownMenuLabel>
                       <DropdownMenuItem
-                        className="rounded-lg text-xs font-semibold py-2 cursor-pointer focus:bg-primary/10 focus:text-primary"
-                        onClick={() => navigate('/cliente/' + client.id_cliente)}
+                        asChild
+                        className="rounded-lg text-xs font-semibold py-2 focus:bg-primary/10 focus:text-primary"
                       >
-                        <UserCheck className="mr-2 size-4" /> Ver Perfil Completo
+                        <Link to={'/cliente/' + client.id_cliente}>
+                          <UserCheck className="mr-2 size-4" /> Ver Perfil Completo
+                        </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem className="rounded-lg text-xs font-semibold py-2 cursor-pointer focus:bg-primary/10 focus:text-primary">
                         <Phone className="mr-2 size-4" /> Abrir WhatsApp
@@ -1266,8 +1270,8 @@ export default function ClientesPage() {
                 )}
 
                 <div className="flex items-center gap-2 pt-1">
-                  <Button className="flex-1 h-10 rounded-xl font-bold text-xs uppercase tracking-wider" onClick={() => navigate('/cliente/' + drawerClient.id_cliente)}>
-                    Perfil completo
+                  <Button asChild className="flex-1 h-10 rounded-xl font-bold text-xs uppercase tracking-wider">
+                    <Link to={'/cliente/' + drawerClient.id_cliente}>Perfil completo</Link>
                   </Button>
                   <Button variant="outline" className="h-10 rounded-xl font-bold text-xs uppercase tracking-wider" onClick={() => { const c = drawerClient; setDrawerClient(null); openEdit(c) }}>
                     Editar

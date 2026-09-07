@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -45,7 +45,6 @@ interface ClientReunioesProps {
 }
 
 export default function ClientReunioesPage({ session, clientId }: ClientReunioesProps) {
-  const navigate = useNavigate()
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -303,8 +302,8 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
                               </Button>
                             </a>
                           )}
-                          <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5" onClick={() => navigate(`/reuniao/${meeting.id_unico}`)}>
-                            Ver Detalhes
+                          <Button asChild variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5">
+                            <Link to={`/reuniao/${meeting.id_unico}`}>Ver Detalhes</Link>
                           </Button>
                         </div>
                       </div>

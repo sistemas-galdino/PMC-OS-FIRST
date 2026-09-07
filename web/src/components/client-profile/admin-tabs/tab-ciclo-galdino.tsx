@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { LinkLinha } from "@/components/ui/link-linha"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
@@ -75,7 +76,6 @@ function todayKey(): string {
 }
 
 export default function TabCicloGaldino({ clientId }: { clientId: string }) {
-  const navigate = useNavigate()
   const [data, setData] = useState<CicloData>({
     realizadas: 0,
     totalGaldino: TOTAL_DEFAULT,
@@ -255,7 +255,7 @@ export default function TabCicloGaldino({ clientId }: { clientId: string }) {
         title="Agendadas"
         meetings={agendadas}
         emptyText="Nenhuma reunião agendada."
-        onOpen={(id) => navigate(`/reuniao-galdino/${id}`)}
+        rotaDe={(id) => `/reuniao-galdino/${id}`}
         onStatusChange={handleStatusChange}
       />
 
@@ -263,7 +263,7 @@ export default function TabCicloGaldino({ clientId }: { clientId: string }) {
         title="Realizadas"
         meetings={realizadasList}
         emptyText="Nenhuma reunião realizada."
-        onOpen={(id) => navigate(`/reuniao-galdino/${id}`)}
+        rotaDe={(id) => `/reuniao-galdino/${id}`}
         onStatusChange={handleStatusChange}
       />
     </motion.div>
@@ -274,13 +274,13 @@ function MeetingSection({
   title,
   meetings,
   emptyText,
-  onOpen,
+  rotaDe,
   onStatusChange,
 }: {
   title: string
   meetings: GaldinoMeeting[]
   emptyText: string
-  onOpen: (idUnico: string) => void
+  rotaDe: (idUnico: string) => string
   onStatusChange: (idUnico: string, novo: boolean) => void
 }) {
   return (
@@ -304,7 +304,7 @@ function MeetingSection({
             <GaldinoMeetingCard
               key={m.id_unico}
               meeting={m}
-              onOpen={() => onOpen(m.id_unico)}
+              to={rotaDe(m.id_unico)}
               onStatusChange={onStatusChange}
             />
           ))}
@@ -316,26 +316,29 @@ function MeetingSection({
 
 function GaldinoMeetingCard({
   meeting,
-  onOpen,
+  to,
   onStatusChange,
 }: {
   meeting: GaldinoMeeting
-  onOpen: () => void
+  to: string
   onStatusChange: (idUnico: string, novo: boolean) => void
 }) {
+  const navigate = useNavigate()
   const nome =
     meeting.nome_cliente_formatado || meeting.pessoa || meeting.empresa || "Sem identificação"
   const empresa = meeting.nome_empresa_formatado || meeting.empresa || ""
 
   return (
     <Card
-      onClick={onOpen}
+      onClick={() => navigate(to)}
       className="cursor-pointer hover:border-primary/30 transition-all duration-300"
     >
       <CardContent className="p-5 space-y-4">
         <div className="flex justify-between items-start gap-3">
           <div className="space-y-1 flex-1 min-w-0">
-            <h4 className="font-bold text-sm text-foreground leading-tight line-clamp-1">{nome}</h4>
+            <h4 className="font-bold text-sm text-foreground leading-tight line-clamp-1">
+              <LinkLinha to={to} className="hover:text-primary">{nome}</LinkLinha>
+            </h4>
             {empresa && (
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest line-clamp-1">
                 {empresa}

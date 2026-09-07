@@ -2,7 +2,7 @@
 // workflow de aprovação em kanban. As aprovadas podem ser marcadas como "case" — o time
 // entra em contato com o cliente para gravar o vídeo do estudo de caso.
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import {
@@ -118,7 +118,6 @@ export default function RepositorioVitoriasPage() {
   const [activeId, setActiveId] = useState<string | null>(null)
   /** Case da vitrine de cada vitória, por repositorio_vitoria_id. */
   const [cases, setCases] = useState<Map<string, CaseVinculado>>(new Map())
-  const navigate = useNavigate()
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
@@ -618,12 +617,14 @@ export default function RepositorioVitoriasPage() {
                           </span>
                         )}
                         <Button
+                          asChild
                           variant="ghost"
                           size="sm"
                           className="ml-auto h-8 gap-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider"
-                          onClick={() => navigate(`/vitrine/case/${c.case_id}`)}
                         >
-                          <ExternalLink className="size-3.5" /> Ver na vitrine
+                          <Link to={`/vitrine/case/${c.case_id}`}>
+                            <ExternalLink className="size-3.5" /> Ver na vitrine
+                          </Link>
                         </Button>
                       </div>
                       {!c.aprovado_vitrine && (

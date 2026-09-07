@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -55,7 +55,6 @@ interface ReunioesBlackCRMProps {
 }
 
 export default function ReunioesBlackCRMPage({ session, clientId, isAdmin = false }: ReunioesBlackCRMProps) {
-  const navigate = useNavigate()
   const [sp, setSp] = useSearchParams()
   const [meetings, setMeetings] = useState<Record<string, Meeting[]>>({})
   const [loading, setLoading] = useState(true)
@@ -414,8 +413,8 @@ export default function ReunioesBlackCRMPage({ session, clientId, isAdmin = fals
                                       </Button>
                                     </a>
                                   )}
-                                  <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5" onClick={() => navigate(`/reuniao-blackcrm/${meeting.id_unico}`)}>
-                                    Ver Detalhes
+                                  <Button asChild variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5">
+                                    <Link to={`/reuniao-blackcrm/${meeting.id_unico}`}>Ver Detalhes</Link>
                                   </Button>
                                 </div>
                               </div>

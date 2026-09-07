@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { isStatusAtivo } from "@/lib/status-cliente"
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -145,7 +145,6 @@ function lastAccessClass(iso: string | null): string {
 }
 
 export default function AcessosPage() {
-  const navigate = useNavigate()
   const [rows, setRows] = useState<AccessRow[]>([])
   // Adicionar usuário a uma empresa existente (Fase 2: N logins por empresa)
   const [showAddUser, setShowAddUser] = useState(false)
@@ -1048,14 +1047,16 @@ export default function AcessosPage() {
                       {resendingId === row.id_cliente ? "Enviando..." : "Reenviar"}
                     </Button>
                     <Button
+                      asChild
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate(`/cliente/${row.id_cliente}`)}
                       className="h-8 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider gap-1.5"
                       title="Ver perfil do cliente"
                     >
-                      <UserCheck className="size-3" />
-                      Perfil
+                      <Link to={`/cliente/${row.id_cliente}`}>
+                        <UserCheck className="size-3" />
+                        Perfil
+                      </Link>
                     </Button>
                   </div>
                 </TableCell>

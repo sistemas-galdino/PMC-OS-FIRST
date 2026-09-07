@@ -1,6 +1,6 @@
 // Fase 1 — Guardião da IA: quem executa a IA na empresa (1 ou mais guardiões).
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -224,12 +224,11 @@ export function FaseGuardiao({ clientId, assessmentUrl }: {
                 <p className="text-[12px] font-medium text-muted-foreground leading-relaxed">
                   É o caminho completo de implementação: da definição do Guardião até a IA rodando nos setores.
                 </p>
-                <Button
-                  className="mt-auto h-10 gap-2 rounded-xl text-xs font-bold uppercase tracking-wider"
-                  onClick={() => navigate("/trilhas")}
-                >
-                  Acessar trilha
-                  <ChevronRight className="size-4" />
+                <Button asChild className="mt-auto h-10 gap-2 rounded-xl text-xs font-bold uppercase tracking-wider">
+                  <Link to="/trilhas">
+                    Acessar trilha
+                    <ChevronRight className="size-4" />
+                  </Link>
                 </Button>
               </CardContent>
             </Card>
@@ -247,12 +246,14 @@ export function FaseGuardiao({ clientId, assessmentUrl }: {
                   As quatro cadências que mantêm a máquina rodando: diária, semanal, quinzenal e mensal.
                 </p>
                 <Button
+                  asChild
                   variant="outline"
                   className="mt-auto h-10 gap-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:border-primary/30 hover:bg-primary/5"
-                  onClick={() => navigate("/rotinas")}
                 >
-                  Ver rotinas e rituais
-                  <ChevronRight className="size-4" />
+                  <Link to="/rotinas">
+                    Ver rotinas e rituais
+                    <ChevronRight className="size-4" />
+                  </Link>
                 </Button>
               </CardContent>
             </Card>

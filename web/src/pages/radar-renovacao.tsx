@@ -4,7 +4,7 @@
 // (admin-only), que computa o score de sinais objetivos (recência de reunião,
 // presença, NPS, vitórias) + flags manuais do CS.
 import { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { LinkOuDiv } from "@/components/ui/link-linha"
 import { supabase } from "@/lib/supabase"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent } from "@/components/ui/card"
@@ -47,7 +47,6 @@ const FAIXA = {
 } as const
 
 export default function RadarRenovacaoPage() {
-  const navigate = useNavigate()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -159,11 +158,11 @@ export default function RadarRenovacaoPage() {
       <div className="space-y-2.5">
         {filtrados.map((r, i) => (
           <motion.div key={r.id_cliente || i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.02, 0.4) }}>
-            <Card
-              className="cursor-pointer transition-colors hover:border-primary/40"
-              onClick={() => r.id_cliente && navigate(`/cliente/${r.id_cliente}`)}
-            >
-              <CardContent className="p-4 flex items-center gap-4">
+            {/* Link no card inteiro para abrir o perfil em nova guia; cliente
+                sem id_cliente não tem destino, então cai no <div>. */}
+            <LinkOuDiv to={r.id_cliente ? `/cliente/${r.id_cliente}` : null} className="block">
+              <Card className="transition-colors hover:border-primary/40">
+                <CardContent className="p-4 flex items-center gap-4">
                 {/* Score */}
                 <div className={`shrink-0 flex flex-col items-center justify-center size-16 rounded-xl ${FAIXA[r.faixa].chip} border`}>
                   <span className={`text-2xl font-bold ${FAIXA[r.faixa].text}`}>{r.score}</span>
@@ -201,8 +200,9 @@ export default function RadarRenovacaoPage() {
                 </div>
 
                 <ArrowUpRight className="size-4 text-muted-foreground shrink-0" />
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </LinkOuDiv>
           </motion.div>
         ))}
         {filtrados.length === 0 && (

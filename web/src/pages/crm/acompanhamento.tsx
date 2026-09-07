@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { Search } from "lucide-react"
 import {
   CICLO_DEFS,
@@ -112,7 +112,6 @@ export default function CrmAcompanhamentoPage() {
   const clientesAll = useClientes()
   const atividades = useAtividades()
   const reunioes = useReunioes()
-  const navigate = useNavigate()
   // Lista reativa: o time chega do banco depois do 1º render.
   const csList = useCsList()
 
@@ -379,9 +378,9 @@ export default function CrmAcompanhamentoPage() {
       <Secao title="Alertas">
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           {totaisAlerta.map((a) => (
-            <button
+            <Link
               key={a.id}
-              onClick={() => navigate(`/crm/alertas?tipo=${a.id}&cs=${encodeURIComponent(cs)}`)}
+              to={`/crm/alertas?tipo=${a.id}&cs=${encodeURIComponent(cs)}`}
               className="bg-card border border-border rounded-lg p-4 text-left hover:border-primary transition-colors"
             >
               <div
@@ -390,7 +389,7 @@ export default function CrmAcompanhamentoPage() {
                 {a.total}
               </div>
               <div className="text-[11px] text-muted-foreground mt-1 leading-tight">{a.label}</div>
-            </button>
+            </Link>
           ))}
         </div>
       </Secao>

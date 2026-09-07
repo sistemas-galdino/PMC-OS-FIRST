@@ -4,7 +4,7 @@
 //   2) O que saiu, o que travou? (fila)
 //   3) Quem está inalcançável? (lista acionável para higienizar telefone)
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent } from "@/components/ui/card"
@@ -57,7 +57,6 @@ function mascarar(e164: string): string {
 }
 
 export default function MensagensPage() {
-  const navigate = useNavigate()
   const [cobertura, setCobertura] = useState<Cobertura[]>([])
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -247,10 +246,9 @@ export default function MensagensPage() {
             ) : (
               <div className="max-h-[420px] divide-y divide-border/40 overflow-y-auto">
                 {stats.sem.map((c) => (
-                  <button
+                  <Link
                     key={c.id_cliente}
-                    type="button"
-                    onClick={() => navigate("/cliente/" + c.id_cliente)}
+                    to={"/cliente/" + c.id_cliente}
                     className="flex w-full items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-primary/[0.04]"
                   >
                     <div className="min-w-0 flex-1">
@@ -261,7 +259,7 @@ export default function MensagensPage() {
                       sem telefone
                     </Badge>
                     <ChevronRight className="size-4 shrink-0 text-muted-foreground/40" />
-                  </button>
+                  </Link>
                 ))}
               </div>
             )}

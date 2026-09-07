@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ArrowLeftIcon as ArrowLeft } from "@/components/ui/icons"
 import ClientProfileAdmin from "@/pages/client-profile-admin"
@@ -16,7 +16,6 @@ function readInitialView(): View {
 
 export default function ClientProfilePage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const [view, setView] = useState<View>(readInitialView)
 
   useEffect(() => {
@@ -28,14 +27,11 @@ export default function ClientProfilePage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9 gap-2 rounded-xl"
-          onClick={() => navigate("/clientes")}
-        >
-          <ArrowLeft className="size-4" />
-          <span className="font-bold text-xs uppercase tracking-wider">Voltar</span>
+        <Button asChild variant="outline" size="sm" className="h-9 gap-2 rounded-xl">
+          <Link to="/clientes">
+            <ArrowLeft className="size-4" />
+            <span className="font-bold text-xs uppercase tracking-wider">Voltar</span>
+          </Link>
         </Button>
 
         <div className="flex gap-1 rounded-xl bg-muted/20 border border-border p-1">

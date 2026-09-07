@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -48,7 +48,6 @@ interface ReunioesGaldinoProps {
 }
 
 export default function ReunioesGaldinoPage({ session, clientId, isAdmin = false }: ReunioesGaldinoProps) {
-  const navigate = useNavigate()
   const [sp, setSp] = useSearchParams()
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
@@ -309,8 +308,8 @@ export default function ReunioesGaldinoPage({ session, clientId, isAdmin = false
                             </Button>
                           </a>
                         )}
-                        <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5" onClick={() => navigate(`/reuniao-galdino/${meeting.id_unico}`)}>
-                          Ver Detalhes
+                        <Button asChild variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5">
+                          <Link to={`/reuniao-galdino/${meeting.id_unico}`}>Ver Detalhes</Link>
                         </Button>
                       </div>
                     </div>

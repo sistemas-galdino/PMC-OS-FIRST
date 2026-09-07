@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { isStatusAtivo } from "@/lib/status-cliente"
-import { useNavigate } from "react-router-dom"
+import { LinkOuDiv } from "@/components/ui/link-linha"
 import {
   UsersIcon as Users,
   TrendingUpIcon as TrendingUp,
@@ -59,7 +59,6 @@ function CountUp({ value, decimals = 0, suffix = '' }: { value: number; decimals
 }
 
 export default function AdminDashboard() {
-  const navigate = useNavigate()
   const [stats, setStats] = useState({
     total: 0,
     ativos: 0,
@@ -362,12 +361,10 @@ export default function AdminDashboard() {
                   {clientesSelecionados.map((c) => {
                     const nome = (c.nome_empresa_formatado?.trim() || c.nome_cliente?.trim() || "Sem nome")
                     return (
-                      <button
+                      <LinkOuDiv
                         key={c.id_cliente}
-                        type="button"
-                        onClick={() => c.id_cliente && navigate('/cliente/' + c.id_cliente)}
-                        disabled={!c.id_cliente}
-                        className="flex w-full items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-primary/[0.04] disabled:cursor-default"
+                        to={c.id_cliente ? '/cliente/' + c.id_cliente : null}
+                        className="flex w-full items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-primary/[0.04]"
                       >
                         <div className="min-w-0 flex-1">
                           <p className="text-[14px] font-bold tracking-tight text-foreground truncate">{nome}</p>
@@ -381,7 +378,7 @@ export default function AdminDashboard() {
                           {c.status_atual || "—"}
                         </Badge>
                         {c.id_cliente && <ChevronRight className="size-4 shrink-0 text-muted-foreground/40" />}
-                      </button>
+                      </LinkOuDiv>
                     )
                   })}
                 </div>

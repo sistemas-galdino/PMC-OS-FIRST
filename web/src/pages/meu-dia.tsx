@@ -4,7 +4,7 @@
 // Não substitui a Minha Jornada: aquela é a narrativa macro do dono (cadência
 // semanal); esta é a operação de hoje do Guardião (cadência diária).
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
@@ -139,9 +139,8 @@ export default function MeuDiaPage({ clientId, visaoAdmin = false }: Props) {
               O Meu Dia é o cockpit diário de quem executa a IA numa empresa. Como time do PMC, acompanhe pelo
               perfil de cada cliente.
             </p>
-            <Button variant="outline" className="mt-2 h-9 gap-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider"
-              onClick={() => navigate("/clientes")}>
-              Ver clientes <ChevronRight className="size-3.5" />
+            <Button asChild variant="outline" className="mt-2 h-9 gap-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider">
+              <Link to="/clientes">Ver clientes <ChevronRight className="size-3.5" /></Link>
             </Button>
           </div>
         </CardContent>
@@ -279,9 +278,9 @@ export default function MeuDiaPage({ clientId, visaoAdmin = false }: Props) {
           <CardContent className="p-6 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">O que é do dia</p>
-              <button onClick={() => navigate("/tarefas")} className="text-[11px] font-bold uppercase tracking-wider text-primary hover:underline">
+              <Link to="/tarefas" className="text-[11px] font-bold uppercase tracking-wider text-primary hover:underline">
                 Ver todas
-              </button>
+              </Link>
             </div>
             <div className="space-y-2">
               {d.travas.map((t) => <LinhaTarefa key={t.id} t={t} tipo="trava" onIr={() => navigate("/tarefas")} />)}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
+import { LinkCobrindo } from "@/components/ui/link-linha"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -492,9 +493,10 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
               paralisia; a lista inteira das etapas mora no Método MC. */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
             <Card
-              className="border-primary/40 bg-gradient-to-br from-primary/[0.08] to-transparent cursor-pointer hover:border-primary/60 transition-colors"
+              className="relative border-primary/40 bg-gradient-to-br from-primary/[0.08] to-transparent cursor-pointer hover:border-primary/60 transition-colors"
               onClick={() => navigate(etapaAtual ? ETAPAS_METODO[etapaAtual - 1].rota : "/balanco")}
             >
+              <LinkCobrindo to={etapaAtual ? ETAPAS_METODO[etapaAtual - 1].rota : "/balanco"} label="Abrir seu próximo passo" />
               <CardContent className="p-6 flex flex-col gap-2.5">
                 <div className="flex items-center gap-2">
                   <div className="bg-primary/15 p-2 rounded-lg shrink-0">
@@ -540,12 +542,12 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
                   </CardDescription>
                 </div>
                 <Button
+                  asChild
                   variant="ghost"
                   size="sm"
                   className="text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5"
-                  onClick={() => navigate("/calendario")}
                 >
-                  Calendário Completo
+                  <Link to="/calendario">Calendário Completo</Link>
                 </Button>
               </CardHeader>
               <CardContent className="pt-5 space-y-5 flex-1 max-h-[460px] overflow-y-auto scrollbar-hide">
@@ -635,12 +637,12 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
                   </CardDescription>
                 </div>
                 <Button
+                  asChild
                   variant="ghost"
                   size="sm"
                   className="text-xs font-semibold text-primary hover:text-primary hover:bg-primary/5"
-                  onClick={() => navigate("/reunioes")}
                 >
-                  Ver Todas
+                  <Link to="/reunioes">Ver Todas</Link>
                 </Button>
               </CardHeader>
               <CardContent className="pt-5 space-y-2">
@@ -650,10 +652,10 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
                   </p>
                 )}
                 {reunioesRealizadas.map((r) => (
-                  <div
+                  <Link
                     key={r.id_unico}
-                    className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-muted/20 border border-transparent hover:border-primary/20 hover:bg-muted/30 transition-all cursor-pointer"
-                    onClick={() => navigate(`/reuniao/${r.id_unico}`)}
+                    to={`/reuniao/${r.id_unico}`}
+                    className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-muted/20 border border-transparent hover:border-primary/20 hover:bg-muted/30 transition-all"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="bg-primary/10 rounded-full p-1 shrink-0">
@@ -669,7 +671,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
                       </div>
                     </div>
                     <ChevronRight className="size-4 text-muted-foreground/50 shrink-0" />
-                  </div>
+                  </Link>
                 ))}
               </CardContent>
             </Card>
@@ -683,8 +685,9 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
             <Card
               onClick={() => navigate("/niveis")}
               title="Como funciona o nível PMC"
-              className="cursor-pointer hover:border-primary/40 transition-colors border-primary/20 overflow-hidden"
+              className="relative cursor-pointer hover:border-primary/40 transition-colors border-primary/20 overflow-hidden"
             >
+              <LinkCobrindo to="/niveis" label="Como funciona o nível PMC" />
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
                   <div className="size-14 rounded-2xl overflow-hidden border border-primary/25 bg-primary/5 shrink-0 flex items-center justify-center">
@@ -765,10 +768,11 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
           {valorAno > 0 && (
             <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.1 }}>
               <Card
-                className="border-primary/40 bg-primary/[0.06] cursor-pointer hover:border-primary/60 transition-colors"
+                className="relative border-primary/40 bg-primary/[0.06] cursor-pointer hover:border-primary/60 transition-colors"
                 onClick={() => navigate("/relatorio")}
                 title="Ver meu relatório"
               >
+                <LinkCobrindo to="/relatorio" label="Ver meu relatório" />
                 <CardContent className="p-5">
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className="bg-primary/15 p-2 rounded-lg shrink-0">

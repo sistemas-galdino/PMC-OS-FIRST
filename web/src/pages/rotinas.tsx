@@ -2,7 +2,7 @@
 // Conteúdo fixo (ROTINAS): cada card mostra checklist + entrega/perguntas, o número de
 // tarefas já abertas naquela cadência, e atalhos para criar/ver as tarefas correspondentes.
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import type { Session } from "@supabase/supabase-js"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,6 @@ interface Props {
 
 export default function RotinasPage({ session, clientId }: Props) {
   const resolvedClientId = clientId || session?.user?.id
-  const navigate = useNavigate()
   const [contagem, setContagem] = useState<Record<string, { total: number; abertas: number }>>({})
 
   useEffect(() => {
@@ -88,19 +87,18 @@ export default function RotinasPage({ session, clientId }: Props) {
                 </div>
 
                 <div className="mt-auto space-y-2 pt-2">
-                  <Button
-                    className="w-full gap-2 rounded-xl font-bold text-xs uppercase tracking-wider"
-                    onClick={() => navigate(`/tarefas?nova=1&origem=${r.origem}`)}
-                  >
-                    <Plus className="size-4" />
-                    Criar atividade {tituloCurto(r.titulo)}
+                  <Button asChild className="w-full gap-2 rounded-xl font-bold text-xs uppercase tracking-wider">
+                    <Link to={`/tarefas?nova=1&origem=${r.origem}`}>
+                      <Plus className="size-4" />
+                      Criar atividade {tituloCurto(r.titulo)}
+                    </Link>
                   </Button>
                   <Button
+                    asChild
                     variant="outline"
                     className="w-full rounded-xl font-bold text-xs uppercase tracking-wider hover:border-primary/30 hover:bg-primary/5"
-                    onClick={() => navigate(`/tarefas?origem=${r.origem}`)}
                   >
-                    Ver atividades
+                    <Link to={`/tarefas?origem=${r.origem}`}>Ver atividades</Link>
                   </Button>
                 </div>
               </CardContent>

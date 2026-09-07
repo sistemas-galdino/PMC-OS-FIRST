@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import { NovaAtividadeModal } from "@/components/crm/NovaAtividadeModal"
 import { NextActionModal } from "@/components/crm/NextActionModal"
@@ -1415,7 +1415,6 @@ function RotinaDeHoje({
   clientes: Cliente[]
   atividades: Atividade[]
 }) {
-  const navigate = useNavigate()
   const dow = new Date().getDay()
   const semContato = useMemo(() => {
     const list = clientes.filter(
@@ -1445,20 +1444,20 @@ function RotinaDeHoje({
           Rotina de hoje
         </span>
         {dayBadge && (
-          <button
-            onClick={() => navigate(`/crm/atividades?periodo=semana&aba=rotinas&secao=${dayBadge.secao}`)}
+          <Link
+            to={`/crm/atividades?periodo=semana&aba=rotinas&secao=${dayBadge.secao}`}
             className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
           >
             <span>{dayBadge.emoji}</span> {dayBadge.label}
-          </button>
+          </Link>
         )}
         {semContato > 0 && (
-          <button
-            onClick={() => navigate("/crm/atividades?periodo=semana&aba=rotinas&secao=quinzenal")}
+          <Link
+            to="/crm/atividades?periodo=semana&aba=rotinas&secao=quinzenal"
             className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-status-red/15 text-status-red border border-status-red/40 hover:bg-status-red/25"
           >
             ⚠️ {semContato} cliente{semContato === 1 ? "" : "s"} sem contato há mais de 14 dias
-          </button>
+          </Link>
         )}
       </div>
     </div>
