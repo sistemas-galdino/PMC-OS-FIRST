@@ -147,6 +147,31 @@
   h1 {
     @apply text-3xl md:text-4xl lg:text-5xl;
   }
+
+  /* O Tailwind v4 não dá cursor:pointer a <button> (o UA manda `default`), e a
+     geração nova do shadcn também não põe nas variantes. Em vez de remendar
+     caso a caso, aqui vale para tudo que é interativo — incluindo os
+     componentes Radix, que expõem role=menuitem/tab/option. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="option"],
+  [role="switch"],
+  [role="combobox"],
+  a[href],
+  summary,
+  select,
+  label[for] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
+    cursor: not-allowed;
+  }
 }
 
 .scrollbar-hide {
