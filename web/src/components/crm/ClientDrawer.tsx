@@ -42,6 +42,7 @@ import TabRenovacao from "@/components/client-profile/admin-tabs/tab-renovacao";
 import TabComunicacao from "@/components/client-profile/admin-tabs/tab-comunicacao";
 import { formatBR, inputDateValue, fromInputDate } from "@/lib/crm/format";
 import { useCsList } from "@/lib/crm/equipe";
+import { estaEncerrada } from "@/lib/crm/atividade-status"
 import {
   type Cliente,
   type CSName,
@@ -587,7 +588,7 @@ function AtividadesTab({ cliente }: { cliente: Cliente }) {
         <div className="space-y-2">
           {list.map((a) => {
             const overdue =
-              a.status !== "Concluída" &&
+              !estaEncerrada(a.status) &&
               new Date(a.data_prevista).getTime() < Date.now() - 86400000;
             return (
               <div

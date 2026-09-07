@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { setVisaoCs, useAtividades, useClientes, useReunioes } from "@/lib/crm/storage";
 import { useCsList } from "@/lib/crm/equipe";
 import { type Atividade, type CSName } from "@/lib/crm/types";
+import { estaEncerrada } from "@/lib/crm/atividade-status"
 
 type Periodo = "semana" | "mes";
 
@@ -28,7 +29,7 @@ function inRange(iso: string | undefined, r: [number, number]) {
 
 function isAtrasada(a: Atividade) {
   return (
-    a.status !== "Concluída" &&
+    !estaEncerrada(a.status) &&
     new Date(a.data_prevista).getTime() < Date.now() - 86400000
   );
 }

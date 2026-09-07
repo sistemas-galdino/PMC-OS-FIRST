@@ -11,6 +11,7 @@ import type {
   TimeExecutor,
 } from "@/lib/crm/types";
 import { AREAS_GARGALO, GARGALO_PRIORIDADE_LIST, GARGALO_STATUS_LIST, TIMES_EXECUTORES } from "@/lib/crm/types";
+import { contaNaConclusao } from "@/lib/crm/atividade-status"
 
 export type GargalosView = "painel" | "lista" | "kanban";
 export type GargalosOrdem = "recente" | "antiga" | "prioridade";
@@ -431,12 +432,14 @@ function GargaloDetalhe({
 
   const tarefas = projeto ? atividades.filter((a) => a.projeto_id === projeto.id) : [];
   const feitas = tarefas.filter((a) => a.status === "Concluída").length;
+  // "Não se aplica" sai do denominador: encerrou sem ter sido feita.
+  const contadas = tarefas.filter((a) => contaNaConclusao(a.status)).length;
   const pct =
     projeto?.estagio === "Concluído"
       ? 100
-      : tarefas.length === 0
+      : contadas === 0
         ? 0
-        : Math.round((feitas / tarefas.length) * 100);
+        : Math.round((feitas / contadas) * 100);
 
   // Criar o projeto e vinculá-lo ao gargalo são duas escritas: se a segunda
   // falhar o projeto existe órfão, então o erro precisa aparecer.

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useAtividades, useClientes, useReunioes } from "@/lib/crm/storage";
 import type { CSName } from "@/lib/crm/types";
+import { estaEncerrada } from "@/lib/crm/atividade-status"
 
 export type CardId =
   | "concluidas"
@@ -72,19 +73,19 @@ function IndicadorCard({
         border: selected ? "2px solid #DAFC67" : "2px solid transparent",
       }}
     >
-      <div className="text-[13px]" style={{ color: danger ? "#E36A6A" : "#8A8A8A" }}>
+      {/* Tokens no lugar dos hex antigos (#8A8A8A no rótulo, #6B6B6B no
+          subtítulo): reprovavam em contraste sobre o fundo escuro. */}
+      <div className={`text-[13px] ${danger ? "text-status-red" : "text-muted-foreground"}`}>
         {label}
       </div>
       <div
-        className="text-2xl font-medium mt-1 leading-none"
-        style={{ color: danger ? "#E36A6A" : "#FFFFFF" }}
+        className={`text-2xl font-medium mt-1 leading-none ${danger ? "text-status-red" : "text-foreground"}`}
       >
         {valor}
       </div>
       {subtitulo && (
         <div
-          className="text-xs mt-1.5"
-          style={{ color: danger ? "#C25A5A" : subAmber ? "#EF9F27" : "#6B6B6B" }}
+          className={`text-xs mt-1.5 ${danger ? "text-status-red" : subAmber ? "text-status-yellow" : "text-muted-foreground"}`}
         >
           {subtitulo}
         </div>
@@ -136,7 +137,7 @@ export function IndicadoresAtividades({ cs, inicio, fim, hoje, selected, onSelec
     const emAndamento = ats.filter((a) => a.status === "Em andamento");
 
     const atrasadas = ats.filter(
-      (a) => dateOnly(a.data_prevista) < hojeISO && a.status !== "Concluída",
+      (a) => dateOnly(a.data_prevista) < hojeISO && !estaEncerrada(a.status),
     );
     const maisAntiga = atrasadas.reduce<string | null>(
       (acc, a) => (!acc || dateOnly(a.data_prevista) < acc ? dateOnly(a.data_prevista) : acc),

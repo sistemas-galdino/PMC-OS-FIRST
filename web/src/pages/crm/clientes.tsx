@@ -26,6 +26,7 @@ import {
 } from "@/lib/crm/storage";
 import { formatBR } from "@/lib/crm/format";
 import { useCsList } from "@/lib/crm/equipe";
+import { estaEncerrada } from "@/lib/crm/atividade-status"
 import {
   type ClienteStatus,
   type CSName,
@@ -260,7 +261,7 @@ export default function CrmClientesPage() {
             const atrasadas = atividades.filter(
               (a) =>
                 a.cliente_id === c.id &&
-                a.status !== "Concluída" &&
+                !estaEncerrada(a.status) &&
                 new Date(a.data_prevista).getTime() < Date.now() - 86400000,
             ).length;
             return (

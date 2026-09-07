@@ -30,6 +30,7 @@ import {
 } from "@/lib/crm/types"
 import { saudacaoDoDia } from "@/lib/crm/saudacoes"
 import { useSaudacaoIA } from "@/lib/crm/saudacao-ia"
+import { estaEncerrada } from "@/lib/crm/atividade-status"
 
 import {
   ChevronLeft,
@@ -97,6 +98,7 @@ const STATUS_BAR: Record<AtividadeStatus, string> = {
   Concluída: "bg-[#22C55E]",
   Atrasada: "bg-[#EF4444]",
   Impedida: "bg-[#F97316]",
+  "Não se aplica": "bg-[#6B7280]",
 }
 const STATUS_PILL: Record<AtividadeStatus, string> = {
   Pendente: "bg-[#6B7280]/20 text-[#9CA3AF] border-[#6B7280]/50",
@@ -106,6 +108,7 @@ const STATUS_PILL: Record<AtividadeStatus, string> = {
   Concluída: "bg-[#22C55E]/20 text-[#22C55E] border-[#22C55E]/50",
   Atrasada: "bg-[#EF4444]/20 text-[#EF4444] border-[#EF4444]/50",
   Impedida: "bg-[#F97316]/20 text-[#F97316] border-[#F97316]/50",
+  "Não se aplica": "bg-[#6B7280]/20 text-[#9CA3AF] border-[#6B7280]/50",
 }
 const STATUS_EMOJI: Record<AtividadeStatus, string> = {
   Pendente: "⬜",
@@ -115,6 +118,7 @@ const STATUS_EMOJI: Record<AtividadeStatus, string> = {
   Concluída: "✅",
   Atrasada: "⚠️",
   Impedida: "🚫",
+  "Não se aplica": "➖",
 }
 const PRIO_EMOJI: Record<Prioridade, string> = {
   Urgente: "🔴",
@@ -384,6 +388,7 @@ export function TarefasPage({ fixedView, title }: { fixedView?: ViewMode; title?
                   { v: "Concluída", l: "Concluída", emoji: "✅" },
                   { v: "Atrasada", l: "Atrasada", emoji: "⚠️" },
                   { v: "Impedida", l: "Impedida", emoji: "🚫" },
+                  { v: "Não se aplica", l: "Não se aplica", emoji: "➖" },
                 ]}
               />
               <FilterRow
@@ -597,9 +602,9 @@ function DiaView({
 
   // Buckets
   const atrasadas = doDia.filter((a) => effectiveStatus(a) === "Atrasada")
-  const urgentes = doDia.filter((a) => a.prioridade === "Urgente" && effectiveStatus(a) !== "Atrasada" && a.status !== "Concluída")
-  const medio = doDia.filter((a) => a.prioridade === "Médio" && effectiveStatus(a) !== "Atrasada" && a.status !== "Concluída")
-  const normal = doDia.filter((a) => a.prioridade === "Normal" && effectiveStatus(a) !== "Atrasada" && a.status !== "Concluída")
+  const urgentes = doDia.filter((a) => a.prioridade === "Urgente" && effectiveStatus(a) !== "Atrasada" && !estaEncerrada(a.status))
+  const medio = doDia.filter((a) => a.prioridade === "Médio" && effectiveStatus(a) !== "Atrasada" && !estaEncerrada(a.status))
+  const normal = doDia.filter((a) => a.prioridade === "Normal" && effectiveStatus(a) !== "Atrasada" && !estaEncerrada(a.status))
   const concluidas = doDia.filter((a) => a.status === "Concluída")
 
   // Semana resumo
@@ -846,7 +851,7 @@ function ActivityCard({
             {!profileCS && <span> · {a.cs_responsavel}</span>}
           </button>
         </div>
-        {!readonly && a.status !== "Concluída" && (
+        {!readonly && !estaEncerrada(a.status) && (
           <div className="flex items-center gap-1 px-3 shrink-0">
             {a.status !== "Em andamento" && (
               <button
@@ -1220,7 +1225,8 @@ function DetailPanel({
   const title = a.acao && a.entrega ? `${a.acao} · ${a.entrega}` : a.titulo
 
   const aguardando = a.status === "Aguardando cliente" || a.status === "Aguardando time interno"
-  const isConcluida = a.status === "Concluída"
+  // Encerrada (feita ou N/A): nada a fazer daqui; o select abaixo reverte.
+  const isEncerrada = estaEncerrada(a.status)
 
   function cobrar() {
     const alvo = a.status === "Aguardando cliente"
@@ -1234,7 +1240,7 @@ function DetailPanel({
     mutar(updateAtividade(a.id, { descricao, status_desde: stamp.toISOString() }))
   }
 
-  const primary: { label: string; onClick: () => void } | null = isConcluida
+  const primary: { label: string; onClick: () => void } | null = isEncerrada
     ? null
     : aguardando
       ? { label: "Cobrar", onClick: cobrar }
@@ -1249,6 +1255,7 @@ function DetailPanel({
     "Aguardando time interno",
     "Impedida",
     "Concluída",
+    "Não se aplica",
   ]
 
   const diasDesde = a.status_desde
@@ -1489,12 +1496,12 @@ function MeuDiaView({
 
   // Único eixo: tempo.
   const atrasadas = atividades.filter((a) => {
-    if (a.status === "Concluída") return false
+    if (estaEncerrada(a.status)) return false
     const ts = startOfDay(new Date(a.data_prevista)).getTime()
     return ts < todayTs
   })
   const hoje = atividades.filter(
-    (a) => sameDay(a.data_prevista, today.toISOString()) && a.status !== "Concluída",
+    (a) => sameDay(a.data_prevista, today.toISOString()) && !estaEncerrada(a.status),
   )
   const concluidasHoje = atividades.filter((a) => {
     if (a.status !== "Concluída") return false
@@ -1789,7 +1796,9 @@ function MeuDiaCard({
   const dPrev0 = new Date(dPrev.getFullYear(), dPrev.getMonth(), dPrev.getDate()).getTime()
   const isToday = dPrev0 === today0
   const isConcluida = a.status === "Concluída"
-  const isAtrasada = eff === "Atrasada" && !isConcluida
+  // "Não se aplica" também encerra: sem ação primária, sem marca de atraso.
+  const isEncerrada = estaEncerrada(a.status)
+  const isAtrasada = eff === "Atrasada" && !isEncerrada
   const diasAtraso = isAtrasada ? Math.max(1, Math.floor((today0 - dPrev0) / 86400000)) : 0
 
   const borderColor = isConcluida
@@ -1868,7 +1877,7 @@ function MeuDiaCard({
     mutar(updateAtividade(a.id, { data_prevista: new Date(`${t}T12:00:00`).toISOString() }))
   }
 
-  const primary: { label: string; onClick: () => void } | null = isConcluida
+  const primary: { label: string; onClick: () => void } | null = isEncerrada
     ? null
     : aguardando
       ? { label: "Cobrar", onClick: cobrar }
@@ -1986,6 +1995,11 @@ function MeuDiaCard({
                 {!isConcluida && a.status !== "Em andamento" && (
                   <MenuItem onClick={() => setStatus(a.id, "Em andamento")}>Iniciar</MenuItem>
                 )}
+                {!isEncerrada && (
+                  <MenuItem onClick={() => setStatus(a.id, "Não se aplica")}>
+                    Não se aplica
+                  </MenuItem>
+                )}
                 <MenuItem onClick={onOpen}>Editar</MenuItem>
                 <MenuItem onClick={reagendar}>Reagendar</MenuItem>
                 {!isConcluida && a.status !== "Aguardando cliente" && (
@@ -2084,6 +2098,7 @@ function FiltroPopover({
     "Concluída",
     "Atrasada",
     "Impedida",
+    "Não se aplica",
   ]
   const prioOpts: Prioridade[] = ["Urgente", "Médio", "Normal"]
 
@@ -2413,7 +2428,7 @@ function MeuDiaHeader({
     const proxima = doDia.find((r) => (r.hora_inicio || "") >= agora)
     return {
       atrasadas: conta((a) => effectiveStatus(a) === "Atrasada"),
-      hoje: conta((a) => sameDay(a.data_prevista, hojeISO) && a.status !== "Concluída"),
+      hoje: conta((a) => sameDay(a.data_prevista, hojeISO) && !estaEncerrada(a.status)),
       andamento: conta((a) => a.status === "Em andamento"),
       impedidas: conta(
         (a) =>

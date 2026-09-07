@@ -24,6 +24,7 @@ import {
 import { formatBR, type Period } from "@/lib/crm/format";
 import { useCsList } from "@/lib/crm/equipe";
 import { type Atividade, type AtividadeStatus, type Cliente, type CSName } from "@/lib/crm/types";
+import { contaNaConclusao } from "@/lib/crm/atividade-status"
 
 const PERIODS: { id: Period; label: string }[] = [
   { id: "semana", label: "Esta semana" },
@@ -236,6 +237,7 @@ const ST_BAR: Record<AtividadeStatus, string> = {
   Concluída: "bg-[#22C55E]",
   Atrasada: "bg-[#EF4444]",
   Impedida: "bg-[#F97316]",
+  "Não se aplica": "bg-[#6B7280]",
 };
 const ST_TXT: Record<AtividadeStatus, string> = {
   Pendente: "text-[#9CA3AF]",
@@ -245,6 +247,7 @@ const ST_TXT: Record<AtividadeStatus, string> = {
   Concluída: "text-[#22C55E]",
   Atrasada: "text-[#EF4444]",
   Impedida: "text-[#F97316]",
+  "Não se aplica": "text-[#9CA3AF]",
 };
 
 function eff(a: Atividade): AtividadeStatus {
@@ -285,6 +288,7 @@ function StatusPanel({
       Concluída: 0,
       Atrasada: 0,
       Impedida: 0,
+      "Não se aplica": 0,
     };
     list.forEach((a) => {
       c[eff(a)]++;
@@ -321,7 +325,7 @@ function StatusPanel({
           const acts = hoje.filter((a) => a.cs_responsavel === cs);
           const cnt = countsOf(acts);
           const conc = cnt["Concluída"];
-          const totalCs = acts.length;
+          const totalCs = acts.filter((a) => contaNaConclusao(a.status)).length;
           const pct = totalCs ? Math.round((conc / totalCs) * 100) : 0;
           const blocks = 8;
           const filled = Math.round((pct / 100) * blocks);

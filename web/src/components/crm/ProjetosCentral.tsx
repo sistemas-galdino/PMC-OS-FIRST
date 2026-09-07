@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { useAtividades, updateProjeto, upsertAtividade } from "@/lib/crm/storage";
 import type { Atividade, AtividadeStatus, Gargalo, Projeto } from "@/lib/crm/types";
+import { contaNaConclusao } from "@/lib/crm/atividade-status"
 import { NovaAtividadeModal } from "./NovaAtividadeModal";
 
 const VERDE_LIMAO = "#DAFC67";
@@ -173,7 +174,8 @@ export function ProjetosCentral({
 }
 
 function contagem(tarefas: Atividade[]) {
-  const total = tarefas.length;
+  // "Não se aplica" fica fora dos dois lados do percentual.
+  const total = tarefas.filter((a) => contaNaConclusao(a.status)).length;
   const feitas = tarefas.filter((a) => a.status === "Concluída").length;
   return { total, feitas, pct: total === 0 ? 0 : Math.round((feitas / total) * 100) };
 }
@@ -281,13 +283,14 @@ function ProjetoCard({
 
 // ================= Detalhe =================
 
-type GrupoId = "a_fazer" | "em_andamento" | "travadas" | "concluidas";
+type GrupoId = "a_fazer" | "em_andamento" | "travadas" | "concluidas" | "nao_se_aplica";
 
 const GRUPOS: { id: GrupoId; label: string; cor: string }[] = [
   { id: "a_fazer", label: "A fazer", cor: LARANJA },
   { id: "em_andamento", label: "Em andamento", cor: AMARELO },
   { id: "travadas", label: "Travadas", cor: "#E24B4A" },
   { id: "concluidas", label: "Concluídas", cor: VERDE },
+  { id: "nao_se_aplica", label: "Não se aplica", cor: "#9CA3AF" },
 ];
 
 const STATUS_OPCOES: AtividadeStatus[] = [
@@ -297,9 +300,11 @@ const STATUS_OPCOES: AtividadeStatus[] = [
   "Aguardando time interno",
   "Impedida",
   "Concluída",
+  "Não se aplica",
 ];
 
 function grupoDe(a: Atividade): GrupoId {
+  if (a.status === "Não se aplica") return "nao_se_aplica";
   if (a.status === "Concluída") return "concluidas";
   if (a.status === "Impedida") return "travadas";
   if (a.status === "Em andamento") return "em_andamento";

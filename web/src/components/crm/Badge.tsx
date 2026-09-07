@@ -19,6 +19,7 @@ const map: Record<string, string> = {
   Concluída: "bg-status-green/15 text-status-green border-status-green/30",
   Impedida: "bg-status-yellow/15 text-status-yellow border-status-yellow/30",
   Atrasada: "bg-status-red/15 text-status-red border-status-red/30",
+  "Não se aplica": "bg-status-gray/15 text-[color:var(--status-gray)] border-status-gray/30",
   Quente: "bg-status-green/15 text-status-green border-status-green/30",
   Morno: "bg-status-yellow/15 text-status-yellow border-status-yellow/30",
   Frio: "bg-status-red/15 text-status-red border-status-red/30",

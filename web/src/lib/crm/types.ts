@@ -28,7 +28,10 @@ export type AtividadeStatus =
   | "Aguardando time interno"
   | "Concluída"
   | "Impedida"
-  | "Atrasada";
+  | "Atrasada"
+  /** Encerrada sem ter sido feita: a tarefa não cabia neste cliente. Não conta
+   *  como pendente nem como concluída — ver STATUS_ENCERRADOS. */
+  | "Não se aplica";
 export type Prioridade = "Urgente" | "Médio" | "Normal";
 
 export const PRIORIDADE_ORDER: Record<Prioridade, number> = {

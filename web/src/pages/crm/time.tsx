@@ -12,6 +12,7 @@ import { useCsList } from "@/lib/crm/equipe"
 import { dataLocal } from "@/lib/crm/format"
 import { semResposta, silencioDe, useConversas } from "@/lib/crm/conversas"
 import { type Atividade, type CSName } from "@/lib/crm/types"
+import { estaEncerrada } from "@/lib/crm/atividade-status"
 import { AlertTriangle, CalendarDays, Check, Lock, Plus } from "lucide-react"
 
 /**
@@ -102,7 +103,7 @@ export default function CrmTimePage() {
     if (!profile) return []
     return atividades
       .filter(
-        (a) => String(a.cs_responsavel) === String(profile) && a.status !== "Concluída",
+        (a) => String(a.cs_responsavel) === String(profile) && !estaEncerrada(a.status),
       )
       .sort(
         (a, b) =>
@@ -120,7 +121,7 @@ export default function CrmTimePage() {
     (a) => a.status === "Concluída" && sameDayISO(a.data_conclusao),
   )
   const criadasHoje = atividades.filter(
-    (a) => a.status !== "Concluída" && sameDayISO(criadaEm(a)),
+    (a) => !estaEncerrada(a.status) && sameDayISO(criadaEm(a)),
   )
   const reunioesHoje = reunioes.filter((r) => sameDayISO(r.data))
   const reunioesRealizadasHoje = reunioesHoje.filter((r) => r.status === "Realizada")
@@ -181,7 +182,7 @@ export default function CrmTimePage() {
             ),
           })
       }
-      if (a.status !== "Concluída") {
+      if (!estaEncerrada(a.status)) {
         const iso = criadaEm(a)
         const t = new Date(iso).getTime()
         if (t >= desde && a.status !== "Impedida")

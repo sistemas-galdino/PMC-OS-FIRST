@@ -21,6 +21,7 @@ import { situacaoCliente } from "@/lib/crm/jornada"
 import { alertasEntrega, type AlertaEntregaId } from "@/lib/crm/alertas-catalogo"
 import { useCsList } from "@/lib/crm/equipe"
 import { type Atividade, type Cliente, type CSName } from "@/lib/crm/types"
+import { estaEncerrada } from "@/lib/crm/atividade-status"
 
 /**
  * Acompanhamento do Time (coordenação) — base das reuniões 1 a 1.
@@ -70,7 +71,7 @@ function inRange(iso: string | undefined, r: [number, number]) {
 }
 
 function isAtrasada(a: Atividade) {
-  return a.status !== "Concluída" && new Date(a.data_prevista).getTime() < Date.now() - 86400000
+  return !estaEncerrada(a.status) && new Date(a.data_prevista).getTime() < Date.now() - 86400000
 }
 
 /**

@@ -7,6 +7,7 @@ import { trimestreAtual, isPosPrograma } from "@/lib/crm/jornada"
 import { useAtividades, useReunioes } from "@/lib/crm/storage"
 import type { AnexoConversa } from "@/lib/crm/conversas"
 import type { Cliente } from "@/lib/crm/types"
+import { estaEncerrada } from "@/lib/crm/atividade-status"
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -42,7 +43,7 @@ export function PainelAlertasCliente({
   const abertas = useMemo(
     () =>
       atividades
-        .filter((a) => a.cliente_id === cliente.id && a.status !== "Concluída")
+        .filter((a) => a.cliente_id === cliente.id && !estaEncerrada(a.status))
         .sort((a, b) => (a.data_prevista || "").localeCompare(b.data_prevista || "")),
     [atividades, cliente.id],
   )

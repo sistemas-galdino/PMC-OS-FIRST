@@ -20,6 +20,7 @@
 
 export * from "./store"
 export * from "./derivados"
+export * from "./atividade-status"
 export * from "./sessao"
 export * from "./equipe"
 export { CS_LIST, PROFILE_LIST, USUARIOS_DEFAULT } from "./types"

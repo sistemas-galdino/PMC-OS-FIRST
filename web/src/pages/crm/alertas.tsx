@@ -18,6 +18,7 @@ import { alertasEntrega, type AlertaEntrega, type AlertaEntregaId } from "@/lib/
 import { marcacaoKey, useMarcacoesAlertas } from "@/lib/crm/alertas-marcacoes"
 import { diasAteFechamentoCiclo, trimestreAtual } from "@/lib/crm/jornada"
 import { garantirAtividadesFechamentoCiclo, criarAtividadesFechamentoLote } from "@/lib/crm/fechamento-ciclo"
+import { estaEncerrada } from "@/lib/crm/atividade-status"
 import {
   ENTREGAS_CICLO,
   contarPreparacaoExistente,
@@ -31,7 +32,7 @@ function temAtividadeAberta(atividades: Atividade[], clienteId: string, alertaId
   return atividades.some(
     (a) =>
       a.cliente_id === clienteId &&
-      a.status !== "Concluída" &&
+      !estaEncerrada(a.status) &&
       (a.origem_label || "").includes(`${ORIGEM_PREFIX} ${alertaId}`),
   )
 }

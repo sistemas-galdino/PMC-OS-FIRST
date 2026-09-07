@@ -13,7 +13,68 @@ import {
 } from "@/components/ui/icons"
 
 const STORAGE_BUCKET = "reunioes-anexos"
-const ACCEPT = "image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx"
+const MAX_BYTES = 25 * 1024 * 1024
+
+// Extensoes aceitas -> content-type que mandamos pro Storage. O bucket tem
+// allowed_mime_types, entao o tipo precisa ser deterministico: nao da pra
+// confiar no file.type, que vem vazio pra .md/.yaml/.7z e varia por SO
+// (Windows tipifica .csv como application/vnd.ms-excel, por exemplo).
+// html/htm/svg vao como text/plain de proposito: o bucket e publico e um HTML
+// servido inline pela URL crua do Storage vira pagina hospedada (phishing/XSS).
+// O download pelo botao usa ?download= e preserva o nome/extensao original.
+const EXT_MIME: Record<string, string> = {
+  // neutralizados
+  html: "text/plain",
+  htm: "text/plain",
+  svg: "text/plain",
+  // texto e dados
+  md: "text/markdown",
+  markdown: "text/markdown",
+  txt: "text/plain",
+  csv: "text/csv",
+  json: "application/json",
+  xml: "application/xml",
+  yaml: "application/x-yaml",
+  yml: "application/x-yaml",
+  rtf: "application/rtf",
+  // compactados
+  zip: "application/zip",
+  rar: "application/vnd.rar",
+  "7z": "application/x-7z-compressed",
+  // documentos
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  // imagens
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+  avif: "image/avif",
+  heic: "image/heic",
+  heif: "image/heif",
+}
+
+const ACCEPT = "image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.html,.htm,.md,.markdown,.txt,.json,.xml,.yaml,.yml,.rtf,.zip,.rar,.7z"
+
+function extensaoDe(nome: string): string {
+  const i = nome.lastIndexOf(".")
+  return i < 0 ? "" : nome.slice(i + 1).toLowerCase()
+}
+
+// O accept do input e so filtro do seletor: da pra escolher "Todos os arquivos"
+// e mandar qualquer coisa. A extensao e a fonte da verdade aqui e no bucket.
+function resolveContentType(file: File): string | null {
+  return EXT_MIME[extensaoDe(file.name)] ?? null
+}
 
 export type TabelaOrigem = "reunioes_mentoria_new" | "reunioes_blackcrm" | "reunioes_galdino"
 
@@ -100,13 +161,22 @@ export function TabArquivos({ idReuniao, tabelaOrigem, idCliente, isAdmin }: Pro
 
   async function handleUploadFile() {
     if (!file || !idCliente || !uid) return
+    const contentType = resolveContentType(file)
+    if (!contentType) {
+      setError("Tipo de arquivo nao suportado.")
+      return
+    }
+    if (file.size > MAX_BYTES) {
+      setError("Arquivo muito grande (max. 25 MB).")
+      return
+    }
     setBusy(true)
     setError(null)
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
     const path = `${idCliente}/${Date.now()}-${crypto.randomUUID()}-${safeName}`
     const { error: upErr } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(path, file, { contentType: file.type || undefined, upsert: false })
+      .upload(path, file, { contentType, upsert: false })
     if (upErr) {
       setError(`Falha no upload: ${upErr.message}`)
       setBusy(false)
@@ -125,7 +195,7 @@ export function TabArquivos({ idReuniao, tabelaOrigem, idCliente, isAdmin }: Pro
           tipo: "arquivo",
           url: pub.publicUrl,
           nome: file.name,
-          mime: file.type || null,
+          mime: contentType,
           tamanho: file.size,
         },
       ])

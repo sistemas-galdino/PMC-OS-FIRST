@@ -75,6 +75,7 @@ const STATUS_OPTIONS = [
   { v: "realizado", l: "Realizado" },
   { v: "atrasado", l: "Atrasado" },
   { v: "cancelado", l: "Cancelado" },
+  { v: "nao_se_aplica", l: "Não se aplica" },
 ] as const
 
 const SENTINEL_NONE = "__none__"
@@ -90,7 +91,14 @@ interface Atividade {
   entrega_outro: string | null
   prioridade: "baixa" | "media" | "alta"
   prazo: string | null
-  status: "pendente" | "em_andamento" | "impedido" | "realizado" | "atrasado" | "cancelado"
+  status:
+    | "pendente"
+    | "em_andamento"
+    | "impedido"
+    | "realizado"
+    | "atrasado"
+    | "cancelado"
+    | "nao_se_aplica"
   responsavel_cs: string | null
   observacoes: string | null
   created_at: string
@@ -492,7 +500,7 @@ function AtividadeCard({
   const isAtrasada =
     atividade.prazo !== null &&
     atividade.prazo < today &&
-    !["realizado", "cancelado"].includes(atividade.status)
+    !["realizado", "cancelado", "nao_se_aplica"].includes(atividade.status)
 
   const prioridadeColor = useMemo(() => {
     if (atividade.prioridade === "alta") return "bg-destructive/15 text-destructive border-destructive/30"

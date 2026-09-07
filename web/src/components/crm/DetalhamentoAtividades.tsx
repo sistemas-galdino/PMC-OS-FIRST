@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { Calendar, ChevronDown, X } from "lucide-react"
 import { toast } from "sonner"
 import { useAtividades, useClientes, useReunioes, updateAtividade } from "@/lib/crm/storage"
+import { estaEncerrada } from "@/lib/crm/atividade-status"
 import type {
   Atividade,
   AtividadeStatus,
@@ -62,7 +63,14 @@ export function DetalhamentoAtividades({
   const reunioes = useReunioes()
   const clientes = useClientes()
   const [verReunioes, setVerReunioes] = useState(false)
-  const [concluidasAbertas, setConcluidasAbertas] = useState(false)
+  // Grupos que encerram a tarefa nascem recolhidos: são consulta, não fila.
+  const [gruposAbertos, setGruposAbertos] = useState<Set<GrupoId>>(new Set())
+  const alternarGrupo = (id: GrupoId) =>
+    setGruposAbertos((atual) => {
+      const proximo = new Set(atual)
+      proximo.has(id) ? proximo.delete(id) : proximo.add(id)
+      return proximo
+    })
 
   const nomeCliente = useMemo(() => {
     const map = new Map<string, string>()
@@ -220,9 +228,7 @@ export function DetalhamentoAtividades({
   let base: Atividade[] = []
   if (selected === null) {
     base = ats.filter(
-      (a) =>
-        a.status !== "Concluída" ||
-        inRange(a.data_conclusao ?? a.data_prevista, ini, end),
+      (a) => !estaEncerrada(a.status) || inRange(dataEncerramento(a), ini, end),
     )
   } else if (selected === "concluidas") {
     base = ats.filter((a) => a.status === "Concluída" && inRange(a.data_conclusao, ini, end))
@@ -232,7 +238,7 @@ export function DetalhamentoAtividades({
     base = ats.filter(
       (a) =>
         dateOnly(a.data_prevista) < hojeISO &&
-        a.status !== "Concluída" &&
+        !estaEncerrada(a.status) &&
         a.status !== "Impedida",
     )
   } else if (selected === "aguardando") {
@@ -242,6 +248,7 @@ export function DetalhamentoAtividades({
   }
 
   const grupoDe = (a: Atividade): GrupoId => {
+    if (a.status === "Não se aplica") return "nao_se_aplica"
     if (a.status === "Concluída") return "concluidas"
     if (a.status === "Impedida") return "travadas"
     if (a.status === "Em andamento") return "em_andamento"
@@ -307,26 +314,20 @@ export function DetalhamentoAtividades({
           {GRUPOS.map((g) => {
             const lista = buckets.get(g.id) ?? []
             const vazio = lista.length === 0
-            const recolhido = g.id === "concluidas" && !concluidasAbertas
+            const recolhivel = g.id === "concluidas" || g.id === "nao_se_aplica"
+            const recolhido = recolhivel && !gruposAbertos.has(g.id)
             return (
-              <div key={g.id} style={g.id === "concluidas" || vazio ? { opacity: 0.65 } : undefined}>
+              <div key={g.id}>
                 <button
                   type="button"
-                  onClick={
-                    g.id === "concluidas" ? () => setConcluidasAbertas((v) => !v) : undefined
-                  }
+                  onClick={recolhivel ? () => alternarGrupo(g.id) : undefined}
                   className="flex items-center gap-2 w-full text-left"
-                  style={{ cursor: g.id === "concluidas" ? "pointer" : "default" }}
+                  style={{ cursor: recolhivel ? "pointer" : "default" }}
                 >
-                  <span
-                    className="inline-block h-4 rounded-full"
-                    style={{ width: 3, background: g.cor }}
-                  />
-                  <span className="text-sm font-semibold" style={{ color: g.cor }}>
-                    {g.label}
-                  </span>
+                  <span className={`inline-block h-4 w-[3px] rounded-full ${g.barra}`} />
+                  <span className={`text-sm font-semibold ${g.texto}`}>{g.label}</span>
                   <span className="text-xs text-muted-foreground">{lista.length}</span>
-                  {g.id === "concluidas" && (
+                  {recolhivel && (
                     <ChevronDown
                       className="w-3.5 h-3.5 text-muted-foreground transition-transform"
                       style={{ transform: recolhido ? "rotate(-90deg)" : "none" }}
@@ -337,7 +338,7 @@ export function DetalhamentoAtividades({
                 {!recolhido && (
                   <div className="mt-1">
                     {vazio ? (
-                      <p className="text-xs text-muted-foreground py-2">
+                      <p className="text-sm text-muted-foreground py-2">
                         Nenhuma atividade neste grupo.
                       </p>
                     ) : (
@@ -363,14 +364,29 @@ export function DetalhamentoAtividades({
   )
 }
 
-type GrupoId = "a_fazer" | "em_andamento" | "travadas" | "concluidas"
+type GrupoId = "a_fazer" | "em_andamento" | "travadas" | "concluidas" | "nao_se_aplica"
 
-const GRUPOS: { id: GrupoId; label: string; cor: string }[] = [
-  { id: "a_fazer", label: "A fazer", cor: "#D85A30" },
-  { id: "em_andamento", label: "Em andamento", cor: "#EF9F27" },
-  { id: "travadas", label: "Travadas", cor: "#E24B4A" },
-  { id: "concluidas", label: "Concluídas", cor: "#639922" },
+// Cores por token do tema (--status-*), não hex: os hex antigos (#639922,
+// #E24B4A, #D85A30) ficavam ilegíveis sobre o fundo escuro — "Concluídas"
+// chegava a ~2:1. Os tokens já estão calibrados para o escuro e são os mesmos
+// de crm/Badge.tsx.
+const GRUPOS: { id: GrupoId; label: string; texto: string; barra: string }[] = [
+  { id: "a_fazer", label: "A fazer", texto: "text-status-blue", barra: "bg-status-blue" },
+  { id: "em_andamento", label: "Em andamento", texto: "text-status-yellow", barra: "bg-status-yellow" },
+  { id: "travadas", label: "Travadas", texto: "text-status-red", barra: "bg-status-red" },
+  { id: "concluidas", label: "Concluídas", texto: "text-status-green", barra: "bg-status-green" },
+  { id: "nao_se_aplica", label: "Não se aplica", texto: "text-status-gray", barra: "bg-status-gray" },
 ]
+
+/**
+ * Quando a tarefa saiu da fila — é por essa data que o período filtra as
+ * encerradas. "Não se aplica" não gera `data_conclusao` (o trigger só preenche
+ * para 'realizado'), então vale o `status_desde`, senão uma tarefa antiga
+ * marcada como N/A hoje sumiria do grupo dela.
+ */
+function dataEncerramento(a: Atividade): string {
+  return a.data_conclusao ?? a.status_desde ?? a.data_prevista
+}
 
 const STATUS_OPCOES: AtividadeStatus[] = [
   "Pendente",
@@ -379,6 +395,7 @@ const STATUS_OPCOES: AtividadeStatus[] = [
   "Aguardando time interno",
   "Impedida",
   "Concluída",
+  "Não se aplica",
 ]
 
 function responsavelLabel(a: Atividade) {
@@ -423,12 +440,12 @@ function LinhaAtividade({
   }
 
   const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`
-  const vencida = a.status !== "Concluída" && dateOnly(a.data_prevista) < hojeISO
+  const vencida = !estaEncerrada(a.status) && dateOnly(a.data_prevista) < hojeISO
   const aguardando =
     a.status === "Aguardando cliente" || a.status === "Aguardando time interno"
 
   const prazo = vencida ? (
-    <span className="text-xs tabular-nums" style={{ color: "#E24B4A" }}>
+    <span className="text-xs tabular-nums text-status-red">
       há {diffDias(a.data_prevista, hoje)}d
     </span>
   ) : (
@@ -438,15 +455,13 @@ function LinhaAtividade({
   )
 
   return (
-    <div style={{ borderTop: first ? "none" : "0.5px solid rgba(255,255,255,0.07)" }}>
+    <div className={first ? undefined : "border-t border-border"}>
       <div className="flex items-center gap-3 py-2 text-sm">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-foreground truncate">{a.titulo}</span>
             {aguardando && (
-              <span className="text-xs shrink-0" style={{ color: "#9CA3AF" }}>
-                {a.status}
-              </span>
+              <span className="text-xs shrink-0 text-muted-foreground">{a.status}</span>
             )}
           </div>
           <div className="text-xs text-muted-foreground truncate">
@@ -461,8 +476,7 @@ function LinhaAtividade({
         <select
           value={a.status === "Atrasada" ? "Pendente" : a.status}
           onChange={(e) => onChangeStatus(e.target.value as AtividadeStatus)}
-          className="text-xs bg-transparent rounded-md px-2 h-[28px] text-foreground focus:outline-none focus:border-primary"
-          style={{ border: "0.5px solid rgba(255,255,255,0.2)" }}
+          className="text-xs bg-transparent rounded-md px-2 h-[28px] text-foreground border border-border focus:outline-none focus:border-primary"
         >
           {STATUS_OPCOES.map((s) => (
             <option key={s} value={s} className="bg-card">
@@ -483,8 +497,7 @@ function LinhaAtividade({
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
             placeholder="Motivo do impedimento"
-            className="flex-1 text-xs bg-transparent rounded-md px-2 h-[28px] text-foreground focus:outline-none focus:border-primary"
-            style={{ border: "0.5px solid rgba(255,255,255,0.2)" }}
+            className="flex-1 text-xs bg-transparent rounded-md px-2 h-[28px] text-foreground border border-border focus:outline-none focus:border-primary"
           />
           <button
             type="button"
@@ -501,8 +514,7 @@ function LinhaAtividade({
           <button
             type="button"
             onClick={() => setPedindoMotivo(false)}
-            className="text-xs px-2 h-[28px] rounded-md text-muted-foreground"
-            style={{ border: "0.5px solid rgba(255,255,255,0.2)" }}
+            className="text-xs px-2 h-[28px] rounded-md text-muted-foreground border border-border"
           >
             Cancelar
           </button>

@@ -535,6 +535,7 @@ const STATUS_DB_TO_UI: Record<string, AtividadeStatus> = {
   impedido: "Impedida",
   atrasado: "Atrasada",
   cancelado: "Pendente",
+  nao_se_aplica: "Não se aplica",
 }
 const STATUS_UI_TO_DB: Record<AtividadeStatus, string> = {
   Pendente: "pendente",
@@ -544,6 +545,7 @@ const STATUS_UI_TO_DB: Record<AtividadeStatus, string> = {
   Concluída: "realizado",
   Impedida: "impedido",
   Atrasada: "atrasado",
+  "Não se aplica": "nao_se_aplica",
 }
 
 const PRIO_DB_TO_UI: Record<string, Prioridade> = {
