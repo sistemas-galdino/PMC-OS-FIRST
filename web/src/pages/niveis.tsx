@@ -52,11 +52,11 @@ const COR_NIVEL: Record<CorNivel, { fg: string; bg: string; borda: string }> = {
 }
 import { ETAPAS_METODO } from "@/data/etapas-metodo"
 
-interface Props { session?: Session; clientId?: string }
+interface Props { session?: Session; clientId?: string; visaoAdmin?: boolean }
 
 const num = (n: number) => n.toLocaleString("pt-BR")
 
-export default function NiveisPage({ session, clientId }: Props) {
+export default function NiveisPage({ session, clientId, visaoAdmin = false }: Props) {
   const cid = clientId || session?.user?.id
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -133,7 +133,11 @@ export default function NiveisPage({ session, clientId }: Props) {
   }, [cid])
 
   const nivel = calcularNivel(sinaisN)
-  const { catalogo, ganhas, metrics } = useConquistas(!!cid, true)
+  // sync_badges() roda por auth.uid(): dentro do perfil do cliente (visaoAdmin)
+  // ela concederia as conquistas do ADMIN e ainda dispararia o toast de
+  // celebração. Note que a guarda NÃO pode ser `!clientId`: o portal do cliente
+  // também recebe clientId por prop (App.tsx passa clientId={cid}).
+  const { catalogo, ganhas, metrics } = useConquistas(!visaoAdmin && !!cid, true)
 
   return (
     <div className="space-y-8 pb-10">
@@ -270,7 +274,16 @@ export default function NiveisPage({ session, clientId }: Props) {
         </div>
       </div>
 
-      {/* Suas Conquistas */}
+      {/* Suas Conquistas — só na visão do próprio cliente: as badges vêm de
+          sync_badges(), que resolve por auth.uid() e não aceita id de terceiro. */}
+      {visaoAdmin ? (
+        <div className="rounded-xl border border-dashed border-border p-4">
+          <h2 className="text-lg font-bold tracking-tight text-foreground">Conquistas</h2>
+          <p className="text-sm text-muted-foreground font-medium mt-1">
+            As conquistas só aparecem para o próprio cliente — elas são calculadas a partir do login dele.
+          </p>
+        </div>
+      ) : (
       <div>
         <div className="flex items-center justify-between gap-3 mb-1">
           <h2 className="text-lg font-bold tracking-tight text-foreground">Suas Conquistas</h2>
@@ -292,6 +305,7 @@ export default function NiveisPage({ session, clientId }: Props) {
           )
         })}
       </div>
+      )}
 
       {/* CTA */}
       <Card className="border-primary/20">

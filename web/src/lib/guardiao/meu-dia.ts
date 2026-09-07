@@ -61,7 +61,11 @@ export function contarSemanasPerfeitas(datas: string[]): number {
 
 const STREAK_VAZIO: Streak = { streak: 0, recorde: 0, escudo_disponivel: true, semana: [] }
 
-export async function carregarMeuDia(clientId: string): Promise<DadosMeuDia> {
+// visaoAdmin: o admin olhando o perfil de um cliente. meu_streak() resolve por
+// meu_id_cliente() e não aceita id de terceiro — chamada assim ela devolveria o
+// streak do ADMIN colado no dia do cliente. Melhor não ter streak do que ter o
+// streak errado; a tela esconde o bloco nesse caso.
+export async function carregarMeuDia(clientId: string, visaoAdmin = false): Promise<DadosMeuDia> {
   const hoje = hojeBRT()
   // "Desde ontem" = janela de 36h: cobre quem não abriu ontem à tarde.
   const desde = new Date(Date.now() - 36 * 3600 * 1000).toISOString()
@@ -69,7 +73,7 @@ export async function carregarMeuDia(clientId: string): Promise<DadosMeuDia> {
   const [tarefasRes, fechRes, streakRes, novRes] = await Promise.all([
     supabase.from("metodo_tarefas").select("*").eq("id_cliente", clientId).neq("status", "concluido"),
     supabase.from("metodo_dia_fechamentos").select("*").eq("id_cliente", clientId).eq("data", hoje).maybeSingle(),
-    supabase.rpc("meu_streak"),
+    visaoAdmin ? Promise.resolve({ data: null, error: null }) : supabase.rpc("meu_streak"),
     supabase.from("notificacoes").select("id, tipo, titulo, texto, link, created_at")
       .or(`id_cliente.eq.${clientId},id_cliente.is.null`)
       .gte("created_at", desde).order("created_at", { ascending: false }).limit(5),

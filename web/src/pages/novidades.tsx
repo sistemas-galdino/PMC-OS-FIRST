@@ -61,7 +61,7 @@ interface Comentario {
 
 interface Me { id: string; nome: string; avatar: string | null; isAdmin: boolean }
 
-interface NovidadesPageProps { session?: Session; clientId?: string }
+interface NovidadesPageProps { session?: Session; clientId?: string; visaoAdmin?: boolean }
 
 function iniciais(nome: string): string {
   const p = (nome || "?").trim().split(/\s+/)
@@ -96,7 +96,11 @@ function TagCategoria({ slug }: { slug: string }) {
   )
 }
 
-export default function NovidadesPage(_props: NovidadesPageProps) {
+export default function NovidadesPage({ visaoAdmin = false }: NovidadesPageProps) {
+  // visaoAdmin: o admin olhando o perfil de um cliente. O feed é global e a
+  // leitura fica; sai a interação, porque curtida e comentário gravam com o uid
+  // de quem está logado — sairiam como o admin, dentro da tela do cliente.
+  // (No menu dele, /novidades continua com tudo: lá o admin comenta como admin.)
   const [novidades, setNovidades] = useState<Novidade[]>([])
   const [loading, setLoading] = useState(true)
   const [me, setMe] = useState<Me | null>(null)
@@ -120,6 +124,7 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
   const navigate = useNavigate()
 
   async function resolverMe(): Promise<Me | null> {
+    if (visaoAdmin) return null   // sem "eu" não há o que curtir/comentar como admin
     const { data: { session } } = await supabase.auth.getSession()
     const uid = session?.user?.id
     const email = session?.user?.email
@@ -218,7 +223,7 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
   const fixados = useMemo(() => novidades.filter((n) => n.destaque), [novidades])
 
   async function toggleLike(n: Novidade) {
-    if (!me) return
+    if (!me || visaoAdmin) return
     const curtido = !n.curtido
     // otimista
     setNovidades((prev) => prev.map((x) => (x.id === n.id ? { ...x, curtido, likeCount: x.likeCount + (curtido ? 1 : -1) } : x)))
@@ -230,7 +235,7 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
   }
 
   async function enviarComentario() {
-    if (!me || !aberta || !novoTexto.trim()) return
+    if (!me || !aberta || !novoTexto.trim() || visaoAdmin) return
     setEnviando(true)
     const payload = {
       id_novidade: aberta.id,
@@ -357,7 +362,8 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
                   <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/50">
                     <button
                       onClick={() => toggleLike(n)}
-                      className={`flex items-center gap-1.5 text-[13px] font-bold transition-colors ${n.curtido ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                      disabled={visaoAdmin}
+                      className={`flex items-center gap-1.5 text-[13px] font-bold transition-colors disabled:cursor-default ${n.curtido ? "text-primary" : "text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground"}`}
                     >
                       <ThumbsUp className={`size-4 ${n.curtido ? "" : "opacity-70"}`} />
                       {n.likeCount}
@@ -527,7 +533,8 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
                 <div className="flex items-center gap-4 mt-4">
                   <button
                     onClick={() => toggleLike(aberta)}
-                    className={`flex items-center gap-1.5 text-[13px] font-bold transition-colors ${aberta.curtido ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                    disabled={visaoAdmin}
+                    className={`flex items-center gap-1.5 text-[13px] font-bold transition-colors disabled:cursor-default ${aberta.curtido ? "text-primary" : "text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground"}`}
                   >
                     <ThumbsUp className="size-4" />
                     {aberta.likeCount} {aberta.likeCount === 1 ? "curtida" : "curtidas"}
@@ -567,7 +574,14 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
                 )}
               </div>
 
-              {/* Composer */}
+              {/* Composer — só para quem é dono do próprio login. */}
+              {visaoAdmin ? (
+              <div className="p-4 border-t border-border bg-background">
+                <p className="text-[12px] font-medium text-muted-foreground text-center">
+                  Você está vendo o feed pelo perfil do cliente — para comentar, use a aba Novidades no seu menu.
+                </p>
+              </div>
+              ) : (
               <div className="p-4 border-t border-border bg-background">
                 {replyTo && (
                   <div className="flex items-center justify-between mb-2 px-1">
@@ -595,6 +609,7 @@ export default function NovidadesPage(_props: NovidadesPageProps) {
                   </Button>
                 </div>
               </div>
+              )}
             </>
           )}
         </DialogContent>

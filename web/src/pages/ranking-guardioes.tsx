@@ -68,9 +68,13 @@ function nomeExibido(l: LinhaRanking): { titulo: string; sub: string } {
   return { titulo: "Guardião não definido", sub: empresa }
 }
 
-export default function RankingGuardioesPage({ clientId }: { clientId?: string }) {
+export default function RankingGuardioesPage({ clientId, visaoAdmin = false }: { clientId?: string; visaoAdmin?: boolean }) {
   const { session } = useAuth()
   const meuId = clientId || session?.user?.id
+  // visaoAdmin: o admin olhando o perfil de um cliente. O ranking é público (a
+  // RPC não recebe id), mas o botão de visibilidade gravaria a preferência do
+  // cliente com texto em 1ª pessoa ("Você aparece no ranking"). Some na visão do
+  // admin; o destaque "Você" já não casa com ninguém, porque vem de auth.uid().
   const [periodo, setPeriodo] = useState<Periodo>("total")
   const [linhas, setLinhas] = useState<LinhaRanking[]>([])
   const [loading, setLoading] = useState(true)
@@ -90,13 +94,13 @@ export default function RankingGuardioesPage({ clientId }: { clientId?: string }
 
   // Estado atual do opt-in de visibilidade (própria linha do cliente).
   useEffect(() => {
-    if (!meuId) return
+    if (!meuId || visaoAdmin) return
     supabase.from("clientes_entrada_new").select("mostrar_no_ranking").eq("id_cliente", meuId).maybeSingle()
       .then(({ data }) => { if (data) setVisivel(data.mostrar_no_ranking !== false) })
-  }, [meuId])
+  }, [meuId, visaoAdmin])
 
   async function toggleVisibilidade() {
-    if (!meuId || visivel === null) return
+    if (!meuId || visivel === null || visaoAdmin) return
     const novo = !visivel
     setSalvandoVis(true)
     const { error } = await supabase.from("clientes_entrada_new").update({ mostrar_no_ranking: novo }).eq("id_cliente", meuId)
@@ -138,7 +142,7 @@ export default function RankingGuardioesPage({ clientId }: { clientId?: string }
             ))}
           </TabsList>
         </Tabs>
-        {visivel !== null && (
+        {visivel !== null && !visaoAdmin && (
           <button
             type="button"
             onClick={toggleVisibilidade}

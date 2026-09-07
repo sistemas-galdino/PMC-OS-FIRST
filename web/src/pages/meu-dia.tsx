@@ -32,7 +32,7 @@ import {
 } from "@/lib/guardiao/meu-dia"
 import type { Tarefa } from "@/lib/guardiao/tarefas"
 
-interface Props { session?: Session; clientId?: string }
+interface Props { session?: Session; clientId?: string; visaoAdmin?: boolean }
 
 const DOW = ["S", "T", "Q", "Q", "S"]
 
@@ -46,12 +46,16 @@ const TOM: Record<ProximaAcao["tom"], { cor: string; icone: typeof AlertTriangle
   livre:  { cor: "text-primary",    icone: Sparkles,      rotulo: "Quase lá" },
 }
 
-export default function MeuDiaPage({ clientId }: Props) {
+export default function MeuDiaPage({ clientId, visaoAdmin = false }: Props) {
   // NÃO cair para session.user.id: para um admin isso é o uid do login, não um
   // id_cliente — a tela viria vazia e o checklist gravaria linha órfã. O id vem
   // da prop (portal do cliente) ou do contexto, que resolve por meu_id_cliente().
   const { isAdmin, idCliente } = useAuth()
   const cid = clientId ?? idCliente ?? undefined
+  // visaoAdmin: o admin olhando o perfil de um cliente (só a Visão Operacional
+  // passa essa prop). É leitura — o checklist e o "fechar o dia" gravariam o dia
+  // do cliente, e o streak vem por auth.uid(), que seria o do admin.
+  // Não dá pra inferir por `clientId`: o portal do cliente também recebe a prop.
   const navigate = useNavigate()
   const [d, setD] = useState<DadosMeuDia | null>(null)
   const [carregando, setCarregando] = useState(true)
@@ -63,7 +67,7 @@ export default function MeuDiaPage({ clientId }: Props) {
   const carregar = useCallback(async () => {
     if (!cid) return
     try {
-      const dados = await carregarMeuDia(cid)
+      const dados = await carregarMeuDia(cid, visaoAdmin)
       setD(dados)
       if (dados.fechamento) {
         setResp({
@@ -77,7 +81,7 @@ export default function MeuDiaPage({ clientId }: Props) {
     } finally {
       setCarregando(false)
     }
-  }, [cid])
+  }, [cid, visaoAdmin])
 
   useEffect(() => { carregar() }, [carregar])
 
@@ -90,7 +94,7 @@ export default function MeuDiaPage({ clientId }: Props) {
   const pontosHoje = (d?.concluidasHoje ?? 0) * 10 + (fechado ? 15 : 0)
 
   async function alternarItem(i: number) {
-    if (!cid || !d || marcando || fechado) return
+    if (!cid || !d || marcando || fechado || visaoAdmin) return
     setMarcando(true)
     const novo = feitos.includes(i) ? feitos.filter((x) => x !== i) : [...feitos, i].sort((a, b) => a - b)
     // Otimista: marcar checkbox tem que ser instantâneo.
@@ -106,7 +110,7 @@ export default function MeuDiaPage({ clientId }: Props) {
   }
 
   async function confirmarFechamento() {
-    if (!cid || !d) return
+    if (!cid || !d || visaoAdmin) return
     setSalvandoFech(true)
     try {
       await fecharDia(cid, resp, feitos)
@@ -238,7 +242,7 @@ export default function MeuDiaPage({ clientId }: Props) {
                 <button
                   key={item}
                   type="button"
-                  disabled={fechado}
+                  disabled={fechado || visaoAdmin}
                   onClick={() => alternarItem(i)}
                   aria-pressed={on}
                   className="flex w-full items-start gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-primary/[0.05] disabled:cursor-default disabled:hover:bg-transparent"
@@ -256,7 +260,7 @@ export default function MeuDiaPage({ clientId }: Props) {
             })}
           </div>
 
-          {!fechado && (
+          {!fechado && !visaoAdmin && (
             <Button
               variant={feitos.length >= total ? "default" : "outline"}
               className="w-full h-11 gap-2 rounded-xl text-xs font-bold uppercase tracking-wider"
@@ -315,7 +319,9 @@ export default function MeuDiaPage({ clientId }: Props) {
         </Card>
       )}
 
-      {/* 6 · Semana — os 5 quadrados */}
+      {/* 6 · Semana — os 5 quadrados. Sai na visão do admin: o streak vem de
+          meu_streak() (auth.uid()), então aqui ele viria zerado ou seria o dele. */}
+      {!visaoAdmin && (
       <Card>
         <CardContent className="p-6 space-y-3">
           <div className="flex items-center justify-between">
@@ -353,6 +359,7 @@ export default function MeuDiaPage({ clientId }: Props) {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Ritual de fechamento — as 3 perguntas obrigatórias da rotina */}
       <Dialog open={abrirFechamento} onOpenChange={setAbrirFechamento}>

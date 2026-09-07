@@ -64,6 +64,7 @@ interface Me { id: string; nome: string; avatar: string | null; isAdmin: boolean
 interface EstudosCasoPageProps {
   session?: Session
   clientId?: string
+  visaoAdmin?: boolean
 }
 
 // --- helpers de vídeo -------------------------------------------------------
@@ -108,7 +109,11 @@ async function resolverMe(): Promise<Me | null> {
   return { id: uid, nome: cli?.nome_cliente_formatado || "Você", avatar: cli?.avatar_url ?? null, isAdmin: false }
 }
 
-export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
+export default function EstudosCasoPage({ visaoAdmin = false }: EstudosCasoPageProps) {
+  // visaoAdmin: o admin olhando o perfil de um cliente. O acervo é global, mas
+  // curtida, comentário e a view do case gravam com o uid de quem está logado —
+  // sairiam como o admin dentro da tela do cliente. Sem "eu", o botão de curtir
+  // já nasce disabled e o composer não renderiza.
   const [estudos, setEstudos] = useState<EstudoCaso[]>([])
   const [loading, setLoading] = useState(true)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -136,7 +141,7 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const meResolved = await resolverMe()
+      const meResolved = visaoAdmin ? null : await resolverMe()
       if (cancelled) return
       setMe(meResolved)
       const [{ data }, likesRes] = await Promise.all([
@@ -185,12 +190,14 @@ export default function EstudosCasoPage(_props: EstudosCasoPageProps) {
   // Visualização: conta quando alguém abre o case pra assistir (clique ou deep
   // link), uma vez por case por sessão de página. O incremento real é via RPC.
   useEffect(() => {
-    if (!casoId || loading || viewsContadas.current.has(casoId)) return
+    // Na visão do admin não conta view: a RPC grava (id_estudo, auth.uid()) e
+    // sujaria o engajamento com linhas do admin.
+    if (!casoId || loading || visaoAdmin || viewsContadas.current.has(casoId)) return
     if (!estudos.some((e) => e.id === casoId)) return
     viewsContadas.current.add(casoId)
     supabase.rpc("estudo_caso_registrar_view", { p_estudo: casoId })
     setEstudos((prev) => prev.map((e) => (e.id === casoId ? { ...e, visualizacoes: e.visualizacoes + 1 } : e)))
-  }, [casoId, loading, estudos])
+  }, [casoId, loading, estudos, visaoAdmin])
 
   // Comentários do case aberto.
   useEffect(() => {
