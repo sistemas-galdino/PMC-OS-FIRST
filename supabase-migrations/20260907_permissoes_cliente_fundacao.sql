@@ -116,6 +116,15 @@ on conflict do nothing;
 --      - 314 das 322 empresas não tinham NENHUM dono.
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- O guard anti-vínculo-cruzado (tg_empresa_usuarios_guard) recusa inserir um
+-- vínculo para quem já está em outra empresa — e é exatamente o caso de quem
+-- foi convidado para uma segunda empresa antes de ganhar o self-link da sua.
+-- Ele existe para impedir que alguém seja ADICIONADO a uma empresa alheia, não
+-- para impedir que se registre que a pessoa é dona da própria. Desligado só
+-- durante o backfill. (No PROD isto aparece em 1 caso, dois cadastros de teste
+-- da mesma pessoa; sem o disable a migration aborta inteira.)
+alter table public.empresa_usuarios disable trigger trg_empresa_usuarios_guard;
+
 -- (a) O login que É a empresa é o dono dela. Preserva o único self-link marcado
 --     'guardiao' de propósito, e os que já estavam corretos.
 update public.empresa_usuarios
@@ -149,6 +158,8 @@ on conflict (auth_user_id, id_cliente) do nothing;
 -- nenhum: isso elegeria um funcionário qualquer por antiguidade. Para essas, o
 -- fallback em minhas_secoes_cliente() (login que é a empresa => dono) cobre o
 -- caso real, e a PMC ajusta pela aba /acessos.
+
+alter table public.empresa_usuarios enable trigger trg_empresa_usuarios_guard;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 5. CHECK -> FK, agora que papeis_empresa existe e o dado está consistente.
