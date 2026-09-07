@@ -121,4 +121,8 @@ export async function getAccessTokenAs(
 export const SCOPES = {
   CALENDAR_EVENTS: "https://www.googleapis.com/auth/calendar.events",
   DOCUMENTS_READONLY: "https://www.googleapis.com/auth/documents.readonly",
+  // Escopo completo (não drive.file): as gravações do Meet e os docs do Gemini são
+  // criados pelo Google, não por esta app, então drive.file não os alcança.
+  // Precisa estar habilitado no Admin Console para o client ID desta service account.
+  DRIVE: "https://www.googleapis.com/auth/drive",
 }

@@ -1,4 +1,5 @@
 import { getAccessTokenAs, SCOPES } from "./google-auth-sa.ts"
+import { extrairFileIdDaUrl } from "./google-drive.ts"
 
 export interface AttendeePayload {
   email: string
@@ -336,6 +337,7 @@ export async function freebusyQuery(emailCalendar: string, timeMin: string, time
 
 export interface AttachmentsExtraidos {
   gravacao_url: string | null
+  gravacao_id: string | null
   gemini_doc_url: string | null
   gemini_doc_id: string | null
 }
@@ -346,7 +348,8 @@ export function extrairAttachments(event: { attachments?: Array<{ title?: string
   const geminiDoc = atts.find(a => /anota[çc][oõ]es do gemini|gemini notes/i.test(a.title ?? ""))
   return {
     gravacao_url: gravacao?.fileUrl ?? null,
+    gravacao_id: gravacao?.fileId ?? extrairFileIdDaUrl(gravacao?.fileUrl) ?? null,
     gemini_doc_url: geminiDoc?.fileUrl ?? null,
-    gemini_doc_id: geminiDoc?.fileId ?? null,
+    gemini_doc_id: geminiDoc?.fileId ?? extrairFileIdDaUrl(geminiDoc?.fileUrl) ?? null,
   }
 }
