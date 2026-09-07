@@ -113,10 +113,11 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
       //    a edge function invite-client cria o registro inteiro quando
       //    gerarLink=true, entao inserir aqui duplicaria a linha).
       if (!gerarLink) {
+        const idCliente = crypto.randomUUID()
         const { error: insertError } = await supabase
           .from('clientes_entrada_new')
           .insert({
-            id_cliente: crypto.randomUUID(),
+            id_cliente: idCliente,
             nome_cliente: form.nome_cliente.trim(),
             nome_empresa: form.nome_empresa.trim() || null,
             nome_cliente_formatado: titleCase(form.nome_cliente.trim()),
@@ -134,6 +135,18 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
           })
 
         if (insertError) throw new Error(insertError.message)
+
+        // O e-mail não mora em clientes_entrada_new — fica em clientes_formulario.
+        // A linha de lá já foi criada pelo trigger trg_garante_clientes_formulario
+        // (com o codigo_cliente certo), então é UPDATE e não upsert: um upsert sem
+        // codigo_cliente zeraria o campo.
+        if (form.email.trim()) {
+          const { error: emailError } = await supabase
+            .from('clientes_formulario')
+            .update({ email: form.email.trim() })
+            .eq('id_cliente', idCliente)
+          if (emailError) throw new Error(emailError.message)
+        }
       }
 
       // 2. Se gerar link, chamar edge function
@@ -158,6 +171,7 @@ export function RegistrarClienteDialog({ open, onOpenChange, onSuccess, scOption
               app_url: window.location.origin,
               estado_uf: form.estado_uf || null,
               sc: form.sc || null,
+              status_atual: form.status_atual || null,
               unidade_treinamento: form.unidade_treinamento.trim() || null,
               produto: form.produto.trim() || null,
               nicho: form.nicho || null,

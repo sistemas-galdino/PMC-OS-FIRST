@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import {
   Table,
@@ -285,50 +285,53 @@ export default function ClientesPage() {
     setDeleting(false)
   }
 
-  useEffect(() => {
-    async function fetchClients() {
-      const [{ data: entradaData, error: entradaErr }, { data: emailsData }, radarRes, pontosRes] = await Promise.all([
-        supabase
-          .from('clientes_entrada_new')
-          .select('*')
-          .order('nome_cliente_formatado', { ascending: true }),
-        supabase
-          .from('clientes_formulario')
-          .select('id_cliente, email'),
-        supabase.rpc('radar_renovacao'),
-        supabase.rpc('admin_clientes_pontos'),
-      ])
+  // Carga da lista. Fica fora do useEffect porque o cadastro de cliente novo
+  // precisa refazer a MESMA carga — inclusive o merge do e-mail, que vem de
+  // clientes_formulario e não existe em clientes_entrada_new.
+  const fetchClients = useCallback(async () => {
+    const [{ data: entradaData, error: entradaErr }, { data: emailsData }, radarRes, pontosRes] = await Promise.all([
+      supabase
+        .from('clientes_entrada_new')
+        .select('*')
+        .order('nome_cliente_formatado', { ascending: true }),
+      supabase
+        .from('clientes_formulario')
+        .select('id_cliente, email'),
+      supabase.rpc('radar_renovacao'),
+      supabase.rpc('admin_clientes_pontos'),
+    ])
 
-      const radarMap = new Map<string, RadarInfo>()
-      ;((radarRes.data as any[]) ?? []).forEach((r) => {
-        if (r.id_cliente) radarMap.set(r.id_cliente, {
-          dias_sem_reuniao: r.dias_sem_reuniao,
-          faixa: r.faixa,
-          dias_renovacao: r.dias_renovacao,
-          score: r.score,
-          motivos: r.motivos ?? [],
-        })
+    const radarMap = new Map<string, RadarInfo>()
+    ;((radarRes.data as any[]) ?? []).forEach((r) => {
+      if (r.id_cliente) radarMap.set(r.id_cliente, {
+        dias_sem_reuniao: r.dias_sem_reuniao,
+        faixa: r.faixa,
+        dias_renovacao: r.dias_renovacao,
+        score: r.score,
+        motivos: r.motivos ?? [],
       })
-      setRadar(radarMap)
-      const pMap = new Map<string, number>()
-      ;((pontosRes.data as any[]) ?? []).forEach((r) => { if (r.id_cliente) pMap.set(r.id_cliente, r.pontos ?? 0) })
-      setPontosMap(pMap)
+    })
+    setRadar(radarMap)
+    const pMap = new Map<string, number>()
+    ;((pontosRes.data as any[]) ?? []).forEach((r) => { if (r.id_cliente) pMap.set(r.id_cliente, r.pontos ?? 0) })
+    setPontosMap(pMap)
 
-      if (entradaData && !entradaErr) {
-        const emailByCliente = new Map<string, string | null>(
-          (emailsData ?? []).map(r => [r.id_cliente as string, (r.email as string | null) ?? null])
-        )
-        const merged: Client[] = entradaData.map((c: any) => ({
-          ...c,
-          email: emailByCliente.get(c.id_cliente) ?? null,
-        }))
-        setClients(merged)
-      }
-      setLoading(false)
+    if (entradaData && !entradaErr) {
+      const emailByCliente = new Map<string, string | null>(
+        (emailsData ?? []).map(r => [r.id_cliente as string, (r.email as string | null) ?? null])
+      )
+      const merged: Client[] = entradaData.map((c: any) => ({
+        ...c,
+        email: emailByCliente.get(c.id_cliente) ?? null,
+      }))
+      setClients(merged)
     }
-
-    fetchClients()
+    setLoading(false)
   }, [])
+
+  useEffect(() => {
+    fetchClients()
+  }, [fetchClients])
 
   // Drawer: últimas reuniões do cliente selecionado.
   useEffect(() => {
@@ -1558,16 +1561,7 @@ export default function ClientesPage() {
         open={showRegistrar}
         onOpenChange={setShowRegistrar}
         scOptions={csDoTime}
-        onSuccess={() => {
-          // Refresh client list
-          supabase
-            .from('clientes_entrada_new')
-            .select('*')
-            .order('nome_cliente_formatado', { ascending: true })
-            .then(({ data }) => {
-              if (data) setClients(data)
-            })
-        }}
+        onSuccess={() => { fetchClients() }}
       />
 
       <Dialog open={!!deleteClient} onOpenChange={(open) => { if (!open) { setDeleteClient(null); setDeleteError(null) } }}>

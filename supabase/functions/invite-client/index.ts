@@ -64,7 +64,7 @@ Deno.serve(async (req: Request) => {
     const {
       nome, nome_empresa, email, app_url: bodyAppUrl,
       estado_uf, sc, unidade_treinamento, produto, nicho, subnicho,
-      canal_de_venda, mes_treinamento, ano_treinamento,
+      canal_de_venda, mes_treinamento, ano_treinamento, status_atual,
     } = await req.json();
     if (!nome || !email) return jsonResponse({ error: 'Nome e e-mail sao obrigatorios' }, 400);
 
@@ -122,7 +122,10 @@ Deno.serve(async (req: Request) => {
       codigo_cliente: nextCodigo,
       nome_cliente: nomeF, nome_cliente_formatado: nomeF,
       nome_empresa: empresaF, nome_empresa_formatado: empresaF,
-      status_atual: 'Pendente de Onboarding', nivel_engajamento: 'sem_onboarding',
+      // O status vem do formulário de cadastro; 'Pendente de Onboarding' é só o
+      // fallback pra chamadas antigas que não mandavam o campo.
+      status_atual: status_atual || 'Pendente de Onboarding',
+      nivel_engajamento: 'sem_onboarding',
       estado_uf: estado_uf || null,
       sc: sc || null,
       unidade_treinamento: unidade_treinamento || null,
