@@ -248,7 +248,13 @@ export default function AcessosEmpresaPage() {
                         <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                           {itens.map((s) => {
                             const on = temSecao(a, s.chave)
-                            const alterado = a.secoes_ligadas.includes(s.chave) || a.secoes_desligadas.includes(s.chave)
+                            // Só marca o que REALMENTE foge do padrão do papel. Existir
+                            // uma linha de override não basta: o grandfathering de
+                            // 2026-09-07 gravou uma para cada aba de cada pessoa que já
+                            // estava na casa, e sem esta comparação todo colaborador
+                            // antigo apareceria "ajustado" em tudo — dizendo que alguém
+                            // mexeu quando ninguém mexeu.
+                            const alterado = on !== noTemplate(a, s.chave)
                             const trancado = s.chave === "acessos-empresa"
                             return (
                               <button
