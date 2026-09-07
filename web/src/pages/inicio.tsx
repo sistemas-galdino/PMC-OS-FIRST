@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -143,6 +144,11 @@ function scaleCurrency(value: number): { value: number; suffix: string } {
 
 export default function InicioPage({ session, clientId }: InicioPageProps) {
   const navigate = useNavigate()
+  // O bloco "Resultados do seu negócio" lê cliente_metas/indicadores, que a RLS
+  // fecha para quem não tem essas seções. Sem esta guarda ele renderizaria
+  // "Faturamento anual R$ 0" — o que não é esconder, é mentir.
+  const { podeCliente, isAdmin } = useAuth()
+  const veResultados = isAdmin || podeCliente("mapeamento") || podeCliente("indicadores")
   const resolvedClientId = clientId || session?.user?.id
   const [loading, setLoading] = useState(true)
   const [nomeCliente, setNomeCliente] = useState<string | null>(null)
@@ -846,6 +852,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
       </div>
 
       {/* Resultados do negócio — indicadores + gráfico (largura total) */}
+      {veResultados && (
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="space-y-4">
         <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Resultados do seu negócio</p>
         <Card>
@@ -881,6 +888,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
         </Card>
         <GraficoFaturamentoMensal clientId={resolvedClientId} />
       </motion.div>
+      )}
     </div>
   )
 }
