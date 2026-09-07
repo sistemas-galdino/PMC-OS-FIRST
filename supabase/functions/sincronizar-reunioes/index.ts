@@ -22,6 +22,8 @@ interface Reuniao {
   link_geminidoc: string | null
   link_gravacao: string | null
   ganho: string | null
+  horario: string | null
+  duracao_minutos: number | null
   consultor_nome: string | null
   mentor?: string | null
   responsavel?: string | null
@@ -35,6 +37,51 @@ const TABELAS: Reuniao["origem_tabela"][] = ["reunioes_galdino", "reunioes_mento
 // link_gravacao nunca era preenchido. Gravação não aparece meses depois, então
 // limitamos a janela pra não re-buscar evento à toa pra sempre.
 const JANELA_REGRAVACAO_DIAS = 120
+
+// Folga depois do fim da reunião antes de ir buscar o evento: o Gemini leva
+// alguns minutos pra publicar o doc de notas. Sem isso a primeira rodada cai
+// num evento ainda sem anexo e gasta chamada de Calendar à toa.
+const MARGEM_POS_REUNIAO_MIN = 15
+
+// data_reuniao/horario são gravados no horário de Brasília. Comparar com um
+// "hoje" em UTC atrasava o enrich da reunião do próprio dia até as 21h (00h UTC).
+const TZ = "America/Sao_Paulo"
+const FMT_DATA = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+})
+const FMT_HORA = new Intl.DateTimeFormat("en-GB", {
+  timeZone: TZ,
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+})
+
+function dataIsoSP(d: Date = new Date()): string {
+  return FMT_DATA.format(d)
+}
+
+function minutosDoDiaSP(d: Date = new Date()): number {
+  const [h, m] = FMT_HORA.format(d).split(":").map(Number)
+  return h * 60 + m
+}
+
+// horario é `time` em galdino/mentoria_new ("10:00:00") e `text` em blackcrm
+// ("10:00"). Aceita as duas formas; null quando não dá pra ler.
+function horaEmMinutos(horario: string | null): number | null {
+  if (!horario) return null
+  const m = /^(\d{1,2}):(\d{2})/.exec(horario.trim())
+  if (!m) return null
+  return Number(m[1]) * 60 + Number(m[2])
+}
+
+function jaTerminou(r: { horario: string | null; duracao_minutos: number | null }, agoraMin: number): boolean {
+  const inicio = horaEmMinutos(r.horario)
+  if (inicio === null) return true // sem horário legível: mantém o comportamento antigo
+  return inicio + (r.duracao_minutos ?? 60) + MARGEM_POS_REUNIAO_MIN <= agoraMin
+}
 
 function autorizado(req: Request): boolean {
   const expected = Deno.env.get("CRON_INVOKE_TOKEN")
@@ -66,13 +113,16 @@ function nomeConsultorDaLinha(r: Reuniao): string | null {
 }
 
 async function buscarReunioesParaEnrich(supabase: any): Promise<Reuniao[]> {
-  const hojeIso = new Date().toISOString().slice(0, 10)
-  const cutoffRegravacao = new Date(Date.now() - JANELA_REGRAVACAO_DIAS * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10)
+  const agora = new Date()
+  const hojeIso = dataIsoSP(agora)
+  const agoraMin = minutosDoDiaSP(agora)
+  const cutoffRegravacao = dataIsoSP(
+    new Date(agora.getTime() - JANELA_REGRAVACAO_DIAS * 24 * 60 * 60 * 1000),
+  )
   const all: Reuniao[] = []
 
-  const sel = "id_unico, id_reuniao, data_reuniao, empresa, transcricao, link_geminidoc, link_gravacao, ganho"
+  const sel =
+    "id_unico, id_reuniao, data_reuniao, horario, duracao_minutos, empresa, transcricao, link_geminidoc, link_gravacao, ganho"
   for (const tabela of TABELAS) {
     const cols = tabela === "reunioes_galdino"
       ? sel
@@ -85,7 +135,10 @@ async function buscarReunioesParaEnrich(supabase: any): Promise<Reuniao[]> {
       .select(cols)
       .eq("criado_via", "agendamento_publico")
       .not("id_reuniao", "is", null)
-      .lt("data_reuniao", hojeIso)
+      // Inclui o próprio dia: reunião da manhã é enriquecida na rodada horária
+      // seguinte, não só na virada do dia. As de hoje que ainda não terminaram
+      // são descartadas abaixo (jaTerminou).
+      .lte("data_reuniao", hojeIso)
       // Falta transcrição/ganho (qualquer idade) OU falta gravação/doc numa reunião
       // recente (até JANELA_REGRAVACAO_DIAS): a gravação chega depois da transcrição.
       .or(
@@ -97,7 +150,10 @@ async function buscarReunioesParaEnrich(supabase: any): Promise<Reuniao[]> {
       continue
     }
     for (const row of (data ?? [])) {
-      all.push({ ...row, origem_tabela: tabela } as Reuniao)
+      const r = { ...row, origem_tabela: tabela } as Reuniao
+      // Reunião de hoje só entra depois de terminar (+ margem do Gemini).
+      if (r.data_reuniao === hojeIso && !jaTerminou(r, agoraMin)) continue
+      all.push(r)
     }
   }
   return all
