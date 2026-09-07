@@ -272,18 +272,25 @@ Deno.serve(async (req: Request) => {
       if (scNome) {
         // A caixa da CS sai de `mentores` (papel='cs'), a mesma fonte do RBAC e do
         // CRM — antes era um mapa hardcoded aqui, que ficava velho a cada troca de
-        // time. `sc` é texto livre, então o casamento é case-insensitive pelo nome.
-        const { data: csRow } = await supabase
+        // time. O casamento é por `carteira_sc` (o vínculo feito em Time &
+        // Permissões, que guarda a string exata de `sc`), com fallback em `nome`
+        // para quem ainda não vinculou. `sc` é texto livre: compara normalizado.
+        const { data: csRows } = await supabase
           .from("mentores")
-          .select("nome, email")
+          .select("nome, email, carteira_sc")
           .eq("papel", "cs")
-          // escapa curingas do LIKE: `sc` é texto livre digitado por humano
-          .ilike("nome", scNome.replace(/[%_\\]/g, "\\$&"))
-          .maybeSingle<{ nome: string; email: string | null }>()
-        const email = csRow?.email?.trim().toLowerCase()
+        const alvo = scNome.toLowerCase()
+        const csRow = (csRows ?? []).find(
+          (m: { nome: string | null; carteira_sc: string | null }) =>
+            (m.carteira_sc ?? "").trim().toLowerCase() === alvo,
+        ) ?? (csRows ?? []).find(
+          (m: { nome: string | null; carteira_sc: string | null }) =>
+            (m.nome ?? "").trim().toLowerCase() === alvo,
+        )
+        const email = (csRow as { email?: string | null } | undefined)?.email?.trim().toLowerCase()
         if (email && email.endsWith(DOMINIO_WORKSPACE)) {
           csEmail = email
-          csNome = csRow!.nome
+          csNome = (csRow as { nome: string }).nome
         }
       }
     }
