@@ -62,7 +62,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
+import { Link, useLocation, useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
 import { EmpresaSwitcher } from "@/components/layout/empresa-switcher"
@@ -75,7 +75,6 @@ interface AppSidebarProps {
 export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
   const { can, podeCliente } = useAuth()
   const location = useLocation()
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const currentTab = searchParams.get("tab") || "visao-geral"
   const moedaAtual = useClienteMoeda()
@@ -415,14 +414,13 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
                                       asChild
                                       className={childActive ? "bg-primary/10 text-primary hover:bg-primary/20 [&>svg]:text-primary" : ""}
                                     >
-                                      <button
-                                        type="button"
-                                        onClick={() => navigate(child.url ? child.url : `${item.url}?tab=${child.tab}`)}
-                                        className="w-full cursor-pointer"
+                                      <Link
+                                        to={child.url ? child.url : `${item.url}?tab=${child.tab}`}
+                                        className="w-full"
                                       >
                                         <child.icon className="size-4" />
                                         <span>{child.title}</span>
-                                      </button>
+                                      </Link>
                                     </SidebarMenuSubButton>
                                   </SidebarMenuSubItem>
                                 )
@@ -442,17 +440,19 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
                         transition={{ duration: 0.4, delay: index * 0.05, ease: "easeOut" }}
                       >
                         <SidebarMenuButton
+                          asChild
                           tooltip={item.title}
                           isActive={active}
-                          onClick={() => navigate(item.url)}
                           className={`rounded-lg transition-all duration-300 font-medium h-9 px-3 ${
                             active
                               ? "bg-primary/10 text-primary hover:bg-primary/20"
                               : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                           }`}
                         >
-                          <item.icon className={`size-4 transition-transform duration-300 ${active ? "scale-110" : "group-hover:scale-110"}`} />
-                          <span className="ml-2">{item.title}</span>
+                          <Link to={item.url}>
+                            <item.icon className={`size-4 transition-transform duration-300 ${active ? "scale-110" : "group-hover:scale-110"}`} />
+                            <span className="ml-2">{item.title}</span>
+                          </Link>
                         </SidebarMenuButton>
                       </motion.div>
                     </SidebarMenuItem>
@@ -477,15 +477,19 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="right" align="start" className="min-w-[180px]">
-                <DropdownMenuItem onClick={() => navigate('/trocar-senha')} className="cursor-pointer font-medium">
-                  <ShieldCheck className="size-4" />
-                  Trocar senha
+                <DropdownMenuItem asChild className="font-medium">
+                  <Link to="/trocar-senha">
+                    <ShieldCheck className="size-4" />
+                    Trocar senha
+                  </Link>
                 </DropdownMenuItem>
                 {!isAdmin && (
                   <>
-                    <DropdownMenuItem onClick={() => navigate('/notificacoes')} className="cursor-pointer font-medium">
-                      <Megaphone className="size-4" />
-                      Notificações
+                    <DropdownMenuItem asChild className="font-medium">
+                      <Link to="/notificacoes">
+                        <Megaphone className="size-4" />
+                        Notificações
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuSub>

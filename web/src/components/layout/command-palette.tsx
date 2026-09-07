@@ -1,7 +1,7 @@
 // Busca global / command palette (⌘K ou Ctrl+K). Navega para qualquer
 // destino do app; para admin, também busca clientes pelo nome.
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
 import { SearchIcon as Search, ArrowUpRightIcon as ArrowUpRight, UsersIcon as Users } from "@/components/ui/icons"
@@ -178,6 +178,11 @@ export function CommandPalette({ isAdmin }: { isAdmin: boolean }) {
     setAberto(false)
   }
 
+  // Cada resultado é um <a href> de verdade, então botão direito e Cmd+clique
+  // abrem em nova guia. No clique simples o Link navega e a paleta fecha; no
+  // clique modificado ela fica aberta pra buscar o próximo destino.
+  const cliqueSimples = (e: React.MouseEvent) => !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey
+
   function onInputKey(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(s + 1, total - 1)) }
     else if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)) }
@@ -211,17 +216,18 @@ export function CommandPalette({ isAdmin }: { isAdmin: boolean }) {
             <div className="px-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-3 py-1.5">Ir para</p>
               {rotasFiltradas.map((r, i) => (
-                <button
+                <Link
                   key={r.url}
+                  to={r.url}
                   onMouseEnter={() => setSel(i)}
-                  onClick={() => irPara(i)}
+                  onClick={(e) => { if (cliqueSimples(e)) setAberto(false) }}
                   className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-left ${sel === i ? "bg-primary/10" : "hover:bg-muted/40"}`}
                 >
                   <span className="text-[13px] font-medium text-foreground">{r.label}</span>
                   <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
                     {r.grupo}<ArrowUpRight className="size-3.5" />
                   </span>
-                </button>
+                </Link>
               ))}
             </div>
           )}
@@ -232,10 +238,11 @@ export function CommandPalette({ isAdmin }: { isAdmin: boolean }) {
               {clientes.map((c, j) => {
                 const i = rotasFiltradas.length + j
                 return (
-                  <button
+                  <Link
                     key={c.id}
+                    to={`/cliente/${c.id}`}
                     onMouseEnter={() => setSel(i)}
-                    onClick={() => irPara(i)}
+                    onClick={(e) => { if (cliqueSimples(e)) setAberto(false) }}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${sel === i ? "bg-primary/10" : "hover:bg-muted/40"}`}
                   >
                     <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -245,7 +252,7 @@ export function CommandPalette({ isAdmin }: { isAdmin: boolean }) {
                       <p className="text-[13px] font-medium text-foreground truncate">{c.nome}</p>
                       {c.empresa && c.empresa !== c.nome && <p className="text-[11px] text-muted-foreground truncate">{c.empresa}</p>}
                     </div>
-                  </button>
+                  </Link>
                 )
               })}
             </div>
