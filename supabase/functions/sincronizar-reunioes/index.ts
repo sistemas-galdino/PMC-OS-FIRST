@@ -4,6 +4,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts"
 import { buscarEvento, extrairAttachments } from "../_shared/google-calendar.ts"
 import { lerDocumento, parseGeminiDoc, extrairDocIdDaUrl } from "../_shared/google-docs.ts"
 import { extrairGanhoAcoes } from "../_shared/llm-enrich.ts"
+import { buscarContasCandidatas, garantirPublico } from "../_shared/drive-publico.ts"
 
 interface Consultor {
   id: string
@@ -113,8 +114,13 @@ async function buscarMapaConsultores(supabase: any): Promise<Map<string, Consult
   return map
 }
 
-async function enrichReuniao(supabase: any, r: Reuniao, consultor: Consultor): Promise<{ ok: boolean; erro?: string }> {
-  if (!r.id_reuniao) return { ok: false, erro: "sem id_reuniao" }
+async function enrichReuniao(
+  supabase: any,
+  r: Reuniao,
+  consultor: Consultor,
+  candidatas: string[],
+): Promise<{ ok: boolean; erro?: string; drive_ok: number; drive_fail: number }> {
+  if (!r.id_reuniao) return { ok: false, erro: "sem id_reuniao", drive_ok: 0, drive_fail: 0 }
   try {
     const evt = await buscarEvento(consultor.email_calendar, r.id_reuniao)
     const att = extrairAttachments(evt)
@@ -124,6 +130,23 @@ async function enrichReuniao(supabase: any, r: Reuniao, consultor: Consultor): P
     if (!r.link_geminidoc && att.gemini_doc_url) patch.link_geminidoc = att.gemini_doc_url
     // Marca gravada quando a gravação aparece (inclusive tardia, sem reler o doc).
     if (r.origem_tabela === "reunioes_mentoria_new" && att.gravacao_url) patch.gravada = true
+
+    // Libera "qualquer pessoa com o link" nos arquivos assim que eles aparecem no
+    // evento. Sem isto o cliente cai na tela de "solicitar acesso" ao clicar em
+    // Assistir. Falha aqui nunca derruba o enrich: o link é salvo do mesmo jeito.
+    let drive_ok = 0
+    let drive_fail = 0
+    const aLiberar: Array<[string | null, "gravacao" | "geminidoc"]> = [
+      [att.gravacao_id, "gravacao"],
+      [att.gemini_doc_id, "geminidoc"],
+    ]
+    for (const [fileId, origem] of aLiberar) {
+      if (!fileId) continue
+      const res = await garantirPublico(supabase, fileId, origem, consultor.email_calendar, candidatas)
+      if (res.pulado) continue
+      if (res.ok) drive_ok++
+      else drive_fail++
+    }
 
     if (att.gemini_doc_id && !r.transcricao) {
       try {
@@ -142,17 +165,17 @@ async function enrichReuniao(supabase: any, r: Reuniao, consultor: Consultor): P
       }
     }
 
-    if (Object.keys(patch).length === 0) return { ok: true }
+    if (Object.keys(patch).length === 0) return { ok: true, drive_ok, drive_fail }
 
     const { error } = await supabase
       .from(r.origem_tabela)
       .update(patch)
       .eq("id_unico", r.id_unico)
 
-    if (error) return { ok: false, erro: error.message }
-    return { ok: true }
+    if (error) return { ok: false, erro: error.message, drive_ok, drive_fail }
+    return { ok: true, drive_ok, drive_fail }
   } catch (e) {
-    return { ok: false, erro: e instanceof Error ? e.message : String(e) }
+    return { ok: false, erro: e instanceof Error ? e.message : String(e), drive_ok: 0, drive_fail: 0 }
   }
 }
 
@@ -211,6 +234,7 @@ Deno.serve(async (req: Request) => {
 
   const consultoresMap = await buscarMapaConsultores(supabase)
   const reunioes = await buscarReunioesParaEnrich(supabase)
+  const candidatasDrive = await buscarContasCandidatas(supabase)
 
   const stats = {
     consideradas: reunioes.length,
@@ -218,6 +242,8 @@ Deno.serve(async (req: Request) => {
     enrich_fail: 0,
     llm_ok: 0,
     llm_fail: 0,
+    drive_ok: 0,
+    drive_fail: 0,
     erros: [] as Array<{ id_unico: string; etapa: string; erro: string }>,
   }
 
@@ -231,7 +257,9 @@ Deno.serve(async (req: Request) => {
     // (gravação tardia): enrichReuniao preenche os links sempre e só relê o doc se
     // a transcrição ainda estiver vazia.
     if (!r.transcricao || !r.link_gravacao || !r.link_geminidoc) {
-      const res = await enrichReuniao(supabase, r, consultor)
+      const res = await enrichReuniao(supabase, r, consultor, candidatasDrive)
+      stats.drive_ok += res.drive_ok
+      stats.drive_fail += res.drive_fail
       if (res.ok) {
         stats.enrich_ok++
         // Re-fetch a linha para pegar a transcricao recém-inserida (pra passada 2)
