@@ -23,3 +23,15 @@ verify_jwt = false
 
 [functions.webhook-gcal]
 verify_jwt = false
+
+[functions.crm-whatsapp-sync-grupos]
+verify_jwt = false
+
+[functions.crm-whatsapp-webhook]
+verify_jwt = false
+
+[functions.crm-whatsapp-backfill]
+verify_jwt = false
+
+[functions.crm-whatsapp-watchdog]
+verify_jwt = false

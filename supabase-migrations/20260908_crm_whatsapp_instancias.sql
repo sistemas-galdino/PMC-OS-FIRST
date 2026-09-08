@@ -161,7 +161,9 @@ CREATE TABLE IF NOT EXISTS public.crm_whatsapp_grupos (
   subject          text NOT NULL,
   tamanho          integer,
   codigo_detectado bigint,
-  regra            text CHECK (regra IN ('fim','apos_pmc','manual','nenhuma')),
+  -- Como o código foi extraído do nome do grupo (ver codigoDoGrupo em
+  -- supabase/functions/_shared/evolution.ts). Guardado para auditar o parser.
+  regra            text CHECK (regra IN ('fim','apos_pmc','antes_pmc','manual','nenhuma')),
   interno          boolean NOT NULL DEFAULT false,
   ignorar          boolean NOT NULL DEFAULT false,
   id_cliente       uuid REFERENCES public.clientes_formulario(id_cliente) ON DELETE SET NULL,
