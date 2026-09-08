@@ -177,9 +177,15 @@ CREATE INDEX IF NOT EXISTS crm_whatsapp_grupos_codigo_idx
   ON public.crm_whatsapp_grupos (codigo_detectado);
 
 ALTER TABLE public.crm_whatsapp_grupos ENABLE ROW LEVEL SECURITY;
+-- Coordenação, não is_admin(): este diretório é a lista COMPLETA de grupos e
+-- clientes. is_admin() só checa presença em `mentores`, então deixaria qualquer
+-- CS ver a carteira inteira do PMC — justamente o que a RLS de crm_conversas
+-- evita. Nenhuma tela lê esta tabela; ela é insumo do sync.
 DROP POLICY IF EXISTS crm_whatsapp_grupos_admin ON public.crm_whatsapp_grupos;
-CREATE POLICY crm_whatsapp_grupos_admin ON public.crm_whatsapp_grupos
-  FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+DROP POLICY IF EXISTS crm_whatsapp_grupos_coord ON public.crm_whatsapp_grupos;
+CREATE POLICY crm_whatsapp_grupos_coord ON public.crm_whatsapp_grupos
+  FOR ALL TO authenticated
+  USING (public.crm_ve_todas_carteiras()) WITH CHECK (public.crm_ve_todas_carteiras());
 
 -- ============================================================
 -- Log cru de eventos do webhook (diagnóstico)
