@@ -33,7 +33,8 @@ SELECT cron.schedule(
       'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_invoke_token'),
       'Content-Type', 'application/json'
     ),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    timeout_milliseconds := 60000
   );
   $cron$
 );
@@ -49,7 +50,10 @@ SELECT cron.schedule(
       'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_invoke_token'),
       'Content-Type', 'application/json'
     ),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    -- pg_net corta em 5s por default; ler 237 grupos na Evolution passa disso.
+    -- Sem isto o job "falha" toda vez, ainda que a função rode até o fim.
+    timeout_milliseconds := 240000
   );
   $cron$
 );
