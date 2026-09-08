@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { FileText, Image as ImageIcon, PanelRight, Search } from "lucide-react"
+import { Link } from "react-router-dom"
+import { FileText, Image as ImageIcon, PanelRight, Search, TriangleAlert } from "lucide-react"
 import { ChatComposer } from "@/components/crm/ChatComposer"
 import { PainelAlertasCliente } from "@/components/crm/PainelAlertasCliente"
 import { isCS, useClientes, useProfile } from "@/lib/crm/storage"
@@ -10,6 +11,7 @@ import {
   useMensagens,
   type ConversaResumo,
 } from "@/lib/crm/conversas"
+import { useMinhaInstancia } from "@/lib/crm/whatsapp"
 import type { Cliente, CSName } from "@/lib/crm/types"
 
 /**
@@ -18,6 +20,10 @@ import type { Cliente, CSName } from "@/lib/crm/types"
  * A borda colorida à esquerda de cada conversa é o ponto da tela: mede o
  * silêncio em HORAS ÚTEIS desde a última mensagem do cliente, então uma
  * mensagem de sexta à noite não vira alerta vermelho no sábado de manhã.
+ *
+ * Três filtros: "Carteira" (grupos dos clientes da CS), "Sem resposta" e
+ * "Internos" — os grupos do próprio PMC (Time CS, AVISOS, Imersão), que não têm
+ * cliente e por isso ficam de fora das métricas, mas precisam ser respondidos.
  */
 
 function horaCurta(iso: string): string {
@@ -33,7 +39,10 @@ function horaCurta(iso: string): string {
 
 interface Linha {
   conversa: ConversaResumo
-  cliente: Cliente
+  /** Nulo em grupo interno do PMC, que não pertence a cliente nenhum. */
+  cliente: Cliente | null
+  /** Nome exibido: o do cliente, ou o do grupo quando é interno. */
+  titulo: string
   em: string
   preview: string
   autor: string
@@ -46,37 +55,68 @@ export default function CrmAtendimentoPage() {
   const clientes = useClientes()
   const csList = useCsList()
   const { conversas, carregando } = useConversas()
+  const { data: instancia } = useMinhaInstancia()
+
+  // Sem WhatsApp conectado a tela lê, mas não responde. O motivo vai para o
+  // composer, para o botão não ficar apenas cinza sem explicação.
+  const conectado = instancia?.status === "conectada"
+  const motivoSemEnvio = !instancia
+    ? "Conecte seu WhatsApp em CRM › Meu WhatsApp para responder."
+    : instancia.status === "conectada"
+      ? undefined
+      : `Seu WhatsApp está ${instancia.status.replace("_", " ")} — reconecte em CRM › Meu WhatsApp.`
 
   const [busca, setBusca] = useState("")
   const [csFiltro, setCsFiltro] = useState<CSName | "all">("all")
-  const [filtro, setFiltro] = useState<"carteira" | "sem-resposta">("carteira")
+  const [filtro, setFiltro] = useState<"carteira" | "sem-resposta" | "internos">("carteira")
   const [selecionada, setSelecionada] = useState<string | null>(null)
   const [painelAberto, setPainelAberto] = useState(true)
 
   // Coordenação (perfil nulo ou não-CS) escolhe a CS; uma CS vê só a dela.
   const podeFiltrarCS = !isCS(profile)
 
-  const { linhas, semVinculo } = useMemo(() => {
+  const { linhas, internas, semVinculo } = useMemo(() => {
     const meus = new Map(
       clientes
         .filter((c) => !isCS(profile) || c.responsavel_cs === (profile as CSName))
         .map((c) => [c.id, c]),
     )
     const out: Linha[] = []
+    const internos: Linha[] = []
     let orfas = 0
     for (const conv of conversas) {
+      const msg = conv.ultima
       const cliente = conv.cliente_id ? meus.get(conv.cliente_id) : undefined
+
+      // Grupo interno do PMC: sem cliente por natureza, e visível para todo o
+      // time. Vai para a aba "Internos" em vez de sumir.
+      if (conv.interno) {
+        if (msg) {
+          internos.push({
+            conversa: conv,
+            cliente: null,
+            titulo: conv.grupo_nome,
+            em: msg.em,
+            preview: msg.texto || (msg.anexo ? msg.anexo.nome : ""),
+            autor: msg.daCS ? "Você" : `~${msg.autor}`,
+            daCS: msg.daCS,
+            silencio: silencioDe(conv),
+          })
+        }
+        continue
+      }
+
       if (!cliente) {
         // Grupo existe no provedor mas não está ligado a nenhum cliente da
         // carteira em foco. Some da lista, mas não some da tela: o rodapé conta.
         if (!conv.cliente_id) orfas++
         continue
       }
-      const msg = conv.ultima
       if (!msg) continue
       out.push({
         conversa: conv,
         cliente,
+        titulo: cliente.nome,
         em: msg.em,
         preview: msg.texto || (msg.anexo ? msg.anexo.nome : ""),
         autor: msg.daCS ? "Você" : `~${msg.autor}`,
@@ -84,30 +124,35 @@ export default function CrmAtendimentoPage() {
         silencio: silencioDe(conv),
       })
     }
-    out.sort((a, b) => new Date(b.em).getTime() - new Date(a.em).getTime())
-    return { linhas: out, semVinculo: orfas }
+    const porRecencia = (a: Linha, b: Linha) => new Date(b.em).getTime() - new Date(a.em).getTime()
+    out.sort(porRecencia)
+    internos.sort(porRecencia)
+    return { linhas: out, internas: internos, semVinculo: orfas }
   }, [clientes, conversas, profile])
 
   const porCS = useMemo(
-    () => (csFiltro === "all" ? linhas : linhas.filter((l) => l.cliente.responsavel_cs === csFiltro)),
+    () =>
+      csFiltro === "all" ? linhas : linhas.filter((l) => l.cliente?.responsavel_cs === csFiltro),
     [linhas, csFiltro],
   )
   const semResposta = useMemo(() => porCS.filter((l) => !l.daCS), [porCS])
 
   const visiveis = useMemo(() => {
-    const base = filtro === "sem-resposta" ? semResposta : porCS
+    const base =
+      filtro === "sem-resposta" ? semResposta : filtro === "internos" ? internas : porCS
     const q = busca.trim().toLowerCase()
-    return q ? base.filter((l) => l.cliente.nome.toLowerCase().includes(q)) : base
-  }, [porCS, semResposta, filtro, busca])
+    return q ? base.filter((l) => l.titulo.toLowerCase().includes(q)) : base
+  }, [porCS, semResposta, internas, filtro, busca])
 
-  const aberta = linhas.find((l) => l.conversa.id === selecionada)
+  // A conversa aberta pode ser de cliente ou interna — procura nas duas.
+  const aberta = [...linhas, ...internas].find((l) => l.conversa.id === selecionada)
   const { mensagens, carregando: carregandoMsgs } = useMensagens(aberta?.conversa.id ?? null)
 
   // Conversa aberta que sai da lista (troca de CS, filtro) não pode ficar
   // fantasma no painel da direita.
   useEffect(() => {
-    if (selecionada && !linhas.some((l) => l.conversa.id === selecionada)) setSelecionada(null)
-  }, [linhas, selecionada])
+    if (selecionada && !aberta) setSelecionada(null)
+  }, [aberta, selecionada])
 
   // Conversa abre no fim, como no WhatsApp: o que interessa é a última
   // mensagem, não a primeira.
@@ -132,6 +177,19 @@ export default function CrmAtendimentoPage() {
           Grupos de WhatsApp da carteira, com alerta de silêncio em horas úteis (seg–sex, 8h–18h).
         </p>
       </div>
+
+      {motivoSemEnvio && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[13px]">
+          <TriangleAlert className="h-4 w-4 shrink-0 text-amber-600" />
+          <span className="text-muted-foreground">{motivoSemEnvio}</span>
+          <Link
+            to="/crm/whatsapp"
+            className="ml-auto shrink-0 font-medium text-primary hover:underline"
+          >
+            Conectar
+          </Link>
+        </div>
+      )}
 
       <div className="flex h-[calc(100vh-16rem)] min-h-[520px] overflow-hidden rounded-xl border border-border bg-background">
         {/* Lista */}
@@ -165,6 +223,7 @@ export default function CrmAtendimentoPage() {
                 [
                   ["carteira", `Carteira ${porCS.length}`],
                   ["sem-resposta", `Sem resposta ${semResposta.length}`],
+                  ["internos", `Internos ${internas.length}`],
                 ] as const
               ).map(([k, label]) => (
                 <button
@@ -210,13 +269,13 @@ export default function CrmAtendimentoPage() {
                   }`}
                 >
                   <span className="h-8 w-8 shrink-0 rounded-full bg-card border border-border grid place-items-center text-xs font-semibold">
-                    {l.cliente.nome.trim().charAt(0).toUpperCase()}
+                    {l.titulo.trim().charAt(0).toUpperCase()}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
                       <span className="min-w-0 flex items-baseline gap-1.5">
-                        <span className="text-xs font-semibold truncate">{l.cliente.nome}</span>
-                        {podeFiltrarCS && (
+                        <span className="text-xs font-semibold truncate">{l.titulo}</span>
+                        {podeFiltrarCS && l.cliente && (
                           <span className="text-[10px] text-muted-foreground shrink-0">
                             {l.cliente.responsavel_cs}
                           </span>
@@ -257,14 +316,15 @@ export default function CrmAtendimentoPage() {
             <section className="flex-1 min-w-0 flex flex-col overflow-hidden">
               <header className="h-14 shrink-0 border-b border-border px-4 flex items-center gap-3">
                 <span className="h-8 w-8 shrink-0 rounded-full bg-card border border-border grid place-items-center text-xs font-semibold">
-                  {aberta.cliente.nome.trim().charAt(0).toUpperCase()}
+                  {aberta.titulo.trim().charAt(0).toUpperCase()}
                 </span>
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold truncate">{aberta.cliente.nome}</div>
+                  <div className="text-sm font-semibold truncate">{aberta.titulo}</div>
                   <div className="text-[11px] text-muted-foreground truncate">
                     {aberta.conversa.grupo_nome}
                   </div>
                 </div>
+                {aberta.cliente && (
                 <button
                   onClick={() => setPainelAberto((v) => !v)}
                   title="Alertas do cliente"
@@ -276,6 +336,7 @@ export default function CrmAtendimentoPage() {
                 >
                   <PanelRight className="h-4 w-4" />
                 </button>
+                )}
               </header>
 
               <div ref={fimRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
@@ -311,10 +372,16 @@ export default function CrmAtendimentoPage() {
                 ))}
               </div>
 
-              <ChatComposer />
+              <ChatComposer
+                conversaId={aberta.conversa.id}
+                habilitado={conectado}
+                motivo={motivoSemEnvio}
+              />
             </section>
 
-            {painelAberto && <PainelAlertasCliente cliente={aberta.cliente} arquivos={arquivos} />}
+            {painelAberto && aberta.cliente && (
+              <PainelAlertasCliente cliente={aberta.cliente} arquivos={arquivos} />
+            )}
           </>
         )}
       </div>

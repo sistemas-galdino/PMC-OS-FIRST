@@ -84,6 +84,7 @@ const CrmVisaoGeralPage = lazy(() => import("@/pages/crm/visao-geral"))
 const CrmTimePage = lazy(() => import("@/pages/crm/time"))
 const CrmAcompanhamentoPage = lazy(() => import("@/pages/crm/acompanhamento"))
 const CrmManualPage = lazy(() => import("@/pages/crm/manual"))
+const CrmWhatsappPage = lazy(() => import("@/pages/crm/whatsapp"))
 const AgentePage = lazy(() => import("@/pages/agente"))
 const GuardiaoPage = lazy(() => import("@/pages/guardiao"))
 const GuardiaoResponderPage = lazy(() => import("@/pages/guardiao-responder"))
@@ -385,6 +386,7 @@ function AppRoutes() {
                     <Route path="/crm/time" element={<RequireSecao secao="crm/time"><CrmTimePage /></RequireSecao>} />
                     <Route path="/crm/acompanhamento" element={<RequireSecao secao="crm/acompanhamento"><CrmAcompanhamentoPage /></RequireSecao>} />
                     <Route path="/crm/manual" element={<RequireSecao secao="crm/manual"><CrmManualPage /></RequireSecao>} />
+                    <Route path="/crm/whatsapp" element={<RequireSecao secao="crm/whatsapp"><CrmWhatsappPage /></RequireSecao>} />
                     <Route path="/agente" element={<RequireSecao secao="agente"><AgentePage /></RequireSecao>} />
                     <Route path="/guardiao" element={<RequireSecaoCliente secao="guardiao"><GuardiaoPage session={session} clientId={cid} hideTabList /></RequireSecaoCliente>} />
                     <Route path="/guardiao-admin" element={<RequireSecao secao="guardiao-admin"><GuardiaoAdminPage /></RequireSecao>} />

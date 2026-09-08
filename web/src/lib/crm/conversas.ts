@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query"
+import { useEffect } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 
 /**
@@ -8,8 +9,9 @@ import { supabase } from "@/lib/supabase"
  * fictícias: `seedConversas()` inventava 8 a 15 mensagens por cliente ativo em
  * localStorage. Aqui a fonte é o banco (`crm_conversas` / `crm_mensagens`) e o
  * seed não veio junto — inventar mensagem de cliente é pior que tela vazia.
- * Enquanto o provedor não estiver ligado, a aba mostra o que houver: no DEV,
- * o que `scripts/seed-crm-dev-conversas.sql` semeou; no PROD, nada ainda.
+ * O provedor é a Evolution API: cada CS conecta o próprio número em
+ * /crm/whatsapp e o webhook `crm-whatsapp-webhook` alimenta estas tabelas.
+ * Quem envia é `enviarMensagem` em lib/crm/whatsapp.ts.
  *
  * Divisão em duas consultas, de propósito:
  *   - a LISTA vem de `crm_conversas_v`, que já traz a última mensagem e a
@@ -18,14 +20,6 @@ import { supabase } from "@/lib/supabase"
  * Com o provedor ligado, uma carteira de 300 clientes vira dezenas de milhares
  * de mensagens; carregar tudo para montar uma lista não sobreviveria a isso.
  */
-
-/**
- * Envio real de mensagem. Fica desligado até existir provedor de WhatsApp
- * conectado — na reunião de 05/08/2026 os chips ainda estavam sendo comprados.
- * O compositor já está pronto e apenas mostra "conexão do WhatsApp pendente"
- * enquanto isto for `false`.
- */
-export const ENVIO_HABILITADO = false
 
 export type AnexoTipo = "documento" | "imagem" | "audio" | "video"
 
@@ -53,6 +47,8 @@ export interface ConversaResumo {
   grupo_nome: string
   cliente_id: string | null
   cs_responsavel: string | null
+  /** Grupo interno do PMC (Time CS, AVISOS, Imersão): não tem cliente. */
+  interno: boolean
   /** Última mensagem do grupo, quando existe. */
   ultima?: MensagemConversa
   /** Mensagens do cliente posteriores à última resposta do time. */
@@ -66,6 +62,7 @@ interface ConversaRow {
   id_cliente: string | null
   cs_responsavel: string | null
   arquivada: boolean
+  interno: boolean | null
   ultima_id: string | null
   ultima_autor: string | null
   ultima_da_cs: boolean | null
@@ -104,6 +101,7 @@ function rowToResumo(r: ConversaRow): ConversaResumo {
     grupo_nome: r.grupo_nome,
     cliente_id: r.id_cliente,
     cs_responsavel: r.cs_responsavel,
+    interno: !!r.interno,
     naoLidas: Number(r.nao_lidas) || 0,
     ultima: r.ultima_id
       ? {
@@ -158,6 +156,7 @@ export async function fetchMensagens(conversaId: string): Promise<MensagemConver
  * "ninguém está sem resposta" de "ainda não sabemos".
  */
 export function useConversas() {
+  useMensagensAoVivo()
   const q = useQuery({
     queryKey: conversasQueryKey,
     queryFn: fetchConversas,
@@ -168,6 +167,34 @@ export function useConversas() {
     carregando: q.isPending,
     erro: q.error as Error | null,
   }
+}
+
+/**
+ * Mensagem nova chegando do WhatsApp invalida a lista e a conversa aberta.
+ *
+ * Sem isto a CS ficaria com `staleTime: 60_000` em cima de um WhatsApp de
+ * verdade: mensagem do cliente demoraria até um minuto para aparecer, o que na
+ * prática empurra a conversa de volta para o celular dela.
+ */
+function useMensagensAoVivo() {
+  const qc = useQueryClient()
+  useEffect(() => {
+    const canal = supabase
+      .channel("crm-mensagens-ao-vivo")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "crm_mensagens" },
+        (payload) => {
+          const conversaId = (payload.new as { conversa_id?: string })?.conversa_id
+          qc.invalidateQueries({ queryKey: conversasQueryKey })
+          if (conversaId) qc.invalidateQueries({ queryKey: mensagensQueryKey(conversaId) })
+        },
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(canal)
+    }
+  }, [qc])
 }
 
 /** Mensagens de um grupo. Só busca quando há grupo aberto. */

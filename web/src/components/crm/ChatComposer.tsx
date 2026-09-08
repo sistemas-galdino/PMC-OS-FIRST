@@ -1,23 +1,68 @@
 import { useEffect, useRef, useState } from "react"
-import { Camera, FileText, Image, Mic, Paperclip, Send, Smile, Trash2 } from "lucide-react"
-import { ENVIO_HABILITADO } from "@/lib/crm/conversas"
+import { Camera, FileText, Image, Loader2, Mic, Paperclip, Send, Smile, Trash2 } from "lucide-react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { conversasQueryKey, mensagensQueryKey } from "@/lib/crm/conversas"
+import { enviarMensagem } from "@/lib/crm/whatsapp"
 
 /**
  * Compositor de mensagem do Atendimento.
  *
- * Enquanto `ENVIO_HABILITADO` for `false` — não há provedor de WhatsApp
- * conectado — os botões existem, mas não enviam: cada um explica o porquê no
- * tooltip. Deixar o campo funcional daria a impressão de que a mensagem saiu.
+ * Texto envia de verdade, pela instância de WhatsApp da própria CS. Anexo,
+ * câmera, emoji e áudio continuam desligados — a Evolution tem endpoints para
+ * eles (sendMedia, sendWhatsAppAudio), mas cada um pede upload e player que
+ * ainda não existem aqui. Cada botão diz no tooltip que está pendente, em vez
+ * de fingir que funciona.
+ *
+ * `habilitado=false` quando a CS não conectou o número (ou a sessão caiu): o
+ * campo continua visível, mas o motivo real aparece no tooltip e no envio.
  */
 
-const TOOLTIP = "conexão do WhatsApp pendente"
+const TOOLTIP = "ainda não disponível por aqui"
 
-export function ChatComposer() {
+interface ChatComposerProps {
+  conversaId: string
+  habilitado: boolean
+  /** Por que não dá para enviar agora. Vai para o tooltip do botão. */
+  motivo?: string
+}
+
+export function ChatComposer({ conversaId, habilitado, motivo }: ChatComposerProps) {
   const [texto, setTexto] = useState("")
   const [menuAnexo, setMenuAnexo] = useState(false)
   const [gravando, setGravando] = useState(false)
   const [segundos, setSegundos] = useState(0)
   const areaRef = useRef<HTMLTextAreaElement>(null)
+  const qc = useQueryClient()
+
+  const envio = useMutation({
+    mutationFn: (t: string) => enviarMensagem(conversaId, t),
+    onSuccess: () => {
+      setTexto("")
+      qc.invalidateQueries({ queryKey: mensagensQueryKey(conversaId) })
+      qc.invalidateQueries({ queryKey: conversasQueryKey })
+    },
+    onError: (e) => toast.error((e as Error).message),
+  })
+
+  // Trocar de conversa com texto digitado mandaria a mensagem para o cliente
+  // errado se o rascunho ficasse.
+  useEffect(() => {
+    setTexto("")
+  }, [conversaId])
+
+  const podeEnviar = habilitado && !!texto.trim() && !envio.isPending
+  const tooltipEnvio = habilitado ? "Enviar" : (motivo ?? "conexão do WhatsApp pendente")
+
+  const submeter = () => {
+    const t = texto.trim()
+    if (!t) return
+    if (!habilitado) {
+      toast.error(motivo ?? "Conecte seu WhatsApp em CRM › Meu WhatsApp.")
+      return
+    }
+    envio.mutate(t)
+  }
 
   useEffect(() => {
     if (!gravando) return
@@ -36,7 +81,7 @@ export function ChatComposer() {
 
   const btn =
     "h-8 w-8 shrink-0 grid place-items-center rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-  const enviar = ENVIO_HABILITADO
+  const enviar = podeEnviar
     ? "h-8 w-8 shrink-0 grid place-items-center rounded-full bg-primary text-primary-foreground"
     : "h-8 w-8 shrink-0 grid place-items-center rounded-full bg-primary text-primary-foreground opacity-60 cursor-not-allowed"
 
@@ -105,13 +150,31 @@ export function ChatComposer() {
           rows={1}
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          placeholder="Mensagem"
+          onKeyDown={(e) => {
+            // Enter envia, Shift+Enter quebra linha — como no WhatsApp Web.
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault()
+              submeter()
+            }
+          }}
+          disabled={envio.isPending}
+          placeholder={habilitado ? "Mensagem" : (motivo ?? "conexão do WhatsApp pendente")}
           className="flex-1 resize-none bg-background border border-border rounded-lg px-3 py-2 text-xs leading-5 focus:outline-none focus:border-primary max-h-[116px]"
         />
 
         {texto.trim() ? (
-          <button type="button" title={TOOLTIP} className={enviar}>
-            <Send className="h-4 w-4" />
+          <button
+            type="button"
+            title={tooltipEnvio}
+            className={enviar}
+            disabled={!podeEnviar}
+            onClick={submeter}
+          >
+            {envio.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </button>
         ) : (
           <button type="button" title="Gravar áudio" onClick={() => setGravando(true)} className={btn}>

@@ -18,6 +18,16 @@ const BASE = (Deno.env.get("EVOLUTION_URL") ?? "").replace(/\/+$/, "")
 const APIKEY = Deno.env.get("EVOLUTION_APIKEY") ?? ""
 export const INSTANCIA_DIRETORIO = Deno.env.get("EVOLUTION_INSTANCE_DIRETORIO") ?? ""
 
+/**
+ * Prefixo do nome das instâncias de CS.
+ *
+ * DEV e PROD do PMC OS apontam para o MESMO servidor Evolution, e nome de
+ * instância é único no servidor inteiro. Sem prefixo por ambiente, um teste no
+ * DEV sequestraria a instância de produção da mesma CS. O DEV usa
+ * 'pmcdev-cs-'; o default é o de produção.
+ */
+const PREFIXO_INSTANCIA = Deno.env.get("EVOLUTION_INSTANCE_PREFIXO") ?? "pmc-cs-"
+
 export function evolutionConfigurada(): boolean {
   return !!BASE && !!APIKEY
 }
@@ -254,17 +264,18 @@ export function statusDoEstado(estado: EstadoEvolution): string {
 }
 
 /**
- * Nome da instância a partir do nome do membro do time: 'Bruna' -> 'pmc-cs-bruna'.
+ * Nome da instância a partir do nome do membro do time: 'Bruna' -> 'pmc-cs-bruna'
+ * (ou 'pmcdev-cs-bruna' no DEV, ver PREFIXO_INSTANCIA).
  * Precisa ser estável — é a chave da instância no servidor da Evolution.
  */
 export function nomeInstanciaDeMentor(nome: string, mentorId: number): string {
   const slug = (nome ?? "")
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
-  return slug ? `pmc-cs-${slug}` : `pmc-cs-${mentorId}`
+  return `${PREFIXO_INSTANCIA}${slug || mentorId}`
 }
 
 // ============================================================
