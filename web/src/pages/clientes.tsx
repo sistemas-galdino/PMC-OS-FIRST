@@ -106,6 +106,13 @@ interface Client {
   ano_treinamento: number | null
   email: string | null
   created_at: string
+  /**
+   * Grupo de WhatsApp da empresa, preenchido por crm-whatsapp-sync-grupos.
+   * O convite é o único endereço que ABRE o grupo — o JID não abre por link.
+   */
+  whatsapp_grupo_id: string | null
+  whatsapp_grupo_nome: string | null
+  whatsapp_grupo_convite: string | null
 }
 
 const ENGAGEMENT_LABELS: Record<NivelEngajamento, string> = {
@@ -154,6 +161,46 @@ function EngagementBadge({ value, auto }: { value: NivelEngajamento | null; auto
     >
       {ENGAGEMENT_LABELS[value]}{auto ? " ·A" : ""}
     </Badge>
+  )
+}
+
+/**
+ * Ícone que abre o grupo de WhatsApp da empresa.
+ *
+ * Três estados, e a diferença entre eles importa:
+ *   - sem grupo vinculado  → nada. A ausência já é a informação, e um ícone
+ *     apagado clicável só convidaria a um clique que não faz nada.
+ *   - com grupo, sem convite → ícone esmaecido e sem link. Acontece enquanto a
+ *     rotina de convites não passou; sem isso a tela pareceria quebrada.
+ *   - com convite → link. O JID não abre por link: só o convite
+ *     chat.whatsapp.com/<código> abre o grupo, no app ou no WhatsApp Web.
+ */
+function GrupoWhatsapp({ client }: { client: Client }) {
+  if (!client.whatsapp_grupo_id) return null
+
+  const nome = client.whatsapp_grupo_nome ?? 'grupo do cliente'
+
+  if (!client.whatsapp_grupo_convite) {
+    return (
+      <span
+        title={`${nome} — link do grupo ainda não obtido`}
+        className="inline-grid place-items-center size-8 opacity-30"
+      >
+        <img src="/whatsapp.png" alt="" className="size-[18px]" />
+      </span>
+    )
+  }
+
+  return (
+    <a
+      href={client.whatsapp_grupo_convite}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`Abrir ${nome} no WhatsApp`}
+      className="inline-grid place-items-center size-8 rounded-lg hover:bg-primary/10 transition-colors"
+    >
+      <img src="/whatsapp.png" alt={`Abrir ${nome} no WhatsApp`} className="size-[18px]" />
+    </a>
   )
 }
 
@@ -1009,9 +1056,10 @@ export default function ClientesPage() {
               <TableHead className="w-[170px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Status Atual</TableHead>
               <TableHead className="w-[140px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">CS Responsável</TableHead>
               <TableHead className="w-[120px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">Engajamento</TableHead>
-              <TableHead className="w-[110px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">
+              <TableHead className="w-[96px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-3">
                 <button className={`uppercase tracking-widest font-bold hover:text-primary transition-colors ${sortOrder === 'pontos' ? 'text-primary' : ''}`} onClick={() => setSortOrder('pontos')} title="Ordenar por Pontos MC">Pontos MC ↕</button>
               </TableHead>
+              <TableHead className="w-[56px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 px-2 text-center">Grupo</TableHead>
               <TableHead className="w-[60px] text-muted-foreground font-bold uppercase tracking-widest text-[10px] py-5 text-right pr-4">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -1111,6 +1159,10 @@ export default function ClientesPage() {
                     <span className="text-[13px] font-bold tabular-nums text-foreground">{pontos.toLocaleString('pt-BR')}</span>
                     <span className="text-[10px] font-medium text-muted-foreground">{faixaPorPontos(pontos).faixa.nome}</span>
                   </div>
+                </TableCell>
+                {/* Grupo de WhatsApp. stopPropagation porque a linha inteira abre o drawer. */}
+                <TableCell className="px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                  <GrupoWhatsapp client={client} />
                 </TableCell>
                 <TableCell className="text-right pr-4" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>

@@ -26,6 +26,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts"
 import {
   INSTANCIA_DIRETORIO,
   codigoDoGrupo,
+  dispararEmBackground,
   evolutionConfigurada,
   grupoInterno,
   listarGrupos,
@@ -196,6 +197,11 @@ Deno.serve(async (req: Request) => {
       if (error) throw error
       clientesAtualizados++
     }
+
+    // Grupo novo precisa de convite para o ícone da tela /clientes ter destino.
+    // Fire-and-forget: buscar convite é lento (o WhatsApp limita a taxa) e não
+    // pode segurar a resposta do sync.
+    dispararEmBackground(`${url}/functions/v1/crm-whatsapp-convites`)
 
     return jsonResponse({ ok: true, ...diagnostico, clientes_atualizados: clientesAtualizados })
   } catch (e) {

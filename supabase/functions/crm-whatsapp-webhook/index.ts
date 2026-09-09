@@ -27,6 +27,7 @@ import { corsHeaders } from "../_shared/cors.ts"
 import {
   type MensagemEvolution,
   anexoDaMensagem,
+  dispararEmBackground,
   instanteDaMensagem,
   telefoneDoJid,
   textoDaMensagem,
@@ -229,14 +230,9 @@ Deno.serve(async (req: Request) => {
 
           // Primeira conexão: puxa o histórico recente sem travar o webhook.
           if (inst.backfill_status === "pendente") {
-            const cron = Deno.env.get("CRON_INVOKE_TOKEN")
-            if (cron) {
-              fetch(`${url}/functions/v1/crm-whatsapp-backfill`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${cron}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ instancia: inst.instancia }),
-              }).catch(() => {})
-            }
+            dispararEmBackground(`${url}/functions/v1/crm-whatsapp-backfill`, {
+              instancia: inst.instancia,
+            })
           }
         } else if (estado === "close") {
           await db

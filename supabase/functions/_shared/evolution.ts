@@ -343,3 +343,73 @@ export function anexoDaMensagem(
   }
   return null
 }
+
+// ============================================================
+// Convite de grupo
+// ============================================================
+
+/**
+ * Link que ABRE o grupo: https://chat.whatsapp.com/<código>.
+ *
+ * O JID (120363...@g.us) não serve para isso — não existe deep link público do
+ * WhatsApp por JID. Só o convite abre, e ele é obtido aqui.
+ *
+ * O WhatsApp limita a taxa desses pedidos com força: numa rajada de 20 chamadas
+ * seguidas, 8 voltaram "rate-overlimit" (medido em 09/09/2026). Com ~2s entre
+ * chamadas passa. Por isso quem chama isto precisa pausar entre grupos — e por
+ * isso o convite é GUARDADO, nunca buscado na hora em que alguém clica.
+ *
+ * Devolve null quando o número não é admin do grupo ou o grupo não tem convite.
+ */
+export async function conviteDoGrupo(
+  instancia: string,
+  grupoJid: string,
+): Promise<{ url: string | null; rateLimit: boolean }> {
+  try {
+    const r = await evoFetch<{ inviteUrl?: string; inviteCode?: string }>(
+      `/group/inviteCode/${encodeURIComponent(instancia)}?groupJid=${encodeURIComponent(grupoJid)}`,
+    )
+    const url = r?.inviteUrl ?? (r?.inviteCode ? `https://chat.whatsapp.com/${r.inviteCode}` : null)
+    return { url, rateLimit: false }
+  } catch (e) {
+    // A Evolution devolve 404 tanto para "sem convite" quanto para o rate limit
+    // do WhatsApp; só a mensagem distingue os dois, e a diferença importa —
+    // rate limit se resolve esperando, "sem convite" não.
+    const corpo = e instanceof EvolutionError ? e.corpo : String((e as Error)?.message ?? e)
+    return { url: null, rateLimit: /rate-?overlimit/i.test(corpo) }
+  }
+}
+
+// ============================================================
+// Disparo em background
+// ============================================================
+
+declare const EdgeRuntime: { waitUntil?: (p: Promise<unknown>) => void } | undefined
+
+/**
+ * Chama outra edge function sem segurar a resposta desta.
+ *
+ * Um `fetch(...).catch(() => {})` solto NÃO basta: quando a função responde, o
+ * isolate é derrubado e a requisição pendente morre antes de sair. Foi o que
+ * aconteceu com a auto-reinvocação de crm-whatsapp-convites — a primeira rodada
+ * gravou 25 convites e nunca chamou a seguinte (medido em 09/09/2026).
+ * `EdgeRuntime.waitUntil` é o que mantém o isolate vivo até o disparo concluir.
+ */
+export function dispararEmBackground(url: string, corpo: unknown = {}): void {
+  const cron = Deno.env.get("CRON_INVOKE_TOKEN")
+  if (!cron) {
+    console.warn(`[background] CRON_INVOKE_TOKEN ausente, não disparei ${url}`)
+    return
+  }
+  const p = fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${cron}`, "Content-Type": "application/json" },
+    body: JSON.stringify(corpo ?? {}),
+  })
+    .then((r) => {
+      if (!r.ok) console.warn(`[background] ${url} respondeu ${r.status}`)
+    })
+    .catch((e) => console.warn(`[background] falha ao disparar ${url}: ${e}`))
+
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(p)
+}

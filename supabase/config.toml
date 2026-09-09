@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.crm-whatsapp-watchdog]
 verify_jwt = false
+
+[functions.crm-whatsapp-convites]
+verify_jwt = false
