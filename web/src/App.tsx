@@ -350,9 +350,9 @@ function AppRoutes() {
                     <Route path="/reunioes" element={<RequireSecaoCliente secao="reunioes"><ClientReunioesPage session={session} clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/cliente/:id" element={<RequireSecao secao="clientes"><ClientProfilePage /></RequireSecao>} />
                     <Route path="/reuniao/:id" element={<RequireSecaoCliente secao="reunioes"><ReuniaoDetalhePage isAdmin={isAdmin} /></RequireSecaoCliente>} />
-                    <Route path="/reunioes-galdino" element={<RequireSecaoCliente secao="reunioes-galdino"><ReunioesGaldinoPage session={session} isAdmin={isAdmin} /></RequireSecaoCliente>} />
+                    <Route path="/reunioes-galdino" element={<RequireSecaoCliente secao="reunioes-galdino"><ReunioesGaldinoPage session={session} clientId={cid} isAdmin={isAdmin} /></RequireSecaoCliente>} />
                     <Route path="/reuniao-galdino/:id" element={<RequireSecaoCliente secao="reunioes-galdino"><ReuniaoGaldinoDetalhePage isAdmin={isAdmin} /></RequireSecaoCliente>} />
-                    <Route path="/reunioes-blackcrm" element={<RequireSecaoCliente secao="reunioes-blackcrm"><ReunioesBlackCRMPage session={session} isAdmin={isAdmin} /></RequireSecaoCliente>} />
+                    <Route path="/reunioes-blackcrm" element={<RequireSecaoCliente secao="reunioes-blackcrm"><ReunioesBlackCRMPage session={session} clientId={cid} isAdmin={isAdmin} /></RequireSecaoCliente>} />
                     <Route path="/reuniao-blackcrm/:id" element={<RequireSecaoCliente secao="reunioes-blackcrm"><ReuniaoBlackCRMDetalhePage isAdmin={isAdmin} /></RequireSecaoCliente>} />
                     <Route path="/recursos" element={<RequireSecaoCliente secao="recursos"><RecursosPage session={session} clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/ferramentas" element={<RequireSecaoCliente secao="ferramentas"><FerramentasPage session={session} forceAdmin={isAdmin} /></RequireSecaoCliente>} />

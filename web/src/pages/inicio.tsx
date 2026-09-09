@@ -30,6 +30,7 @@ import { useClienteMoeda } from "@/hooks/use-cliente-moeda"
 import { currencySymbol } from "@/lib/format-currency"
 import { useConquistas } from "@/hooks/use-conquistas"
 import { PulsoSemanalCard } from "@/components/pulso-semanal"
+import { idsDoGrupo } from "@/lib/grupo-empresas"
 import { arquetipoDaBadge, iconeDaBadge, RARIDADE } from "@/data/badges-mc"
 
 interface InicioPageProps {
@@ -193,6 +194,8 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
 
     async function fetchAll() {
       const hojeIso = hoje.toISOString().slice(0, 10)
+      // Empresa + irmãs de grupo; sem grupo devolve só a própria.
+      const idsGrupo = await idsDoGrupo(resolvedClientId)
 
       const [clienteRes, linksRes, encontrosRes, reunioesRes, etapasRes, metasRes, galdinoCountRes, consultoresCountRes, blackcrmCountRes] = await Promise.all([
         supabase
@@ -211,7 +214,9 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
           .select("id_unico, mentor, data_reuniao, cliente_compareceu")
           // Reunião com o Sucesso do Cliente não conta como consultoria.
           .eq("equipe", "consultor")
-          .eq("id_cliente", resolvedClientId)
+          // Últimas reuniões inclui as das empresas irmãs (grupo de empresas);
+          // os contadores abaixo, que alimentam a jornada, seguem por empresa.
+          .in("id_cliente", idsGrupo)
           .lte("data_reuniao", hojeIso)
           .order("data_reuniao", { ascending: false })
           .limit(6),

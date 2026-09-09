@@ -17,9 +17,11 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import { motion } from "framer-motion"
+import { idsDoGrupo, empresaDeOutroMembro } from "@/lib/grupo-empresas"
 
 interface Meeting {
   id_unico: string
+  id_cliente: string | null
   nome_cliente_formatado: string | null
   nome_empresa_formatado: string | null
   empresa: string | null
@@ -50,6 +52,7 @@ interface ReunioesGaldinoProps {
 export default function ReunioesGaldinoPage({ session, clientId, isAdmin = false }: ReunioesGaldinoProps) {
   const [sp, setSp] = useSearchParams()
   const [meetings, setMeetings] = useState<Meeting[]>([])
+  const [idClienteAtual, setIdClienteAtual] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   function updateParams(updates: Record<string, string | null>) {
@@ -89,7 +92,9 @@ export default function ReunioesGaldinoPage({ session, clientId, isAdmin = false
           .maybeSingle()
 
         if (clientEntry) {
-          query = query.eq('id_cliente', clientEntry.id_cliente)
+          setIdClienteAtual(clientEntry.id_cliente)
+          // Empresas do mesmo dono compartilham as reuniões (grupo de empresas).
+          query = query.in('id_cliente', await idsDoGrupo(clientEntry.id_cliente))
         }
       }
 
@@ -277,6 +282,11 @@ export default function ReunioesGaldinoPage({ session, clientId, isAdmin = false
                         <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
                           {meeting.nome_empresa_formatado || meeting.empresa || ""}
                         </p>
+                        {empresaDeOutroMembro(meeting, idClienteAtual) && (
+                          <Badge variant="outline" className="mt-1 rounded-lg border-border bg-muted/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Empresa do grupo
+                          </Badge>
+                        )}
                       </div>
                       <StatusBadgeToggle
                         compareceu={meeting.cliente_compareceu}

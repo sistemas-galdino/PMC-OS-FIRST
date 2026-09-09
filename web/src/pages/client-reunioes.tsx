@@ -19,9 +19,11 @@ import { motion } from "framer-motion"
 import { PageHeader } from "@/components/layout/page-header"
 import type { Session } from "@supabase/supabase-js"
 import { logarDownload } from "@/lib/log-download"
+import { idsDoGrupo, empresaDeOutroMembro } from "@/lib/grupo-empresas"
 
 interface Meeting {
   id_unico: string
+  id_cliente: string | null
   mentor: string
   nome_cliente_formatado: string
   nome_empresa_formatado: string
@@ -46,6 +48,7 @@ interface ClientReunioesProps {
 
 export default function ClientReunioesPage({ session, clientId }: ClientReunioesProps) {
   const [meetings, setMeetings] = useState<Meeting[]>([])
+  const [idClienteAtual, setIdClienteAtual] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -74,12 +77,17 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
         return
       }
 
+      setIdClienteAtual(clientEntry.id_cliente)
+      // Empresas do mesmo dono compartilham as reuniões — sem grupo, a lista
+      // volta com só a própria empresa e nada muda.
+      const ids = await idsDoGrupo(clientEntry.id_cliente)
+
       const { data, error } = await supabase
         .from('reunioes_mentoria_new')
         .select('*')
         // A lista de reuniões do cliente é de CONSULTORIA (CS tem central própria).
         .eq('equipe', 'consultor')
-        .eq('id_cliente', clientEntry.id_cliente)
+        .in('id_cliente', ids)
         .order('data_reuniao', { ascending: false })
 
       if (data && !error) {
@@ -265,6 +273,11 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
                         <div className="space-y-1.5 flex-1">
                           <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">{meeting.mentor}</h3>
                           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Consultor</p>
+                          {empresaDeOutroMembro(meeting, idClienteAtual) && (
+                            <Badge variant="outline" className="mt-1 rounded-lg border-border bg-muted/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                              {empresaDeOutroMembro(meeting, idClienteAtual)}
+                            </Badge>
+                          )}
                         </div>
                         <Badge
                           variant="outline"

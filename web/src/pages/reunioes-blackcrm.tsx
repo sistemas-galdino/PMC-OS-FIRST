@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import { motion, AnimatePresence } from "framer-motion"
+import { idsDoGrupo, empresaDeOutroMembro } from "@/lib/grupo-empresas"
 import { StatusBadgeToggle } from "@/components/status-badge-toggle"
 
 interface Meeting {
@@ -57,6 +58,7 @@ interface ReunioesBlackCRMProps {
 export default function ReunioesBlackCRMPage({ session, clientId, isAdmin = false }: ReunioesBlackCRMProps) {
   const [sp, setSp] = useSearchParams()
   const [meetings, setMeetings] = useState<Record<string, Meeting[]>>({})
+  const [idClienteAtual, setIdClienteAtual] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
 
@@ -108,7 +110,9 @@ export default function ReunioesBlackCRMPage({ session, clientId, isAdmin = fals
           .maybeSingle()
 
         if (clientEntry) {
-          query = query.eq('id_cliente', clientEntry.id_cliente)
+          setIdClienteAtual(clientEntry.id_cliente)
+          // Empresas do mesmo dono compartilham as reuniões (grupo de empresas).
+          query = query.in('id_cliente', await idsDoGrupo(clientEntry.id_cliente))
         }
       }
 
@@ -127,7 +131,7 @@ export default function ReunioesBlackCRMPage({ session, clientId, isAdmin = fals
     }
 
     fetchMeetings()
-  }, [])
+  }, [session, clientId])
 
   const allMeetings = Object.values(meetings).flat()
   const uniqueResponsaveis = [...new Set(allMeetings.map(m => m.responsavel))].filter(Boolean).sort() as string[]
@@ -356,6 +360,11 @@ export default function ReunioesBlackCRMPage({ session, clientId, isAdmin = fals
                                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
                                       {meeting.tipo_reuniao === 'implementacao' ? 'Implementacao' : 'Tutoria'}
                                     </p>
+                                  )}
+                                  {empresaDeOutroMembro(meeting, idClienteAtual) && (
+                                    <Badge variant="outline" className="mt-1 rounded-lg border-border bg-muted/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                                      Empresa do grupo
+                                    </Badge>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1.5 shrink-0">
