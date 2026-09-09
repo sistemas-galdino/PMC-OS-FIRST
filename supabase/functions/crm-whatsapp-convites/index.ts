@@ -27,8 +27,16 @@ import {
   evolutionConfigurada,
 } from "../_shared/evolution.ts"
 
-/** Grupos por invocação. 25 × ~2s ≈ 50s, bem dentro do limite da função. */
-const BLOCO = 25
+/**
+ * Grupos por invocação.
+ *
+ * Cada chamada de convite custa ~0,8s e ainda somamos a pausa contra o rate
+ * limit. Com 25 por bloco a função passou do teto e o gateway devolveu 504 —
+ * e um 504 mata a corrente, porque a auto-reinvocação nunca é alcançada.
+ * 8 × ~2,8s ≈ 25s deixa margem larga. São ~30 rodadas para 238 grupos, o que
+ * é lento e não importa: isto roda em segundo plano.
+ */
+const BLOCO = 8
 const PAUSA_MS = 2000
 /** Espera maior antes da segunda tentativa, quando o WhatsApp recusa por taxa. */
 const PAUSA_RATE_LIMIT_MS = 6000

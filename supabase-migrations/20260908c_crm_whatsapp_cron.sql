@@ -5,7 +5,12 @@
 --    CONNECTION_UPDATE nem sempre chega. Sem isto a CS descobre que caiu ao
 --    tentar responder um cliente.
 -- 2) sync de grupos 1x por dia: grupo novo de cliente novo aparece sozinho.
--- 3) retenção de 14 dias em crm_whatsapp_eventos: é log cru com payload jsonb
+-- 3) convites de 20 em 20 min: a busca de convite anda em corrente (cada rodada
+--    chama a seguinte), e corrente arrebenta — um 504, um deploy no meio, um
+--    erro de rede e os grupos restantes ficam sem convite para sempre. Este job
+--    é a rede de segurança: se ainda houver grupo sem convite, ele reinicia a
+--    corrente; se não houver, a função responde num piscar e não faz nada.
+-- 4) retenção de 14 dias em crm_whatsapp_eventos: é log cru com payload jsonb
 --    de 237 grupos ativos. Sem poda vira a maior tabela do banco em semanas.
 --
 -- Reaproveita o cron_invoke_token já no vault (ver 20260518_cron_sincronizar.sql).
@@ -54,6 +59,22 @@ SELECT cron.schedule(
     -- pg_net corta em 5s por default; ler 237 grupos na Evolution passa disso.
     -- Sem isto o job "falha" toda vez, ainda que a função rode até o fim.
     timeout_milliseconds := 240000
+  );
+  $cron$
+);
+
+SELECT cron.schedule(
+  'crm-whatsapp-convites-20min',
+  '*/20 * * * *',
+  $cron$
+  SELECT net.http_post(
+    url := 'https://hqczwextifessaztyyyk.supabase.co/functions/v1/crm-whatsapp-convites',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_invoke_token'),
+      'Content-Type', 'application/json'
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 60000
   );
   $cron$
 );
