@@ -195,7 +195,7 @@ export default function InicioPage({ session, clientId }: InicioPageProps) {
     async function fetchAll() {
       const hojeIso = hoje.toISOString().slice(0, 10)
       // Empresa + irmãs de grupo; sem grupo devolve só a própria.
-      const idsGrupo = await idsDoGrupo(resolvedClientId)
+      const idsGrupo = await idsDoGrupo(resolvedClientId!)
 
       const [clienteRes, linksRes, encontrosRes, reunioesRes, etapasRes, metasRes, galdinoCountRes, consultoresCountRes, blackcrmCountRes] = await Promise.all([
         supabase
