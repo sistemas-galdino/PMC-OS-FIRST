@@ -120,7 +120,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
     {
       // CS Manager: o dia a dia do time de Customer Success.
       // As chaves RBAC batem com a url sem a barra ("crm/meu-dia"), ver secaoDaUrl.
-      label: "CRM",
+      label: "Customer Success",
       items: [
         { title: "Meu Dia", icon: Zap, url: "/crm/meu-dia" },
         { title: "Atividades", icon: CheckSquare, url: "/crm/atividades" },
