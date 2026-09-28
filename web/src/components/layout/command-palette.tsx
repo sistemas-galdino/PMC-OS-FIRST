@@ -56,6 +56,7 @@ const ROTAS_ADMIN: Destino[] = [
   { label: "Central de Atendimentos", url: "/central-atendimentos", grupo: "Atendimento" },
   { label: "Central do Sucesso do Cliente", url: "/central-sucesso-cliente", grupo: "Atendimento" },
   { label: "Consultores", url: "/mentores", grupo: "Atendimento" },
+  { label: "Reuniões Sucesso do Cliente", url: "/reunioes-sucesso-cliente", grupo: "Atendimento" },
   { label: "Guardião (Clientes)", url: "/guardiao-admin", grupo: "Atendimento" },
   { label: "Reuniões Galdino", url: "/reunioes-galdino", grupo: "Reuniões" },
   { label: "Reuniões Black CRM", url: "/reunioes-blackcrm", grupo: "Reuniões" },
@@ -107,7 +108,7 @@ export function CommandPalette({ isAdmin }: { isAdmin: boolean }) {
   const { can, podeCliente } = useAuth()
   // RBAC: esconde da busca as seções admin que o papel não libera.
   const secaoDaUrl = (url: string): string | null =>
-    url === "/" ? null : url === "/mentores" ? "consultores" : url === "/time-permissoes" ? "permissoes" : url.replace(/^\//, "")
+    url === "/" ? null : url === "/mentores" ? "consultores" : url === "/reunioes-sucesso-cliente" ? "central-sucesso-cliente" : url === "/time-permissoes" ? "permissoes" : url.replace(/^\//, "")
   const rotas = isAdmin
     ? ROTAS_ADMIN.filter((r) => { const c = secaoDaUrl(r.url); return c === null || can(c) })
     // Sem este filtro a aba escondida da sidebar reaparece aqui: esta lista é

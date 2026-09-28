@@ -51,11 +51,37 @@ const isReuniaoSemCliente = (m: Meeting) =>
   isBlankField(m.nome_cliente_formatado) &&
   isBlankField(m.nome_empresa_formatado)
 
-interface MentoresPageProps {
-  isAdmin?: boolean
+type Equipe = 'consultor' | 'sucesso_cliente'
+
+// A mesma página serve às duas equipes que gravam em reunioes_mentoria_new.
+const TEXTOS: Record<Equipe, { titulo: string; descricao: string; pessoa: string; semPessoa: string; buscar: string; todos: string; selo: string }> = {
+  consultor: {
+    titulo: "Time de Consultores",
+    descricao: "Histórico de sessões estratégicas e acompanhamento.",
+    pessoa: "Consultor",
+    semPessoa: "Sem consultor",
+    buscar: "Buscar consultor ou empresa...",
+    todos: "Todos Consultores",
+    selo: "Consultor Especialista",
+  },
+  sucesso_cliente: {
+    titulo: "Reuniões do Sucesso do Cliente",
+    descricao: "Reuniões das CS com os clientes, agendadas pelo link de atendimento.",
+    pessoa: "CS",
+    semPessoa: "Sem CS",
+    buscar: "Buscar CS ou empresa...",
+    todos: "Todas as CS",
+    selo: "Sucesso do Cliente",
+  },
 }
 
-export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
+interface MentoresPageProps {
+  isAdmin?: boolean
+  equipe?: Equipe
+}
+
+export default function MentoresPage({ isAdmin = false, equipe = 'consultor' }: MentoresPageProps) {
+  const textos = TEXTOS[equipe]
   const [sp, setSp] = useSearchParams()
   const [meetings, setMeetings] = useState<Record<string, Meeting[]>>({})
   const [loading, setLoading] = useState(true)
@@ -96,14 +122,13 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
       const { data, error } = await supabase
         .from('reunioes_mentoria_new')
         .select('*')
-        // Só consultoria: atendimentos do Sucesso do Cliente têm central própria.
-        .eq('equipe', 'consultor')
+        .eq('equipe', equipe)
         .order('data_reuniao', { ascending: false })
       
       if (data && !error) {
         const visiveis = (data as Meeting[]).filter(m => !isReuniaoSemCliente(m))
         const grouped = visiveis.reduce((acc: Record<string, Meeting[]>, meeting: Meeting) => {
-          const mentor = meeting.mentor || "Sem consultor"
+          const mentor = meeting.mentor || textos.semPessoa
           if (!acc[mentor]) acc[mentor] = []
           acc[mentor].push(meeting)
           return acc
@@ -114,7 +139,7 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
     }
 
     fetchMeetings()
-  }, [])
+  }, [equipe])
 
   const allMeetings = Object.values(meetings).flat()
   const uniqueMentors = [...new Set(allMeetings.map(m => m.mentor))].filter(Boolean).sort()
@@ -152,7 +177,7 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
 
   const filteredMentors = Object.entries(
     filteredMeetings.reduce((acc: Record<string, Meeting[]>, meeting) => {
-      const mentor = meeting.mentor || "Sem consultor"
+      const mentor = meeting.mentor || textos.semPessoa
       if (!acc[mentor]) acc[mentor] = []
       acc[mentor].push(meeting)
       return acc
@@ -190,14 +215,14 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
         className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-l-4 border-primary pl-8 py-2"
       >
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">Time de Consultores</h1>
-          <p className="text-muted-foreground font-medium text-sm">Histórico de sessões estratégicas e acompanhamento.</p>
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground">{textos.titulo}</h1>
+          <p className="text-muted-foreground font-medium text-sm">{textos.descricao}</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar consultor ou empresa..."
+              placeholder={textos.buscar}
               className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -217,10 +242,10 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
           </Select>
           <Select value={mentorFilter} onValueChange={setMentorFilter}>
             <SelectTrigger className="w-full sm:w-44 h-12 bg-muted/10 border-border rounded-xl">
-              <SelectValue placeholder="Consultor" />
+              <SelectValue placeholder={textos.pessoa} />
             </SelectTrigger>
             <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
-              <SelectItem value="all" className="rounded-lg font-medium">Todos Consultores</SelectItem>
+              <SelectItem value="all" className="rounded-lg font-medium">{textos.todos}</SelectItem>
               {uniqueMentors.map(m => (
                 <SelectItem key={m} value={m} className="rounded-lg font-medium">{m}</SelectItem>
               ))}
@@ -294,7 +319,7 @@ export default function MentoresPage({ isAdmin = false }: MentoresPageProps) {
                       {mentorMeetings.length} Sessões
                     </Badge>
                     <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
-                      <MessageSquare className="size-3" /> Consultor Especialista
+                      <MessageSquare className="size-3" /> {textos.selo}
                     </span>
                   </div>
                 </div>

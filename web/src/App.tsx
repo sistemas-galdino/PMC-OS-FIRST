@@ -8,6 +8,7 @@ import { BackgroundShaderPaper } from "@/components/ui/background-shader-paper"
 const LoginPage = lazy(() => import("@/pages/login"))
 const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"))
 const MentoresPage = lazy(() => import("@/pages/mentores"))
+const ReunioesCSAdminPage = lazy(() => import("@/pages/reunioes-cs-admin"))
 const ClientesPage = lazy(() => import("@/pages/clientes"))
 const AcessosPage = lazy(() => import("@/pages/acessos"))
 const AcessosEmpresaPage = lazy(() => import("@/pages/acessos-empresa"))
@@ -343,6 +344,8 @@ function AppRoutes() {
                     <Route path="/vitrine-evidencias" element={<RequireSecao secao="vitrine-evidencias"><VitrineEvidenciasPage /></RequireSecao>} />
                     <Route path="/vitrine-oportunidades" element={<RequireSecao secao="vitrine-oportunidades"><VitrineOportunidadesPage /></RequireSecao>} />
                     <Route path="/mentores" element={<RequireSecao secao="consultores"><MentoresPage isAdmin={isAdmin} /></RequireSecao>} />
+                    {/* Mesma chave RBAC da Central do Sucesso do Cliente: quem vê a central vê as reuniões. */}
+                    <Route path="/reunioes-sucesso-cliente" element={<RequireSecao secao="central-sucesso-cliente"><ReunioesCSAdminPage isAdmin={isAdmin} /></RequireSecao>} />
                     <Route path="/clientes" element={<RequireSecao secao="clientes"><ClientesPage /></RequireSecao>} />
                     <Route path="/radar-renovacao" element={<RequireSecao secao="radar-renovacao"><RadarRenovacaoPage /></RequireSecao>} />
                     <Route path="/acessos" element={<RequireSecao secao="acessos"><AcessosPage /></RequireSecao>} />

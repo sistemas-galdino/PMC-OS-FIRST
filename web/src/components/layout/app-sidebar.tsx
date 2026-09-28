@@ -154,6 +154,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
         { title: "Central de Atendimentos", icon: MessageSquare, url: "/central-atendimentos" },
         { title: "Central do Sucesso do Cliente", icon: MessageSquare, url: "/central-sucesso-cliente" },
         { title: "Consultores", icon: MessageSquare, url: "/mentores" },
+        { title: "Reuniões Sucesso do Cliente", icon: MessageSquare, url: "/reunioes-sucesso-cliente" },
         { title: "Guardião (Clientes)", icon: ShieldCheck, url: "/guardiao-admin" },
       ],
     },
@@ -307,6 +308,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
   const secaoDaUrl = (url: string): string | null => {
     if (url === "/") return null
     if (url === "/mentores") return "consultores"
+    if (url === "/reunioes-sucesso-cliente") return "central-sucesso-cliente"
     if (url === "/time-permissoes") return "permissoes"
     return url.replace(/^\//, "")
   }
