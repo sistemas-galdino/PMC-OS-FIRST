@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, Plus, Trash2, Pause, Pin, Image as ImageIcon, Send, Edit2, ListPlus } from "lucide-react";
+import { X, Plus, Pause, ListPlus } from "lucide-react";
 import { toast } from "sonner";
 import { CicloProgressBar } from "@/components/crm/CarteiraVisuals";
 import { Badge } from "@/components/crm/Badge";
@@ -9,20 +9,15 @@ import {
   extrairProximosPassosSeparados,
 } from "@/components/crm/TransformarTarefasModal";
 import {
-  addAnotacaoInterna,
   buildDisplayIdMap,
   fetchTranscricaoReuniao,
-  isAdmin,
   openCliente,
-  removeAnotacaoInterna,
   situacaoDe,
-  updateAnotacaoInterna,
   updateCliente,
   useAnotacoesInternas,
   useAtividades,
   useClientes,
   useNotas,
-  useProfile,
   useReunioes,
   useSelectedClienteId,
 } from "@/lib/crm/storage";
@@ -40,14 +35,13 @@ import TabCicloGaldino from "@/components/client-profile/admin-tabs/tab-ciclo-ga
 import TabConsultores from "@/components/client-profile/admin-tabs/tab-consultores";
 import TabRenovacao from "@/components/client-profile/admin-tabs/tab-renovacao";
 import TabComunicacao from "@/components/client-profile/admin-tabs/tab-comunicacao";
+import VisaoCsTab from "@/components/crm/VisaoCsTab";
 import { formatBR, inputDateValue, fromInputDate } from "@/lib/crm/format";
 import { useCsList } from "@/lib/crm/equipe";
 import { estaEncerrada } from "@/lib/crm/atividade-status"
 import {
   type Cliente,
   type CSName,
-  type AnotacaoInterna,
-  type ProfileName,
   type Reuniao,
   SITUACAO_LIST,
 } from "@/lib/crm/types";
@@ -240,7 +234,7 @@ function ClientDrawer({ clienteId, onClose }: { clienteId: string; onClose: () =
               campos sem coluna: a CS registrava uma vitória, o patch era
               descartado em silêncio e parecia ter salvo. */}
           {tab === "vitorias" && <VitoriasPage clientId={cliente.id} />}
-          {tab === "anotacoes" && <AnotacoesTab cliente={cliente} />}
+          {tab === "anotacoes" && <VisaoCsTab clientId={cliente.id} />}
           {tab === "comunicacao" && <TabComunicacao clientId={cliente.id} />}
           {tab === "cancelamento" && <TabCancelamento clientId={cliente.id} />}
         </div>
@@ -301,16 +295,6 @@ function Field({
 function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      {...props}
-      className={`w-full bg-card border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary ${props.className || ""}`}
-    />
-  );
-}
-
-function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      rows={3}
       {...props}
       className={`w-full bg-card border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary ${props.className || ""}`}
     />
@@ -688,259 +672,5 @@ function HistoricoTab({ cliente }: { cliente: Cliente }) {
         </div>
       )}
     </Section>
-  );
-}
-
-function AnotacoesTab({ cliente }: { cliente: Cliente }) {
-  const [profile] = useProfile();
-  // O original caía em "Maiara" quando não havia perfil. Aqui o autor é sempre
-  // quem está logado: sem sessão resolvida, não se publica em nome de ninguém.
-  const autor: ProfileName | null = profile;
-  const [texto, setTexto] = useState("");
-  const [imagens, setImagens] = useState<string[]>([]);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const notas = useAnotacoesInternas(cliente.id);
-  const notasOrdenadas = useMemo(() => {
-    return [...notas].sort((a, b) => b.criado_em.localeCompare(a.criado_em));
-  }, [notas]);
-
-  function publicar() {
-    const t = texto.trim();
-    if (!t && imagens.length === 0) return;
-    if (!autor) return;
-    void addAnotacaoInterna(cliente.id, t, autor, imagens)
-      .then(() => {
-        setTexto("");
-        setImagens([]);
-      })
-      .catch((e: unknown) => {
-        toast.error(`Não foi possível publicar: ${e instanceof Error ? e.message : String(e)}`);
-      });
-  }
-
-  async function onFiles(files: FileList | null) {
-    if (!files) return;
-    const novos: string[] = [];
-    for (const f of Array.from(files).slice(0, 6)) {
-      if (!f.type.startsWith("image/")) continue;
-      if (f.size > 1_500_000) {
-        toast.error(`Imagem "${f.name}" > 1,5MB. Comprima antes de anexar.`);
-        continue;
-      }
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result));
-        r.onerror = () => reject(r.error);
-        r.readAsDataURL(f);
-      });
-      novos.push(dataUrl);
-    }
-    setImagens((prev) => [...prev, ...novos].slice(0, 6));
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Nova anotação */}
-      <div className="rounded-lg border border-border bg-background p-4 space-y-3">
-        <div className="text-sm font-semibold">Registrar visão da CS sobre o cliente</div>
-        <div className="text-xs text-muted-foreground leading-relaxed">
-          Escreva livremente a sua percepção atual. Cada registro cria uma nova entrada no histórico — nada é sobrescrito. Use como referência (não obrigatório):
-        </div>
-        <ul className="text-[11px] text-muted-foreground grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 list-disc pl-4">
-          <li>Momento atual do cliente</li>
-          <li>Participação e envolvimento</li>
-          <li>Principais dificuldades</li>
-          <li>Pontos de atenção</li>
-          <li>Possíveis riscos</li>
-          <li>Evoluções recentes</li>
-          <li>O que está travando o cliente</li>
-          <li>Próximo ponto a acompanhar</li>
-        </ul>
-        <TextArea
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder="Ex.: cliente respondeu rápido hoje, parece animado com a nova estratégia, mas ainda não enviou o material pendente..."
-          rows={5}
-        />
-        {imagens.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {imagens.map((src, i) => (
-              <div key={i} className="relative">
-                <img
-                  src={src}
-                  alt={`anexo ${i + 1}`}
-                  className="h-16 w-16 object-cover rounded-md border border-border"
-                />
-                <button
-                  onClick={() => setImagens(imagens.filter((_, j) => j !== i))}
-                  className="absolute -top-1.5 -right-1.5 bg-background border border-border rounded-full p-0.5 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="flex items-center justify-between gap-2">
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-border hover:border-primary"
-          >
-            <ImageIcon className="h-3.5 w-3.5" /> Anexar imagens
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              void onFiles(e.target.files);
-              e.target.value = "";
-            }}
-          />
-          <button
-            onClick={publicar}
-            disabled={!autor || (!texto.trim() && imagens.length === 0)}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Send className="h-3.5 w-3.5" /> Publicar anotação
-          </button>
-        </div>
-      </div>
-
-      {/* Timeline */}
-      <div className="space-y-3">
-        {notasOrdenadas.length === 0 && (
-          <div className="text-center text-xs text-muted-foreground py-8">
-            Nenhuma anotação registrada ainda.
-          </div>
-        )}
-        {notasOrdenadas.map((n) => (
-          <NotaCard key={n.id} nota={n} clienteId={cliente.id} autorAtual={autor} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function NotaCard({
-  nota,
-  clienteId,
-  autorAtual,
-}: {
-  nota: AnotacaoInterna;
-  clienteId: string;
-  autorAtual: ProfileName | null;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [texto, setTexto] = useState(nota.texto);
-  // No original a exceção era o nome "Maiara" (a coordenação). Aqui quem passa
-  // por cima da autoria é o papel de admin do RBAC do PMC OS.
-  const podeEditar = (!!autorAtual && autorAtual === nota.autor) || isAdmin();
-
-  function salvar() {
-    void updateAnotacaoInterna(clienteId, nota.id, { texto: texto.trim() })
-      .then(() => setEditing(false))
-      .catch((e: unknown) => {
-        toast.error(`Não foi possível salvar: ${e instanceof Error ? e.message : String(e)}`);
-      });
-  }
-
-  function excluir() {
-    if (!confirm("Excluir esta anotação?")) return;
-    void removeAnotacaoInterna(clienteId, nota.id).catch((e: unknown) => {
-      toast.error(`Não foi possível excluir: ${e instanceof Error ? e.message : String(e)}`);
-    });
-  }
-
-  function togglePin() {
-    void updateAnotacaoInterna(clienteId, nota.id, { fixada: !nota.fixada }).catch((e: unknown) => {
-      toast.error(`Não foi possível fixar: ${e instanceof Error ? e.message : String(e)}`);
-    });
-  }
-
-  return (
-    <div
-      className={`rounded-lg border p-4 ${
-        nota.fixada ? "border-primary/50 bg-primary/5" : "border-border bg-background"
-      }`}
-    >
-      {editing ? (
-        <>
-          <TextArea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4} />
-          <div className="flex justify-end gap-2 mt-2">
-            <button
-              onClick={() => {
-                setTexto(nota.texto);
-                setEditing(false);
-              }}
-              className="text-xs px-3 py-1.5 rounded-lg border border-border"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={salvar}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary text-primary-foreground"
-            >
-              Salvar
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          {nota.texto && (
-            <div className="text-sm whitespace-pre-wrap leading-relaxed">{nota.texto}</div>
-          )}
-          {nota.imagens && nota.imagens.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {nota.imagens.map((src, i) => (
-                <a key={i} href={src} target="_blank" rel="noreferrer">
-                  <img
-                    src={src}
-                    alt={`anexo ${i + 1}`}
-                    className="h-20 w-20 object-cover rounded-md border border-border"
-                  />
-                </a>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      <div className="mt-3 pt-2 border-t border-border/60 flex items-center justify-between text-[11px] text-muted-foreground">
-        <div>
-          <span className="font-medium text-foreground/80">{nota.autor}</span>
-          {" · "}
-          {new Date(nota.criado_em).toLocaleDateString("pt-BR")}
-          {" · "}
-          {new Date(nota.criado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-          {nota.atualizado_em && (
-            <span className="ml-1 italic">
-              · Editado em {new Date(nota.atualizado_em).toLocaleDateString("pt-BR")}{" "}
-              {new Date(nota.atualizado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-            </span>
-          )}
-        </div>
-        {podeEditar && !editing && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={togglePin}
-              className={`hover:text-foreground ${nota.fixada ? "text-primary" : ""}`}
-              title={nota.fixada ? "Desafixar" : "Fixar"}
-            >
-              <Pin className="h-3.5 w-3.5" />
-            </button>
-            <button onClick={() => setEditing(true)} className="hover:text-foreground" title="Editar">
-              <Edit2 className="h-3.5 w-3.5" />
-            </button>
-            <button onClick={excluir} className="hover:text-status-red" title="Excluir">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }

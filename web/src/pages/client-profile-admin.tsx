@@ -15,6 +15,7 @@ import TabVitorias from "@/components/client-profile/admin-tabs/tab-vitorias"
 import BalancoPage from "@/pages/balanco"
 import TabComunicacao from "@/components/client-profile/admin-tabs/tab-comunicacao"
 import TabCancelamento from "@/components/client-profile/admin-tabs/tab-cancelamento"
+import VisaoCsTab from "@/components/crm/VisaoCsTab"
 
 function TabSucessoCliente({ clientId }: { clientId: string }) {
   return <TabConsultores clientId={clientId} equipe="sucesso_cliente" />
@@ -32,6 +33,8 @@ const ADMIN_TABS = [
   { key: "renovacao", label: "Renovação", Component: TabRenovacao },
   { key: "balanco", label: "Balanço", Component: BalancoPage },
   { key: "vitorias", label: "Vitórias", Component: TabVitorias },
+  // Mesmo componente da aba "Visão da CS" do Customer Success › Clientes.
+  { key: "visao-cs", label: "Visão da CS", Component: VisaoCsTab },
   { key: "comunicacao", label: "Comunicação", Component: TabComunicacao },
   { key: "cancelamento", label: "Cancelamento", Component: TabCancelamento },
 ] as const
