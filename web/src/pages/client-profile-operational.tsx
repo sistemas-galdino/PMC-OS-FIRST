@@ -30,6 +30,7 @@ const BalancoPage = lazy(() => import("@/pages/balanco"))
 const NiveisPage = lazy(() => import("@/pages/niveis"))
 const VitoriasPage = lazy(() => import("@/pages/vitorias"))
 const ClientReunioesPage = lazy(() => import("@/pages/client-reunioes"))
+const ReunioesCSPage = lazy(() => import("@/pages/reunioes-cs"))
 const ReunioesGaldinoPage = lazy(() => import("@/pages/reunioes-galdino"))
 const ReunioesBlackCRMPage = lazy(() => import("@/pages/reunioes-blackcrm"))
 const NovidadesPage = lazy(() => import("@/pages/novidades"))
@@ -84,6 +85,7 @@ const REGISTRO: Record<string, (c: Ctx) => ReactNode> = {
   "niveis":              ({ clientId }) => <NiveisPage clientId={clientId} visaoAdmin />,
   "vitorias":            ({ clientId }) => <VitoriasPage clientId={clientId} />,
   "reunioes":            ({ clientId }) => <ClientReunioesPage clientId={clientId} />,
+  "reunioes-cs":         ({ clientId }) => <ReunioesCSPage clientId={clientId} />,
   // isAdmin libera o toggle de presença, igual à rota real de admin.
   "reunioes-galdino":    ({ clientId, isAdmin }) => <ReunioesGaldinoPage clientId={clientId} isAdmin={isAdmin} />,
   "reunioes-blackcrm":   ({ clientId, isAdmin }) => <ReunioesBlackCRMPage clientId={clientId} isAdmin={isAdmin} />,

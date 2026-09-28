@@ -49,7 +49,26 @@ function ordinal(n: number): string {
   return `${n}ª`
 }
 
-export default function TabConsultores({ clientId }: { clientId: string }) {
+type Equipe = "consultor" | "sucesso_cliente"
+
+// A mesma aba serve às duas equipes que gravam em reunioes_mentoria_new.
+const TEXTOS: Record<Equipe, { titulo: string; maisAcionado: string; semPessoa: string; vazio: string }> = {
+  consultor: {
+    titulo: "Consultores — Resumo",
+    maisAcionado: "Consultor + acionado",
+    semPessoa: "Sem consultor definido",
+    vazio: "Nenhuma reunião com consultor registrada ainda.",
+  },
+  sucesso_cliente: {
+    titulo: "Sucesso do Cliente — Resumo",
+    maisAcionado: "CS + acionada",
+    semPessoa: "Sem CS definida",
+    vazio: "Nenhuma reunião com o Sucesso do Cliente registrada ainda.",
+  },
+}
+
+export default function TabConsultores({ clientId, equipe = "consultor" }: { clientId: string; equipe?: Equipe }) {
+  const textos = TEXTOS[equipe]
   const [reunioes, setReunioes] = useState<Reuniao[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -59,8 +78,7 @@ export default function TabConsultores({ clientId }: { clientId: string }) {
     const { data, error } = await supabase
       .from("reunioes_mentoria_new")
       .select("id_unico, data_reuniao, mentor, cliente_compareceu")
-      // Aba de CONSULTORES: atendimentos de CS ficam na Central do Sucesso do Cliente.
-      .eq("equipe", "consultor")
+      .eq("equipe", equipe)
       .eq("id_cliente", clientId)
       .order("data_reuniao", { ascending: false })
 
@@ -79,7 +97,7 @@ export default function TabConsultores({ clientId }: { clientId: string }) {
       setLoading(false)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId])
+  }, [clientId, equipe])
 
   const stats = useMemo(() => {
     const now = new Date()
@@ -172,7 +190,7 @@ export default function TabConsultores({ clientId }: { clientId: string }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <UsersIcon className="size-4 text-yellow-400" />
-            Consultores — Resumo
+            {textos.titulo}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -180,7 +198,7 @@ export default function TabConsultores({ clientId }: { clientId: string }) {
             <KpiCell label="Total de reuniões" value={String(stats.total)} />
             <KpiCell label="Última reunião" value={formatDate(stats.ultima)} />
             <KpiCell
-              label="Consultor + acionado"
+              label={textos.maisAcionado}
               value={stats.mentorMaisAcionado ?? "—"}
             />
             <KpiCell label="Frequência média" value={stats.frequenciaMedia ?? "—"} />
@@ -199,7 +217,7 @@ export default function TabConsultores({ clientId }: { clientId: string }) {
         <CardContent>
           {reunioes.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
-              Nenhuma reunião com consultor registrada ainda.
+              {textos.vazio}
             </p>
           ) : (
             <div className="space-y-2">
@@ -217,7 +235,7 @@ export default function TabConsultores({ clientId }: { clientId: string }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold text-foreground">
-                          {r.mentor || "Sem consultor definido"}
+                          {r.mentor || textos.semPessoa}
                         </span>
                         {realizada ? (
                           <span className="inline-flex items-center rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-emerald-400">

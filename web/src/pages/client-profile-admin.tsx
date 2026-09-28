@@ -16,12 +16,17 @@ import BalancoPage from "@/pages/balanco"
 import TabComunicacao from "@/components/client-profile/admin-tabs/tab-comunicacao"
 import TabCancelamento from "@/components/client-profile/admin-tabs/tab-cancelamento"
 
+function TabSucessoCliente({ clientId }: { clientId: string }) {
+  return <TabConsultores clientId={clientId} equipe="sucesso_cliente" />
+}
+
 const ADMIN_TABS = [
   { key: "perfil", label: "Perfil", Component: TabPerfil },
   { key: "programa", label: "Programa", Component: TabPrograma },
   { key: "black-crm", label: "Black CRM", Component: TabBlackCRM },
   { key: "ciclo-galdino", label: "Ciclo Galdino", Component: TabCicloGaldino },
   { key: "consultores", label: "Consultores", Component: TabConsultores },
+  { key: "sucesso-cliente", label: "Sucesso do Cliente", Component: TabSucessoCliente },
   { key: "atividades", label: "Atividades", Component: TabAtividades },
   { key: "historico", label: "Histórico", Component: TabHistorico },
   { key: "renovacao", label: "Renovação", Component: TabRenovacao },

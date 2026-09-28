@@ -17,6 +17,7 @@ const ROTAS_CLIENTE: Destino[] = [
   { label: "Meu Time", url: "/meu-time", grupo: "Execução" },
   { label: "Central de Vitórias", url: "/vitorias", grupo: "Acompanhamento" },
   { label: "Reuniões", url: "/reunioes", grupo: "Acompanhamento" },
+  { label: "Reuniões Sucesso do Cliente", url: "/reunioes-cs", grupo: "Acompanhamento" },
   { label: "Guardião da IA", url: "/guardiao", grupo: "Acompanhamento" },
   { label: "Novidades", url: "/novidades", grupo: "Comunidade" },
   { label: "Ranking dos Guardiões", url: "/ranking-guardioes", grupo: "Comunidade" },

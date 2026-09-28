@@ -41,12 +41,34 @@ interface Meeting {
   link_geminidoc: string | null
 }
 
+type Equipe = 'consultor' | 'sucesso_cliente'
+
+// A mesma tela serve às duas equipes que gravam em reunioes_mentoria_new.
+const TEXTOS: Record<Equipe, { titulo: string; descricao: string; pessoa: string; buscar: string; todos: string }> = {
+  consultor: {
+    titulo: "Reuniões Consultores",
+    descricao: "Histórico de sessões com seus consultores.",
+    pessoa: "Consultor",
+    buscar: "Buscar consultor...",
+    todos: "Todos Consultores",
+  },
+  sucesso_cliente: {
+    titulo: "Reuniões Sucesso do Cliente",
+    descricao: "Histórico de reuniões com o seu Sucesso do Cliente.",
+    pessoa: "Sucesso do Cliente",
+    buscar: "Buscar pelo nome...",
+    todos: "Todos",
+  },
+}
+
 interface ClientReunioesProps {
   session?: Session
   clientId?: string
+  equipe?: Equipe
 }
 
-export default function ClientReunioesPage({ session, clientId }: ClientReunioesProps) {
+export default function ClientReunioesPage({ session, clientId, equipe = 'consultor' }: ClientReunioesProps) {
+  const textos = TEXTOS[equipe]
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [idClienteAtual, setIdClienteAtual] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -85,8 +107,7 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
       const { data, error } = await supabase
         .from('reunioes_mentoria_new')
         .select('*')
-        // A lista de reuniões do cliente é de CONSULTORIA (CS tem central própria).
-        .eq('equipe', 'consultor')
+        .eq('equipe', equipe)
         .in('id_cliente', ids)
         .order('data_reuniao', { ascending: false })
 
@@ -97,7 +118,7 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
     }
 
     fetchMeetings()
-  }, [session, clientId])
+  }, [session, clientId, equipe])
 
   const uniqueMentors = [...new Set(meetings.map(m => m.mentor))].filter(Boolean).sort()
   const uniqueYears = [...new Set(meetings.map(m => m.ano))].filter(Boolean).sort() as number[]
@@ -162,15 +183,15 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
   return (
     <div className="space-y-10 pb-10">
       <PageHeader
-        title="Reuniões Consultores"
-        description="Histórico de sessões com seus consultores."
+        title={textos.titulo}
+        description={textos.descricao}
       />
 
       <div className="flex flex-wrap items-end gap-3">
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-3.5 top-3.5 size-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar consultor..."
+              placeholder={textos.buscar}
               className="pl-11 h-12 bg-muted/10 border-border focus-visible:border-primary/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -190,10 +211,10 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
           </Select>
           <Select value={mentorFilter} onValueChange={setMentorFilter}>
             <SelectTrigger className="w-full sm:w-44 h-12 bg-muted/10 border-border rounded-xl">
-              <SelectValue placeholder="Consultor" />
+              <SelectValue placeholder={textos.pessoa} />
             </SelectTrigger>
             <SelectContent className="rounded-xl bg-card/95 backdrop-blur-xl border-border">
-              <SelectItem value="all" className="rounded-lg font-medium">Todos Consultores</SelectItem>
+              <SelectItem value="all" className="rounded-lg font-medium">{textos.todos}</SelectItem>
               {uniqueMentors.map(m => (
                 <SelectItem key={m} value={m} className="rounded-lg font-medium">{m}</SelectItem>
               ))}
@@ -272,7 +293,7 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
                       <div className="flex justify-between items-start gap-4">
                         <div className="space-y-1.5 flex-1">
                           <h3 className="font-bold text-base text-foreground leading-tight line-clamp-1">{meeting.mentor}</h3>
-                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Consultor</p>
+                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{textos.pessoa}</p>
                           {empresaDeOutroMembro(meeting, idClienteAtual) && (
                             <Badge variant="outline" className="mt-1 rounded-lg border-border bg-muted/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                               {empresaDeOutroMembro(meeting, idClienteAtual)}
@@ -301,7 +322,7 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
                         <div className="flex items-center gap-1">
                           {meeting.link_gravacao && (
                             <a href={meeting.link_gravacao} target="_blank" rel="noopener noreferrer" title="Gravação"
-                              onClick={() => logarDownload("gravacao", meeting.id_unico, `Gravação · ${meeting.mentor || "Consultor"}`, meeting.link_gravacao)}>
+                              onClick={() => logarDownload("gravacao", meeting.id_unico, `Gravação · ${meeting.mentor || textos.pessoa}`, meeting.link_gravacao)}>
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
                                 <VideoIcon className="size-3.5" />
                               </Button>
@@ -309,7 +330,7 @@ export default function ClientReunioesPage({ session, clientId }: ClientReunioes
                           )}
                           {meeting.link_geminidoc && (
                             <a href={meeting.link_geminidoc} target="_blank" rel="noopener noreferrer" title="Transcrição"
-                              onClick={() => logarDownload("arquivo", meeting.id_unico, `Transcrição · ${meeting.mentor || "Consultor"}`, meeting.link_geminidoc)}>
+                              onClick={() => logarDownload("arquivo", meeting.id_unico, `Transcrição · ${meeting.mentor || textos.pessoa}`, meeting.link_geminidoc)}>
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5">
                                 <FileTextIcon className="size-3.5" />
                               </Button>

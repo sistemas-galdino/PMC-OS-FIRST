@@ -262,6 +262,7 @@ export function AppSidebar({ isAdmin = false }: AppSidebarProps) {
           url: "/reunioes",
           children: [
             { title: "Consultores", icon: Calendar, url: "/reunioes" },
+            { title: "Sucesso do Cliente", icon: Calendar, url: "/reunioes-cs" },
             { title: "Galdino", icon: Calendar, url: "/reunioes-galdino" },
             { title: "BlackCRM", icon: Calendar, url: "/reunioes-blackcrm" },
           ],

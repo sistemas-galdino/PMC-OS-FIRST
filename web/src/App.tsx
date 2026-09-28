@@ -17,6 +17,7 @@ const AcoesPage = lazy(() => import("@/pages/acoes"))
 const OnboardingPage = lazy(() => import("@/pages/onboarding"))
 const ClientProfilePage = lazy(() => import("@/pages/client-profile"))
 const ClientReunioesPage = lazy(() => import("@/pages/client-reunioes"))
+const ReunioesCSPage = lazy(() => import("@/pages/reunioes-cs"))
 const DefinirSenhaPage = lazy(() => import("@/pages/definir-senha"))
 const AtivarContaPage = lazy(() => import("@/pages/ativar-conta"))
 const RecuperarSenhaPage = lazy(() => import("@/pages/recuperar-senha"))
@@ -212,10 +213,13 @@ function HomeDoCliente({ papelEmpresa, secoes }: { papelEmpresa: string | null; 
   return <Navigate to={`/${destino}`} replace />
 }
 
-function RequireSecaoCliente({ secao, children }: { secao: string; children: ReactNode }) {
+// Com uma lista, basta ter UMA das seções (o detalhe /reuniao/:id serve às
+// reuniões de consultoria e às de Sucesso do Cliente; o RLS filtra a linha).
+function RequireSecaoCliente({ secao, children }: { secao: string | string[]; children: ReactNode }) {
   const { isAdmin, podeCliente } = useAuth()
   if (isAdmin) return <>{children}</>
-  return podeCliente(secao) ? <>{children}</> : <Navigate to="/" replace />
+  const secoes = Array.isArray(secao) ? secao : [secao]
+  return secoes.some(podeCliente) ? <>{children}</> : <Navigate to="/" replace />
 }
 
 // /atendimento e /atendimento/:slug renderizam o MESMO componente, na mesma
@@ -348,8 +352,9 @@ function AppRoutes() {
                     <Route path="/indicadores" element={<RequireSecaoCliente secao="indicadores"><IndicadoresPage session={session} clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/acoes" element={<RequireSecaoCliente secao="acoes"><AcoesPage session={session} clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/reunioes" element={<RequireSecaoCliente secao="reunioes"><ClientReunioesPage session={session} clientId={cid} /></RequireSecaoCliente>} />
+                    <Route path="/reunioes-cs" element={<RequireSecaoCliente secao="reunioes-cs"><ReunioesCSPage session={session} clientId={cid} /></RequireSecaoCliente>} />
                     <Route path="/cliente/:id" element={<RequireSecao secao="clientes"><ClientProfilePage /></RequireSecao>} />
-                    <Route path="/reuniao/:id" element={<RequireSecaoCliente secao="reunioes"><ReuniaoDetalhePage isAdmin={isAdmin} /></RequireSecaoCliente>} />
+                    <Route path="/reuniao/:id" element={<RequireSecaoCliente secao={["reunioes", "reunioes-cs"]}><ReuniaoDetalhePage isAdmin={isAdmin} /></RequireSecaoCliente>} />
                     <Route path="/reunioes-galdino" element={<RequireSecaoCliente secao="reunioes-galdino"><ReunioesGaldinoPage session={session} clientId={cid} isAdmin={isAdmin} /></RequireSecaoCliente>} />
                     <Route path="/reuniao-galdino/:id" element={<RequireSecaoCliente secao="reunioes-galdino"><ReuniaoGaldinoDetalhePage isAdmin={isAdmin} /></RequireSecaoCliente>} />
                     <Route path="/reunioes-blackcrm" element={<RequireSecaoCliente secao="reunioes-blackcrm"><ReunioesBlackCRMPage session={session} clientId={cid} isAdmin={isAdmin} /></RequireSecaoCliente>} />
